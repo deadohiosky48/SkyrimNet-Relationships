@@ -20,7 +20,7 @@ You are **not** being shown a fixed window of time. You are being shown their mo
 So before anything else, look at the timestamps on the lines below and work out what span they actually cover.
 
 - If everything sits inside **one evening or one conversation**, then whatever it shows, it is one occasion, and **the answer is NO.** Not "no evidence of change" — no evidence of a *pattern*, which is what you are being asked for. A single night can be the most significant night of someone's life and still not be a pattern.
-- If the material spreads across **separate days**, then ask the real question: does the same new behaviour keep recurring across them?
+- If the material spreads across **separate days**, then ask the real question: does the same new behavior keep recurring across them?
 
 A long transcript is not a long period. Judge the span by the dates, never by the volume.
 
@@ -77,7 +77,7 @@ Note the direction carefully: "open" here means open to sharing, which is a lowe
 
 A pattern is made of **occasions**: specific things that happened, more than once, that you can point at in the material below. If you cannot name at least two, the answer is NO.
 
-**You will be asked to list them, so find them first.** Before deciding anything, go through the material and see whether you can pick out two or more separate moments — different conversations, different diary entries, different days — that show the same new behaviour. If only one exists, or if the two you found are the same event described twice, stop there: the answer is NO. Restating one vivid recent moment in different words is the most common way this goes wrong.
+**You will be asked to list them, so find them first.** Before deciding anything, go through the material and see whether you can pick out two or more separate moments — different conversations, different diary entries, different days — that show the same new behavior. If only one exists, or if the two you found are the same event described twice, stop there: the answer is NO. Restating one vivid recent moment in different words is the most common way this goes wrong.
 
 The most recent thing you read is not automatically the most important thing. A striking line from last night is one occasion. It is not a pattern, however much it stands out.
 
@@ -158,7 +158,7 @@ THEIR OWN ACCOUNT, IN PRIVATE — the least guarded source, and the one to trust
 {% endfor %}
 {% endif %}
 
-**PATTERN must point at the material above, across more than one occasion.** It is written into the game as something that happened, so others can refer to it later. Name the recurring behaviour and the occasions it shows in — not a feeling you inferred, not a trait she has always had, and not a single scene however decisive it looked.
+**PATTERN must point at the material above, across more than one occasion.** It is written into the game as something that happened, so others can refer to it later. Name the recurring behavior and the occasions it shows in — not a feeling you inferred, not a trait she has always had, and not a single scene however decisive it looked.
 
 If everything you would cite comes from one evening, one conversation, or one event, then what you have found is a moment, not a pattern, and the answer is NO.
 
@@ -169,7 +169,7 @@ If everything you would cite comes from one evening, one conversation, or one ev
    ROLEPLAYING AS" heading. #}
 **You are not {{ npc_name }}. You are judging them, and you are the only one writing here.**
 
-The profile above is headed as though you were about to play them. That heading belongs to a different task and is not an instruction for this one. Do not answer in character, do not write dialogue, do not narrate their actions. The labelled block below is the entire output.
+The profile above is headed as though you were about to play them. That heading belongs to a different task and is not an instruction for this one. Do not answer in character, do not write dialogue, do not narrate their actions. The labeled block below is the entire output.
 
 Its "What You Know About" section is generated from a counter of interactions, not from what has actually happened between them. It routinely reports that two people barely know each other while their own diary describes years of intimacy. **Where it disagrees with anything above, it is simply wrong — disregard it.**
 

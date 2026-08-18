@@ -48,7 +48,7 @@ String Function CanBegin(Actor akActor) Global
     EndIf
     ; enrollmentRequireFollower was advertised in the manifest and read by
     ; nothing - the only follower gate lived in RomanceBeginSpark.yaml's
-    ; eligibility, where no config value can reach it. Honoured here so the
+    ; eligibility, where no config value can reach it. Honored here so the
     ; setting is real rather than decorative.
     ;
     ; NOTE: the YAML rule still applies as a cheap pre-filter, so setting this
@@ -162,7 +162,7 @@ Int Function OrientationBasisToInt(String asWord) Global
       building. The bug was not a wrong guess - it was FORCING a guess where
       the honest answer was "nobody has established this yet".
 
-      Unrecognised input means unknown, which is the permissive branch. }
+      Unrecognized input means unknown, which is the permissive branch. }
     String w = SNRom_Decorators.Upper(SNRom_Decorators.Trim(asWord))
     If w == "STATED"
         Return 2
@@ -211,7 +211,7 @@ Bool Function IsPlayerKin(Actor akActor) Global
 
       Drop the `SNKin_Bound` half once Kinship 1.1.0 is a stated requirement.
       Absent Kinship entirely BOTH read 0 and the guard is inert, which is the
-      intended soft-dependency behaviour and unchanged by any of this. }
+      intended soft-dependency behavior and unchanged by any of this. }
     If akActor == None
         Return False
     EndIf
@@ -234,7 +234,7 @@ Bool Function RomanceOk(Actor akActor) Global
       player? Gates the top two rungs of the romantic ladder.
 
       ONLY a KNOWN orientation can refuse. Unknown and merely inferred both
-      pass: an inference colours how she behaves, it does not get to delete
+      pass: an inference colors how she behaves, it does not get to delete
       content the player is working toward. A gate that silently removes a
       storyline had better be standing on a fact. }
     If akActor == None
@@ -399,7 +399,7 @@ String Function NameCore(String asName) Global
 
           NAME: "Bryling",
 
-      - JSON habit bleeding into a labelled-line format - so the guard compared
+      - JSON habit bleeding into a labeled-line format - so the guard compared
       '"BRYLING",' against 'BRYLING', called it a mismatch, and discarded every
       single assessment she generated. The response was RIGHT. The comparison
       was too literal.
@@ -624,7 +624,7 @@ Int Function LabelToOffset(String asLabel) Global
     { Maps a human activity name (as written in snrom_author_disposition.prompt)
       to its ROM_ faction's plugin-local FormID. Generated from CS_Romantasy.esp
       so it cannot drift from the actual records.
-      Returns 0 for anything unrecognised - that IS the whitelist: a model that
+      Returns 0 for anything unrecognized - that IS the whitelist: a model that
       invents or misspells an activity gets rejected rather than interpreted. }
     String l = SNRom_Decorators.Upper(asLabel)
     If l == "ANIMALS KILLED"
@@ -750,13 +750,13 @@ EndFunction
 ; ===========================================================================
 ; Authored-disposition mappers
 ;
-; These translate the LLM's labelled words into the StorageUtil values the
+; These translate the LLM's labeled words into the StorageUtil values the
 ; gates read. Every one of these keys was READ-ONLY until 2026-07-28 - read
 ; with a default and never written by anything - so every NPC silently shared
 ; one hardcoded personality: pansexual, sex only at Lover tier, no attraction
 ; bypass, ardor 2, exclusivity 50. The gates existed; the data did not.
 ;
-; Unrecognised input returns the SAFE value, never the permissive one. A model
+; Unrecognized input returns the SAFE value, never the permissive one. A model
 ; that answers unexpectedly must not accidentally unlock intimacy.
 ; ===========================================================================
 
@@ -873,7 +873,7 @@ Int Function ArdorToInt(String asWord) Global
       rather than the model's.
 
       Words carry their own definition. "Reserved" and "intense" are things a
-      person can be recognised as; 1 and 4 are not. The stored value stays an
+      person can be recognized as; 1 and 4 are not. The stored value stays an
       int because PhysicalOk and the spark calibration want to compare it. }
     String w = SNRom_Decorators.Upper(SNRom_Decorators.Trim(asWord))
     If w == "RESERVED"
@@ -940,7 +940,7 @@ String Function SexWord(Int aiSex) Global
 EndFunction
 
 String Function FieldValue(String asResponse, String asKey) Global
-    { Pulls "KEY: value" out of a labelled-line response. Labelled lines are
+    { Pulls "KEY: value" out of a labeled-line response. Labeled lines are
       used instead of JSON because Papyrus parses them trivially and small
       models produce them far more reliably than nested structures. }
     Int at = StringUtil.Find(asResponse, asKey)
@@ -1027,7 +1027,7 @@ Int Function CountOccasions(String asText) Global
       did nothing. Across three subjects the assessor answered from SALIENCE
       rather than from pattern: vivid material nearby produced YES, thin
       material produced NO, and neither had anything to do with whether a
-      behaviour had recurred. Sybille's verdict was a paraphrase of a talk award
+      behavior had recurred. Sybille's verdict was a paraphrase of a talk award
       that had fired seconds earlier, on a different axis entirely.
 
       Returns a COUNT rather than a Bool so the caller can log how many were
@@ -1148,11 +1148,11 @@ String Function Unquote(String asValue) Global
     Return v
 EndFunction
 
-String Function NormaliseSeparators(String asCsv) Global
+String Function NormalizeSeparators(String asCsv) Global
     { The catalogue in snrom_author_disposition.prompt is DISPLAYED with middle-dot
       separators, and a model copied that separator into its ANSWER - so
       "Dungeons Cleared - Standing Stones Found - Barters ..." arrived as ONE
-      name and all seven likes were rejected as a single unrecognised activity.
+      name and all seven likes were rejected as a single unrecognized activity.
       Svana Far-Shield lost a whole authoring run to it and fell back to a
       generic archetype.
 

@@ -110,7 +110,7 @@ These are temporary — the real install is packaged as a Vortex mod later.
      *(**Forced Reference → PlayerRef** also works; either is fine.)*
    - ❌ **Optional**
 
-   > **Allow Reserved** will be greyed out. That is correct — it only applies
+   > **Allow Reserved** will be grayed out. That is correct — it only applies
    > to fill types that *search* for a reference another quest might have
    > reserved. Unique Actor targets one known reference, so there is nothing
    > to contend for. Leave it alone.

@@ -135,7 +135,7 @@ def main():
     print(f"Player renown {renown:.2f}  (skill {args.skill}, fame {args.fame}, "
           f"leader {args.leader}, MQ {not args.no_main_quest})")
     print(f"NPC: {args.against} {'male' if args.male else 'female'}, "
-          f"OCR bar {thr} -> normalised {b:.2f}   floor {args.floor}\n")
+          f"OCR bar {thr} -> normalized {b:.2f}   floor {args.floor}\n")
 
     for name, wp, ws, wr in PROFILES:
         print(f"{'=' * 66}\n{name}   (physical {wp} / social {ws} / renown {wr})")

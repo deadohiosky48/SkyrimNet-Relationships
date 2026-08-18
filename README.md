@@ -56,23 +56,55 @@ Romantasy's own activity list, so the same deed routes through their opinions
 rather than a global table.
 
 **Two tracks, not one ladder.** Bond depth is earned by shared experience and is
-open to everyone. The romantic track is separate and gated: without a moment
-where something actually crossed, a companion stays platonic forever however deep
-the bond runs. Travelling together for a year does not make someone fall in love.
+open to everyone. The romantic track is separate, and getting onto it takes more
+than time — see below.
 
 **Scores conversation.** Talking matters. A background judge reads what actually
 passed between you and decides whether it moved anything — usually it did not.
 Pacing lives in code, not in the prompt: daily caps, cooldowns, and a rarity
 limit on the moments where two people redefine what they are.
 
-**Asks before it assumes.** When someone reaches the point of wanting more, they
-raise it themselves, in their own words, and you answer plainly. Declining is a
-real answer with real cost, and it does not end the friendship.
 
 **Lets people change.** Dispositions are reviewed as companions live, and can
-move in either direction — but only on a pattern of behaviour across days, never
+move in either direction — but only on a pattern of behavior across days, never
 on one memorable evening, and only one step at a time. Someone who swore off
 commitment can come to want it. Someone badly treated can close up.
+
+## The gate between friendship and romance
+
+This is the part that most distinguishes the mod from the framework underneath
+it, and there are two locks on it.
+
+**Nothing becomes romantic on its own.** Traveling together for a year does not
+make someone fall in love with you. A background assessor watches for a moment
+where something between you actually crossed, and until it finds one, a companion
+stays platonic no matter how deep the bond runs. Someone can climb the whole
+ladder as a friend and remain one. That is a real ending, not a failure state.
+
+**And crossing takes both of you.** A spark is only their half of it. When a
+companion reaches the point of wanting more, they raise it themselves, in their
+own words, and you answer plainly:
+
+| your answer | what happens |
+|---|---|
+| you feel the same | the romantic track opens and the bond can keep climbing |
+| you do not | they stay a friend, and the bond steps back to make room |
+| say nothing for now | the question stays open; they will raise it again later |
+
+**You can turn someone down.** Declining is a real answer with real weight. It
+does not erase what they feel, it does not end the friendship, and it does not
+make them cold toward you — but the bond does step back to the middle of Friend,
+because a refusal that left them one good conversation short of asking again
+would be no refusal at all. The friendship grows again from there, on its own
+terms, and they may raise it once more when there is real ground for it.
+
+**Nothing creeps past the question while it is unanswered.** Depth is held one
+point below Spouse until you have answered, so no companion arrives at
+marriage-eligible by accumulation alone.
+
+**Spouse is the rung that makes marriage possible.** It is not a claim to be
+married — the proposal itself happens through whatever marriage system you use.
+This mod's job is making sure you both meant it before you get that far.
 
 ## Requirements
 
@@ -138,3 +170,8 @@ Known gaps, honestly:
 Built on [Romantasy](https://www.nexusmods.com/skyrimspecialedition/mods/186060)
 by ColdSun and [SkyrimNet](https://www.nexusmods.com/skyrimspecialedition/mods/151960)
 by MinLL. Neither is vendored here; both are required separately.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Covers this mod's own code and content only; every
+mod it integrates with retains its own license, and none is redistributed here.

@@ -52,13 +52,13 @@
 {% if rom_tier == 0 %}
 {{ player.name }} is someone you have taken up with recently. Whether it becomes anything is an open question you have not thought much about.
 
-- Treat them as what they are so far: a capable person you are travelling alongside, and not yet more than that.
-- You are still working out what they are like when it is difficult. Reserve judgement; do not perform warmth you have not earned or been given.
+- Treat them as what they are so far: a capable person you are traveling alongside, and not yet more than that.
+- You are still working out what they are like when it is difficult. Reserve judgment; do not perform warmth you have not earned or been given.
 {% elif rom_tier == 1 %}
 You have come to like {{ player.name }}. The road is easier with them on it.
 
 - You are glad of their company and mildly put out by their absence, and you would probably not say either aloud.
-- You have started to trust their judgement in small things, which for you is not a small thing.
+- You have started to trust their judgment in small things, which for you is not a small thing.
 {% elif rom_tier == 2 %}
 {{ player.name }} is a friend. You would say so plainly if someone asked.
 
@@ -181,7 +181,7 @@ What you feel for {{ player.name }} is not love, and you have never confused the
    boundary complies, whoever the character is - the author confirmed it by test:
    every female NPC could be talked into anything regardless of what we had
    authored for her. The mod described desire on five axes and refusal on none,
-   so every judgement call had a thumb on the scale toward yes.
+   so every judgment call had a thumb on the scale toward yes.
 
    physMinTier < 0 is the authored NEVER, which is permanent and should not be
    phrased as a wait. Everything else is a not-yet.                          #}

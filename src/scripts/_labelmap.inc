@@ -2,7 +2,7 @@ Int Function LabelToOffset(String asLabel) Global
     { Maps a human activity name (as written in snrom_author_disposition.prompt)
       to its ROM_ faction's plugin-local FormID. Generated from CS_Romantasy.esp
       so it cannot drift from the actual records.
-      Returns 0 for anything unrecognised - that IS the whitelist: a model that
+      Returns 0 for anything unrecognized - that IS the whitelist: a model that
       invents or misspells an activity gets rejected rather than interpreted. }
     String l = SNRom_Decorators.Upper(asLabel)
     If l == "ANIMALS KILLED"

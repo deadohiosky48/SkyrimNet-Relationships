@@ -85,7 +85,7 @@ WHO THEY ARE
    wrong thing. What gets quoted is not what should be trusted.
 
    Events are deliberately excluded. They are fleeting and mostly irrelevant to
-   an emotional judgement, and Romantasy already scores deeds. The transcript
+   an emotional judgment, and Romantasy already scores deeds. The transcript
    block below filters the event stream down to dialogue only. #}
 WHAT WAS SAID — what they were willing to say aloud, to {{ player.name }}'s face
 {# THE WINDOW IS FILTERED TO HER, and that is load-bearing.
@@ -257,7 +257,7 @@ returned. A hedge spoken and a certainty written privately are the same feeling.
 
 Weigh only what appears above. Do not score a conversation you did not read, and do not score something between {{ player.name }} and a third person — other people appear in their profile and memories, and what passed between those two is not what passed between {{ npc_name }} and {{ player.name }}.
 
-**A line where {{ npc_name }} addresses someone by name who is not {{ player.name }} is not part of this conversation, whoever it is labelled as being spoken to.** When several people stand close together their words get attributed to the wrong listener, and a reply they made to a companion can arrive here looking like it was said to {{ player.name }}. Judge it by who they are plainly talking to, not by the label.
+**A line where {{ npc_name }} addresses someone by name who is not {{ player.name }} is not part of this conversation, whoever it is labeled as being spoken to.** When several people stand close together their words get attributed to the wrong listener, and a reply they made to a companion can arrive here looking like it was said to {{ player.name }}. Judge it by who they are plainly talking to, not by the label.
 
 WEIGHT — how far this moved them:
 - `NOTHING` — they talked. Nothing changed. **This is the usual answer.**
@@ -283,7 +283,7 @@ And most disagreements are not even that. Couples bicker. People are tired, or f
 {# ── TWO COUNTER-INSTRUCTIONS, placed HERE because position is priority ──────
    1. render_character_profile("transform", …) emits a block headed "THIS IS WHO
       YOU ARE ROLEPLAYING AS" - see submodules/character_bio/0010_header.prompt:3,
-      which emits that heading for full/thoughts/transform. In a JUDGEMENT prompt
+      which emits that heading for full/thoughts/transform. In a JUDGMENT prompt
       that instruction competes with the answer template, and on gemma-4-12B it
       intermittently wins: the model replies in character with no WEIGHT: line,
       FieldValue returns "", and Papyrus logs "verdict: '' - no award". Fourteen
@@ -293,7 +293,7 @@ And most disagreements are not even that. Couples bicker. People are tired, or f
       drops it, but ALSO drops background, personality, aspirations,
       relationships, occupation, memories, all 50 sever bioslots, and both of our
       OWN romantasy submodules - leaving a body with no person in it. The whole
-      judgement is "read it against HER", so the profile stays and the heading
+      judgment is "read it against HER", so the profile stays and the heading
       gets countered instead.
 
    2. The familiarity tier. snrom_author_disposition.prompt:102 already
@@ -305,7 +305,7 @@ And most disagreements are not even that. Couples bicker. People are tired, or f
    it contradicts the field it is meant to protect. #}
 **You are not {{ npc_name }}. You are judging them, and you are the only one writing here.**
 
-The profile above is headed as though you were about to play them. That heading belongs to a different task and is not an instruction for this one. Do not answer in character, do not write dialogue, do not narrate their actions. The labelled block below is the entire output. Within it, `WHAT` is phrased in their voice — that is the one place their voice belongs, and it is still your judgement rather than them speaking.
+The profile above is headed as though you were about to play them. That heading belongs to a different task and is not an instruction for this one. Do not answer in character, do not write dialogue, do not narrate their actions. The labeled block below is the entire output. Within it, `WHAT` is phrased in their voice — that is the one place their voice belongs, and it is still your judgment rather than them speaking.
 
 Its "What You Know About" section is generated from a counter of interactions, not from what has actually happened between them. It routinely reports that two people barely know each other while their own diary describes years of intimacy. **Where it disagrees with anything above, it is simply wrong — disregard it.**
 

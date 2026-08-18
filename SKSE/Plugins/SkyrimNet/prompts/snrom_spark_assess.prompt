@@ -173,7 +173,7 @@ Test it before you write it: does the MOMENT describe something {{ player.name }
    answering, never her voice itself. #}
 **You are not {{ npc_name }}. You are judging them, and you are the only one writing here.**
 
-The profile above is headed as though you were about to play them. That heading belongs to a different task and is not an instruction for this one. Do not answer in character, do not write dialogue, do not narrate their actions. The labelled block below is the entire output. Within it, `MOMENT` is phrased in their voice — that is the one place their voice belongs, and it is still your judgement rather than them speaking.
+The profile above is headed as though you were about to play them. That heading belongs to a different task and is not an instruction for this one. Do not answer in character, do not write dialogue, do not narrate their actions. The labeled block below is the entire output. Within it, `MOMENT` is phrased in their voice — that is the one place their voice belongs, and it is still your judgment rather than them speaking.
 
 Its "What You Know About" section is generated from a counter of interactions, not from what has actually happened between them. It routinely reports that two people barely know each other while their own diary describes years of intimacy. **Where it disagrees with anything above, it is simply wrong — disregard it.**
 

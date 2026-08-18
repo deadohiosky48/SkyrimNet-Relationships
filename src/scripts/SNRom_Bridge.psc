@@ -289,7 +289,7 @@ Function SweepFollowers()
 
       SeverActions_NewTeammateDetected only fires for actors SeverActions is
       not ALREADY tracking. A long-standing follower it already knows never
-      generates an event at all, so we never hear about her: Hermir travelled
+      generates an event at all, so we never hear about her: Hermir traveled
       for an entire session, was talked to at length, and was never enrolled.
 
       What disguised this is that save reverts also revert SeverActions' own
@@ -316,7 +316,7 @@ Function SweepFollowers()
                 followers += 1
                 ; RECENCY STAMP, for BuildCircle's ordering. The author swaps party
                 ; members regularly, so "who is relevant to compare against" is
-                ; not "who enrolled first" - it is whoever has travelled with
+                ; not "who enrolled first" - it is whoever has traveled with
                 ; him most recently. Someone dismissed an hour ago after a week
                 ; on the road matters more than an early enrollee who never
                 ; left town.
@@ -447,7 +447,7 @@ Bool Function IsFollowing(Actor akActor) Global
 
       IsPlayerTeammate is the vanilla flag and is what most followers set, but
       follower frameworks do not all use it consistently and it can be cleared
-      while someone is still functionally travelling with you. Vanilla's
+      while someone is still functionally traveling with you. Vanilla's
       CurrentFollowerFaction is the second opinion.
 
       The third is SeverActions' OWN follower flag, read straight out of
@@ -564,7 +564,7 @@ Function AutoEnroll(Actor akActor)
     ;
     ; NOT ActorBase.IsUnique(). That was the earlier plan and it would have
     ; caught the bandit but NOT Sibbi, who is a unique NPC - and it would also
-    ; have excluded FMR-spawned children, which is a behaviour change nobody
+    ; have excluded FMR-spawned children, which is a behavior change nobody
     ; asked for. Tenure catches both cases without judging who deserves it.
     Float now = Utility.GetCurrentGameTime()
     Float firstSeen = StorageUtil.GetFloatValue(akActor, "SNRom_FirstSeenFollowing", 0.0)
@@ -691,7 +691,7 @@ Function UnsparkActor(Actor akActor)
       THE WATERMARK RESET IS THE POINT, not an extra. Clearing the flag alone
       just lets them re-cross on the very next assessment, judged once more on
       the same accumulated history that crossed them the first time. Stamping
-      SNRom_LastSparkCheck to NOW means the next judgement sees only what
+      SNRom_LastSparkCheck to NOW means the next judgment sees only what
       happens from here - which is the question actually worth asking.
 
       Safe to call on someone who never sparked; it just resets their window. }
@@ -803,7 +803,7 @@ Function EnforceLoverCeiling(Actor akActor)
 EndFunction
 
 Function AcceptRomance(Actor akActor)
-    { The player says yes. Only this opens tier 4+ as a realised romance. }
+    { The player says yes. Only this opens tier 4+ as a realized romance. }
     SetStance(akActor, STANCE_ACCEPTED(), "accepted")
     If akActor == None || !_ready
         Return
@@ -996,7 +996,7 @@ Function EndRomance(Actor akActor, String asReason)
           row. Enrollment means "we are tracking this bond", which is still true
           after a breakup. It is the ROMANCE that ended, not the relationship.
 
-      CAP, DO NOT ERASE. A divorced couple who travelled together for a year are
+      CAP, DO NOT ERASE. A divorced couple who traveled together for a year are
       not strangers. Depth is what they earned and it happened; the romantic
       designation is what is being withdrawn. Anyone already below the cap keeps
       exactly what they have - this can only ever lower, never raise.
@@ -1349,7 +1349,7 @@ Function Ledger(Actor akActor, String asChannel, String asActivity, Int aiDelta,
     ; change passes through, so it is the only honest place to count how much
     ; has actually HAPPENED to someone. Disposition drift refuses to look at an
     ; NPC until this counter is high enough, which is what turns "a new pattern
-    ; of behaviour has been established" into something Papyrus can enforce
+    ; of behavior has been established" into something Papyrus can enforce
     ; rather than something a prompt is asked to feel. Above the ledger gate,
     ; because turning off logging must not freeze everyone's personality.
     StorageUtil.SetIntValue(akActor, "SNRom_EventsSinceDrift", \
@@ -1548,7 +1548,7 @@ String Function StoreKey(Actor akActor, String asField) Global
 
       A dynamic reference FormID (FF...) is not guaranteed stable across load
       order changes. If one shifts, that NPC's stored text is orphaned and reads
-      as blank - which is exactly the behaviour we have today, so the failure
+      as blank - which is exactly the behavior we have today, so the failure
       mode is no worse than the bug this replaces. }
     Return akActor.GetFormID() + "." + asField
 EndFunction
@@ -1626,7 +1626,7 @@ String Function VariantName() Global
 
       Pick a variant whose provider runs your strongest instruction-following
       model, with generous max_tokens and structured output OFF - structured
-      output forces a JSON schema that fights our labelled-line format.
+      output forces a JSON schema that fights our labeled-line format.
 
       Deliberately configurable. Variant names, their providers, token limits
       and flags are entirely user-defined, and setups range from OpenRouter to
@@ -1672,7 +1672,7 @@ Function ClearDisposition(Actor akActor)
 EndFunction
 
 String Function BuildCircle(Actor akExclude)
-    { The authored ENUM PROFILE of everyone else already travelling with the
+    { The authored ENUM PROFILE of everyone else already traveling with the
       player, so a new disposition is made distinct from the ACTUAL CAST
       rather than from an abstraction.
 
@@ -1735,7 +1735,7 @@ String Function BuildCircle(Actor akExclude)
             If a != None && a != akExclude && \
                StorageUtil.GetIntValue(a, "SNRom_DispositionAuthored", 0) == 1 && \
                !AlreadyPicked(picked, shown, a)
-                ; Rank = when they last travelled with the player, with current
+                ; Rank = when they last traveled with the player, with current
                 ; followers lifted above every former one. Game time is days
                 ; since game start and will not approach the offset in any
                 ; playthrough, so the two bands cannot overlap.
@@ -1992,7 +1992,7 @@ Function AuthorDisposition(Actor akActor)
 
     ; npc_uuid lets the prompt call render_character_profile, which is the
     ; ONLY way this call sees who the NPC actually is. The old hand-built
-    ; npc_bio was twelve words - race, sex, level, "travelling companion" -
+    ; npc_bio was twelve words - race, sex, level, "traveling companion" -
     ; and the model was being asked to author a sexual orientation from it.
     ; It invented one for Lynea and hard-blocked her romance. The stub is kept
     ; as a fallback ONLY, for when the profile fails to render.
@@ -2135,7 +2135,7 @@ Function AuthorDisposition(Actor akActor)
         ",\"circle\":\"" + circleText + "\"" + \
         ",\"npc_bio\":\"" + b.GetRace().GetName() + ", " + \
         SNRom_Decorators.SexWord(b.GetSex()) + ", level " + akActor.GetLevel() + \
-        ". Travelling companion of the Dragonborn.\"}"
+        ". Traveling companion of the Dragonborn.\"}"
 
     Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_author_disposition", VariantName(), ctx, \
         Self, "SNRom_Bridge", "OnDispositionAuthored")   ; this script IS the quest
@@ -2164,7 +2164,7 @@ EndEvent
 ;
 ; TWO CLOCKS, ON PURPOSE.
 ;   - ASKING runs on the GAME-TIME sweep, because the retry interval is in game
-;     hours and should pass while travelling or sleeping, not while the player
+;     hours and should pass while traveling or sleeping, not while the player
 ;     stands still.
 ;   - COLLECTING runs on the REAL-TIME OnUpdate, because a message box is a UI
 ;     element and the player answers it in seconds.
@@ -2701,7 +2701,7 @@ Int Function SeedTarget(Actor akActor)
 
       Rapport is the primary signal and replaces the LLM read of her diary that
       the original design called for: it is a persisted number expressing how
-      she actually feels, earned in real play, for anyone who has ever travelled
+      she actually feels, earned in real play, for anyone who has ever traveled
       with the player. Deterministic beats judged, when the deterministic thing
       is measuring the right quantity.
 
@@ -2720,7 +2720,7 @@ Int Function SeedTarget(Actor akActor)
 
     ; ---- Vanilla relationship rank ----------------------------------------
     ; Not a ratio. Vanilla's rank NAMES are Romantasy's tier names - Acquaintance,
-    ; Friend, Confidant, then Ally, then Lover - because both are modelling the
+    ; Friend, Confidant, then Ally, then Lover - because both are modeling the
     ; same ladder, so this reads the game's own answer rather than inventing a
     ; conversion. Shifted down one deliberately: a vanilla Lover seeds to
     ; Confidant, not Lover, so the romance still has somewhere to go afterwards.
@@ -2775,7 +2775,7 @@ Int Function SeedTarget(Actor akActor)
     ; number. A "primary signal" that cannot change the answer is not one.
     ; At 15.0 the ceiling is 1500 and rapport overtakes rank 3 from about 50,
     ; which is the point of this whole function: someone who has actually
-    ; travelled with the player outranks someone hired yesterday.
+    ; traveled with the player outranks someone hired yesterday.
     If SeverActionsPresent()
         Float rapport = SeverActionsNative.Native_GetRapport(akActor)
         Int byRapport = (rapport * SkyrimNetApi.GetConfigFloat(CFG(), "seedPointsPerRapport", 15.0)) as Int
@@ -3291,7 +3291,7 @@ Function AssessTalk(Actor akActor, Float afSince = 0.0)
     _talkActor = akActor
     _talkName  = akActor.GetDisplayName()
     _talkPendingAt = Utility.GetCurrentRealTime()
-    ; Her ardor and her authored WHY both go in, because the judgement is
+    ; Her ardor and her authored WHY both go in, because the judgment is
     ; explicitly "how far did this move HER" rather than "was this a nice
     ; conversation". Without them the same exchange scores identically for
     ; everyone, which is the failure this whole mod exists to avoid.
@@ -3549,7 +3549,7 @@ Function AssessNextSpark()
     ; Most overdue wins - same starvation fix as AssessNextTalk, and it matters
     ; MORE here. Spark fires once per NPC ever, so a follower stuck behind two
     ; earlier enrollments could never cross into romance at all, however long
-    ; she travelled. Still exactly one per tick.
+    ; she traveled. Still exactly one per tick.
     Float now = Utility.GetCurrentGameTime()
     Float cooldown = SkyrimNetApi.GetConfigFloat(CFG(), "sparkCooldownHours", 6.0) / 24.0
     Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
@@ -3587,7 +3587,7 @@ Bool Function SparkCandidate(Actor akActor, Float afNow, Float afCooldown)
     ; otherwise be permanently unable to cross into romance, and spark fires once
     ; per NPC ever, so "never assessed" and "never able to" are the same thing.
     If akActor.IsDead() || !IsFollowing(akActor)
-        Return False                            ; not currently travelling together
+        Return False                            ; not currently traveling together
     EndIf
 
     ; ---- TENURE GATE ------------------------------------------------------
@@ -3647,7 +3647,7 @@ Function AssessSpark(Actor akActor)
     ; against a fixed threshold. The same words mean different things from
     ; different people: warmth from a reserved character is evidence, the same
     ; warmth from an effusive one is her ordinary register. Without this the
-    ; judgement is uniform, which makes everyone equally hard to reach instead
+    ; judgment is uniform, which makes everyone equally hard to reach instead
     ; of differently hard - the opposite of the point.
     String ctx = "{\"npc_name\":\"" + _sparkName + "\"" + \
         ",\"npc_formid\":" + akActor.GetFormID() + \
@@ -4002,7 +4002,7 @@ Function AssessDrift(Actor akActor)
     _driftPendingAt = Utility.GetCurrentRealTime()
 
     ; Rotate rather than pick. Choosing the field "most likely to have moved"
-    ; would need a judgement this code cannot make, and would quietly bias
+    ; would need a judgment this code cannot make, and would quietly bias
     ; every review toward whichever axis the last award happened to touch.
     _driftField = StorageUtil.GetIntValue(akActor, "SNRom_DriftField", 0)
     StorageUtil.SetIntValue(akActor, "SNRom_DriftField", (_driftField + 1) % 3)
@@ -4168,7 +4168,7 @@ Function ApplyDrift(Actor akActor, Int aiField, Bool abOpen, String asPattern)
         Int excl = StorageUtil.GetIntValue(akActor, "SNRom_Exclusivity", 50)
         before = excl + " out of 100"
         ; 20 points, so the full span is five reviews end to end. At
-        ; driftMinDays of 7 that is a season of sustained behaviour to go from
+        ; driftMinDays of 7 that is a season of sustained behavior to go from
         ; wholly open to wholly singular, which is about right for a thing
         ; people rarely do quickly.
         ;
@@ -4268,7 +4268,7 @@ Event OnDispositionAuthored(String asResponse, Int aiSuccess)
 
     ; --- truncation guard, in two halves ----------------------------------
     ; The answer format now puts the small character fields and WHY BEFORE the
-    ; lists, precisely so a runaway list cannot destroy the judgement that
+    ; lists, precisely so a runaway list cannot destroy the judgment that
     ; preceded it. Jordis blew the 750-char callback cap twice by transcribing
     ; the catalogue, and under the old ordering that cost her ORIENTATION,
     ; INTIMACY and everything else too.
@@ -4284,7 +4284,7 @@ Event OnDispositionAuthored(String asResponse, Int aiSuccess)
     EndIf
 
     ; Character BEFORE the likes check, deliberately. These are independent
-    ; judgements and failing one says nothing about the other.
+    ; judgments and failing one says nothing about the other.
     ;
     ; Proven the hard way: given a real profile, the model answered the likes
     ; from the bio's "Interject Summary" (fishing, Dibella, Kleppr) and every
@@ -4326,7 +4326,7 @@ Event OnDispositionAuthored(String asResponse, Int aiSuccess)
     ; cut off DURING the lists - which only happens when the model is
     ; transcribing the catalogue rather than choosing from it. The surviving
     ; LIKES are then just the head of the list in catalogue order, a
-    ; positional artefact and not a judgement about anyone.
+    ; positional artefact and not a judgment about anyone.
     ;
     ; The character block above it is already safely written, which is the
     ; whole point of the reordering. Only the lists are abandoned.
@@ -4342,7 +4342,7 @@ Event OnDispositionAuthored(String asResponse, Int aiSuccess)
     ; Caps are enforced HERE, not trusted to the prompt. Rule 1 asks for 4-7
     ; likes; a model handed a flat 58-name list answered with 34. Prose cannot
     ; enforce a count - Papyrus can.
-    ; These are RECOGNISED counts; newLikes/newDislikes are what actually
+    ; These are RECOGNIZED counts; newLikes/newDislikes are what actually
     ; changed. Falling back on "nothing NEW applied" wrongly discarded a good
     ; response for any already-established NPC.
     Int liked    = ApplyPreferenceList(who, likesCsv, 1, 7)
@@ -4369,7 +4369,7 @@ Event OnDispositionAuthored(String asResponse, Int aiSuccess)
     Diag(LOG_INFO(), "Disposition authored for " + asked + ": " + liked + " likes (" + newLikes + \
         " new), " + disliked + " dislikes (" + newDislikes + " new)")
     LogDisposition(asked, aiSuccess, asResponse, "applied:" + newLikes + "/" + newDislikes + \
-        " recognised:" + liked + "/" + disliked)
+        " recognized:" + liked + "/" + disliked)
 EndEvent
 
 Function ApplyProse(Actor akActor, String asResponse, String asName)
@@ -4393,7 +4393,7 @@ Function ApplyProse(Actor akActor, String asResponse, String asName)
     ; LIMIT - what she will not do. Same absent-is-not-blank rule.
     ;
     ; The mod modelled desire on five axes and refusal on none, so every
-    ; judgement call had a thumb on the scale toward yes: an LLM with no stated
+    ; judgment call had a thumb on the scale toward yes: an LLM with no stated
     ; boundary and a persistent player will comply, whoever the character is.
     ; The author confirmed it by test - every female NPC could be talked into
     ; anything regardless of her authored personality.
@@ -4568,7 +4568,7 @@ Int Function CountHighFrequencyHeld(Actor akActor)
 EndFunction
 
 Int Function ApplyPreferenceList(Actor akActor, String asCsv, Int aiRank, Int aiMax)
-    { Returns how many names were RECOGNISED - newly applied plus already
+    { Returns how many names were RECOGNIZED - newly applied plus already
       held. _lastApplied carries the newly-applied count for logging.
 
       The distinction matters: returning only the newly-applied count made
@@ -4577,7 +4577,7 @@ Int Function ApplyPreferenceList(Actor akActor, String asCsv, Int aiRank, Int ai
       response as an archetype fallback. Re-authoring an established NPC hits
       that case constantly, because ApplyPreferenceList never overwrites.
 
-      Unrecognised names are still dropped, not guessed at - LabelToOffset IS
+      Unrecognized names are still dropped, not guessed at - LabelToOffset IS
       the whitelist.
 
       aiMax is a HARD cap. An NPC who likes everything likes nothing: the
@@ -4590,13 +4590,13 @@ Int Function ApplyPreferenceList(Actor akActor, String asCsv, Int aiRank, Int ai
     If asCsv == ""
         Return 0
     EndIf
-    ; Normalise separators first - a model that copies the catalogue's own
-    ; display separator into its answer otherwise yields ONE giant unrecognised
-    ; "name". See SNRom_Decorators.NormaliseSeparators.
-    String[] parts = StringUtil.Split(SNRom_Decorators.NormaliseSeparators(asCsv), ",")
+    ; Normalize separators first - a model that copies the catalogue's own
+    ; display separator into its answer otherwise yields ONE giant unrecognized
+    ; "name". See SNRom_Decorators.NormalizeSeparators.
+    String[] parts = StringUtil.Split(SNRom_Decorators.NormalizeSeparators(asCsv), ",")
     Int i = 0
     Int applied = 0
-    Int recognised = 0
+    Int recognized = 0
 
     ; FREQUENCY BUDGET COUNTS WHAT SHE ALREADY HOLDS, not just this list.
     ; hiFreq used to start at 0 every call, so it only ever capped a single
@@ -4610,7 +4610,7 @@ Int Function ApplyPreferenceList(Actor akActor, String asCsv, Int aiRank, Int ai
     While i < parts.Length && applied < aiMax
         String label = SNRom_Decorators.Trim(parts[i])
         ; Papyrus has no Continue, so the whole body is guarded instead. Empty
-        ; entries are normal here: separator normalisation turns a multi-byte
+        ; entries are normal here: separator normalization turns a multi-byte
         ; separator into two commas, leaving a gap between them. They are not
         ; worth a rejection warning.
         If label != ""
@@ -4621,11 +4621,11 @@ Int Function ApplyPreferenceList(Actor akActor, String asCsv, Int aiRank, Int ai
             If offset == 0
                 offset = SNRom_Decorators.LabelToOffsetFuzzy(label)
                 If offset != 0
-                    Diag(LOG_INFO(), "Normalised '" + label + "' to a known activity for " + akActor.GetDisplayName())
+                    Diag(LOG_INFO(), "Normalized '" + label + "' to a known activity for " + akActor.GetDisplayName())
                 EndIf
             EndIf
             If offset == 0
-                Diag(LOG_WARN(), "Rejected unrecognised activity '" + label + "' for " + akActor.GetDisplayName())
+                Diag(LOG_WARN(), "Rejected unrecognized activity '" + label + "' for " + akActor.GetDisplayName())
             Else
                 ; Two DIFFERENT silent skips used to look identical from
                 ; outside: a form that failed to resolve, and an opinion she
@@ -4647,7 +4647,7 @@ Int Function ApplyPreferenceList(Actor akActor, String asCsv, Int aiRank, Int ai
                         ") - CS_Romantasy.esp not loaded, or ESL indirection failed")
                 ElseIf akActor.GetFactionRank(f) >= 0            ; never overwrite an existing opinion
                     Diag(LOG_INFO(), "Kept " + akActor.GetDisplayName() + "'s existing opinion on '" + label + "'")
-                    recognised += 1
+                    recognized += 1
                     If hf
                         hiFreq += 1                              ; still spends frequency budget
                     EndIf
@@ -4655,7 +4655,7 @@ Int Function ApplyPreferenceList(Actor akActor, String asCsv, Int aiRank, Int ai
                     akActor.AddToFaction(f)
                     akActor.SetFactionRank(f, aiRank)
                     applied += 1
-                    recognised += 1
+                    recognized += 1
                     If hf
                         hiFreq += 1
                     EndIf
@@ -4665,7 +4665,7 @@ Int Function ApplyPreferenceList(Actor akActor, String asCsv, Int aiRank, Int ai
         i += 1
     EndWhile
     _lastApplied = applied
-    Return recognised
+    Return recognized
 EndFunction
 
 Function ApplyArchetype(Actor akActor)

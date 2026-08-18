@@ -19,6 +19,6 @@
     # OPTIONAL. SkyrimNet-Kinship's Papyrus source, used by check.ps1 to prove
     # the foreign StorageUtil keys we read are actually written by that mod.
     # Leave blank if you do not have it checked out - the check degrades to a
-    # warning rather than failing, which is the intended behaviour.
+    # warning rather than failing, which is the intended behavior.
     KinshipSource = ''
 }

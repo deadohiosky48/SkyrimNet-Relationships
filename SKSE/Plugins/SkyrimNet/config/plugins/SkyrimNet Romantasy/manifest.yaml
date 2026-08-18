@@ -24,7 +24,7 @@ plugin:
 # from the two working examples: SeverActions and IntelEngine.
 variants:
   - name: snrom_background
-    description: "Background scoring prompts — disposition authoring, conversational scoring, and romantic spark assessment. These fire on a timer rather than in live conversation, so latency does not matter, but they must produce a strict labelled format from a long prompt. Prefer LOW temperature and a generous timeout and token budget over speed; format drift and truncation are this mod's two historical failure modes. Structured outputs must be OFF - JSON mode returns quoted keys that the parser discards as truncated."
+    description: "Background scoring prompts — disposition authoring, conversational scoring, and romantic spark assessment. These fire on a timer rather than in live conversation, so latency does not matter, but they must produce a strict labeled format from a long prompt. Prefer LOW temperature and a generous timeout and token budget over speed; format drift and truncation are this mod's two historical failure modes. Structured outputs must be OFF - JSON mode returns quoted keys that the parser discards as truncated."
 
 # NOTE: SkyrimNet plugin manifests DO NOT support dotted paths. Each dotted
 # path collapses to its final segment and later ones overwrite earlier ones -
@@ -135,7 +135,7 @@ schema:
     - name: "Days Together Before Romance Can Begin"
       path: "sparkMinDaysEnrolled"
       type: "string"
-      description: "Game days a follower must have travelled with you before romance can be judged to have begun at all. Exists because the very first judgement sees her entire history at once and almost always says yes, which turns romance into something that happens on arrival rather than something that grows. Someone the game already records as your spouse or lover skips this wait. Default: 2."
+      description: "Game days a follower must have traveled with you before romance can be judged to have begun at all. Exists because the very first judgment sees her entire history at once and almost always says yes, which turns romance into something that happens on arrival rather than something that grows. Someone the game already records as your spouse or lover skips this wait. Default: 2."
       defaultValue: "2.0"
       category: "Spark"
 
@@ -146,7 +146,7 @@ schema:
     - name: "Seed Existing Relationships"
       path: "seedEnabled"
       type: "bool"
-      description: "Start followers you already have a history with partway up the ladder instead of at Stranger, based on how they actually feel about you, your relationship rank, and whether the game records you as married or engaged. Applies once per follower, including everyone already travelling with you when this was installed. Turn it off before loading if you would rather every bond start from nothing."
+      description: "Start followers you already have a history with partway up the ladder instead of at Stranger, based on how they actually feel about you, your relationship rank, and whether the game records you as married or engaged. Applies once per follower, including everyone already traveling with you when this was installed. Turn it off before loading if you would rather every bond start from nothing."
       defaultValue: true
       category: "Seeding"
 
@@ -160,7 +160,7 @@ schema:
     - name: "Points Per Point of Rapport"
       path: "seedPointsPerRapport"
       type: "string"
-      description: "How much a follower's SeverActions rapport counts toward their head start. Rapport runs -100 to 100, so the default makes a wholly devoted companion worth about 1500 points - more than being recruited, less than the game recording you as lovers. Rapport competes with relationship rank rather than adding to it; the strongest single piece of evidence wins. This is what separates someone you have genuinely travelled with from someone you hired yesterday, so setting it much lower makes every new companion start in the same place. Set to 0 to ignore rapport entirely. Default: 15."
+      description: "How much a follower's SeverActions rapport counts toward their head start. Rapport runs -100 to 100, so the default makes a wholly devoted companion worth about 1500 points - more than being recruited, less than the game recording you as lovers. Rapport competes with relationship rank rather than adding to it; the strongest single piece of evidence wins. This is what separates someone you have genuinely traveled with from someone you hired yesterday, so setting it much lower makes every new companion start in the same place. Set to 0 to ignore rapport entirely. Default: 15."
       defaultValue: "15.0"
       category: "Seeding"
 
@@ -192,14 +192,14 @@ schema:
     - name: "Spark Re-check Interval (hours)"
       path: "sparkCooldownHours"
       type: "string"
-      description: "Game hours before the same follower is judged again. One follower is judged at a time and only while travelling with you, so this mostly controls how much has to happen between chances. Default: 6."
+      description: "Game hours before the same follower is judged again. One follower is judged at a time and only while traveling with you, so this mostly controls how much has to happen between chances. Default: 6."
       defaultValue: "6.0"
       category: "Spark"
 
     - name: "Wait Before Tracking a New Follower (hours)"
       path: "enrollmentDelayHours"
       type: "string"
-      description: "Game hours someone must keep travelling with you before the mod starts tracking them at all. Exists because SkyrimNet conversations can make almost anyone a follower by accident, and tracking cannot be undone once it begins. A deliberate companion clears this without noticing; a mistake is usually gone long before it elapses. Default: 2."
+      description: "Game hours someone must keep traveling with you before the mod starts tracking them at all. Exists because SkyrimNet conversations can make almost anyone a follower by accident, and tracking cannot be undone once it begins. A deliberate companion clears this without noticing; a mistake is usually gone long before it elapses. Default: 2."
       defaultValue: "2.0"
       category: "Enrollment"
 

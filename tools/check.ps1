@@ -106,7 +106,7 @@ $storageAllow = @{
 # It is the flag Kinship binds a child to its roster with, and StorageUtil is a
 # shared namespace, so reading it needs no compile-time dependency. Absent
 # Kinship the key never exists, the read returns 0, and the child guard is
-# inert - which is the intended soft-dependency behaviour, not a silent failure.
+# inert - which is the intended soft-dependency behavior, not a silent failure.
 #
 # WHAT THIS CHECK STILL CANNOT SEE: if Kinship renames or stops writing the key,
 # the read keeps compiling and silently returns 0, and the guard quietly stops
@@ -465,7 +465,7 @@ if ((Test-Path $orPath) -and (Test-Path $setPath)) {
 # and returns 0 for anything else, which IS the whitelist. A name in the prompt
 # that LabelToOffset does not know is silently discarded at apply time - the
 # model answers correctly, Papyrus rejects it, and the NPC ends up with fewer
-# preferences than the log says were recognised.
+# preferences than the log says were recognized.
 #
 # Added 2026-08-05 when the catalogue moved from a single interpunct-joined line into
 # an Inja array literal (so it can be rotated per call). That edit rewrote all

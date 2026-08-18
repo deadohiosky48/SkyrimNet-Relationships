@@ -23,7 +23,7 @@
      activities goes in by NAME. No numeric indices: mapping concepts to
      indices is needlessly hard for small models and gains nothing for large
      ones.
-   - Labelled lines, not JSON. Papyrus parses "LIKES: a, b, c" trivially;
+   - Labeled lines, not JSON. Papyrus parses "LIKES: a, b, c" trivially;
      nested JSON it does not. Small models also produce it far more reliably.
    - NAME must be echoed back first. Models confuse nearby NPCs — a follower
      answering as her own daughter is a real failure mode — and a mismatched
@@ -170,7 +170,7 @@ Any "Your Bond With" or "What Moves You" section is this system's own earlier ou
 {% endif %}
 
 {% if circle and circle != "" %}
-TRAVELLING WITH {{ player.name }} NOW, OR RECENTLY
+TRAVELING WITH {{ player.name }} NOW, OR RECENTLY
 {{ circle }}
 
 These are the people {{ npc_name }} stands beside, most recent first, and the player sees them together. Whatever you decide must not read as a variation on one of the others - not the same likes, and above all not the same answer to who they are in matters of the heart. If your first instinct matches one of the above, treat that as a reason to look at their profile again rather than as confirmation.
@@ -188,7 +188,7 @@ They are not interchangeable with the person standing next to them. That is the 
    Placed immediately before the questions, because position beats instruction
    in this engine. #}
 {% if npc_married == 1 %}
-**{{ npc_name }} IS MARRIED TO {{ player.name }}, who is {{ player.gender }}. This is a completed marriage the game records, not a rumour and not something to weigh.**
+**{{ npc_name }} IS MARRIED TO {{ player.name }}, who is {{ player.gender }}. This is a completed marriage the game records, not a rumor and not something to weigh.**
 
 It settles the orientation question by itself. Whatever you might otherwise have guessed, this person married {{ player.name }} — so `SEXUAL_ORIENTATION` must be an answer that INCLUDES {{ player.name }}, and the basis for it is `STATED`, because their marriage states it.
 
