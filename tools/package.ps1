@@ -78,13 +78,19 @@ try {
     $shipped = Get-ChildItem $stage -Recurse -Filter 'settings.yaml' -File
     if ($shipped) { throw "settings.yaml is staged - it would overwrite user tuning. Remove it." }
 
-    # --- 4. optional extras, deliberately INERT -----------------------------
-    # The Baka tier-gate overrides replace that mod's own action files. Shipped
-    # under Optional\ so they land in Data\Optional\ and do nothing until copied
-    # into place by hand. Placing them live would silently overwrite another
-    # mod's content through a manager conflict.
-    $optSrc = Join-Path $repo 'optional'
-    if (Test-Path $optSrc) { Copy-Item $optSrc (Join-Path $stage 'Optional') -Recurse -Force }
+    # --- 4. optional extras: DELIBERATELY NOT SHIPPED -----------------------
+    # optional\baka-tier-gates\ holds modified copies of Baka's own action files.
+    # They are not in this archive and should not be added to it.
+    #
+    # They are someone else's content, and installing them means overwriting that
+    # mod's files - a decision a player must make deliberately rather than one
+    # they inherit by installing this. Shipping them even as inert files under
+    # Optional\ still puts another author's work in our archive.
+    #
+    # They remain in the repository, where anyone who wants them can read what
+    # they change and apply it knowingly. A proper opt-in belongs in an installer
+    # rather than a runtime setting: SkyrimNet reads action YAML from disk, so no
+    # config toggle in this mod can enable or disable another mod's file.
 
     # --- 5. source, for anyone who wants to patch this ---------------------
     # ONLY OURS. src\scripts also holds SkyrimNetApi.psc and MARAS.psc, which
