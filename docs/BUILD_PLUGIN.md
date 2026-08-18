@@ -9,6 +9,42 @@ references a foreign form.
 
 ---
 
+## You almost certainly do not need this
+
+**`SNRom_Integration.esl` is prebuilt.** It ships in this repository and in every
+release archive. Install the release and it works. Nothing below is required to
+play, and nothing below is required to change a prompt, a trigger, or a setting.
+
+Follow this only if you are changing the **plugin record itself** — the quest,
+the player alias, or the script bindings.
+
+## Before you start — two things the repository does not contain
+
+**1. Vendored Papyrus headers.** Our scripts compile against types owned by other
+mods, and those files are not ours to redistribute, so they are gitignored. Get
+them from the mods themselves and drop them in `src\scripts\`:
+
+| File | Where it comes from |
+|---|---|
+| `SkyrimNetApi.psc` | SkyrimNet, in its `Source\Scripts\` folder |
+| `MARAS.psc` | MARAS, in its script sources |
+
+Without them `tools\build.ps1` fails with unresolved-type errors on the first
+script it touches.
+
+**2. Compiled scripts.** `Scripts\*.pex` are build output and are gitignored too.
+Step 0 below needs them, so run the build first:
+
+```
+powershell -ExecutionPolicy Bypass -File "tools\build.ps1"
+```
+
+That also wants `tools\local.settings.ps1` — copy `local.settings.ps1.example`
+and set your Skyrim path. It is the only file permitted to contain absolute paths
+from a particular machine, which is why it is not in the repository either.
+
+---
+
 ## Step 0 — put the scripts where CK can see them
 
 CK reads compiled `.pex` to discover a script's properties, and wants the
