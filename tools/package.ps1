@@ -1,0 +1,153 @@
+<#
+    Builds a mod-manager-installable archive.
+
+    ARCHIVE ROOT = Data ROOT. A mod manager deploys the archive contents into the
+    game Data folder, so the layout inside the zip must mirror Data exactly:
+    Scripts\, SKSE\, and the .esl loose at the top.
+
+    WHY THIS EXISTS. Scripts\*.pex are gitignored - they are build output, and the
+    repository is source. That is correct for the repo and fatal for a user:
+    cloning or downloading the ZIP yields a plugin with no scripts, which installs
+    cleanly and does absolutely nothing. This archive is the only artifact a
+    player should ever be handed.
+
+    Usage:
+        powershell -ExecutionPolicy Bypass -File "tools\package.ps1"
+#>
+[CmdletBinding()]
+param(
+    [string]$SkyrimRoot = '',
+    [string]$Version,
+    [string]$OutDir
+)
+
+$ErrorActionPreference = 'Stop'
+
+# Machine-specific paths live in local.settings.ps1 (gitignored). Only needed as
+# a fallback source for the .esl, so a missing one is not fatal here.
+$localSettings = Join-Path $PSScriptRoot 'local.settings.ps1'
+$localCfg = if (Test-Path $localSettings) { & $localSettings } else { @{} }
+if (-not $SkyrimRoot) { $SkyrimRoot = $localCfg.SkyrimRoot }
+if (-not $SkyrimRoot) { $SkyrimRoot = $env:SKYRIM_ROOT }
+
+$repo = Split-Path -Parent $PSScriptRoot
+if (-not $OutDir) { $OutDir = Join-Path $repo 'dist' }
+$plugDir = Join-Path $repo 'SKSE\Plugins\SkyrimNet\config\plugins\SkyrimNet Relationships'
+
+# Version comes from the manifest, so the archive can never disagree with what
+# the plugin reports to the SkyrimNet dashboard.
+$manifestPath = Join-Path $plugDir 'manifest.yaml'
+if (-not $Version) {
+    $m = [regex]::Match((Get-Content $manifestPath -Raw), '(?m)^\s*version:\s*"([^"]+)"')
+    if (-not $m.Success) { throw "Could not read version from $manifestPath" }
+    $Version = $m.Groups[1].Value
+}
+
+$stage = Join-Path $env:TEMP ("snrom_pkg_" + [guid]::NewGuid().ToString('N').Substring(0,8))
+New-Item -ItemType Directory -Force -Path $stage | Out-Null
+
+try {
+    # --- 1. the plugin -----------------------------------------------------
+    # Tracked in the repo, unlike the compiled scripts: it is 333 bytes, built by
+    # hand in the Creation Kit, and rebuilding it is ten minutes of clicking
+    # rather than running a script. Falls back to the game folder if absent.
+    $esl = Join-Path $repo 'SNRom_Integration.esl'
+    if (-not (Test-Path $esl) -and $SkyrimRoot) { $esl = Join-Path $SkyrimRoot 'Data\SNRom_Integration.esl' }
+    if (-not (Test-Path $esl)) {
+        throw "SNRom_Integration.esl not found in the repo or in Data. See docs\BUILD_PLUGIN.md."
+    }
+    Copy-Item $esl $stage
+
+    # Report the ESL flag rather than assume it. A rebuild that loses it costs a
+    # load-order slot, and nobody notices until someone is at 254 plugins.
+    $b = [System.IO.File]::ReadAllBytes($esl)
+    $eslNote = if ([BitConverter]::ToUInt32($b, 8) -band 0x200) { 'ESL-flagged' } else { 'NOT ESL-flagged' }
+
+    # --- 2. compiled scripts ----------------------------------------------
+    $pex = Get-ChildItem (Join-Path $repo 'Scripts') -Filter 'SNRom_*.pex' -File
+    if ($pex.Count -lt 4) { throw "Expected 4 SNRom_*.pex, found $($pex.Count). Run tools\build.ps1 first." }
+    New-Item -ItemType Directory -Force -Path (Join-Path $stage 'Scripts') | Out-Null
+    $pex | Copy-Item -Destination (Join-Path $stage 'Scripts')
+
+    # --- 3. prompts, triggers, manifest -------------------------------------
+    # settings.yaml is deliberately NOT here. SkyrimNet writes it from the
+    # manifest on first run, so shipping ours would overwrite an upgrader's
+    # tuning with our defaults. It is absent from the repo for the same reason,
+    # and this asserts that rather than trusting it.
+    Copy-Item (Join-Path $repo 'SKSE') $stage -Recurse -Force
+    $shipped = Get-ChildItem $stage -Recurse -Filter 'settings.yaml' -File
+    if ($shipped) { throw "settings.yaml is staged - it would overwrite user tuning. Remove it." }
+
+    # --- 4. optional extras, deliberately INERT -----------------------------
+    # The Baka tier-gate overrides replace that mod's own action files. Shipped
+    # under Optional\ so they land in Data\Optional\ and do nothing until copied
+    # into place by hand. Placing them live would silently overwrite another
+    # mod's content through a manager conflict.
+    $optSrc = Join-Path $repo 'optional'
+    if (Test-Path $optSrc) { Copy-Item $optSrc (Join-Path $stage 'Optional') -Recurse -Force }
+
+    # --- 5. source, for anyone who wants to patch this ---------------------
+    # ONLY OURS. src\scripts also holds SkyrimNetApi.psc and MARAS.psc, which
+    # belong to those mods - shipping either would overwrite the owning mod's
+    # copy through a manager conflict.
+    #
+    # Source\Scripts (the AE layout), NOT Scripts\Source: both are on the Papyrus
+    # import path, but Scripts\Source is the one that shadows a build when a
+    # stale copy of our own script sits in it.
+    $srcOut = Join-Path $stage 'Source\Scripts'
+    New-Item -ItemType Directory -Force -Path $srcOut | Out-Null
+    Get-ChildItem (Join-Path $repo 'src\scripts') -Filter 'SNRom_*.psc' -File | Copy-Item -Destination $srcOut
+    Get-ChildItem (Join-Path $repo 'src\scripts') -Filter '_labelmap.inc'  -File | Copy-Item -Destination $srcOut
+
+    # --- 6. documentation --------------------------------------------------
+    # README and LICENSE only. Build docs stay in the repo: this package contains
+    # a built plugin, so a Creation Kit walkthrough landing in a player's Data
+    # folder is instructions for work they must never do.
+    $docOut = Join-Path $stage 'Docs\SkyrimNet Relationships'
+    New-Item -ItemType Directory -Force -Path $docOut | Out-Null
+    Copy-Item (Join-Path $repo 'README.md') $docOut
+    Copy-Item (Join-Path $repo 'LICENSE')   $docOut
+
+    # --- 7. REFUSE TO SHIP A BUILD MACHINE'S DIRECTORY LAYOUT ---------------
+    # Every text file about to be shipped is scanned for absolute paths. The repo
+    # is kept clean of them by hand and by tools\local.settings.ps1, but this is
+    # the only moment that actually matters: once an archive is published the
+    # leak is permanent and public.
+    $leaks = @()
+    Get-ChildItem $stage -Recurse -File |
+        Where-Object { $_.Extension -in '.md','.psc','.prompt','.yaml','.yml','.txt','.inc','.ps1','.json' } |
+        ForEach-Object {
+            $name = $_.Name
+            # TWO space-free segments are required. A real path is C:\dev\Skyrim;
+            # a YAML description containing "USE:\n- ..." is not. The naive
+            # [A-Za-z]:\\ pattern flagged eight of those escape sequences on the
+            # first run and refused to package over them.
+            [regex]::Matches((Get-Content $_.FullName -Raw), '[A-Za-z]:\\[A-Za-z0-9_.-]+\\[A-Za-z0-9_.-]+') |
+                ForEach-Object { $_.Value } | Sort-Object -Unique |
+                ForEach-Object { $leaks += "$name : $_" }
+        }
+    if ($leaks) {
+        Write-Host ""
+        Write-Host "  REFUSING TO PACKAGE - absolute paths found in files about to ship:" -ForegroundColor Red
+        $leaks | Select-Object -First 10 | ForEach-Object { Write-Host "    $_" -ForegroundColor Red }
+        throw "$($leaks.Count) absolute path(s) would be published. Fix them, then re-run."
+    }
+
+    # --- 8. zip ------------------------------------------------------------
+    New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
+    $zip = Join-Path $OutDir "SkyrimNet Relationships-$Version.zip"
+    if (Test-Path $zip) { Remove-Item $zip -Force }
+    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -CompressionLevel Optimal
+
+    $size = [math]::Round((Get-Item $zip).Length / 1KB)
+    Write-Host ""
+    Write-Host "  Packaged  $zip" -ForegroundColor Green
+    Write-Host "  Version   $Version"
+    Write-Host "  Plugin    SNRom_Integration.esl ($eslNote)"
+    Write-Host "  Scripts   $($pex.Count) compiled"
+    Write-Host "  Size      $size KB"
+    Write-Host "  Paths     clean - no absolute paths in any shipped file"
+}
+finally {
+    Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
+}

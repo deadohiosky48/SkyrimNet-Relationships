@@ -62,3 +62,7 @@
 .vscode/
 Thumbs.db
 desktop.ini
+
+# Release archives. Rebuildable by tools/package.ps1; GitHub Releases is the
+# right home for the ones that matter.
+/dist/

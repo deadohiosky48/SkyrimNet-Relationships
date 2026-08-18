@@ -6,6 +6,25 @@ Every companion forms their own opinion of you — and it changes.
 
 ---
 
+> ### ⚠ Beta — read this before installing
+>
+> **A companion you recruit does not start scoring until your next game load.**
+>
+> Romantasy reads its follower configuration once, at load. This mod enrolls
+> people the moment they join you, but Romantasy cannot see that enrollment until
+> the game is loaded again — so for the rest of that session the companion is
+> observed and nothing accrues. Points earned in the gap are rejected rather than
+> banked.
+>
+> Nothing is broken and nothing is lost: reload, and they score normally from then
+> on. Recruit, save, reload is the reliable pattern.
+>
+> This is the reason for the beta label. ColdSun has a Romantasy release in
+> progress that adds the entry point needed to fix it, at which point this
+> disappears entirely and the change here is one line.
+
+---
+
 ## What this is
 
 [Romantasy](https://www.nexusmods.com/skyrimspecialedition/mods/186060) is a
@@ -149,21 +168,66 @@ allowed to change over time and how much must have happened first.
 
 ## Status
 
-**In development, not yet released.** The four subsystems — enrollment,
-authoring, conversational scoring, and the romantic gate — are built and
-confirmed working in live play across dozens of companions. Disposition drift and
-the consent prompt are newer and have fewer hours on them.
+**Beta.** The four subsystems — enrollment, authoring, conversational scoring and
+the romantic gate — are built and confirmed working in live play across dozens of
+companions. Disposition drift and the consent prompt are newer and have fewer
+hours on them.
 
-Known gaps, honestly:
+Known limitations, honestly:
 
+- **Enrollment is not live until the next game load.** See the notice at the top.
+  This is the headline caveat and the reason for the beta label.
 - **Preferences are append-only.** Romantasy restores its own copy on load, so a
   companion's likes and dislikes can be added to but never removed. A re-author
-  therefore only ever adds.
-- **Enrollment is not live until the next game load.** Romantasy reads its
-  follower configuration once at load, so a companion recruited mid-session is
-  observed but does not score until you reload. A fix is expected from Romantasy.
+  only ever adds. Romantasy's next release is expected to change this.
 - **There is no in-game repair tool yet.** If an authored character reads wrong,
-  correcting it currently requires the SkyrimNet web API.
+  correcting it means the SkyrimNet web API — see Troubleshooting below.
+- **Uninstalling does not fully reverse it.** Preferences already applied stay
+  applied, because Romantasy restores them; the character data this mod writes
+  lives in the co-save. Removing the mod stops anything new from happening, but a
+  save that has run it does not return to a pristine state. Try it on a save you
+  are willing to keep it on.
+
+## Troubleshooting
+
+There is no in-game menu yet, so repairs go through SkyrimNet's web API while the
+game is running. Every call is a POST to
+`http://127.0.0.1:8080/game-data?api=execute-quest-script-function`.
+
+**Find someone's FormID** — open `http://127.0.0.1:8080/game-data?api=nearby-actors`
+in a browser with the game running. It lists everyone loaded, with their IDs.
+
+**Someone was enrolled who should not have been.** Takes the display name exactly
+as it appears in game, and works even if they are nowhere near you:
+
+```json
+{"questEditorId":"SNRom_Quest","scriptName":"SNRom_Bridge",
+ "functionName":"UnenrollByName","arguments":["Lydia"]}
+```
+
+**An authored character reads wrong.** Rewrites who they are without touching
+their likes and dislikes. They must be loaded and near you, or the model has
+nothing to read:
+
+```json
+{"questEditorId":"SNRom_Quest","scriptName":"SNRom_Bridge",
+ "functionName":"ReauthorCharacter","arguments":["0x000A2C95"]}
+```
+
+**One field is wrong and the rest are right.** Field 0 is intimacy (0 casual,
+1 romantic, 2 guarded, 3 never), 1 is ardor (0–4), 2 is exclusivity (0–100).
+All three arguments are required:
+
+```json
+{"questEditorId":"SNRom_Quest","scriptName":"SNRom_Bridge",
+ "functionName":"SetCharacterField","arguments":["0x000A2C95",2,60]}
+```
+
+**Nothing seems to be happening at all.** Check
+`Data\SKSE\Plugins\SkyrimNet Relationships\logs\snrom.log`. A healthy log shows
+follower sweeps, `Talk assessment sent`, and verdicts. If it is silent, the usual
+causes are that SkyrimNet cannot reach an LLM backend, or that a model preset was
+applied in the SkyrimNet UI and dropped this mod's `snrom_background` variant.
 
 ## Credits
 
