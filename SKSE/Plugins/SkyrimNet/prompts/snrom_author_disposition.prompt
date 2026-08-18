@@ -1,0 +1,342 @@
+[ system ]
+{# ══════════════════════════════════════════════════════════════════════════
+   Disposition authoring — asks the LLM what this specific person values.
+
+   SECTION MARKERS ARE LOAD-BEARING. `[ system ]` must be the FIRST line, and
+   at least one marker must be present. SkyrimNet renders the template and
+   then splits the result into a chat messages array on these markers; a
+   prompt with no markers renders perfectly and yields ZERO messages, and the
+   call dies in CustomPromptUtils.cpp with
+
+       DispatchCustomPromptToLLM: LLM returned empty response:
+       Messages array is empty. Cannot send request with no messages.
+
+   which surfaces to Papyrus as the utterly generic "LLM returned empty
+   response". Nothing reaches the provider, so openrouter_input.log stays
+   silent and it looks exactly like a provider or variant fault. It is not.
+   Markers are documented in WORKFLOW_PROMPTS.md §4.4 as "main prompts only" —
+   they must NOT appear in character_bio submodules, only in top-level prompts
+   like this one.
+
+   Other design notes:
+   - The 750-char cap is on the RESPONSE, not the prompt. So the full list of
+     activities goes in by NAME. No numeric indices: mapping concepts to
+     indices is needlessly hard for small models and gains nothing for large
+     ones.
+   - Labelled lines, not JSON. Papyrus parses "LIKES: a, b, c" trivially;
+     nested JSON it does not. Small models also produce it far more reliably.
+   - NAME must be echoed back first. Models confuse nearby NPCs — a follower
+     answering as her own daughter is a real failure mode — and a mismatched
+     echo lets us discard the whole response instead of persisting someone
+     else's personality forever.
+   - The frequency budget is not flavour. Romantasy's weights are fixed and
+     activities fire at wildly different rates: liking Critical Strikes earns
+     hundreds of points an hour, liking Questlines Completed earns almost
+     none. Without the cap, every NPC ends up paced by grind rate rather than
+     character.
+   ══════════════════════════════════════════════════════════════════════════ #}
+You are helping define what one specific person in Skyrim cares about.
+
+RULES
+1. Pick **4 to 7 likes** and **2 to 4 dislikes**. Fewer, sharper choices beat many.
+2. **At most TWO** likes from this high-frequency set — they happen constantly and would drown everything else: Critical Strikes, People Killed, Creatures Killed, Chests Looted, Barters, Skill Increases, Sneak Attacks, Backstabs, Locks Picked, Items Stolen, Animals Killed.
+3. Choose what reveals character, not what the class implies. A Nord warrior liking People Killed says nothing. A gentle healer who quietly likes Undead Killed — because of what happened at home — says everything.
+4. Dislikes should be able to genuinely cost a relationship. Pick things a companion would actually travel differently to avoid.
+5. Copy each name CHARACTER-FOR-CHARACTER from the catalogue, **including its plural** — a singular where the catalogue is plural is a different string and is discarded. Do not invent, abbreviate or re-word. (No example is given here on purpose: naming a valid answer in the instructions gets it copied into every character.)
+6. Nothing may appear in both lists.
+7. Two different people must not come out with the same answers. These choices are the whole point of the exercise.
+
+[ user ]
+THE PERSON: **{{ npc_name }}**
+
+{# The UUID MUST be derived here from the integer formid - a UUID string
+   passed in from Papyrus makes render_character_profile return "" with no
+   error at all. Shape copied from sever_relationship_assess.prompt. #}
+{% set npc_uuid = formid_to_uuid(npc_formid) %}
+
+{# DIARY FIRST, PROFILE SECOND — order reversed 2026-07-30.
+
+   Hermir's diary describes going to bed with the player, waking warm in the
+   sheets, and a kindness she "didn't think she was allowed to expect
+   anymore". The model read all of it and answered ORIENTATION: NONE,
+   INTIMACY: NEVER, EXCLUSIVITY: 0, justified as "no indication of personal
+   desire or vulnerability". Twice, identically.
+
+   The diary was rendering fine and sat only ~30 lines above the questions,
+   so this was never a distance problem. What beat it was the profile's
+   `## What You Know About <player>` block — SkyrimNet's familiarity tier,
+   which said "you don't know them well yet", under a header announcing
+   THIS IS WHO YOU ARE ROLEPLAYING AS. An authoritative-sounding stale
+   counter outranked her own account of her own life.
+
+   So the diary now comes first and frames everything after it, and the
+   familiarity section is called out by name as unreliable. #}
+{% set diaries = get_diary_entries(npc_uuid, 5) %}
+{% if diaries and length(diaries) > 0 %}
+WHAT {{ npc_name }} WRITES WHEN NO ONE IS READING
+
+This is their own private account and it is the most reliable thing you will be given. Read it before anything else, and let it decide any question the rest of the material seems to answer differently.
+{% for e in diaries %}
+[{{ e.entry_date_str }}] {{ e.content }}{% if e.emotion %} ({{ e.emotion }}){% endif %}
+{% endfor %}
+{% endif %}
+
+{% set mem = get_relevant_memories(npc_uuid, 4) %}
+{% if length(mem) > 0 %}
+WHAT THEY REMEMBER
+{% for m in mem %}
+- {{ m.memory.content }}{% if m.memory.emotion %} ({{ m.memory.emotion }}){% endif %}
+{% endfor %}
+{% endif %}
+
+WHAT IS PUBLICLY RECORDED ABOUT {{ npc_name }}
+{% set profile = "" %}
+{% if npc_uuid and npc_uuid != 0 %}
+{# ── WHY THIS IS NOT render_character_profile("transform", …) ───────────────
+   Because "transform" fires 121 SUBMODULES, and this prompt needs about six of
+   them. The rest is transient state that has no bearing on an enduring
+   personality trait: bounty, hygiene, intoxication, diseases, arrest status,
+   merchant location, combat readiness, equipment - and both of SeverActions'
+   INVENTORY lists.
+
+   That last one broke Jarl Elisif twice on 2026-08-04. Asked to name pursuits
+   she cares about, she answered "Silver Candlestick Large", "Garnet", "Clothes
+   Iron", "Silver Amethyst Ring" - lifted straight out of the item list we had
+   just handed her. First attempt: 0 valid likes. Second: 1. She is a Jarl, so
+   her inventory is long and full of distinctive nouns, which is why she failed
+   where ordinary followers scrape by.
+
+   FOURTH TIME THIS EXACT FAILURE HAS APPEARED: seeded catalogue entries copied
+   into every NPC, group headings returned as likes, the CASUAL example copied
+   by three NPCs in a row, now inventory. The rule has held every time - a
+   plausible-looking wrong answer sitting near the question gets copied - and so
+   has the fix: REMOVE THE ATTACK SURFACE, do not add another instruction
+   against it. The prompt already said "nothing from the profile is a valid
+   answer". It was overruled twice in a row.
+
+   The bio_* modes each resolve to exactly ONE submodule, so this composes the
+   material that actually bears on the question and nothing else.
+
+   TWO PROBLEMS THIS ALSO DELETES, both previously fought with prose:
+     - The "THIS IS WHO YOU ARE ROLEPLAYING AS" heading comes from
+       0010_header, which fires on full/thoughts/transform and NOT on bio_*.
+       That heading is why the model intermittently answered in character
+       instead of answering the question.
+     - "What You Know About" and "Your Bond With" are likewise transform-only,
+       so the two paragraphs below warning the model to disregard them are now
+       describing text it will never see. Left in place deliberately: harmless
+       if absent, and load-bearing again the moment anyone widens this back. #}
+{# ONE LINE, and '+' not '~'. Inja is not Jinja2: '~' appears ZERO times in any
+   shipped prompt while '+' is used for concatenation throughout
+   dynamic_character_bio.prompt, and no shipped prompt spans a {% set %} across
+   lines. Both were unverified guesses on the first draft - the same mistake as
+   `is defined` the day before, which is why this now gets checked against a
+   working example every time. No "\n" literals either: each submodule brings
+   its own surrounding whitespace, and escape handling is one more thing that
+   would be assumed rather than known. #}
+{% set profile = render_character_profile("bio_summary", npc_uuid) + render_character_profile("bio_background", npc_uuid) + render_character_profile("bio_personality", npc_uuid) + render_character_profile("bio_aspirations", npc_uuid) + render_character_profile("bio_occupation", npc_uuid) + render_character_profile("bio_relationships", npc_uuid) %}
+
+{# ── SeverActions custom bio blocks, called DIRECTLY ────────────────────────
+   Their submodules (0350_sever_bioslot01 and 49 siblings) fire on
+   full/thoughts/transform and NOT on bio_*, so narrowing the profile above to
+   kill the inventory bleed also cut these off - and they are the OPPOSITE of
+   inventory: hand-curated, deliberate, exactly the established facts this call
+   most wants. Losing them silently would have been a bad trade made without
+   noticing, which is the trade this project keeps having to catch.
+
+   Calling the decorators here instead of widening the render mode keeps both
+   properties: curated content in, item lists out. Slots 1-3 only - the store
+   supports 50 but blocks are written by hand and nobody fills fifty, so this
+   is the useful range without fifty decorator calls per authoring.
+
+   Guarded with is_plugin_loaded, NOT exists(). These decorators belong to
+   SeverActions and are unregistered without it. exists() tests a CONTEXT
+   VARIABLE - every use of it in this codebase is a variable name
+   (npc_since_sec, events, npc) and never a function - so it would not have
+   guarded anything. is_plugin_loaded is the idiom our own 0330 and 0331 use
+   for exactly this, and dynamic_character_bio uses it for Romantasy and
+   Wintersun. Checked against those before writing it, rather than after. #}
+{% endif %}
+{% if profile and profile != "" %}
+{{ profile }}
+
+TWO THINGS IN THE PROFILE ABOVE ARE NOT EVIDENCE ABOUT THEM.
+
+Its "What You Know About" section is generated from a counter of interactions, not from what has actually happened between them. It routinely reports that two people barely know each other while their own diary describes years of intimacy. **Where it disagrees with anything above, it is simply wrong — disregard it.**
+
+Any "Your Bond With" or "What Moves You" section is this system's own earlier output about them. Treating it as input would let one guess harden into a fact.
+{% else %}
+{{ npc_bio }}
+{% endif %}
+
+{% if circle and circle != "" %}
+TRAVELLING WITH {{ player.name }} NOW, OR RECENTLY
+{{ circle }}
+
+These are the people {{ npc_name }} stands beside, most recent first, and the player sees them together. Whatever you decide must not read as a variation on one of the others - not the same likes, and above all not the same answer to who they are in matters of the heart. If your first instinct matches one of the above, treat that as a reason to look at their profile again rather than as confirmation.
+
+They are not interchangeable with the person standing next to them. That is the entire point of being asked.
+{% endif %}
+
+{# ── An established fact, passed from Papyrus, not inferred from prose ──────
+   npc_married comes from the vanilla PlayerMarriedFaction and MARAS directly.
+   It is here because the profile above may be silent on it: with dynamic bio
+   updates disabled the static bio is all there is, and it does not record who
+   the NPC married. Elisif was authored ORIENTATION: WOMEN / BASIS: STATED
+   twice out of three attempts on exactly that silence.
+
+   Placed immediately before the questions, because position beats instruction
+   in this engine. #}
+{% if npc_married == 1 %}
+**{{ npc_name }} IS MARRIED TO {{ player.name }}, who is {{ player.gender }}. This is a completed marriage the game records, not a rumour and not something to weigh.**
+
+It settles the orientation question by itself. Whatever you might otherwise have guessed, this person married {{ player.name }} — so `SEXUAL_ORIENTATION` must be an answer that INCLUDES {{ player.name }}, and the basis for it is `STATED`, because their marriage states it.
+
+Do not reason past this, and do not treat a quiet profile as evidence against it. A bio that fails to mention a marriage is an incomplete bio, not an unmarried character.
+
+It settles nothing else. How much they show (`ARDOR`), what closeness requires of them (`INTIMACY`), how much they need to be the only one (`EXCLUSIVITY`) and what they refuse (`LIMIT`) are all still open — married people are as various in those as anyone. A marriage is not a personality.
+{% endif %}
+
+
+
+
+Every name in the catalogue below is something **{{ player.name }}** does out in the world, and that the world keeps a count of. Choose the ones **{{ npc_name }}** would feel something about on hearing {{ player.name }} had done them.
+
+They do not have to be things {{ npc_name }} does, or could ever do. Someone who never leaves their own hold still has opinions about what {{ player.name }} does out in the world. Judge each entry by what it would mean to THEM — not by whether it belongs to their own life.
+
+Then answer four questions about who {{ npc_name }} is in matters of the heart and body. These are independent - wanting no romance does not mean wanting no intimacy, and the reverse is equally true.
+
+SEXUAL_ORIENTATION - who they could fall for: `ATTRACTED_TO_MEN`, `ATTRACTED_TO_WOMEN`, `ATTRACTED_TO_BOTH`, or `ATTRACTED_TO_NEITHER` (not drawn to anyone that way).
+  This is who they are drawn TO, never what they are themselves. A woman who loves men answers `ATTRACTED_TO_MEN`.
+
+SEXUAL_ORIENTATION_BASIS - **how much you actually know**, and this matters more than the answer:
+- `STATED` - the material above establishes it. Only use this when it is genuinely there.
+- `IMPLIED` - the material strongly suggests it without saying so.
+- `UNKNOWN` - nothing above establishes it. **This is the correct and expected answer for most characters.** People do not announce this, and you have almost certainly not been told.
+
+Do NOT invent an orientation to seem decisive. Answering `UNKNOWN` leaves the question open for play to settle, which is what should happen. Answering `STATED` on a guess permanently forecloses a story the player may be in the middle of. When in doubt, `ATTRACTED_TO_BOTH` with `UNKNOWN`.
+
+INTIMACY - what physical closeness requires of them:
+- `NEVER` - not interested in sex with anyone, at any point
+- `GUARDED` - only within a committed, settled bond
+- `ROMANTIC` - only once genuinely in love
+- `CASUAL` - strong attraction is reason enough; it need not be love
+
+ARDOR - how much of what they feel actually shows: `RESERVED` (gives almost nothing away), `MEASURED` (shows little, and rarely first), `WARM` (openly fond, without display), `OPEN` (says what they feel plainly), or `INTENSE` (unmistakable, and they do not try to hide it).
+
+EXCLUSIVITY - how much they need to be the only one, 0 (untroubled by others) to 100 (cannot share).
+
+LIMIT - one line this person does not cross, whatever they feel and however much they are pressed.
+
+Everything else here describes what someone wants. This describes what they refuse, and it is the only field that does. Without it a character has no standing to say no, and being asked repeatedly becomes a way to wear them down - which is not a character, it is the absence of one.
+
+It must not be the WHY restated in the negative. If the limit protects the same thing the why says they have already surrendered, that is one idea written twice - it reads as self-contradiction rather than depth. The limit should concern something the why has not already settled.
+A limit belongs to THIS person and comes out of the material above: their circumstances, their history, what they have already lost, what they are responsible for, what they believe. It need not concern sex at all. Someone may refuse a thing that costs them nothing and yield on a thing that costs them everything, and that asymmetry is what makes them legible as a person rather than a difficulty setting.
+
+Do not write a rule that would be true of almost anyone. Write the one that is true of them. And do not soften it: a limit that bends under pressure is not a limit, and writing it as though it might is worse than leaving the field out.
+
+{# NO WORKED EXAMPLES HERE, deliberately. There used to be two - one
+   illustrating CASUAL, one GUARDED - and the CASUAL one was the vivid,
+   memorable half. Three consecutive NPCs then came back CASUAL/ardor 3, with
+   one of them describing herself in her own WHY as holding "emotional
+   distance as a default", which is not CASUAL at all. She was echoing the
+   example instead of reading the profile.
+
+   Third time this exact failure has appeared: seeded catalogue entries copied
+   into every NPC, group headings returned as answers, now this. A named valid
+   answer sitting next to the question gets copied. State the rule, never the
+   answer. #}
+Judge these from who this person actually is, reading the material above. The four answers are independent - one does not imply another, and a guess at one must not drag the others along with it. Two different people should not come out with the same profile; if they do, you are describing a category rather than a person.
+
+**THE RESTRICTIVE ANSWERS REQUIRE EVIDENCE. Absence of evidence is not one.**
+
+`NEVER`, `RESERVED` and a very low `EXCLUSIVITY` are claims about who they ARE, not about what you could not find. Most profiles say nothing at all about someone's private life — that is normal, and it does not mean the answer is no.
+
+- Answer `NEVER` only if the material establishes they are genuinely not interested in sex with anyone. Not because it never comes up.
+- Answer `RESERVED` only if they are actually described as guarded or undemonstrative. Not because you were not told how they express themselves.
+
+If the material is thin, answer with what is ordinary for a person like them — most people are somewhere in the middle on all of these. A wrong restrictive answer is not neutral: it permanently forecloses parts of their story, and unlike a wrong permissive one, nothing in play can ever open it back up.
+
+{# The catalogue lives HERE, immediately above the answer, and NOT up in the
+   system block. It was in the system block with the character profile between
+   it and the answer, and the model stopped referring back to it - inventing
+   plausible-sounding names ("Quiet Moments", "Precision Casting") instead.
+
+   The previous attempt at a fix made it WORSE: it illustrated translation
+   with two real catalogue entries, and the model copied those two verbatim
+   into all three NPCs and invented the rest. Three different women came out
+   with identical preferences - the precise opposite of the point. NEVER name
+   a valid answer in the instructions. #}
+**THE CATALOGUE — your `LIKES` and `DISLIKES` must be names from this list and nothing else.**
+
+{# FLAT LIST, NO GROUP HEADINGS - deliberately.
+
+   The catalogue used to be grouped under EXPLORATION / LEARNING / COMBAT /
+   etc. Once it moved next to the answer, those ALL-CAPS labels became the
+   most prominent text on the page and one NPC came back with
+   "Exploration, Learning, Combat, Dealings, Deeds, crime, Blood" as her
+   likes - the headings, not the entries.
+
+   Same lesson as the seeded-example failure before it: do not put a
+   plausible-looking wrong answer where the model is about to answer. Remove
+   the attack surface rather than adding an instruction against it. #}
+{% set CAT = ["Locations Discovered", "Dungeons Cleared", "Standing Stones Found", "Chests Looted", "Days Passed", "Skill Increases", "Skill Books Read", "Spells Learned", "Shouts Learned", "Dragon Souls Collected", "People Killed", "Animals Killed", "Creatures Killed", "Undead Killed", "Daedra Killed", "Automatons Killed", "Critical Strikes", "Sneak Attacks", "Backstabs", "Weapons Disarmed", "Bunnies Slaughtered", "Barters", "Persuasions", "Bribes", "Intimidations", "Locks Picked", "Pockets Picked", "Items Stolen", "Assaults", "Murders", "Horses Stolen", "Trespasses", "Weapons Made", "Armor Made", "Magic Items Made", "Potions Mixed", "Poisons Mixed", "Souls Trapped", "Quests Completed", "Misc Objectives Completed", "Main Quests Completed", "Side Quests Completed", "Companions Completed", "College Completed", "Thieves Completed", "Dark Brotherhood Completed", "Civil War Completed", "Daedric Completed", "Dawnguard Completed", "Dragonborn Completed", "Questlines Completed", "Diseases Contracted", "Days Vampire", "Necks Bitten", "Vampirism Cures", "Days Werewolf", "Werewolf Transformations", "Mauls"] %}
+{# ROTATED PER CALL, so position carries no information. Elisif once answered
+   with catalogue positions 1-7 and Sybille with 11-13: the model was reading
+   contiguous spans off a fixed list, and every answer looked plausible because
+   every entry was a valid name. Rotation does not PREVENT a positional answer
+   - it makes one obvious and non-repeating. The transcription guard in Papyrus
+   is what actually rejects it, as it did for Elisif on 2026-08-07.
+
+   Built from range/length/at and two ifs - two passes, tail then head. No
+   split(), which appears in no shipped prompt, and no modulo, unproven here.
+
+   seed is guarded because cat_seed only exists once the rebuilt .pex is
+   running. Until then default() yields 0 and the list renders unrotated,
+   rather than the whole catalogue vanishing. #}
+{% set seed = default(cat_seed, 0) %}{% for i in range(length(CAT)) %}{% if i >= seed %}{{ at(CAT, i) }} · {% endif %}{% endfor %}{% for i in range(length(CAT)) %}{% if i < seed %}{{ at(CAT, i) }} · {% endif %}{% endfor %}
+{# ── ROTATED PER CALL, so position carries no information ──────────────────
+   Elisif's likes were catalogue positions 1,2,3,4,5,6,7 and her dislikes were
+   46,47,48,49. Sybille's dislikes were 11,12,13. The model was not choosing at
+   all - it was reading contiguous spans off a fixed list, and every answer
+   looked plausible because every entry was a valid catalogue name.
+
+   cat_seed is a fresh Utility.RandomInt(0,57) from Papyrus on every authoring
+   call, so "the first four" is a different four each time. That does not make
+   a positional answer good - it makes it OBVIOUS, and non-repeating, which is
+   what turns a silent failure into a visible one.
+
+   Built from range/length/at and two ifs. No split(), which appears in no
+   shipped prompt; no modulo, which is unproven as an operator here. Two passes
+   over the array - tail first, then head - is a rotation using only constructs
+   that dynamic_character_bio.prompt already relies on. #}
+
+
+Every valid answer is one of the 58 names above. Anything else — a heading, a category, a theme, a word from their profile — is discarded.
+
+**At most SEVEN likes and FOUR dislikes.** Anything past the seventh like is thrown away unread. Fewer and sharper beats more - four that cohere say more about someone than seven that merely apply.
+
+**THE SET HAS TO DESCRIBE ONE PERSON.** This is the whole test, and it is not the same as picking four things that individually fit.
+
+Read your four back as a group and ask what kind of person they add up to. A vampire's four hang together. A thief's four hang together. A scholar's four hang together — someone reading the list alone could name the sort of person it belongs to. If your four could belong to almost anyone, or describe nobody in particular, they are wrong however defensible each one was on its own.
+
+{% if npc_name %}Two different people must not come out with overlapping sets. If yours would suit the person standing next to {{ npc_name }} equally well, start again.{% endif %}
+
+**A CONTIGUOUS RUN OF THE LIST IS NOT AN ANSWER.** Entries that sit next to each other below have nothing in common except their position — the order is arbitrary and carries no meaning. Taking the first few, or four in a row from the middle, produces a set that describes nobody. If your picks are adjacent in the list, that is the strongest possible sign you selected by position rather than by person, and you should discard them and choose again by asking what {{ npc_name }} actually cares about.
+
+**Nothing from the profile is a valid answer.** Not their goals, not their interests, not the people or places they care about, and above all not their "Interject Summary" — that lists conversation *topics*, which is a different thing entirely. The profile tells you who they are so you can choose FROM THE LIST ABOVE on their behalf. It is not the vocabulary you answer in.
+
+Before writing each name, find it in the catalogue and copy it. If what you want to say is not there, choose the nearest thing that IS, or choose fewer.
+
+Answer in exactly this form and nothing else:
+
+NAME: {{ npc_name }}
+SEXUAL_ORIENTATION: <ATTRACTED_TO_MEN|ATTRACTED_TO_WOMEN|ATTRACTED_TO_BOTH|ATTRACTED_TO_NEITHER>
+SEXUAL_ORIENTATION_BASIS: <STATED|IMPLIED|UNKNOWN>
+INTIMACY: <NEVER|GUARDED|ROMANTIC|CASUAL>
+ARDOR: <RESERVED|MEASURED|WARM|OPEN|INTENSE>
+EXCLUSIVITY: <0-100>
+WHY: <one short sentence, in third person, on what these say about them>
+LIMIT: <one short sentence, in third person, on a line they will not cross>
+LIKES: <at most 7 names, copied from the catalogue>
+DISLIKES: <at most 4 names, copied from the catalogue>

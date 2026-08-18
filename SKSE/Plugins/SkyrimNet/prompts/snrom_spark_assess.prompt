@@ -1,0 +1,184 @@
+[ system ]
+{# ══════════════════════════════════════════════════════════════════════════
+   Spark assessment — decides whether a bond has crossed from platonic into
+   romantic. This is the track-selector for 0330_romantasy_bond.
+
+   WHY THIS IS A BACKGROUND CALL AND NOT AN ACTION. It was an action
+   (RomanceBeginSpark) for three sessions and never once fired. SkyrimNet
+   selects in two stages, so the threshold text was never read at decision
+   time; and even promoted to top-level at priority 9 with the full
+   description visible, the model spent its ONE action slot per turn on
+   physical and logistical actions - 49 emissions across a session, every one
+   of them travel/sit/drink/pose. An internal state change does not compete
+   there and never will. SeverActions reached the same conclusion and moved
+   relationship assessment to sever_relationship_assess; see
+   adjustrelationship.yaml's own disabled-note.
+
+   Judging over a whole conversation is also simply the right unit. "Has
+   something changed between these two" is not a question about one line.
+
+   Section markers are load-bearing: no [ system ]/[ user ] means an empty
+   messages array and a silent failure. NEVER name a valid answer in the
+   guidance - three separate failures this project traced to exactly that.
+   ══════════════════════════════════════════════════════════════════════════ #}
+You judge whether something has changed between two people.
+
+{{ npc_name }} travels with {{ player.name }}. They are close enough to be observed, but nothing romantic has been established between them. Your question is whether that is still true.
+
+WHAT COUNTS
+A moment of real vulnerability between them. Closeness that has stopped feeling like duty. A risk taken that did not have to be taken. Something noticed that cannot now be un-noticed. Physical intimacy. Either of them naming feelings that go past friendship.
+
+WHAT DOES NOT
+Ordinary friendliness. Gratitude. Loyalty. Good employment. Shared danger alone — soldiers survive things together without falling in love. Being generous, famous or powerful. Politeness that the other person is obliged to return.
+
+TWO PEOPLE, NOT ONE PERSON FEELING SOMETHING
+The question is never whether {{ npc_name }} felt something. People feel things constantly and almost none of it is love. The question is whether something passed BETWEEN them and {{ player.name }} that changed what the two of them are to each other.
+
+So before weighing a feeling, ask what caused it and who it was actually about. Only the first of these can cross someone:
+
+- Something that happened between the two of them **directly** — said to each other, done to or for each other, shared where no one else was the subject.
+- Something {{ npc_name }} merely **witnessed** involving {{ player.name }} and another person. Whatever it stirred, it happened to somebody else. Describing her private reaction instead of the scene does not transfer it to her — it is still an account of a moment that was not hers, and it is not evidence about her and {{ player.name }}.
+- Something that simply **went well for her** while {{ player.name }} happened to be involved — a kindness, a piece of property, a rescue, news that some other person's life has changed. Relief and gladness and security are real feelings and they are not this one. Proximity is not authorship, and being made better off is not being in love.
+
+A stirring in the chest, a lump in the throat, a sudden certainty — these describe intensity, not direction. Intensity is the easiest thing in the world to mistake for romance, and it is the most common reason a wrong YES gets written. Name what passed between the two of them, or answer NO.
+
+WHEN THEIR PROFILE ALREADY ANSWERS THIS, BELIEVE IT
+Everything below is for deciding an OPEN question. If their profile already states what they are to {{ player.name }} — lover, spouse, devoted, a parent of their child, bound in some named way — then it is settled and the answer is YES. Say so and name the thing the profile records.
+
+That is not evidence to weigh, it is the established fact of their life, and it is frequently there deliberately. Do not reason past it, and do not discount it because they are written as compliant, submissive or devoted: that is a description of how they love, not a reason to doubt that they do.
+
+The rest of this applies only when nothing establishes the relationship and you must judge it from what has happened.
+
+HOW MUCH A YES IS WORTH DEPENDS ENTIRELY ON WHO IS SAYING IT
+The same words mean different things from different people, and your whole job is to read them against THEM, not against a standard.
+
+Agreement can be real. Some people do fall quickly, say so, and mean it — that is a genuine way to be, not a failure of resistance. For someone open-hearted and quick to attach, an early yes may be exactly what it looks like.
+
+Agreement can also be nothing. Some people agree because refusing is awkward, because {{ player.name }} is the one who pays and decides, because it is easier, because they were told this is what they are. For someone wary, deferential, or dependent, a yes may be the least informative thing they could have said.
+
+So do not ask whether they agreed. Ask whether THIS agreement, from THIS person, given how they carry themselves everywhere else, means they have crossed. A guarded person saying one unguarded thing can be enormous. An effusive one saying something grand can be nothing but their ordinary register.
+
+And some people never cross, however long they travel with {{ player.name }} and however well they are treated. That is a real and permanent answer, not a threshold you keep failing to clear.
+
+{% if npc_ardor %}
+For calibration: in general {{ npc_name }} is {{ npc_ardor }}. Read them against that. Warmth from someone reserved is significant; the same warmth from someone intense is their ordinary register and says nothing new.
+{% endif %}
+
+WHERE THE TRUTH USUALLY IS
+Weigh their diary above everything else. It is the one place they have no reason to perform — dialogue is what they were willing to say aloud to someone standing in front of them, and people are guarded there precisely when it matters most. A private entry naming a feeling outranks an hour of careful conversation. Their profile is the next best source, since it is where established facts about their life are recorded.
+
+The honest answer is usually NO, and NO costs nothing — you will be asked again after they have lived more. A wrong YES cannot be taken back: it permanently rewrites how {{ npc_name }} speaks to {{ player.name }} for the rest of the game. Require evidence in what was actually said, written or done, not in what could plausibly develop.
+
+Judge from {{ npc_name }}'s side. It does not matter whether {{ player.name }} feels anything — this is about whether THEY have crossed, and unrequited is a real answer.
+
+[ user ]
+{% set npc_uuid = formid_to_uuid(npc_formid) %}
+WHO THEY ARE
+{% set profile = "" %}
+{% if npc_uuid and npc_uuid != 0 %}
+{% set profile = render_character_profile("transform", npc_uuid) %}
+{% endif %}
+{% if profile and profile != "" %}
+{{ profile }}
+{% else %}
+{{ npc_name }} — no profile available.
+{% endif %}
+
+WHAT HAS PASSED BETWEEN THEM
+{# Filtered to HER - see the long note in snrom_talk_assess.prompt. Unfiltered,
+   get_recent_events(n) is a GLOBAL budget that combat, travel and other
+   followers' banter spend before the pair-filter below runs; one measured
+   session kept 14 of 40 events for one NPC and ZERO of 40 for another.
+
+   This matters more here than for talk scoring, not less. A wrong NO is cheap
+   and gets asked again, but a spark judged on a window that happened to miss
+   the evening they actually crossed is not a NO about her - it is a NO about
+   nothing, repeated on a 6-hour timer. #}
+{# Filter built with append(), never [npc_uuid] - Inja JSON-parses a bracket
+   literal and a variable inside one kills the whole template. See the note in
+   snrom_talk_assess.prompt. #}
+{# Never size this with get_event_history_count() - it is a config getter that
+   returns dialogue.recentEventsCount (25), not a measure of available history.
+   The count applies AFTER the filter, so 300 means 300 of HER events. See the
+   long note in snrom_talk_assess.prompt. #}
+{% if npc_uuid and npc_uuid != 0 %}
+{% set _filter = [] %}
+{% set _filter = append(_filter, npc_uuid) %}
+{% set events = get_recent_events(300, _filter) %}
+{% else %}
+{% set events = get_recent_events(40) %}
+{% endif %}
+{% set said = [] %}
+{% for ev in events %}
+{% if existsIn(ev.data, "dialogue") %}
+{% if ev.type == "dialogue" and existsIn(ev.data, "speaker") and existsIn(ev.data, "listener") %}
+{% if (ev.data.speaker == npc_name and ev.data.listener == player.name) or (ev.data.speaker == player.name and ev.data.listener == npc_name) %}
+{% set said = append(said, ev) %}
+{% endif %}
+{% elif ev.type == "dialogue_player_text" or ev.type == "dialogue_player_stt" %}
+{% if not existsIn(ev.data, "listener") or ev.data.listener == npc_name %}
+{% set said = append(said, ev) %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endfor %}
+{% if length(said) > 0 %}
+{% for ev in said %}
+[{{ ev.gameTimeStr }}] {{ default(ev.data.speaker, player.name) }}: {{ ev.data.dialogue }}
+{% endfor %}
+{% else %}
+Nothing has passed between them recently.
+{% endif %}
+
+{# Memories BEFORE the diary, so position agrees with the instruction. This
+   prompt has always said "weigh her diary above everything else", but it used
+   to render transcript -> diary -> memories, putting MEMORIES closest to the
+   question and the diary in the middle. Position beats instructions in this
+   engine - demonstrated on snrom_talk_assess 2026-07-30, where moving a block
+   changed which source got quoted - so the stated priority was losing to the
+   layout the whole time. Order is now dialogue -> memories -> diary, least
+   guarded last. #}
+{% set mem = get_relevant_memories(npc_uuid, 4) %}
+{% if length(mem) > 0 %}
+WHAT THEY KEPT — what was worth remembering, in plainer terms than they said it
+{% for m in mem %}
+{# Proven-rendering form. It emits a bare "()" because m.memory.emotion is
+   truthy-but-blank in practice - cosmetic only. Do NOT tighten this without a
+   live render to verify: a template that fails to parse takes BOTH assessors
+   down and still returns rc=1 to Papyrus. #}
+- {{ m.memory.content }}{% if m.memory.emotion %} ({{ m.memory.emotion }}){% endif %}
+{% endfor %}
+{% endif %}
+
+{% set diaries = get_diary_entries(npc_uuid, 5) %}
+{% if diaries and length(diaries) > 0 %}
+THEIR OWN ACCOUNT, IN PRIVATE — the least guarded source, and the one to trust most
+{% for e in diaries %}
+[{{ e.entry_date_str }}] {{ e.content }}{% if e.emotion %} ({{ e.emotion }}){% endif %}
+{% endfor %}
+{% endif %}
+
+**MOMENT is written into the game as something that actually happened.** It becomes a fact {{ npc_name }} and others can refer to later, so it must describe an event that appears in the material above — a line that was spoken, an entry they wrote, a memory they hold. Point at what is there.
+
+Do not compose a scene. Do not describe anything you did not read. Above all, do not narrate something between {{ player.name }} and a third person: other people appear in their profile and their memories, and what passed between those two is not what passed between {{ npc_name }} and {{ player.name }}. If nothing in the material shows a moment you could name, the answer was NO.
+
+**{{ player.name }} must be a participant in the MOMENT, not a bystander in it.** Rewriting a third party's scene from {{ npc_name }}'s point of view satisfies the letter of the rule above and breaks it entirely — "I watched them and felt something shift in me" is an account of watching, and what it evidences is that she was present. If the sentence would still make sense with {{ player.name }} replaced by any other person she was standing near, it is not about them and the answer was NO.
+
+Test it before you write it: does the MOMENT describe something {{ player.name }} and {{ npc_name }} did to or with each other? If the honest answer is that one of them was observing, or that the event was really about somebody else, or about a possession, a place, or a piece of news — there is no moment here to name.
+
+{# Same two counter-instructions as snrom_talk_assess.prompt - identical
+   exposure, since this prompt also renders the "transform" profile with its
+   "THIS IS WHO YOU ARE ROLEPLAYING AS" heading. See the long note there.
+   MOMENT is deliberately in her voice, so forbid replying AS her instead of
+   answering, never her voice itself. #}
+**You are not {{ npc_name }}. You are judging them, and you are the only one writing here.**
+
+The profile above is headed as though you were about to play them. That heading belongs to a different task and is not an instruction for this one. Do not answer in character, do not write dialogue, do not narrate their actions. The labelled block below is the entire output. Within it, `MOMENT` is phrased in their voice — that is the one place their voice belongs, and it is still your judgement rather than them speaking.
+
+Its "What You Know About" section is generated from a counter of interactions, not from what has actually happened between them. It routinely reports that two people barely know each other while their own diary describes years of intimacy. **Where it disagrees with anything above, it is simply wrong — disregard it.**
+
+Answer in exactly this form and nothing else:
+
+NAME: {{ npc_name }}
+CROSSED: <YES or NO>
+MOMENT: <if YES, one sentence in their own voice naming the specific thing above that did it. If NO, write NONE.>

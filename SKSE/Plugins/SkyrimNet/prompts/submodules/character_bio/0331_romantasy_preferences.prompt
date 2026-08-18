@@ -1,0 +1,46 @@
+{% if render_mode == "full" or render_mode == "thoughts" or render_mode == "transform" %}
+{# render_mode guard MUST be within the first 5 lines - SkyrimNet scans
+   only that far for it, and without it assumes this prompt renders in
+   every mode, which it flags as a response-delay risk. Commentary
+   below, never above. #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{# Romantasy — Likes and Dislikes                                             #}
+{#                                                                            #}
+{# Romantasy stores each follower's opinion of an activity as a faction rank: #}
+{#   rank 1  = likes it   (gains points when the player does it)              #}
+{#   rank 0  = dislikes it (loses points when the player does it)             #}
+{#   absent  = no opinion (negative rank from get_faction_rank)               #}
+{#                                                                            #}
+{# All 58 activities are checked, because Phase 3's LLM preference authoring  #}
+{# picks from the full set — a preference the renderer skipped would be a     #}
+{# silent bug. Only activities the NPC actually has an opinion on produce     #}
+{# output, so the rendered text stays short even though the sweep is wide.    #}
+{# 58 ids x 2 passes = 116 native faction lookups per render. Native calls,  #}
+{# cheap individually - but this runs on every bio render for every enrolled  #}
+{# NPC, so it is the first thing to revisit if prompt latency becomes a       #}
+{# problem. The obvious optimisation is to have SNRom_Bridge cache the        #}
+{# opinion set per actor and expose it through one decorator call.            #}
+{#                                                                            #}
+{# Two passes are needed (likes, then dislikes) because Inja has no list      #}
+{# append — a single pass cannot sort results into two groups.                #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{% if not is_player(actorUUID) %}
+{% if is_plugin_loaded("CS_Romantasy.esp") %}
+{% if get_faction_rank(actorUUID, "ROM_RomanceLevel") >= 0 %}
+{% set rom_ids = ["ROM_LocationsDiscovered","ROM_DungeonsCleared","ROM_StandingStonesFound","ROM_ChestsLooted","ROM_DaysPassed","ROM_SkillIncreases","ROM_SkillBooksRead","ROM_SpellsLearned","ROM_ShoutsLearned","ROM_DragonSoulsCollected","ROM_PeopleKilled","ROM_AnimalsKilled","ROM_CreaturesKilled","ROM_UndeadKilled","ROM_DaedraKilled","ROM_AutomatonsKilled","ROM_CriticalStrikes","ROM_SneakAttacks","ROM_Backstabs","ROM_WeaponsDisarmed","ROM_BunniesSlaughtered","ROM_Barters","ROM_Persuasions","ROM_Bribes","ROM_Intimidations","ROM_LocksPicked","ROM_PocketsPicked","ROM_ItemsStolen","ROM_Assaults","ROM_Murders","ROM_HorsesStolen","ROM_Trespasses","ROM_WeaponsMade","ROM_ArmorMade","ROM_MagicItemsMade","ROM_PotionsMixed","ROM_PoisonsMixed","ROM_SoulsTrapped","ROM_QuestsCompleted","ROM_MiscObjectivesCompleted","ROM_MainQuestsCompleted","ROM_SideQuestsCompleted","ROM_CompanionsCompleted","ROM_CollegeCompleted","ROM_ThievesCompleted","ROM_DarkBrotherhoodCompleted","ROM_CivilWarCompleted","ROM_DaedricCompleted","ROM_DawnguardCompleted","ROM_DragonbornCompleted","ROM_QuestlinesCompleted","ROM_DiseasesContracted","ROM_DaysVampire","ROM_NecksBitten","ROM_VampirismCures","ROM_DaysWerewolf","ROM_WerewolfTransformations","ROM_Mauls"] %}
+{% set rom_labels = ["finding places no one has mapped","clearing a ruin out end to end","seeking out the old standing stones","hauling treasure out of the dark","the plain accumulation of days on the road together","growing more capable at things","time spent with books","the study of new magic","the Voice, and the learning of it","dragons brought down","the killing of people","the killing of animals","hunting beasts","putting the undead back down","cutting down daedra","breaking dwarven machines","brutal, efficient violence","killing from the shadows","the knife in the back","disarming an opponent rather than killing them","the slaughter of rabbits, of all things","haggling and trade","talking a way through a problem","buying a way past trouble","leaning on people to get a result","locks that were never meant to be opened","lifting things out of other people's pockets","taking what isn't theirs","picking fights with people","murder","stealing horses","going where they are not welcome","work at the forge","armour made by hand","the craft of enchanting","brewing potions","the mixing of poisons","the trapping of souls","seeing tasks through to the end","tidying up small unfinished business","the great matter of dragons and prophecy","the troubles of ordinary people","the work of the Companions","the work of the College of Winterhold","the work of the Thieves Guild","the work of the Dark Brotherhood","the war for Skyrim","dealings with the Daedric Princes","the war against the vampires","the affairs of Solstheim","seeing a whole long undertaking through to its end","sickness caught on the road","the vampiric life","feeding on the living","the curing of vampirism","living with the beast blood","turning beast","mauling prey in beast form"] %}
+
+## What Moves You
+
+{% for i in range(length(rom_ids)) %}{% if get_faction_rank(actorUUID, at(rom_ids, i)) == 1 %}
+- It warms you when {{ player.name }} takes to {{ at(rom_labels, i) }}.
+{% endif %}{% endfor %}
+{% for i in range(length(rom_ids)) %}{% if get_faction_rank(actorUUID, at(rom_ids, i)) == 0 %}
+- It sits badly with you when {{ player.name }} takes to {{ at(rom_labels, i) }}.
+{% endif %}{% endfor %}
+
+These are your own leanings, not rules you recite. Never list them. Let them surface as approval, unease, a dry remark, or a silence at the moment {{ player.name }} does the thing — and let them colour how close you feel afterwards.
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}

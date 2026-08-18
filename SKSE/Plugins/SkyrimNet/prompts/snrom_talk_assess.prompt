@@ -1,0 +1,318 @@
+[ system ]
+{# ══════════════════════════════════════════════════════════════════════════
+   Conversational scoring — how much did what was said actually move her.
+
+   THE CORE VALUE-ADD, and until now it did not run. The only dialogue→points
+   path was RomanceMarkMoment, an action under the `romance` category, and the
+   model never selects that category: across a full session it emitted 49
+   actions, every one of them travel/sit/drink/pose. Zero `moment` rows exist
+   in the ledger. A player could talk to someone for an hour and the bond
+   would not move at all.
+
+   WEIGHT IS A WORD, NOT A NUMBER. Asked for a 0-4 number, ten consecutive
+   NPCs answered 3. An unanchored scale has nothing to answer against and
+   everything lands middle-high. Words carry their own definition; Papyrus
+   maps them to points, so the model never sees the economy and cannot inflate
+   it.
+
+   NEVER name a valid answer in the guidance — four separate failures in this
+   project trace to exactly that.
+   ══════════════════════════════════════════════════════════════════════════ #}
+You judge how much a conversation actually changed how {{ npc_name }} feels about {{ player.name }}.
+
+Almost all talk changes nothing. People travel together, exchange words, and end the day where they started. That is the normal answer and it is not a failure to find one.
+
+{# GENDER-NEUTRAL THROUGHOUT, deliberately. These instructions used to say
+   "she"/"her" for the NPC and "him" for the player, ~35 rendered references.
+   Sibbi Black-Briar — male — was authored on 2026-08-02 and the model dutifully
+   wrote "HER personal diary reveals…", following our lead against a profile that
+   plainly said "- Gender: Male".
+
+   That contradicts the design: two-track prose exists precisely so that a bond
+   between two men is a FIRST-CLASS arc, not a tolerated accident.
+
+   The fix is neutral INSTRUCTIONS, not conditionals. The rendered profile always
+   carries "- Gender: …", so the model already knows and will gender the WHAT
+   field correctly on its own. Our prose simply has to stop overriding it — and
+   staying neutral also means no Inja branching in a file whose syntax has bitten
+   us twice. The player is neutralised too: {{ player.name }} rather than "him",
+   since a female Dragonborn is equally valid. #}
+WHAT YOU ARE WEIGHING
+Not whether the conversation was pleasant. Not whether they were agreeable. Whether something in it moved them — and if so, how far.
+
+Read it against THEM. The same exchange lands differently on different people, and that is the entire point of asking. A guarded person letting one thing slip has moved further than an effusive one saying something grand. Someone who gives affection freely is not moved by giving it again.
+{% if npc_ardor %}In general {{ npc_name }} is {{ npc_ardor }}.{% endif %}
+{% if npc_why %}What is true of them in this: {{ npc_why }}{% endif %}
+
+IT CAN GO BACKWARD
+A conversation can cost {{ player.name }} ground. Dismissal, a promise broken, a line crossed, being talked past, being treated as owned. If {{ npc_name }} came out of this worse disposed toward {{ player.name }}, say so — a record where nothing ever goes wrong is not a record of a relationship.
+
+THE ONE THING THAT IS ALWAYS LARGE
+If the two of them, in this conversation, explicitly and mutually agreed to become something they were not before — named it aloud, both of them, and neither was merely going along — that is the largest answer and you should not hesitate to give it. Two people deciding out loud to be partners is not a small event and must not be scored like one.
+
+But it must be MUTUAL and it must be EXPLICIT. One proposing it and the other not objecting is not agreement. Accepting a role they were handed is not agreement. If you cannot point to both of them choosing it, it is not that.
+
+[ user ]
+{% set npc_uuid = formid_to_uuid(npc_formid) %}
+WHO THEY ARE
+{% set profile = "" %}
+{% if npc_uuid and npc_uuid != 0 %}
+{% set profile = render_character_profile("transform", npc_uuid) %}
+{% endif %}
+{% if profile and profile != "" %}
+{{ profile }}
+{% else %}
+{{ npc_name }} — no profile available.
+{% endif %}
+
+{# ── THREE SOURCES, ORDERED BY HOW TRUTHFUL THEY ARE ───────────────────────
+   Dialogue, then memories, then diary - each closer to the question than the
+   last, because position IS priority in this engine and the least guarded
+   source must sit closest.
+
+   This is the REVERSE of the order things happen in. Dialogue comes first in
+   time, memories are captured from it, and the diary is written last. But that
+   is also the order of increasing honesty, because people are least truthful
+   out loud. Someone advancing a relationship stays deliberately vague until
+   they know the feeling is returned - Hermir's own "I'd like to see where this
+   path leads us" is exactly that hedge - so scoring speech literally
+   systematically under-reads what actually moved. The diary is where she says
+   the unvarnished thing, and it also summarises the other two.
+
+   Do NOT invert this to make the model quote dialogue. Tried 2026-07-30:
+   putting the transcript last did change the citation from diary to
+   conversation, which proves position dominates - but it was optimising the
+   wrong thing. What gets quoted is not what should be trusted.
+
+   Events are deliberately excluded. They are fleeting and mostly irrelevant to
+   an emotional judgement, and Romantasy already scores deeds. The transcript
+   block below filters the event stream down to dialogue only. #}
+WHAT WAS SAID — what they were willing to say aloud, to {{ player.name }}'s face
+{# THE WINDOW IS FILTERED TO HER, and that is load-bearing.
+
+   Unfiltered, get_recent_events(n) is a GLOBAL budget: combat, travel, routine
+   and every other follower's banter spend it before the pair-filter below ever
+   runs. Measured on one real session, 14 of 40 events survived for one NPC and
+   ZERO of 40 for another, who was then scored on a transcript reading "Nothing
+   has passed between them recently". That is what kept LANDMARK from firing -
+   the mutual agreement sat a night's sleep outside the window.
+
+   Three things learned the hard way, each costing a dispatch:
+
+   1. NEVER write the filter as [npc_uuid]. Inja JSON-parses bracket literals,
+      so a variable inside one dies with "parse error ... last read: '[np'" -
+      and SendCustomPromptToLLM STILL RETURNS rc=1, so Papyrus logs a clean send
+      for a prompt that never rendered. The error appears only in SkyrimNet.log.
+      Build with [] + append(), as components/event_history.prompt does. The
+      decorator registry's own example shows [player.UUID, npc.UUID] and that
+      form does not work.
+
+   2. NEVER size this with get_event_history_count(). Despite the name it is a
+      CONFIG GETTER - "the CONFIGURED event history count for dialogue context"
+      - returning dialogue.recentEventsCount (25) from SkyrimNet.yaml. It says
+      nothing about available history. Using it reproduced the old hardcoded 40
+      exactly while looking adaptive.
+
+   3. The count applies AFTER the filter, so 300 means 300 of HER events, not
+      300 global. Proven by the spans: filtered-40 returned MORE dialogue over a
+      NARROWER window than unfiltered-40, impossible if the count came first.
+
+   300 is sized off the failure: 40 of her events covered ~2.25 game hours, and
+   the agreement that never got scored sat ~18 game hours back. Verified live to
+   reach the previous evening. #}
+{% if npc_uuid and npc_uuid != 0 %}
+{% set _filter = [] %}
+{% set _filter = append(_filter, npc_uuid) %}
+{% set events = get_recent_events(300, _filter) %}
+{% else %}
+{% set events = get_recent_events(40) %}
+{% endif %}
+{% set said = [] %}
+{% for ev in events %}
+{% if existsIn(ev.data, "dialogue") %}
+{% if ev.type == "dialogue" and existsIn(ev.data, "speaker") and existsIn(ev.data, "listener") %}
+{% if (ev.data.speaker == npc_name and ev.data.listener == player.name) or (ev.data.speaker == player.name and ev.data.listener == npc_name) %}
+{% set said = append(said, ev) %}
+{% endif %}
+{% elif ev.type == "dialogue_player_text" or ev.type == "dialogue_player_stt" %}
+{% if not existsIn(ev.data, "listener") or ev.data.listener == npc_name %}
+{% set said = append(said, ev) %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endfor %}
+{# ── WATERMARK ─────────────────────────────────────────────────────────────
+   npc_since_sec is the absolute game-seconds of the previous assessment, or 0
+   for "everything". Without it the same conversation is re-scored every cycle:
+   Hermir drew +40 three times for one exchange on 2026-07-30.
+
+   FALLBACK IS DELIBERATE. The filter assumes ev.gameTime shares an epoch with
+   Utility.GetCurrentGameTime(), which is plausible but was never verified. If
+   that is wrong the filter silently empties the window and conversational
+   scoring dies quietly - the exact failure this project keeps hitting. So if
+   filtering empties a list that was NOT empty, we keep the unfiltered list and
+   render a visible marker, which turns a silent kill into a loud degrade you
+   can find in openrouter_input.log. #}
+{# NO FALLBACK. An empty filtered list means NOTHING NEW WAS SAID, and the right
+   answer to that is "Nothing has passed between them recently" -> NOTHING -> no
+   award. This block used to fall back to the unfiltered window whenever the
+   filter matched nothing, as a hedge against ev.gameTime not sharing an epoch
+   with Utility.GetCurrentGameTime(). That hedge was wrong twice over:
+
+   1. The epoch assumption is CORRECT - proven when Hermir's run rendered
+      "Only what has been said since..." over a properly narrowed window.
+   2. "Filter matched nothing" is overwhelmingly the ORDINARY case - a follower
+      who simply has not spoken to him lately - not an epoch failure. So the
+      hedge fired constantly and re-showed her whole history.
+
+   Cost: Nicollette was awarded REAL +40 three separate times for the identical
+   exchange, her dialogue being two game days older than her watermark.
+
+   Failing the other way is strictly safer. If the epoch ever DOES break, every
+   window renders empty and the model answers NOTHING - an award that never
+   happens, rather than one that repeats forever. Under-scoring is recoverable;
+   silently re-scoring is not. #}
+{% set fresh = [] %}
+{% set watermarked = false %}
+{% if exists("npc_since_sec") and npc_since_sec > 0 %}
+{% for ev in said %}{% if ev.gameTime >= npc_since_sec %}{% set fresh = append(fresh, ev) %}{% endif %}{% endfor %}
+{% set said = fresh %}
+{% set watermarked = true %}
+{% endif %}
+{% if length(said) > 0 %}
+{% if watermarked %}
+(Only what has been said since this was last considered.)
+{% endif %}
+{% for ev in said %}
+[{{ ev.gameTimeStr }}] {{ default(ev.data.speaker, player.name) }}: {{ ev.data.dialogue }}
+{% endfor %}
+{% else %}
+Nothing has passed between them recently.
+{% endif %}
+
+{# Memories CANNOT be watermarked - get_relevant_memories returns no timestamp
+   of any kind, only summary/details/emotion/tags/location/importanceScore. So
+   they are gated INDIRECTLY: they render only when there is fresh material for
+   them to contextualise.
+
+   Without that gate they are a hole straight through the watermark. With the
+   dialogue and diary filters now strict, a quiet stretch renders "Nothing has
+   passed between them recently" - and an ungated memory block sitting under it
+   would still hand the model something old and quotable to score. Memories are
+   background on WHO THEY ARE, never the event being judged, so with no new event
+   there is nothing for them to be background to.
+
+   The diary is computed here, ABOVE this block, purely so its emptiness can be
+   tested. It still RENDERS below, last and closest to the question, because
+   position is priority. #}
+{% set diaries = get_diary_entries(npc_uuid, 3) %}
+{% set dfresh = [] %}
+{% set dmarked = false %}
+{% if exists("npc_since_hours") and npc_since_hours > 0 and diaries %}
+{% for e in diaries %}{% if e.age_hours <= npc_since_hours %}{% set dfresh = append(dfresh, e) %}{% endif %}{% endfor %}
+{% set diaries = dfresh %}
+{% set dmarked = true %}
+{% endif %}
+{% set mem = get_relevant_memories(npc_uuid, 4) %}
+{% if mem and length(mem) > 0 and (length(said) > 0 or length(diaries) > 0) %}
+WHAT THEY KEPT — things they have held onto, some of them long before now. Background on them, not a record of this conversation
+{% for m in mem %}
+{# Proven-rendering form, copied from the spark assessor. Emits a bare "()"
+   because m.memory.emotion is truthy-but-blank in practice - cosmetic only, and
+   not worth risking a parse failure that would take the assessor down silently
+   while still returning rc=1. #}
+- {{ m.memory.content }}{% if m.memory.emotion %} ({{ m.memory.emotion }}){% endif %}
+{% endfor %}
+{% endif %}
+
+{# Diary gets the watermark too, and it needs it MORE than dialogue does:
+   get_diary_entries returns the last N regardless of age, so in a QUIET stretch
+   the same three entries are re-read every cycle and the most trusted source
+   becomes the most repeatable one. (In active play they churn on their own -
+   this is a low-activity bug, not a high-activity one.)
+
+   Filtered on age_hours, which is RELATIVE, against npc_since_hours, which is
+   also relative - so unlike the event filter above this needs no assumption
+   about a shared epoch. That is why the diary is gated on age_hours rather
+   than entry_date. Same non-empty fallback for the same reason. #}
+{# diaries/dmarked were computed above the memories block so its emptiness could
+   gate them. Same strictness as the dialogue filter and for the same reason: an
+   entry written before the last assessment has already been weighed, and no
+   fallback, so if nothing new was written no diary block renders at all. Her
+   profile, ardor and authored WHY still carry the calibration context. #}
+{% if diaries and length(diaries) > 0 %}
+THEIR OWN ACCOUNT, IN PRIVATE — the least guarded source, and the one to trust most
+{% if dmarked %}
+(Written since this was last considered.)
+{% endif %}
+{% for e in diaries %}
+[{{ e.entry_date_str }}] {{ e.content }}{% if e.emotion %} ({{ e.emotion }}){% endif %}
+{% endfor %}
+{% endif %}
+
+Read these three against each other, and where they disagree believe the private
+one. What they said aloud is what they were willing to risk saying; people go vague
+and non-committal exactly when something matters and they do not yet know it is
+returned. A hedge spoken and a certainty written privately are the same feeling.
+
+Weigh only what appears above. Do not score a conversation you did not read, and do not score something between {{ player.name }} and a third person — other people appear in their profile and memories, and what passed between those two is not what passed between {{ npc_name }} and {{ player.name }}.
+
+**A line where {{ npc_name }} addresses someone by name who is not {{ player.name }} is not part of this conversation, whoever it is labelled as being spoken to.** When several people stand close together their words get attributed to the wrong listener, and a reply they made to a companion can arrive here looking like it was said to {{ player.name }}. Judge it by who they are plainly talking to, not by the label.
+
+WEIGHT — how far this moved them:
+- `NOTHING` — they talked. Nothing changed. **This is the usual answer.**
+- `SMALL` — a flicker. Warmth that registered, a small kindness noticed.
+- `REAL` — something that mattered. Vulnerability offered or met, a kindness that cost {{ player.name }} something, a moment they will think about later.
+- `MAJOR` — the terms between them changed. A boundary moved, something was confessed, something was forgiven that did not have to be.
+- `LANDMARK` — they explicitly and mutually decided to be something new to each other. Rare, and never merely implied.
+
+DIRECTION — `TOWARD` if it drew them closer, `AWAY` if it cost {{ player.name }} ground. Use `TOWARD` when the weight is `NOTHING`.
+
+
+This is the distinction that matters most in the two answers above, and getting it wrong in either direction breaks something.
+
+
+
+And most disagreements are not even that. Couples bicker. People are tired, or frightened, or wrong, and say so badly. `NOTHING` remains the usual answer on a bad day exactly as it is on a good one.
+
+
+`LANDMARK` requires **mutual** agreement — both of them, explicitly, deciding to be something new. One person declaring love is not a `LANDMARK` if the other did not answer.
+
+
+
+{# ── TWO COUNTER-INSTRUCTIONS, placed HERE because position is priority ──────
+   1. render_character_profile("transform", …) emits a block headed "THIS IS WHO
+      YOU ARE ROLEPLAYING AS" - see submodules/character_bio/0010_header.prompt:3,
+      which emits that heading for full/thoughts/transform. In a JUDGEMENT prompt
+      that instruction competes with the answer template, and on gemma-4-12B it
+      intermittently wins: the model replies in character with no WEIGHT: line,
+      FieldValue returns "", and Papyrus logs "verdict: '' - no award". Fourteen
+      such verdicts across seven NPCs by 2026-08-02.
+
+      We cannot switch to a render mode without that heading. dialogue_target
+      drops it, but ALSO drops background, personality, aspirations,
+      relationships, occupation, memories, all 50 sever bioslots, and both of our
+      OWN romantasy submodules - leaving a body with no person in it. The whole
+      judgement is "read it against HER", so the profile stays and the heading
+      gets countered instead.
+
+   2. The familiarity tier. snrom_author_disposition.prompt:102 already
+      disregards it by name; this prompt never did. It twice made Hermir author
+      as NEVER/NONE while her own diary described going to bed with him.
+
+   CAREFUL: WHAT is deliberately written in her voice. The instruction below
+   must forbid REPLYING AS HER INSTEAD OF ANSWERING - not her voice as such, or
+   it contradicts the field it is meant to protect. #}
+**You are not {{ npc_name }}. You are judging them, and you are the only one writing here.**
+
+The profile above is headed as though you were about to play them. That heading belongs to a different task and is not an instruction for this one. Do not answer in character, do not write dialogue, do not narrate their actions. The labelled block below is the entire output. Within it, `WHAT` is phrased in their voice — that is the one place their voice belongs, and it is still your judgement rather than them speaking.
+
+Its "What You Know About" section is generated from a counter of interactions, not from what has actually happened between them. It routinely reports that two people barely know each other while their own diary describes years of intimacy. **Where it disagrees with anything above, it is simply wrong — disregard it.**
+
+Answer in exactly this form and nothing else:
+
+NAME: {{ npc_name }}
+WEIGHT: <NOTHING|SMALL|REAL|MAJOR|LANDMARK>
+ADDRESS: <NONE, unless one of them explicitly set or changed what {{ npc_name }} calls {{ player.name }} in the exchange above>
+DIRECTION: <TOWARD|AWAY>
+WHAT: <if not NOTHING, one sentence in their voice naming the specific thing above that did it — spoken, remembered or written, whichever actually carries it. If NOTHING, write NONE.>

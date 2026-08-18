@@ -1,0 +1,65 @@
+# SNRom — she raises the question of where the two of them stand.
+#
+# Fired by SNRom_Bridge.OpenAsk via SendModEvent, a few seconds before the
+# choice box appears. The box carries only the PLAYER's half of the exchange;
+# this carries hers, so the moment reads as a person asking rather than as the
+# game demanding an answer on her behalf.
+#
+# ── This is an enrichment, never a dependency ────────────────────────────────
+# The box opens on a plain real-time timer (askVoiceSeconds, default 6.0).
+# If this trigger is disabled, the model is slow, or the narration never lands,
+# the consent loop still works exactly as before — the player simply gets the
+# box without a spoken lead-in. Nothing in Papyrus waits on this.
+#
+# ── PER-EVENT FIELDS LIVE UNDER event_json ──────────────────────────────────
+# Her name arrives as `event_json.str_arg`, NOT bare `str_arg`. Written bare,
+# Inja leaves the raw token and the literal placeholder text is emitted into the
+# narration and then stored as a persistent event every NPC reads back — 108 of
+# those accumulated before it was caught on 2026-08-03. `player_name` IS a
+# global and resolves bare, which is exactly how that hid so long.
+# Grep openrouter_input.log for '{{' after touching this file.
+#
+# ── Why str_arg and not sender_name ─────────────────────────────────────────
+# The event is sent from the actor, so sender_* resolves — but sender_form_id is
+# an ActorBase and awkward to turn back into a reference, as the tier trigger
+# documents. str_arg carries the display name directly and renders identically.
+
+name: "snrom_question_raised"
+description: "A follower who has reached the point of asking is raising, in her own words, where she and the player stand."
+
+eventCriteria:
+  eventType: "mod_event"
+  schemaConditions:
+    - fieldPath: "event_name"
+      operator: "equals"
+      value: "SNRom_QuestionRaised"
+      caseSensitive: true
+
+response:
+  type: "direct_narration"
+  content: |
+    {{ event_json.str_arg }} has decided to ask {{ player_name }} where the two of
+    them actually stand. Give the moment she asks it — a line or two in her own
+    voice, and the smallest amount of staging around it.
+
+    How she asks is entirely a matter of who she is. Someone forward asks
+    plainly and holds eye contact. Someone guarded circles it, or asks it badly,
+    or asks it while looking at something else. Someone who has been hurt before
+    may make it easy to refuse on purpose. Read that from her, not from the fact
+    that the question is being asked.
+
+    Three hard rules:
+    - She ASKS. She does not answer, and she does not tell {{ player_name }} what
+      he feels or what he is about to say.
+    - Do not name a tier, a level, a milestone, a score, or a stance. Nobody in
+      Skyrim thinks in those terms.
+    - Do not resolve it. She has just put the question down between them; it is
+      not hers to pick back up.
+
+    Two or three sentences at the very most.
+
+audience: "everyone"
+enabled: true
+probability: 1.0
+cooldownSeconds: 60
+priority: 8

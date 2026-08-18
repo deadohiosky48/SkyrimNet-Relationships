@@ -1,0 +1,72 @@
+# Romantasy — bond crossed into a new tier.
+#
+# Romantasy fires Romantasy_OnLevelChanged when a follower crosses a tier
+# boundary in either direction. Exactly one of OnLevelChanged / OnPreference
+# fires per action, never both, so this cannot double up with the preference
+# trigger below.
+#
+# ── Deliberately does NOT branch on num_arg ──────────────────────────────────
+# Romantasy documents numArg as "the new level" but describes ranks as 0-5 and
+# GetLevel as returning 1-6, so the event's numbering is ambiguous until it is
+# observed live (Phase 0: get_monitored_events). More importantly, the event
+# carries no *previous* level, so direction (deepened vs. wounded) cannot be
+# derived here at all.
+#
+# So this trigger only says that something shifted. The NPC's bio submodule
+# (0330) reads the authoritative current tier from the faction rank, and recent
+# events supply what just happened — between them the LLM has everything it
+# needs to voice the moment correctly, without this file guessing.
+#
+# ── sender is the base NPC ───────────────────────────────────────────────────
+# sender_form_id is the ActorBase FormID, not the reference. Address the NPC by
+# sender_name; do not try to resolve the ref from the form ID.
+#
+# ── PER-EVENT FIELDS LIVE UNDER event_json. THIS IS NOT OPTIONAL ─────────────
+# WORKFLOW_TRIGGERS.md's table lists `sender_name`, `str_arg`, `num_arg` for
+# mod_event, and those ARE the field names - but they are addressed as
+# `event_json.<field>`, NOT as bare top-level variables. Written bare, Inja does
+# not resolve them and LEAVES THE RAW TOKEN, so the literal placeholder text was
+# emitted into direct_narration, stored as a persistent event, and then read
+# back by every NPC in scene for the rest of the save. 108 of them accumulated
+# before it was noticed on 2026-08-03.
+#
+# `player_name` is a GLOBAL and does resolve bare, which is exactly why this hid
+# so long: half the line rendered correctly. Confirmed against the artifact -
+# the event_json form appears 0 times unrendered across all installed mods,
+# while the bare forms appear only as dead literals.
+#
+# An unrendered token is SILENT: no warning, no log line, valid YAML, and the
+# trigger still fires. Grep openrouter_input.log for '{{' after touching any
+# trigger - that is the only thing that catches it.
+
+name: "romantasy_tier_changed"
+description: "A follower's romantic bond with the player has crossed into a new tier, up or down."
+
+eventCriteria:
+  eventType: "mod_event"
+  schemaConditions:
+    - fieldPath: "event_name"
+      operator: "equals"
+      value: "Romantasy_OnLevelChanged"
+      caseSensitive: true
+
+response:
+  type: "direct_narration"
+  content: |
+    Something between {{ event_json.sender_name }} and {{ player_name }} has just moved to a
+    different footing — the way it does after a stretch of shared road finally
+    adds up to something, or after a hurt that does not undo itself.
+
+    Give {{ event_json.sender_name }}'s reaction in one short beat. A look held too long, a
+    sentence started and abandoned, a hand that does or does not reach. Whether
+    this is a warming or a wounding should be obvious from what has just been
+    happening between them — read it from that, not from ceremony.
+
+    Do not name a tier, a level, or a milestone. Nobody in Skyrim thinks in
+    those terms. One or two sentences at most.
+
+audience: "nearby_npcs"
+enabled: true
+probability: 1.0
+cooldownSeconds: 120
+priority: 7

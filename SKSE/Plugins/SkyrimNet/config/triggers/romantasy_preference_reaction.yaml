@@ -1,0 +1,66 @@
+# Romantasy — a follower reacts to something the player did that they have an
+# opinion about.
+#
+# Fires on Romantasy_OnPreference:
+#   str_arg = the activity label (e.g. "Necks Bitten", "Locks Picked")
+#   num_arg = the point change; positive = approval, negative = the opposite
+#
+# ── Throttled hard, on purpose ───────────────────────────────────────────────
+# Romantasy awards on vanilla statistic increments, so a follower with an
+# opinion about ROM_LocksPicked fires this on *every single lockpick*. At
+# probability 1.0 they would comment on the player's entire thieving career.
+#
+# 0.15 / 300s means they speak up roughly once per few minutes of relevant
+# activity — often enough to feel like someone is paying attention, rarely
+# enough that it stays worth hearing. Both values are tunable from the plugin
+# manifest's barks.preferenceChance if this reads wrong in play.
+#
+# Romantasy fires either this or OnLevelChanged for a given action, never both,
+# so a tier crossing will not also produce a preference bark.
+#
+# ── No gender assumed ────────────────────────────────────────────────────────
+# Romantasy's own documentation refers to followers as "she" throughout, but
+# nothing in the system requires it: the factions apply to any actor, and this
+# integration supports any player/follower gender combination. Prompt text must
+# never assume - the sender_name field plus the NPC's own bio carry that, and
+# baking "she" into the instruction would override the character.
+
+name: "romantasy_preference_reaction"
+description: "A follower notices the player doing something they have strong feelings about, one way or the other."
+
+eventCriteria:
+  eventType: "mod_event"
+  schemaConditions:
+    - fieldPath: "event_name"
+      operator: "equals"
+      value: "Romantasy_OnPreference"
+      caseSensitive: true
+
+response:
+  type: "direct_narration"
+  content: |
+    {{ player_name }} has just been occupied with something {{ event_json.sender_name }}
+    has feelings about — {{ event_json.str_arg }}.
+
+    {% if num_arg > 0 %}
+    {{ event_json.sender_name }} approves, and it costs them something to let it show.
+    Give one small beat of it: a remark drier than the warmth behind it, an
+    offer of help, a look that lasts a moment past useful. Nobody makes a
+    speech about a lockpick.
+    {% else %}
+    It sits badly with {{ event_json.sender_name }}. Give one small beat of that: a
+    silence where a comment would go, a flat observation, half a step of
+    distance they may not know they took. No lecture unless that is genuinely
+    who they are.
+    {% endif %}
+
+    One sentence. Match their personality exactly — a mercenary and a temple
+    healer do not disapprove the same way. Use their own voice and their own
+    manner; nothing here presumes anything about who they are. Do not mention
+    points, bonds, or the fact that anyone is keeping score.
+
+audience: "nearby_npcs"
+enabled: true
+probability: 0.15
+cooldownSeconds: 300
+priority: 3

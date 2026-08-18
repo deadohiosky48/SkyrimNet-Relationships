@@ -1,0 +1,66 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# OVERRIDE of SkyrimNet_BakaIntegration v1.9.1 — front_hug.yaml
+#
+# See kiss_love.yaml in this folder for the full rationale. Same gate, lower
+# threshold: Friend (rank 2) rather than Confidant.
+#
+# A hug is not a kiss. Friends embrace on reunions, after bad news, after a
+# fight they both survived — gating it at Confidant would make tracked
+# followers colder than untracked ones, which would be a worse outcome than
+# not gating at all.
+#
+# INSTALL: opt-in. See the project README before deploying.
+# ─────────────────────────────────────────────────────────────────────────────
+name: FrontHug
+description: "The initiator steps forward and pulls the target into a face-to-face embrace, arms\nwrapping around them. This is an intimate, direct form of physical closeness — both\nparties are chest-to-chest and eye-level with each other.\n\nWHEN A CHARACTER WOULD DO THIS:\n- Reunion after separation — relief and warmth\n- Comforting a distressed or grieving target\n- An intimate partner expressing love or longing\n- A dominant character pulling someone close to claim them\n- Celebratory moment — a victory, good news, or shared emotion\n\nPERSONALITY TYPES WHO WOULD DO THIS:\n- Emotionally open and affectionate\n- Protective or nurturing\n- Romantically involved or deeply bonded\n- Dominant but warm — possessive affection rather than aggression\n\nDO NOT USE:\n- As a hostile or aggressive act\n- When no emotional or relational context justifies physical closeness\n- During combat\n\nCONSEQUENCES:\n- Creates a moment of shared intimacy between both actors\n- Strengthens emotional bonds if welcomed\n- May feel intrusive if not desired — character reactions will vary\n"
+questEditorId: SkyrimNet_BakaIntegration
+scriptName: SkyrimNet_BakaIntegration
+executionFunctionName: FrontHug_Execute
+parameterMapping:
+  - type: speaker
+    name: akInitiator
+    description: The NPC pulling the target into a frontal embrace.
+  - type: dynamic
+    name: akTarget
+    description: The person being embraced — player or nearby NPC.
+customCategory: SNBaka_Grab
+enabled: true
+defaultPriority: 2
+eligibilityRules:
+  - conditions:
+      - decoratorName: is_in_combat
+        arguments:
+          - currentActor
+        comparisonOperator: ==
+        expectedValue: false
+  - conditions:
+      - decoratorName: get_faction_rank
+        arguments:
+          - currentActor
+          - SexLabAnimatingFaction
+        comparisonOperator: <
+        expectedValue: 0
+  - conditions:
+      - decoratorName: get_faction_rank
+        arguments:
+          - currentActor
+          - OStimActorCountFaction
+        comparisonOperator: <
+        expectedValue: 0
+  # ── Romantasy gate ─────────────────────────────────────────────────────────
+  # Untracked by Romantasy (rank < 0) OR bonded to at least Friend (>= 2).
+  - conditions:
+      - decoratorName: get_faction_rank
+        arguments:
+          - currentActor
+          - ROM_RomanceLevel
+        comparisonOperator: <
+        expectedValue: 0
+      - decoratorName: get_faction_rank
+        arguments:
+          - currentActor
+          - ROM_RomanceLevel
+        comparisonOperator: ">="
+        expectedValue: 2
+    logicalOperator: OR
+    required: true

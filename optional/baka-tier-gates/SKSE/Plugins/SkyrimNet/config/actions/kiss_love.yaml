@@ -1,0 +1,74 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# OVERRIDE of SkyrimNet_BakaIntegration v1.9.1 — kiss_love.yaml
+#
+# Identical to Baka's file except for the final eligibility rule, which gates
+# this action on Romantasy's bond tier.
+#
+# The gate reads: "not tracked by Romantasy at all, OR tracked and at Confidant
+# or above." An NPC nobody has enrolled behaves exactly as before, so tavern
+# encounters and non-follower NPCs are untouched. An NPC who IS in a tracked
+# romance can't be kissed until the bond has actually got there — which is the
+# whole point of having a ledger.
+#
+# Confidant (rank 3) rather than Lover (rank 4) on purpose: rank 3 is the tier
+# where 0330 describes unspoken tension and a hand on the arm carrying weight.
+# That is exactly where a first kiss belongs. Requiring Lover would mean the
+# bond had to already be consummated before anyone could kiss, which is backwards.
+#
+# INSTALL: this is opt-in. Deploying it creates an intentional Vortex file
+# conflict with Baka Integration — see the project README. It also freezes
+# Baka's v1.9.1 description text, so re-derive it after a Baka update.
+# ─────────────────────────────────────────────────────────────────────────────
+name: KissLove
+description: "The initiator leans in slowly toward the target and kisses them — a two-stage sequence\nmoving from a gentle lean to a deeper, more intimate kiss. Both actors face each other\nat close range. This is a fully consensual, tender act.\n\nWHEN A CHARACTER WOULD DO THIS:\n- A romantic partner expressing affection or desire\n- A character in an intimate relationship marking a special moment\n- Following a meaningful conversation, confession, or shared vulnerability\n- As a farewell, greeting, or expression of deep connection\n- In response to the target saying or doing something emotionally significant\n\nPERSONALITY TYPES WHO WOULD DO THIS:\n- Romantic and emotionally invested\n- Passionate, sensual, or loving\n- Characters who express feelings through physical touch rather than words\n- Confident enough in their relationship to initiate physical contact\n\nDO NOT USE:\n- On strangers or targets with no established closeness\n- As dominance or coercion — use ForcedKiss for non-consensual intent\n- When the context is tense, hostile, or argumentative\n\nCONSEQUENCES:\n- Deepens the emotional and romantic bond between both actors\n- Two-stage animation: slow lean-in followed by deeper kiss\n- Lasting impression on the target — they will remember this moment\n"
+questEditorId: SkyrimNet_BakaIntegration
+scriptName: SkyrimNet_BakaIntegration
+executionFunctionName: KissLove_Execute
+parameterMapping:
+  - type: speaker
+    name: akInitiator
+    description: The NPC leaning in for the kiss.
+  - type: dynamic
+    name: akTarget
+    description: The person being kissed — player or nearby NPC.
+customCategory: SNBaka_Intimate
+enabled: true
+defaultPriority: 2
+eligibilityRules:
+  - conditions:
+      - decoratorName: is_in_combat
+        arguments:
+          - currentActor
+        comparisonOperator: ==
+        expectedValue: false
+  - conditions:
+      - decoratorName: get_faction_rank
+        arguments:
+          - currentActor
+          - SexLabAnimatingFaction
+        comparisonOperator: <
+        expectedValue: 0
+  - conditions:
+      - decoratorName: get_faction_rank
+        arguments:
+          - currentActor
+          - OStimActorCountFaction
+        comparisonOperator: <
+        expectedValue: 0
+  # ── Romantasy gate ─────────────────────────────────────────────────────────
+  # Untracked by Romantasy (rank < 0) OR bonded to at least Confidant (>= 3).
+  - conditions:
+      - decoratorName: get_faction_rank
+        arguments:
+          - currentActor
+          - ROM_RomanceLevel
+        comparisonOperator: <
+        expectedValue: 0
+      - decoratorName: get_faction_rank
+        arguments:
+          - currentActor
+          - ROM_RomanceLevel
+        comparisonOperator: ">="
+        expectedValue: 3
+    logicalOperator: OR
+    required: true

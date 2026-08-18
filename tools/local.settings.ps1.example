@@ -1,0 +1,24 @@
+<#
+    Machine-specific paths. COPY THIS FILE to `local.settings.ps1` and edit.
+
+    `local.settings.ps1` is gitignored and must stay that way - it is the only
+    place in this repository that is allowed to contain absolute paths from a
+    particular workstation. Everything committed refers to these by name.
+
+    Every tool in tools\ reads this. An explicit -SkyrimRoot / -StagingRoot
+    parameter still wins over whatever is set here.
+#>
+@{
+    # Where Skyrim is installed - the folder CONTAINING Data\.
+    SkyrimRoot    = 'C:\SteamLibrary\steamapps\common\Skyrim Special Edition'
+
+    # This mod's Vortex staging folder. Used only by the deploy check, which
+    # verifies project, staging and Data all hold the same artifacts.
+    StagingRoot   = 'C:\Vortex Mods\skyrimse\SkyrimNet Relationships'
+
+    # OPTIONAL. SkyrimNet-Kinship's Papyrus source, used by check.ps1 to prove
+    # the foreign StorageUtil keys we read are actually written by that mod.
+    # Leave blank if you do not have it checked out - the check degrades to a
+    # warning rather than failing, which is the intended behaviour.
+    KinshipSource = ''
+}

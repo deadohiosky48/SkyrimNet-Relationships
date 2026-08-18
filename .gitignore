@@ -1,0 +1,64 @@
+# ---------------------------------------------------------------------------
+# Machine-specific paths.
+#
+# tools/local.settings.ps1 is the ONLY file permitted to contain absolute paths
+# from a particular workstation. Everything committed refers to those by name
+# and resolves them at run time; tools/local.settings.ps1.example shows the
+# shape. Git does not forget, so a path committed once is in every future clone.
+# ---------------------------------------------------------------------------
+/tools/local.settings.ps1
+
+# ---------------------------------------------------------------------------
+# Third-party Papyrus vendored for COMPILATION ONLY.
+#
+# These are other people's mods, kept locally so our scripts can compile against
+# their types. None is our work and none is ours to redistribute:
+#
+#   SkyrimNetApi.psc   SkyrimNet          (MinLL)
+#   MARAS.psc          MARAS              (native SKSE interface)
+#
+# docs/BUILD_PLUGIN.md tells a builder where to get each. A slightly worse
+# first-build experience and a much better licensing position.
+#
+# Romantasy.psc is NOT here: it is our own eleven-line declaration of the five
+# native functions we call, written from Romantasy's public documentation rather
+# than copied from it. Without it nothing compiles.
+# ---------------------------------------------------------------------------
+/src/scripts/SkyrimNetApi.psc
+/src/scripts/MARAS.psc
+
+# ---------------------------------------------------------------------------
+# Compiled Papyrus. Rebuilt from src/scripts by tools/build.ps1, and shipped in
+# release archives rather than tracked - same policy as SkyrimNet-Kinship.
+# ---------------------------------------------------------------------------
+/Scripts/*.pex
+
+# The Creation Kit plugin is a binary built by hand per docs/BUILD_PLUGIN.md.
+# Tracked deliberately: it is 333 bytes, ESL-flagged, and rebuilding it means
+# ten minutes of clicking in the CK rather than running a script.
+!SNRom_Integration.esl
+
+# Build scratch: vanilla sources unpacked from the game's own Scripts.zip, and
+# superseded artifacts. Bethesda's and ours respectively, neither to be tracked.
+/.build/
+
+# ---------------------------------------------------------------------------
+# Documentation held back until the next Romantasy release closes the gaps it
+# describes. Accurate and candid about known defects and unfinished work - but
+# not the first thing a new reader should meet, and some of it describes
+# behaviour that release is expected to change.
+# ---------------------------------------------------------------------------
+/docs/BACKLOG.md
+/docs/ANNOUNCEMENT.md
+/docs/KINSHIP_INTEGRATION_REQUEST.md
+/docs/KINSHIP_INTEGRATION_RESPONSE.md
+/docs/SPEC_parentage_mod.md
+
+# Local scratch, editors, OS
+*.bak
+*.vortex_backup
+*.log
+.vs/
+.vscode/
+Thumbs.db
+desktop.ini

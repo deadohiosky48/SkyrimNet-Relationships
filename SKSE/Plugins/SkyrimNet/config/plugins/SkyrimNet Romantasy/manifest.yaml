@@ -1,0 +1,266 @@
+plugin:
+  name: "SkyrimNet Romantasy"
+  version: "0.1.0"
+  description: "Lets SkyrimNet drive romance through ColdSun's Romantasy framework — organic enrollment, LLM-authored preferences, and bond-aware dialogue."
+  icon: "🥀"
+
+# ── LLM Variants ─────────────────────────────────────────────────────────────
+# DECLARING the variant here is what registers it with SkyrimNet. Until this
+# block existed, snrom_background was hand-written into the live OpenRouter.yaml
+# and nothing knew about it, which caused three symptoms with one root cause:
+#
+#   1. It never appeared on the Models page - that page is built from plugins'
+#      declared variants, not from whatever OpenRouter.yaml happens to contain.
+#   2. It was in NONE of the 16 model presets, while sever_background (declared
+#      by SeverActions) is in all 16 and intel_story_dm in 10 - presets carry
+#      declared variants, so ours could never be picked up.
+#   3. Applying or switching a preset in the UI would therefore DELETE it. Our
+#      settings.yaml still names it, and an unknown variant makes SkyrimNet
+#      return NO RESPONSE - silently, for every assessor and every authoring
+#      call. No error, no log line; the mod simply stops thinking.
+#
+# An empty override falls through to the user's base OpenRouter config, so this
+# changes nothing for anyone who does not touch it. Declaration shape copied
+# from the two working examples: SeverActions and IntelEngine.
+variants:
+  - name: snrom_background
+    description: "Background scoring prompts — disposition authoring, conversational scoring, and romantic spark assessment. These fire on a timer rather than in live conversation, so latency does not matter, but they must produce a strict labelled format from a long prompt. Prefer LOW temperature and a generous timeout and token budget over speed; format drift and truncation are this mod's two historical failure modes. Structured outputs must be OFF - JSON mode returns quoted keys that the parser discards as truncated."
+
+# NOTE: SkyrimNet plugin manifests DO NOT support dotted paths. Each dotted
+# path collapses to its final segment and later ones overwrite earlier ones -
+# our five log.* fields all became a single "coalesceWindowSeconds". Verified
+# against SeverActions (six llm.* fields -> one "timeout") and Wintersun
+# (dotted ones collapsed, undotted ones all survived). Keys must be flat and
+# unique.
+schema:
+  fields:
+    # ── Point economy ────────────────────────────────────────────────────────
+    # Romantasy needs 2,500 points to reach Spouse, and its own activity ledger
+    # awards 1-3 per action (20 for a full questline). These caps keep an
+    # LLM-awarded emotional beat roughly comparable to clearing a dungeon —
+    # meaningful, but not a shortcut past the shared adventuring.
+    - name: "Max Points Per Award"
+      path: "awardMaxPoints"
+      type: "string"
+      description: "Hard ceiling on a single LLM-awarded bond change, in either direction. The bridge clamps to this regardless of what the model asks for. Default: 75."
+      defaultValue: "75"
+      category: "Point Economy"
+
+    # ── Enrollment ───────────────────────────────────────────────────────────
+    - name: "Automatic Enrollment"
+      path: "enrollmentOrganic"
+      type: "bool"
+      description: "Start tracking a bond automatically when someone becomes a follower. This only begins observing them at Stranger with no points - it does not start a romance. Turn off to work only with followers whose own mod already opted them into Romantasy."
+      defaultValue: true
+      category: "Enrollment"
+
+    # ── Spark ─────────────────────────────────────────────────────────────
+    - name: "Romantic Spark Detection"
+      path: "sparkEnabled"
+      type: "bool"
+      description: "Periodically judge whether a tracked bond has crossed from friendship into romance. Turn off to leave every bond platonic - the tier still rises with shared experience, it simply never reads as love."
+      defaultValue: true
+      category: "Spark"
+
+    # ── Conversation ──────────────────────────────────────────────────────
+    - name: "Conversational Scoring"
+      path: "talkEnabled"
+      type: "bool"
+      description: "Judge periodically whether recent conversation actually moved a follower's feelings, and award or subtract points accordingly. This is what lets talking to someone matter. Turn off to have bonds move only through shared adventuring."
+      defaultValue: true
+      category: "Conversation"
+
+    - name: "Conversation Re-check Interval (hours)"
+      path: "talkCooldownHours"
+      type: "string"
+      description: "Game hours before the same follower's conversations are judged again. Lower means more responsive, at the cost of more LLM calls. Default: 3."
+      defaultValue: "3.0"
+      category: "Conversation"
+
+    - name: "Daily Conversation Cap (points)"
+      path: "talkDailyCap"
+      type: "string"
+      description: "Most points ordinary conversation can move a bond in one game day, so talking cannot be farmed. A tier is 500. Moments where two people explicitly redefine their relationship are exempt. Default: 200."
+      defaultValue: "200"
+      category: "Conversation"
+
+    - name: "Days Between Redefinitions"
+      path: "talkLandmarkDays"
+      type: "string"
+      description: "Game days before a relationship can be explicitly redefined again. A second landmark inside this window is scored as an ordinary major moment instead. Default: 3."
+      defaultValue: "3.0"
+      category: "Conversation"
+
+    - name: "Pause Before the Question Appears (seconds)"
+      path: "askVoiceSeconds"
+      type: "string"
+      description: "Real seconds between a follower raising the question of where you stand and the choice appearing on screen. The pause is there so she asks it in her own words first and the choice is only your half of the exchange. Too short and the box talks over her; too long and it feels detached from what she just said. Set to 0 for the choice with no spoken lead-in. Default: 6."
+      defaultValue: "6.0"
+      category: "Conversation"
+
+    # ── Kinship (optional, SkyrimNet-Kinship) ────────────────────────────────
+    - name: "Never Romance Your Own Children"
+      path: "kinshipBlockRomance"
+      type: "bool"
+      description: "Bars anyone SkyrimNet-Kinship records as your child from the romantic and sexual ladders, whatever their disposition says. Requires SkyrimNet-Kinship to identify them; with that mod absent this setting does nothing at all, because nobody is recorded as your child in the first place. Leave on unless you have a specific reason not to."
+      defaultValue: true
+      category: "Kinship"
+    - name: "Let Personalities Change Over Time"
+      path: "driftEnabled"
+      type: "boolean"
+      description: "Whether a companion's disposition can shift as they live. Someone who swore off commitment can fall in love and stay; someone badly treated can close up. Change requires a sustained pattern, never a single night, and moves one step at a time. Turn off to freeze everyone as they were first written. Default: on."
+      defaultValue: "true"
+      category: "Change Over Time"
+
+    - name: "Game Days Between Reviews"
+      path: "driftMinDays"
+      type: "string"
+      description: "Game days before the same companion's disposition is looked at again. Lower means personalities move faster and cost more LLM calls. Default: 7."
+      defaultValue: "7.0"
+      category: "Change Over Time"
+
+    - name: "Events Required Before a Review"
+      path: "driftMinEvents"
+      type: "string"
+      description: "How much must actually have happened to a companion before their disposition is reviewed at all. Counts every scoring event. This is what stops a quiet month from being read as change, and a companion who has been sitting at home is never reviewed however long they wait. Default: 6."
+      defaultValue: "6"
+      category: "Change Over Time"
+
+    - name: "Days Events Must Span Before a Review"
+      path: "driftMinSpanDays"
+      type: "string"
+      description: "Game days that must separate the first and last thing that happened to a companion before their disposition is reviewed. Exists because six things happening in one evening is still one occasion, and asking whether a pattern has formed when only a moment exists produces an invented answer rather than an honest no. Default: 1."
+      defaultValue: "1.0"
+      category: "Change Over Time"
+    - name: "Days Together Before Romance Can Begin"
+      path: "sparkMinDaysEnrolled"
+      type: "string"
+      description: "Game days a follower must have travelled with you before romance can be judged to have begun at all. Exists because the very first judgement sees her entire history at once and almost always says yes, which turns romance into something that happens on arrival rather than something that grows. Someone the game already records as your spouse or lover skips this wait. Default: 2."
+      defaultValue: "2.0"
+      category: "Spark"
+
+    # ── Seeding ──────────────────────────────────────────────────────────────
+    # Reconstructs a bond that already exists in the save. Only ever raises a
+    # follower to what their recorded history justifies - never lowers anyone,
+    # and never gives points to someone who has already earned more.
+    - name: "Seed Existing Relationships"
+      path: "seedEnabled"
+      type: "bool"
+      description: "Start followers you already have a history with partway up the ladder instead of at Stranger, based on how they actually feel about you, your relationship rank, and whether the game records you as married or engaged. Applies once per follower, including everyone already travelling with you when this was installed. Turn it off before loading if you would rather every bond start from nothing."
+      defaultValue: true
+      category: "Seeding"
+
+    - name: "Most Points a Seed Can Grant"
+      path: "seedMaxPoints"
+      type: "string"
+      description: "Ceiling on the head start any one follower can be given, so no accumulated history can hand out the top of the ladder. Tiers are 500 apart and Spouse is 2500, so the default stops one full tier short. Someone the game records as your actual spouse is exempt and seeds to Spouse regardless - a completed marriage is not history to be weighed, it is the relationship itself. Default: 2000."
+      defaultValue: "2000"
+      category: "Seeding"
+
+    - name: "Points Per Point of Rapport"
+      path: "seedPointsPerRapport"
+      type: "string"
+      description: "How much a follower's SeverActions rapport counts toward their head start. Rapport runs -100 to 100, so the default makes a wholly devoted companion worth about 1500 points - more than being recruited, less than the game recording you as lovers. Rapport competes with relationship rank rather than adding to it; the strongest single piece of evidence wins. This is what separates someone you have genuinely travelled with from someone you hired yesterday, so setting it much lower makes every new companion start in the same place. Set to 0 to ignore rapport entirely. Default: 15."
+      defaultValue: "15.0"
+      category: "Seeding"
+
+    # ── Attraction ───────────────────────────────────────────────────────────
+    # Reads OStim Community Resource's own attraction calculation. Without OCR
+    # installed these do nothing and physical intimacy is gated on the bond
+    # tier alone, which is how this mod behaved before the feed existed.
+    - name: "Use OStim Attraction"
+      path: "attractionEnabled"
+      type: "bool"
+      description: "Let a follower who is written as taking sex casually act on plain physical attraction instead of waiting for the bond to deepen. Reads OStim Community Resource's attraction score; does nothing without it. Note that taking a reading makes OCR assign that NPC a social class and a randomly-chosen taste in adventurers if they have neither - OCR does this itself the first time it looks at them, but turning this off avoids causing it early."
+      defaultValue: true
+      category: "Attraction"
+
+    - name: "Attraction Needed to Skip the Bond"
+      path: "attractionBypassRatio"
+      type: "string"
+      description: "How attractive a follower must find the player before wanting them physically without the bond having deepened first. 1.0 means exactly as attractive as someone of their standing expects. Only applies to followers written as taking sex casually. Early characters sit near 0.7 and established ones clear 2.0, so raise this as the game goes on. Default: 1.5."
+      defaultValue: "1.5"
+      category: "Attraction"
+
+    - name: "Attraction Re-check Interval (hours)"
+      path: "attractionRefreshHours"
+      type: "string"
+      description: "Game hours before a follower's attraction is recalculated. One follower is recalculated per check and the reading is expensive, so low values cost framerate for a number that moves with skills and reputation rather than with events. Default: 24."
+      defaultValue: "24.0"
+      category: "Attraction"
+
+    - name: "Spark Re-check Interval (hours)"
+      path: "sparkCooldownHours"
+      type: "string"
+      description: "Game hours before the same follower is judged again. One follower is judged at a time and only while travelling with you, so this mostly controls how much has to happen between chances. Default: 6."
+      defaultValue: "6.0"
+      category: "Spark"
+
+    - name: "Wait Before Tracking a New Follower (hours)"
+      path: "enrollmentDelayHours"
+      type: "string"
+      description: "Game hours someone must keep travelling with you before the mod starts tracking them at all. Exists because SkyrimNet conversations can make almost anyone a follower by accident, and tracking cannot be undone once it begins. A deliberate companion clears this without noticing; a mistake is usually gone long before it elapses. Default: 2."
+      defaultValue: "2.0"
+      category: "Enrollment"
+
+    - name: "LLM-Authored Preferences"
+      path: "enrollmentLlmPreferences"
+      type: "bool"
+      description: "On enrollment, ask the LLM to author this follower's likes and dislikes from their actual personality. Turn off to use the built-in archetype presets instead."
+      defaultValue: true
+      category: "Enrollment"
+
+    - name: "Enrollment Requires Follower"
+      path: "enrollmentRequireFollower"
+      type: "bool"
+      description: "Only allow enrollment for NPCs currently following the player. Turning this off lets romances begin with settled NPCs, but Romantasy only awards points while an NPC is actively following, so the bond will not move until they join you."
+      defaultValue: true
+      category: "Enrollment"
+
+    # ── Barks ────────────────────────────────────────────────────────────────
+    - name: "Preference Bark Chance"
+      path: "barkPreferenceChance"
+      type: "string"
+      description: "Chance (0.0-1.0) that a follower comments when the player does something they have opinions about. Romantasy fires this on every matching statistic increment, so low values are strongly recommended. Default: 0.15."
+      defaultValue: "0.15"
+      category: "Barks"
+
+    - name: "LLM Variant"
+      path: "llmVariant"
+      type: "string"
+      description: "Which OpenRouter.yaml variant to use for disposition authoring. MUST name a variant that exists in your config - an empty or unknown value silently returns no response. Pick one with generous max_tokens, structured output OFF and reasoning OFF. Default: CharacterProfileGeneration."
+      defaultValue: "DiaryGeneration"
+      category: "Enrollment"
+
+    # ── Logging ──────────────────────────────────────────────────────────────
+    # The ledger is deliberately NOT governed by log level. Balance analysis
+    # needs a complete record from the first save; discovering you needed
+    # DEBUG on only after the playthrough that would have answered the
+    # question is the failure mode this separation exists to prevent.
+    - name: "Log Level"
+      path: "logLevel"
+      type: "string"
+      description: "Diagnostic verbosity in snrom.log. 0 off, 1 error, 2 warn, 3 info, 4 debug (every point delta), 5 trace (full LLM payloads). Default: 3."
+      defaultValue: "3"
+      category: "Logging"
+
+    - name: "Write Romance Ledger"
+      path: "logLedgerEnabled"
+      type: "bool"
+      description: "Record every point change to logs/ledger.jsonl for balance analysis with tools/analyze_romance.py. Independent of log level. Leave on unless you are certain you will never want to tune pacing."
+      defaultValue: true
+      category: "Logging"
+
+    - name: "In-Game Notifications"
+      path: "logNotifications"
+      type: "bool"
+      description: "Show corner notifications for enrollment, point awards, and clamping. Independent of log level. For troubleshooting only."
+      defaultValue: false
+      category: "Logging"
+
+    - name: "Ledger Flush Interval"
+      path: "logFlushEvery"
+      type: "string"
+      description: "Buffer this many ledger entries before writing to disk. Lower is safer against a crash losing the tail; higher is kinder to framerate. Also flushes on tier change, cell change, and save. Default: 25."
+      defaultValue: "25"
+      category: "Logging"

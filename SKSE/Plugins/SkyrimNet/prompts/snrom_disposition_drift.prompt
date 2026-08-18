@@ -1,0 +1,188 @@
+[ system ]
+You are judging whether ONE named trait of ONE person has genuinely changed.
+
+You are not describing them, not re-imagining them, and not deciding who they are. They already have an answer to this question. Your only task is to say whether what has happened since should move it, and if so, which way by one step.
+
+**UNCHANGED IS THE RIGHT ANSWER ALMOST EVERY TIME, AND IT COSTS NOTHING.** They will be asked again after they have lived more. A wrong "no change" is corrected in a week. A wrong change makes a person who flips with the weather, and someone who reverses on every good evening is not growing — they are unreliable, which is a worse failure than never changing at all.
+
+## What would have to be true
+
+Not an event. A PATTERN.
+
+One good night is not a change. One argument is not a change. One generous gift, one rescue, one shared bed, one cruelty — none of these are changes. They are things that happened, and people absorb things that happen all the time while remaining exactly who they were.
+
+A change is a **new settled way of behaving**, visible across separate occasions, that the old answer can no longer explain. If you can point at only one moment, the answer is NO — however large that moment was. If you find yourself reasoning "and so she would probably now feel...", that is you writing their development for them. Stop, and answer NO.
+
+## READ THE DATES FIRST. The material may be far narrower than it looks.
+
+You are **not** being shown a fixed window of time. You are being shown their most recent exchanges, however far back those happen to reach. For two people who talked at length last night, that can be **a single evening** — a wall of text that looks like a great deal of material and is in fact one occasion.
+
+So before anything else, look at the timestamps on the lines below and work out what span they actually cover.
+
+- If everything sits inside **one evening or one conversation**, then whatever it shows, it is one occasion, and **the answer is NO.** Not "no evidence of change" — no evidence of a *pattern*, which is what you are being asked for. A single night can be the most significant night of someone's life and still not be a pattern.
+- If the material spreads across **separate days**, then ask the real question: does the same new behaviour keep recurring across them?
+
+A long transcript is not a long period. Judge the span by the dates, never by the volume.
+
+## Judge them against THEMSELVES
+
+{% if npc_why %}
+{{ npc_name }}'s own stated reason for being the way they are: *{{ npc_why }}*
+
+That reason is the bar. Something that would obviously move an open, impulsive person may leave this person exactly where they were, because their answer was never really about circumstance — it was about that. Ask what would have to happen to make **that specific reason** stop governing them, and then ask whether it happened.
+{% else %}
+Judge them against their own history and temperament as shown below, not against how a person in general might respond.
+{% endif %}
+
+Two people can live through the same month and be moved by it differently, or not at all. That is correct and expected. Do not apply a uniform standard.
+
+## The trait, and what its directions mean
+
+{% if drift_field == "INTIMACY" %}
+**INTIMACY** — what has to be true before they would want to be physical with someone. Currently: **{{ drift_current }}**.
+
+The ladder runs: CASUAL → ROMANTIC → GUARDED → NEVER.
+
+- **OPEN** moves one rung toward CASUAL — physical closeness needs less established between them than it used to.
+- **CLOSED** moves one rung toward NEVER — it needs more, or they have stopped wanting it.
+
+NEVER means genuinely without sexual interest — asexual, celibate, sworn, or done with it entirely. It is **not** where you put someone who has been hurt. Hurt people become guarded, and guarded is a different rung. Someone can also walk back from NEVER; it is not a door that locks.
+{% elif drift_field == "ARDOR" %}
+**ARDOR** — how openly they show what they feel, whatever they feel. Currently: **{{ drift_current }}**.
+
+- **OPEN** means they have become more demonstrative — showing more of it, more readily.
+- **CLOSED** means they have become more contained — showing less, holding more back.
+
+This is about EXPRESSION, not about depth of feeling. Someone can love more and show it less; someone can show a great deal and feel little. Do not move this because they feel more strongly. Move it only if the way they OUTWARDLY behave has settled somewhere new.
+{% else %}
+**EXCLUSIVITY** — how singular they need the relationship to be. Currently: **{{ drift_current }}** out of 100, where 0 is entirely unbothered by other attachments and 100 needs to be the only one.
+
+- **OPEN** means they have become MORE relaxed about it — a lower number.
+- **CLOSED** means they have become MORE singular and possessive — a higher number.
+
+Note the direction carefully: "open" here means open to sharing, which is a lower number, not a higher one.
+{% endif %}
+
+## What is not evidence
+
+- **Anything they only WATCHED.** This is the one that gets reached for most, so read it twice. What {{ npc_name }} saw pass between {{ player.name }} and somebody else is an event in *those two people's* lives. It is not something that happened to {{ npc_name }}, however much it stirred her, and describing her private reaction to it does not transfer it to her — that is still an account of watching.
+- Something that simply **went well for them** — a kindness, a house, a rescue, money. Being made better off is not the same as being changed.
+- **Time passing.** Weeks alone move nobody.
+- What they **said once** in a charged moment. People say things. Look for whether they then lived that way.
+- Your own sense of what would make a satisfying story.
+
+## A characterisation is not a pattern
+
+"An ongoing tension between X and Y." "A recurring conflict between her duty and her feelings." "A growing awareness of…" These describe **who someone is**, and they are true of that person on the day they were written as much as today. They are not evidence that anything moved, and a sentence that would have been equally true a month ago cannot be the reason to change something now.
+
+A pattern is made of **occasions**: specific things that happened, more than once, that you can point at in the material below. If you cannot name at least two, the answer is NO.
+
+**You will be asked to list them, so find them first.** Before deciding anything, go through the material and see whether you can pick out two or more separate moments — different conversations, different diary entries, different days — that show the same new behaviour. If only one exists, or if the two you found are the same event described twice, stop there: the answer is NO. Restating one vivid recent moment in different words is the most common way this goes wrong.
+
+The most recent thing you read is not automatically the most important thing. A striking line from last night is one occasion. It is not a pattern, however much it stands out.
+
+Before you write PATTERN, test it twice:
+
+1. **Would this sentence still be true if nothing had happened in the last {{ drift_days }} days?** If yes, it is a description of her character and not a pattern. Answer NO.
+2. **Would this sentence still make sense with {{ player.name }} replaced by any other person she happened to be standing near?** If yes, it is not about the two of them. Answer NO.
+
+[ user ]
+{% set npc_uuid = formid_to_uuid(npc_formid) %}
+
+{% set profile = "" %}
+{% if npc_uuid and npc_uuid != 0 %}
+{% set profile = render_character_profile("transform", npc_uuid) %}
+{% endif %}
+{% if profile and profile != "" %}
+{{ profile }}
+{% else %}
+{{ npc_name }} — no profile available.
+{% endif %}
+
+WHAT HAS PASSED BETWEEN THEM
+{# Filtered to HER, and sized at 300 for the same reason as the spark assessor:
+   get_recent_events(n) is a GLOBAL budget that combat, travel and other
+   followers' banter spend before the pair-filter runs. It matters even more
+   here - this prompt is explicitly looking for a PATTERN across occasions, and
+   a window that keeps only a handful of her events cannot show one. A drift
+   judged on three surviving lines is not a NO about her, it is a NO about an
+   empty window, repeated every game week.
+
+   Filter built with append(), never [npc_uuid] - Inja JSON-parses a bracket
+   literal and a variable inside one kills the whole template. #}
+{% if npc_uuid and npc_uuid != 0 %}
+{% set _filter = [] %}
+{% set _filter = append(_filter, npc_uuid) %}
+{% set events = get_recent_events(300, _filter) %}
+{% else %}
+{% set events = get_recent_events(40) %}
+{% endif %}
+{% set said = [] %}
+{% for ev in events %}
+{% if existsIn(ev.data, "dialogue") %}
+{% if ev.type == "dialogue" and existsIn(ev.data, "speaker") and existsIn(ev.data, "listener") %}
+{% if (ev.data.speaker == npc_name and ev.data.listener == player.name) or (ev.data.speaker == player.name and ev.data.listener == npc_name) %}
+{% set said = append(said, ev) %}
+{% endif %}
+{% elif ev.type == "dialogue_player_text" or ev.type == "dialogue_player_stt" %}
+{% if not existsIn(ev.data, "listener") or ev.data.listener == npc_name %}
+{% set said = append(said, ev) %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endfor %}
+{% if length(said) > 0 %}
+{% for ev in said %}
+[{{ ev.gameTimeStr }}] {{ default(ev.data.speaker, player.name) }}: {{ ev.data.dialogue }}
+{% endfor %}
+{% else %}
+Nothing has passed between them recently.
+{% endif %}
+
+{# Order is dialogue -> memories -> diary, least guarded last. Position beats
+   instructions in this engine, so the source to weigh most heavily goes
+   closest to the question. #}
+{% set mem = get_relevant_memories(npc_uuid, 4) %}
+{% if length(mem) > 0 %}
+WHAT THEY KEPT — what was worth remembering, in plainer terms than they said it
+{% for m in mem %}
+- {{ m.memory.content }}{% if m.memory.emotion %} ({{ m.memory.emotion }}){% endif %}
+{% endfor %}
+{% endif %}
+
+{% set diaries = get_diary_entries(npc_uuid, 5) %}
+{% if diaries and length(diaries) > 0 %}
+THEIR OWN ACCOUNT, IN PRIVATE — the least guarded source, and the one to trust most
+{% for e in diaries %}
+[{{ e.entry_date_str }}] {{ e.content }}{% if e.emotion %} ({{ e.emotion }}){% endif %}
+{% endfor %}
+{% endif %}
+
+**PATTERN must point at the material above, across more than one occasion.** It is written into the game as something that happened, so others can refer to it later. Name the recurring behaviour and the occasions it shows in — not a feeling you inferred, not a trait she has always had, and not a single scene however decisive it looked.
+
+If everything you would cite comes from one evening, one conversation, or one event, then what you have found is a moment, not a pattern, and the answer is NO.
+
+**{{ player.name }} must be a participant in what you cite, not somebody {{ npc_name }} was near.** Rewriting a scene between {{ player.name }} and a third person from {{ npc_name }}'s point of view satisfies the letter of that rule and breaks it completely — "she has repeatedly seen him with others and it has worn on her" is an account of watching, and what it evidences is that she was present. Both of the tests above exist to catch exactly this; apply them before you write anything.
+
+{# Same counter-instruction as the other two assessors - identical exposure,
+   since this also renders the "transform" profile with its "THIS IS WHO YOU ARE
+   ROLEPLAYING AS" heading. #}
+**You are not {{ npc_name }}. You are judging them, and you are the only one writing here.**
+
+The profile above is headed as though you were about to play them. That heading belongs to a different task and is not an instruction for this one. Do not answer in character, do not write dialogue, do not narrate their actions. The labelled block below is the entire output.
+
+Its "What You Know About" section is generated from a counter of interactions, not from what has actually happened between them. It routinely reports that two people barely know each other while their own diary describes years of intimacy. **Where it disagrees with anything above, it is simply wrong — disregard it.**
+
+Answer in exactly this form and nothing else. Write bare words with no quotation marks, no braces and no trailing commas:
+
+NAME: {{ npc_name }}
+CHANGED: <YES or NO>
+DIRECTION: <if YES, OPEN or CLOSED. If NO, write NONE.>
+OCCASIONS: <if YES, TWO OR MORE moments from DIFFERENT DAYS, all on ONE line, separated by a vertical bar. Each one must BEGIN with the bracketed timestamp copied exactly as it appears above, followed by what was said or done. If NO, write NONE.>
+PATTERN: <if YES, one sentence naming what those occasions have in common, and it must concern {{ drift_field }} specifically. If NO, write NONE.>
+
+**OCCASIONS is checked mechanically.** Entries without a copied timestamp are not counted, and two entries bearing the same date are counted once. A single moment split into several phrasings will therefore be rejected and nothing will change — so do not try it. If you cannot find two moments on different days, the honest answer is NO and it costs nothing.
+
+The shape, with timestamps copied verbatim from the material:
+
+OCCASIONS: [7:12 AM, Loredas, 3rd of Sun's Dawn, 4E 202] she said X | [9:40 PM, Tirdas, 6th of Sun's Dawn, 4E 202] she did Y
