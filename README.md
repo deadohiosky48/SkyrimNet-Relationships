@@ -8,6 +8,24 @@ Every companion forms their own opinion of you — and it changes.
 
 > ### ⚠ Beta — read this before installing
 >
+> **Some of what this mod does cannot be undone, and that is why it is beta.**
+>
+> Romantasy stores each companion's likes and dislikes itself and restores its own
+> copy whenever you load. This mod can add to them; **nothing can remove them** —
+> not this mod, not uninstalling, not reverting to an earlier save once they have
+> been written. If a companion is authored with preferences you dislike, they keep
+> those preferences.
+>
+> Uninstalling stops anything new from happening. It does not return a save to the
+> state it was in before. Character data written here lives in the co-save, and
+> applied preferences stay applied.
+>
+> **Use it on a save you are willing to keep it on, and back that save up first.**
+> It will stay beta until Romantasy ships the ability to modify preferences, at
+> which point these become reversible and the label comes off.
+>
+> ---
+>
 > **A companion you recruit does not start scoring until your next game load.**
 >
 > Romantasy reads its follower configuration once, at load. This mod enrolls
