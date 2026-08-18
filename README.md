@@ -101,7 +101,6 @@ passed between you and decides whether it moved anything — usually it did not.
 Pacing lives in code, not in the prompt: daily caps, cooldowns, and a rarity
 limit on the moments where two people redefine what they are.
 
-
 **Lets people change.** Dispositions are reviewed as companions live, and can
 move in either direction — but only on a pattern of behavior across days, never
 on one memorable evening, and only one step at a time. Someone who swore off
@@ -253,7 +252,23 @@ Built on [Romantasy](https://www.nexusmods.com/skyrimspecialedition/mods/186060)
 by ColdSun and [SkyrimNet](https://www.nexusmods.com/skyrimspecialedition/mods/151960)
 by MinLL. Neither is vendored here; both are required separately.
 
-## License
+## License and permissions
 
-MIT — see [LICENSE](LICENSE). Covers this mod's own code and content only; every
-mod it integrates with retains its own license, and none is redistributed here.
+**Source-available, not open source** — see [LICENSE](LICENSE) for the full text.
+
+Freely permitted, no need to ask: use it, modify your own copy, and publish
+patches, add-ons or translations that *require* this mod rather than containing
+it. **Interoperating is expressly permitted and encouraged** — read its
+StorageUtil keys, call its decorators, render its submodules, build a mod that
+depends on it. None of that needs permission.
+
+Ask first for: redistributing it or a substantial part of it, publishing a
+modified version, or including its files in a collection or modpack. Permission
+is usually given quickly; the point is to keep one canonical version so users
+are not split across divergent copies.
+
+Not permitted: commercial use, or presenting the work as your own. Videos,
+streams, guides and reviews are all fine, including monetized ones.
+
+Covers this mod's own code and content only. Every mod it integrates with keeps
+its own terms, and none is redistributed here.

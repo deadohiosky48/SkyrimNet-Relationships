@@ -1,21 +1,99 @@
-MIT License
+Relationships — a SkyrimNet/Romantasy integration mod
+Copyright (c) 2026 deadohiosky48. All rights reserved.
 
-Copyright (c) 2026 deadohiosky48
+This is SOURCE-AVAILABLE software, not open source. The source is published so it
+can be read, learned from, built against and patched. It is not in the public
+domain, and no general right to redistribute it is granted.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+The permissions below are granted to everyone, free of charge, and are not
+withdrawn from anyone who has already relied on them.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+WHAT YOU MAY DO WITHOUT ASKING
+
+1. Use it. Download, install and play with this mod, alone or alongside any other
+   mods, for as long as you like.
+
+2. Modify your own copy. Change any part of it for your own use, including
+   editing prompts, settings and scripts.
+
+3. Publish patches, add-ons and translations that REQUIRE this mod rather than
+   containing it. A compatibility patch, a prompt override, an add-on that reads
+   this mod's data, a translation of its text — all fine, and none of them needs
+   permission. Do not include this mod's own files in your download.
+
+4. Interoperate freely, and without permission. Reading this mod's StorageUtil
+   keys, calling its decorators, rendering its prompt submodules, building
+   against its documented behaviour, or writing a mod that depends on it are all
+   expressly permitted. Interoperating is not copying, and nothing here restricts
+   it. Other authors are encouraged to do exactly this.
+
+5. Fork this repository on GitHub in order to prepare a contribution, report a
+   bug, or read the history.
+
+
+WHAT NEEDS PERMISSION FIRST
+
+6. Redistributing this mod, or a substantial part of it, anywhere — including
+   Nexus, other mod sites, Discord servers, or your own repository releases.
+
+7. Publishing a modified or rebranded version of this mod.
+
+8. Including this mod in a collection, modpack, compilation or mod list that
+   distributes its files rather than linking to them.
+
+Just ask. Permission is usually given, and quickly. The purpose of this clause is
+not to hoard the work — it is to keep one canonical version so that users are not
+split across divergent copies and so that bug reports mean something.
+
+
+WHAT IS NOT PERMITTED
+
+9. Commercial use of any kind. This includes selling it, bundling it with
+   anything sold, putting it behind a paywall or subscription, or gating access
+   to it — including early access — behind payment or donation.
+
+   This does NOT restrict coverage. Videos, streams, screenshots, guides, reviews
+   and written articles featuring this mod are all fine, including monetized
+   ones. Showing the mod is not selling it, and nothing here is intended to
+   discourage anyone from talking about it.
+
+10. Presenting this work, or anything derived from it, as your own.
+
+
+CONTRIBUTIONS
+
+11. By submitting a contribution to this project you grant the copyright holder a
+    perpetual, irrevocable, worldwide, royalty-free right to use, modify and
+    distribute that contribution as part of this project under these terms. You
+    keep the copyright in what you wrote.
+
+
+IF THIS PROJECT IS ABANDONED
+
+12. If the copyright holder cannot be reached through this repository, or any
+    contact given in it, for twelve consecutive months, then permission is
+    granted to fork, maintain and redistribute this mod under these same terms,
+    provided original authorship is credited clearly and the fork does not claim
+    to be the original.
+
+    This is here on purpose. Reserved rights should not mean the work dies if the
+    author moves on.
+
+
+NO WARRANTY
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THIS
+SOFTWARE OR THE USE OR OTHER DEALINGS IN IT.
+
+
+THIRD-PARTY WORK
+
+This covers this mod's own code and content only. It does not extend to
+Romantasy, SkyrimNet, MARAS, SeverActions, OStim Community Resource, or any other
+mod this integrates with. None of them is redistributed here, and each keeps its
+own terms.
