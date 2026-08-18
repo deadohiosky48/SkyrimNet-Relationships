@@ -17,7 +17,7 @@ Usage:
     python analyze_romance.py <ledger.jsonl> [--npc NAME] [--db PATH] [--csv OUT]
 
 Default ledger location:
-    <Skyrim>/Data/SKSE/Plugins/SkyrimNet Romantasy/logs/ledger.jsonl
+    <Skyrim>/Data/SKSE/Plugins/SkyrimNet Relationships/logs/ledger.jsonl
 """
 
 import argparse

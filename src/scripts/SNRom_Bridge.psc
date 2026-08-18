@@ -47,14 +47,14 @@ EndFunction
 String Function CFG() Global
     { SkyrimNet namespaces plugin manifests as "Plugin_<plugin name>" - see
       /config?api=list, which shows "Plugin_SeverActions" and
-      "Plugin_SkyrimNet Romantasy". Reading from "game" silently returns the
+      "Plugin_SkyrimNet Relationships". Reading from "game" silently returns the
       caller's default for every key, so the manifest renders in the dashboard
       and changes nothing. }
-    Return "Plugin_SkyrimNet Romantasy"
+    Return "Plugin_SkyrimNet Relationships"
 EndFunction
 
 String Function LedgerPath() Global
-    Return "Data/SKSE/Plugins/SkyrimNet Romantasy/logs/ledger.jsonl"
+    Return "Data/SKSE/Plugins/SkyrimNet Relationships/logs/ledger.jsonl"
 EndFunction
 
 String Function NL() Global
@@ -64,7 +64,7 @@ String Function NL() Global
 EndFunction
 
 String Function DiagPath() Global
-    Return "Data/SKSE/Plugins/SkyrimNet Romantasy/logs/snrom.log"
+    Return "Data/SKSE/Plugins/SkyrimNet Relationships/logs/snrom.log"
 EndFunction
 
 ; ===========================================================================
@@ -4692,7 +4692,7 @@ Function LogDisposition(String asName, Int aiSuccess, String asRaw, String asOut
         ",\"success\":" + aiSuccess + \
         ",\"outcome\":\"" + asOutcome + "\"" + \
         ",\"raw\":\"" + SNRom_Decorators.JsonEscape(asRaw) + "\"}"
-    MiscUtil.WriteToFile("Data/SKSE/Plugins/SkyrimNet Romantasy/logs/dispositions.jsonl", row + NL(), True, False)
+    MiscUtil.WriteToFile("Data/SKSE/Plugins/SkyrimNet Relationships/logs/dispositions.jsonl", row + NL(), True, False)
 EndFunction
 
 ; ===========================================================================

@@ -134,7 +134,7 @@ inert; nothing errors and no prompt breaks.
 Install with a mod manager, or copy the contents over your `Data` folder.
 `SNRom_Integration.esl` is ESL-flagged and does not consume a load-order slot.
 
-Settings appear in SkyrimNet's plugin panel under **SkyrimNet Romantasy**.
+Settings appear in SkyrimNet's plugin panel under **SkyrimNet Relationships**.
 
 ## Configuration
 

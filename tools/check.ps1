@@ -228,8 +228,8 @@ Section 'Config keys - reachable from manifest AND settings.yaml'
 # ---------------------------------------------------------------------------
 $cfgReads = [regex]::Matches($allSrc, 'GetConfig(?:Int|Bool|Float|String)\s*\([^,]+,\s*"([^"]+)"') |
               ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
-$manifest = Join-Path $cfg 'plugins\SkyrimNet Romantasy\manifest.yaml'
-$settings = Join-Path $data 'SKSE\Plugins\SkyrimNet\config\plugins\SkyrimNet Romantasy\settings.yaml'
+$manifest = Join-Path $cfg 'plugins\SkyrimNet Relationships\manifest.yaml'
+$settings = Join-Path $data 'SKSE\Plugins\SkyrimNet\config\plugins\SkyrimNet Relationships\settings.yaml'
 
 $manifestKeys = @()
 if (Test-Path $manifest) {
@@ -427,7 +427,7 @@ if ($drift -eq 0) { Ok 'deploy' "$($deployables.Count) artifacts identical acros
 Section 'LLM variant - named, present, and preset-durable'
 
 $orPath  = Join-Path $data 'SKSE\Plugins\SkyrimNet\config\OpenRouter.yaml'
-$setPath = Join-Path $data 'SKSE\Plugins\SkyrimNet\config\plugins\SkyrimNet Romantasy\settings.yaml'
+$setPath = Join-Path $data 'SKSE\Plugins\SkyrimNet\config\plugins\SkyrimNet Relationships\settings.yaml'
 if ((Test-Path $orPath) -and (Test-Path $setPath)) {
     $wanted = ((Get-Content $setPath | Where-Object { $_ -match '^\s*llmVariant\s*:' }) -split ':', 2)[1].Trim().Trim('"')
     $orTxt  = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes($orPath))

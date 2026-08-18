@@ -166,7 +166,7 @@ sqv SNRom_Quest
 
 Expect the quest **Running** with the alias filled by the player.
 
-Finally, check `Data\SKSE\Plugins\SkyrimNet Romantasy\logs\snrom.log` for:
+Finally, check `Data\SKSE\Plugins\SkyrimNet Relationships\logs\snrom.log` for:
 
 ```
 Bridge ready. Romantasy build check passed.

@@ -44,9 +44,9 @@ if (-not $SkyrimRoot)  {
 
 $ErrorActionPreference = 'Stop'
 $data     = Join-Path $SkyrimRoot 'Data'
-$settings = Join-Path $data 'SKSE\Plugins\SkyrimNet\config\plugins\SkyrimNet Romantasy\settings.yaml'
-$snrom    = Join-Path $data 'SKSE\Plugins\SkyrimNet Romantasy\logs\snrom.log'
-$ledger   = Join-Path $data 'SKSE\Plugins\SkyrimNet Romantasy\logs\ledger.jsonl'
+$settings = Join-Path $data 'SKSE\Plugins\SkyrimNet\config\plugins\SkyrimNet Relationships\settings.yaml'
+$snrom    = Join-Path $data 'SKSE\Plugins\SkyrimNet Relationships\logs\snrom.log'
+$ledger   = Join-Path $data 'SKSE\Plugins\SkyrimNet Relationships\logs\ledger.jsonl'
 $inlog    = Join-Path $data 'SKSE\Plugins\SkyrimNet\logs\openrouter_input.log'
 $outlog   = Join-Path $data 'SKSE\Plugins\SkyrimNet\logs\openrouter_output.log'
 
