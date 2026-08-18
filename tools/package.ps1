@@ -141,7 +141,12 @@ try {
 
     # --- 8. zip ------------------------------------------------------------
     New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
-    $zip = Join-Path $OutDir "SkyrimNet Relationships-$Version.zip"
+    # HYPHENS, NOT SPACES. GitHub rewrites spaces to dots in release asset names,
+    # so "SkyrimNet Relationships-0.9.0.zip" was published as
+    # "SkyrimNet.Relationships-0.9.0.zip" - a name neither this script nor anyone
+    # reading it chose. Picking the separator here keeps the published filename
+    # identical to the built one.
+    $zip = Join-Path $OutDir "SkyrimNet-Relationships-$Version.zip"
     if (Test-Path $zip) { Remove-Item $zip -Force }
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -CompressionLevel Optimal
 
