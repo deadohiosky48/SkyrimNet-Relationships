@@ -1628,11 +1628,22 @@ String Function VariantName() Global
       model, with generous max_tokens and structured output OFF - structured
       output forces a JSON schema that fights our labeled-line format.
 
+      Prefer a LOW temperature. Every prompt this variant serves emits labeled
+      lines that get parsed, not prose, and creative sampling is how those come
+      back malformed. A variant tuned for diary or dialogue writing - warm, long,
+      high temperature - is the wrong shape for this work even on a large model.
+      Model capability scales up safely; sampling settings do not travel.
+
+      Avoid naming a variant another subsystem owns. This defaulted to
+      DiaryGeneration until 2026-08-19, which meant anyone who made their diary
+      entries warmer or longer silently retuned every assessment this mod makes,
+      with nothing on screen to connect cause to effect.
+
       Deliberately configurable. Variant names, their providers, token limits
       and flags are entirely user-defined, and setups range from OpenRouter to
       several local endpoints on a LAN. There is no value that is right for
       everyone. }
-    Return SkyrimNetApi.GetConfigString(CFG(), "llmVariant", "DiaryGeneration")
+    Return SkyrimNetApi.GetConfigString(CFG(), "llmVariant", "CharacterProfileGeneration")
 EndFunction
 
 Function ClearDisposition(Actor akActor)

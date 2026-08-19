@@ -183,6 +183,12 @@ moments where a relationship is allowed to be redefined, how long two people mus
 travel together before romance can begin at all, whether personalities are
 allowed to change over time and how much must have happened first.
 
+The most consequential single setting is **LLM Variant**, which chooses the model
+serving every background assessment this mod makes. See
+[Diary entries, and which model sees what](docs/DIARY_AND_LLM_ROUTING.md) for
+what to point it at and why — and for how SkyrimNet's automatic diary entries
+work, since this mod leans on them harder than on anything else.
+
 ## Status
 
 **Beta.** The four subsystems — enrollment, authoring, conversational scoring and

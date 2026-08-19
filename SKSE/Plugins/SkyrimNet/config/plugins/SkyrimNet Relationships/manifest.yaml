@@ -228,8 +228,8 @@ schema:
     - name: "LLM Variant"
       path: "llmVariant"
       type: "string"
-      description: "Which OpenRouter.yaml variant to use for disposition authoring. MUST name a variant that exists in your config - an empty or unknown value silently returns no response. Pick one with generous max_tokens, structured output OFF and reasoning OFF. Default: CharacterProfileGeneration."
-      defaultValue: "DiaryGeneration"
+      description: "Which OpenRouter.yaml variant serves ALL of this mod's background LLM work - disposition authoring, conversation scoring, the romance assessment and drift reviews. MUST name a variant that exists in your config: an empty or unknown value silently returns no response. Prefer a LOW-TEMPERATURE variant. These prompts emit labeled lines that get parsed, not prose, and creative sampling is how they come back malformed - a variant tuned for diary or dialogue writing is the wrong shape even on a large model. Also wants generous max_tokens, structured output OFF and reasoning OFF. Avoid naming a variant another subsystem owns, such as DiaryGeneration or memory: retuning it for that subsystem silently retunes this one. Whichever you name may route to a paid provider depending on your OpenRouter.yaml, so if you run local models for background work, point this at one of them. Default: CharacterProfileGeneration."
+      defaultValue: "CharacterProfileGeneration"
       category: "Enrollment"
 
     # ── Logging ──────────────────────────────────────────────────────────────
