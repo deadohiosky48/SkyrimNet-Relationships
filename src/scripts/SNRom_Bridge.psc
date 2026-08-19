@@ -300,9 +300,28 @@ Function SweepFollowers()
       ScanCellNPCs returns Actor[] directly, so unlike ScanCellObjects there
       is no form-type enum to get silently wrong. Radius bounds the cost.
       Anyone further out is picked up the next time they share a cell, and
-      the roster is persistent, so it only has to happen once per follower. }
+      the roster is persistent, so it only has to happen once per follower.
+
+      IgnoreDead is passed FALSE, and the dead check moved into the loop below.
+      A VR user crashed inside PapyrusUtil on 2026-08-19 in the cell walk this
+      call drives: an access violation reading a byte at rdi+0x40 with rdi =
+      0xFFFFFF01, which is a stale entry in the cell's object list rather than
+      anything we passed - the only arguments crossing this boundary are the
+      player and a float. They reported it "after two in-game hours", which is
+      exactly SparkIntervalHours, so it was the first OnUpdateGameTime tick
+      that happened to land in a heavily patched interior.
+
+      IgnoreDead TRUE makes PapyrusUtil evaluate each actor's dead state during
+      that native walk, so it must dereference every entry it finds. FALSE
+      skips that, and a.IsDead() below asks the same question through a
+      VM-validated handle, where a stale pointer cannot reach us. Whether that
+      is sufficient is UNTESTED - none of this reproduces without a VR install -
+      so cellScanEnabled is the off switch for anyone it still crashes. }
+    If SkyrimNetApi.GetConfigBool(CFG(), "cellScanEnabled", True) == False
+        Return
+    EndIf
     Actor player = Game.GetPlayer()
-    Actor[] near = MiscUtil.ScanCellNPCs(player, 6000.0)
+    Actor[] near = MiscUtil.ScanCellNPCs(player, 6000.0, None, False)
     Int scanned = 0
     If near
         scanned = near.Length
@@ -311,7 +330,7 @@ Function SweepFollowers()
     Int i = 0
     While i < scanned
         Actor a = near[i]
-        If a != None && a != player
+        If a != None && a != player && !a.IsDead()
             If IsFollowing(a)
                 followers += 1
                 ; RECENCY STAMP, for BuildCircle's ordering. The author swaps party

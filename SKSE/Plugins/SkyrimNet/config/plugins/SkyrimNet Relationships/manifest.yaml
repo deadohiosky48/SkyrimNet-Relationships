@@ -54,6 +54,13 @@ schema:
       defaultValue: true
       category: "Enrollment"
 
+    - name: "Scan Nearby NPCs For Followers"
+      path: "cellScanEnabled"
+      type: "bool"
+      description: "Periodically look around for followers this mod has not enrolled yet. This is what catches companions recruited before installing, and anyone a follower framework never announced. Turn it OFF if you crash in busy interiors - the scan is handled by PapyrusUtil, and a VR user hit a crash inside it on a heavily patched cell. With it off, people are still enrolled when a follower framework announces them; they are simply not discovered by looking. Default: on."
+      defaultValue: true
+      category: "Enrollment"
+
     # ── Spark ─────────────────────────────────────────────────────────────
     - name: "Romantic Spark Detection"
       path: "sparkEnabled"
