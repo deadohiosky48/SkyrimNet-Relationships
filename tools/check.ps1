@@ -391,13 +391,37 @@ Get-ChildItem $prompts -Filter '*.prompt' -File -Recurse | ForEach-Object {
 Get-ChildItem (Join-Path $cfg 'actions') -Filter '*.yaml' -File -ErrorAction SilentlyContinue | ForEach-Object {
     $deployables += ($_.FullName.Substring($repo.Length + 1))
 }
+function Get-DeployHash([string]$path) {
+    # .pex carries the BUILD MACHINE'S IDENTITY in its header - the compiling
+    # account's username and the computer name - and tools\sanitize-pex.ps1
+    # rewrites both in anything we ship. So a RELEASE build deployed over the dev
+    # one is byte-different in the header and byte-identical in every single
+    # instruction. Comparing whole files reported "Vortex hardlink broken" for
+    # four scripts that were the same program, on 2026-08-19.
+    #
+    # A check that fires on a difference that cannot matter is a check people
+    # learn to scroll past, and this one guards real drift. So hash the BODY:
+    # the header is metadata about who compiled it, the body is the code.
+    $b = [System.IO.File]::ReadAllBytes($path)
+    if ([System.IO.Path]::GetExtension($path) -ne '.pex' -or $b.Length -lt 24 -or
+        -not ($b[0] -eq 0xFA -and $b[1] -eq 0x57 -and $b[2] -eq 0xC0 -and $b[3] -eq 0xDE)) {
+        return (Get-FileHash $path -Algorithm MD5).Hash
+    }
+    $o = 16                     # magic(4) major(1) minor(1) gameID(2) time(8)
+    for ($i = 0; $i -lt 3; $i++) {          # source name, user name, machine name
+        $o += 2 + ((($b[$o] -shl 8) -bor $b[$o + 1]))
+    }
+    $md5 = [System.Security.Cryptography.MD5]::Create()
+    return ([BitConverter]::ToString($md5.ComputeHash($b, $o, $b.Length - $o))).Replace('-','')
+}
+
 $drift = 0
 foreach ($rel in $deployables) {
     $a = Join-Path $repo $rel; $b = Join-Path $StagingRoot $rel; $c = Join-Path $data $rel
     if (-not (Test-Path $b)) { Fail 'deploy' "$rel missing from staging"; $drift++; continue }
     if (-not (Test-Path $c)) { Fail 'deploy' "$rel missing from Data"; $drift++; continue }
-    $ha = (Get-FileHash $a -Algorithm MD5).Hash
-    if ($ha -ne (Get-FileHash $b -Algorithm MD5).Hash) {
+    $ha = Get-DeployHash $a
+    if ($ha -ne (Get-DeployHash $b)) {
         # Staging is deliberately NOT written while Skyrim is running. The
         # 2026-08-07 bugcheck named vlflt.sys - Vortex's boot-start filesystem
         # filter - and hammering the staging tree through it while the game
@@ -409,7 +433,7 @@ foreach ($rel in $deployables) {
         }
         else { Fail 'deploy' "$rel differs project vs staging - UNDEPLOYED"; $drift++ }
     }
-    elseif ($ha -ne (Get-FileHash $c -Algorithm MD5).Hash) { Fail 'deploy' "$rel differs staging vs Data - Vortex hardlink broken"; $drift++ }
+    elseif ($ha -ne (Get-DeployHash $c)) { Fail 'deploy' "$rel differs staging vs Data - Vortex hardlink broken"; $drift++ }
 }
 if ($drift -eq 0) { Ok 'deploy' "$($deployables.Count) artifacts identical across project, staging and Data" }
 
