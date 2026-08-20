@@ -1,6 +1,6 @@
 plugin:
   name: "SkyrimNet Relationships"
-  version: "0.9.2-beta"
+  version: "0.9.3-beta"
   description: "Lets SkyrimNet drive romance through ColdSun's Romantasy framework — organic enrollment, LLM-authored preferences, and bond-aware dialogue."
   icon: "🥀"
 
@@ -41,9 +41,9 @@ schema:
     # meaningful, but not a shortcut past the shared adventuring.
     - name: "Max Points Per Award"
       path: "awardMaxPoints"
-      type: "string"
+      type: "int"
       description: "Hard ceiling on a single LLM-awarded bond change, in either direction. The bridge clamps to this regardless of what the model asks for. Default: 75."
-      defaultValue: "75"
+      defaultValue: 75
       category: "Point Economy"
 
     # ── Enrollment ───────────────────────────────────────────────────────────
@@ -79,30 +79,30 @@ schema:
 
     - name: "Conversation Re-check Interval (hours)"
       path: "talkCooldownHours"
-      type: "string"
+      type: "float"
       description: "Game hours before the same follower's conversations are judged again. Lower means more responsive, at the cost of more LLM calls. Default: 3."
-      defaultValue: "3.0"
+      defaultValue: 3.0
       category: "Conversation"
 
     - name: "Daily Conversation Cap (points)"
       path: "talkDailyCap"
-      type: "string"
+      type: "int"
       description: "Most points ordinary conversation can move a bond in one game day, so talking cannot be farmed. A tier is 500. Moments where two people explicitly redefine their relationship are exempt. Default: 200."
-      defaultValue: "200"
+      defaultValue: 200
       category: "Conversation"
 
     - name: "Days Between Redefinitions"
       path: "talkLandmarkDays"
-      type: "string"
+      type: "float"
       description: "Game days before a relationship can be explicitly redefined again. A second landmark inside this window is scored as an ordinary major moment instead. Default: 3."
-      defaultValue: "3.0"
+      defaultValue: 3.0
       category: "Conversation"
 
     - name: "Pause Before the Question Appears (seconds)"
       path: "askVoiceSeconds"
-      type: "string"
+      type: "float"
       description: "Real seconds between a follower raising the question of where you stand and the choice appearing on screen. The pause is there so she asks it in her own words first and the choice is only your half of the exchange. Too short and the box talks over her; too long and it feels detached from what she just said. Set to 0 for the choice with no spoken lead-in. Default: 6."
-      defaultValue: "6.0"
+      defaultValue: 6.0
       category: "Conversation"
 
     # ── Kinship (optional, SkyrimNet-Kinship) ────────────────────────────────
@@ -114,36 +114,36 @@ schema:
       category: "Kinship"
     - name: "Let Personalities Change Over Time"
       path: "driftEnabled"
-      type: "boolean"
+      type: "bool"
       description: "Whether a companion's disposition can shift as they live. Someone who swore off commitment can fall in love and stay; someone badly treated can close up. Change requires a sustained pattern, never a single night, and moves one step at a time. Turn off to freeze everyone as they were first written. Default: on."
-      defaultValue: "true"
+      defaultValue: true
       category: "Change Over Time"
 
     - name: "Game Days Between Reviews"
       path: "driftMinDays"
-      type: "string"
+      type: "float"
       description: "Game days before the same companion's disposition is looked at again. Lower means personalities move faster and cost more LLM calls. Default: 7."
-      defaultValue: "7.0"
+      defaultValue: 7.0
       category: "Change Over Time"
 
     - name: "Events Required Before a Review"
       path: "driftMinEvents"
-      type: "string"
+      type: "int"
       description: "How much must actually have happened to a companion before their disposition is reviewed at all. Counts every scoring event. This is what stops a quiet month from being read as change, and a companion who has been sitting at home is never reviewed however long they wait. Default: 6."
-      defaultValue: "6"
+      defaultValue: 6
       category: "Change Over Time"
 
     - name: "Days Events Must Span Before a Review"
       path: "driftMinSpanDays"
-      type: "string"
+      type: "float"
       description: "Game days that must separate the first and last thing that happened to a companion before their disposition is reviewed. Exists because six things happening in one evening is still one occasion, and asking whether a pattern has formed when only a moment exists produces an invented answer rather than an honest no. Default: 1."
-      defaultValue: "1.0"
+      defaultValue: 1.0
       category: "Change Over Time"
     - name: "Days Together Before Romance Can Begin"
       path: "sparkMinDaysEnrolled"
-      type: "string"
+      type: "float"
       description: "Game days a follower must have traveled with you before romance can be judged to have begun at all. Exists because the very first judgment sees her entire history at once and almost always says yes, which turns romance into something that happens on arrival rather than something that grows. Someone the game already records as your spouse or lover skips this wait. Default: 2."
-      defaultValue: "2.0"
+      defaultValue: 2.0
       category: "Spark"
 
     # ── Seeding ──────────────────────────────────────────────────────────────
@@ -159,16 +159,16 @@ schema:
 
     - name: "Most Points a Seed Can Grant"
       path: "seedMaxPoints"
-      type: "string"
+      type: "int"
       description: "Ceiling on the head start any one follower can be given, so no accumulated history can hand out the top of the ladder. Tiers are 500 apart and Spouse is 2500, so the default stops one full tier short. Someone the game records as your actual spouse is exempt and seeds to Spouse regardless - a completed marriage is not history to be weighed, it is the relationship itself. Default: 2000."
-      defaultValue: "2000"
+      defaultValue: 2000
       category: "Seeding"
 
     - name: "Points Per Point of Rapport"
       path: "seedPointsPerRapport"
-      type: "string"
+      type: "float"
       description: "How much a follower's SeverActions rapport counts toward their head start. Rapport runs -100 to 100, so the default makes a wholly devoted companion worth about 1500 points - more than being recruited, less than the game recording you as lovers. Rapport competes with relationship rank rather than adding to it; the strongest single piece of evidence wins. This is what separates someone you have genuinely traveled with from someone you hired yesterday, so setting it much lower makes every new companion start in the same place. Set to 0 to ignore rapport entirely. Default: 15."
-      defaultValue: "15.0"
+      defaultValue: 15.0
       category: "Seeding"
 
     # ── Attraction ───────────────────────────────────────────────────────────
@@ -184,30 +184,30 @@ schema:
 
     - name: "Attraction Needed to Skip the Bond"
       path: "attractionBypassRatio"
-      type: "string"
+      type: "float"
       description: "How attractive a follower must find the player before wanting them physically without the bond having deepened first. 1.0 means exactly as attractive as someone of their standing expects. Only applies to followers written as taking sex casually. Early characters sit near 0.7 and established ones clear 2.0, so raise this as the game goes on. Default: 1.5."
-      defaultValue: "1.5"
+      defaultValue: 1.5
       category: "Attraction"
 
     - name: "Attraction Re-check Interval (hours)"
       path: "attractionRefreshHours"
-      type: "string"
+      type: "float"
       description: "Game hours before a follower's attraction is recalculated. One follower is recalculated per check and the reading is expensive, so low values cost framerate for a number that moves with skills and reputation rather than with events. Default: 24."
-      defaultValue: "24.0"
+      defaultValue: 24.0
       category: "Attraction"
 
     - name: "Spark Re-check Interval (hours)"
       path: "sparkCooldownHours"
-      type: "string"
+      type: "float"
       description: "Game hours before the same follower is judged again. One follower is judged at a time and only while traveling with you, so this mostly controls how much has to happen between chances. Default: 6."
-      defaultValue: "6.0"
+      defaultValue: 6.0
       category: "Spark"
 
     - name: "Wait Before Tracking a New Follower (hours)"
       path: "enrollmentDelayHours"
-      type: "string"
+      type: "float"
       description: "Game hours someone must keep traveling with you before the mod starts tracking them at all. Exists because SkyrimNet conversations can make almost anyone a follower by accident, and tracking cannot be undone once it begins. A deliberate companion clears this without noticing; a mistake is usually gone long before it elapses. Default: 2."
-      defaultValue: "2.0"
+      defaultValue: 2.0
       category: "Enrollment"
 
     - name: "LLM-Authored Preferences"
@@ -227,16 +227,21 @@ schema:
     # ── Barks ────────────────────────────────────────────────────────────────
     - name: "Preference Bark Chance"
       path: "barkPreferenceChance"
-      type: "string"
+      type: "float"
       description: "Chance (0.0-1.0) that a follower comments when the player does something they have opinions about. Romantasy fires this on every matching statistic increment, so low values are strongly recommended. Default: 0.15."
-      defaultValue: "0.15"
+      defaultValue: 0.15
       category: "Barks"
 
     - name: "LLM Variant"
       path: "llmVariant"
-      type: "string"
-      description: "Which OpenRouter.yaml variant serves ALL of this mod's background LLM work - disposition authoring, conversation scoring, the romance assessment and drift reviews. MUST name a variant that exists in your config: an empty or unknown value silently returns no response. Prefer a LOW-TEMPERATURE variant. These prompts emit labeled lines that get parsed, not prose, and creative sampling is how they come back malformed - a variant tuned for diary or dialogue writing is the wrong shape even on a large model. Also wants generous max_tokens, structured output OFF and reasoning OFF. Avoid naming a variant another subsystem owns, such as DiaryGeneration or memory: retuning it for that subsystem silently retunes this one. Whichever you name may route to a paid provider depending on your OpenRouter.yaml, so if you run local models for background work, point this at one of them. Default: CharacterProfileGeneration."
-      defaultValue: "CharacterProfileGeneration"
+      type: "select"
+      description: "Which OpenRouter.yaml variant serves ALL of this mod's background LLM work - disposition authoring, conversation scoring, the romance assessment and drift reviews. MUST name a variant that exists in your config: an empty or unknown value silently returns no response. Prefer a LOW-TEMPERATURE variant. These prompts emit labeled lines that get parsed, not prose, and creative sampling is how they come back malformed - a variant tuned for diary or dialogue writing is the wrong shape even on a large model. Also wants generous max_tokens, structured output OFF and reasoning OFF. Avoid naming a variant another subsystem owns, such as DiaryGeneration or memory: retuning it for that subsystem silently retunes this one. Whichever you name may route to a paid provider depending on your OpenRouter.yaml, so if you run local models for background work, point this at one of them. Default: snrom_background, the variant this mod declares and the one shown on the Models page."
+      defaultValue: "snrom_background"
+      options:
+        - snrom_background
+        - CharacterProfileGeneration
+        - AgentDefault
+        - DiaryGeneration
       category: "Enrollment"
 
     # ── Logging ──────────────────────────────────────────────────────────────
@@ -246,9 +251,9 @@ schema:
     # question is the failure mode this separation exists to prevent.
     - name: "Log Level"
       path: "logLevel"
-      type: "string"
+      type: "int"
       description: "Diagnostic verbosity in snrom.log. 0 off, 1 error, 2 warn, 3 info, 4 debug (every point delta), 5 trace (full LLM payloads). Default: 3."
-      defaultValue: "3"
+      defaultValue: 3
       category: "Logging"
 
     - name: "Write Romance Ledger"
@@ -267,7 +272,7 @@ schema:
 
     - name: "Ledger Flush Interval"
       path: "logFlushEvery"
-      type: "string"
+      type: "int"
       description: "Buffer this many ledger entries before writing to disk. Lower is safer against a crash losing the tail; higher is kinder to framerate. Also flushes on tier change, cell change, and save. Default: 25."
-      defaultValue: "25"
+      defaultValue: 25
       category: "Logging"
