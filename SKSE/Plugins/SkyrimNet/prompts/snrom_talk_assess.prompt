@@ -52,6 +52,28 @@ If the two of them, in this conversation, explicitly and mutually agreed to beco
 
 But it must be MUTUAL and it must be EXPLICIT. One proposing it and the other not objecting is not agreement. Accepting a role they were handed is not agreement. If you cannot point to both of them choosing it, it is not that.
 
+{% if maras_present == 1 %}
+WHAT THE WORLD ACTUALLY RECORDS
+{% if npc_married == 1 %}
+{{ npc_name }} and {{ player.name }} are married. This is recorded, not claimed.
+{% else if npc_engaged == 1 %}
+{{ npc_name }} and {{ player.name }} are engaged. This is recorded, not claimed.
+{% else %}
+{{ npc_name }} is not married or engaged to {{ player.name }}.
+{% endif %}
+{% if npc_married == 0 and npc_engaged == 0 and npc_candidate == 0 %}
+No marriage between them is possible yet — {{ npc_name }} is not a recognised candidate for it.
+{% endif %}
+{% if player_spouse_count >= 1 %}
+{{ player.name }} already has {{ player_spouse_count }} recorded spouse or spouses.
+{% if get_global_value("TTM_EnablePolygamyToggle") != 1.0 %}
+Taking another is not permitted, so no further marriage can happen however the conversation went.
+{% endif %}
+{% endif %}
+
+A WEDDING IS NOT A CONVERSATION. The record above outranks anything either of them said. If they talked about marrying, agreed to marry, or spoke as though it had already happened while the record says otherwise, that is a HOPE or a PLAN. Deciding together to marry can still be the large answer above — wanting it out loud is a real thing to want — but do not score it as a thing that has happened, and do not treat {{ npc_name }} as a wife or spouse when nothing recorded her as one.
+{% endif %}
+
 [ user ]
 {% set npc_uuid = formid_to_uuid(npc_formid) %}
 WHO THEY ARE

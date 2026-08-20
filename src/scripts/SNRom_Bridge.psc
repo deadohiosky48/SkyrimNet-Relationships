@@ -1656,13 +1656,21 @@ String Function VariantName() Global
       Avoid naming a variant another subsystem owns. This defaulted to
       DiaryGeneration until 2026-08-19, which meant anyone who made their diary
       entries warmer or longer silently retuned every assessment this mod makes,
-      with nothing on screen to connect cause to effect.
+      with nothing on screen to connect cause to effect. It then briefly defaulted
+      to CharacterProfileGeneration, which was the same mistake with a politer
+      name - still somebody else's variant.
+
+      The default is snrom_background: the variant this mod DECLARES in its
+      manifest. Declaring it is what puts it on the Models page and what carries
+      it into model presets, so it is the only name that is guaranteed to still
+      exist after a user applies a preset - and the only one whose settings
+      nobody else will retune underneath us.
 
       Deliberately configurable. Variant names, their providers, token limits
       and flags are entirely user-defined, and setups range from OpenRouter to
       several local endpoints on a LAN. There is no value that is right for
       everyone. }
-    Return SkyrimNetApi.GetConfigString(CFG(), "llmVariant", "CharacterProfileGeneration")
+    Return SkyrimNetApi.GetConfigString(CFG(), "llmVariant", "snrom_background")
 EndFunction
 
 Function ClearDisposition(Actor akActor)
@@ -2703,6 +2711,70 @@ EndFunction
 ; surface is entirely native, so every call is a no-op-with-an-error-line when
 ; the DLL is absent - cheap individually, but this runs per follower per seed.
 
+String Function MarasStateLine(Actor akActor) Global
+    { What MARAS believes about this person, for the log only.
+
+      Added after an afternoon spent reconstructing one companion's marital
+      state from a crash log, an OpenRouter transcript and the MARAS source.
+      All of it was one native call away the whole time. Nothing reads this - it
+      exists so the next question of this shape is a grep. }
+    If !MarasPresent() || akActor == None
+        Return ""
+    EndIf
+    String status = "none"
+    If MARAS.IsNPCStatus(akActor, "married")
+        status = "married"
+    ElseIf MARAS.IsNPCStatus(akActor, "engaged")
+        status = "engaged"
+    ElseIf MARAS.IsNPCStatus(akActor, "candidate")
+        status = "candidate"
+    EndIf
+    Return " marasStatus=" + status + " playerSpouses=" + MARAS.GetStatusCount("married")
+EndFunction
+
+String Function MarasContext(Actor akActor) Global
+    { The marriage facts, stated rather than inferred, for the three assessors.
+
+      This is the npc_married lesson generalised. Elisif was authored
+      ORIENTATION: WOMEN / BASIS: STATED - the one confidence level allowed to
+      refuse - because the static bio says nothing about who she married, so the
+      model was asked to infer with no evidence and obliged. Papyrus knew all
+      along. The same was true of the talk assessor, which had no marriage
+      vocabulary at all and paid a LANDMARK award for a wedding that had not
+      happened and, with the polygamy quest incomplete, could not happen.
+
+      INTS, NOT STRINGS, for the booleans. A context boolean fed by a String is
+      the case-fold trap in another coat, and check.ps1 fails the build over it.
+
+      npc_married sits OUTSIDE the MARAS guard on purpose: IsMarriedToPlayer
+      reads the vanilla PlayerMarriedFaction first, so a vanilla marriage is
+      still a fact when MARAS is absent.
+
+      WE DO NOT GATE ON ANY OF THIS. Spouse tier is DEPTH, and a shield-sister
+      who will never be a lover has to be able to reach it - gating it on a
+      marriage system would collapse the two tracks back into one ladder. These
+      are facts for the NPC to judge, which is the whole design. }
+    Int present   = 0
+    Int married   = 0
+    Int engaged   = 0
+    Int candidate = 0
+    Int spouses   = 0
+    If IsMarriedToPlayer(akActor)
+        married = 1
+    EndIf
+    If MarasPresent()
+        present = 1
+        If MARAS.IsNPCStatus(akActor, "engaged")
+            engaged = 1
+        EndIf
+        If MARAS.IsNPCStatus(akActor, "candidate")
+            candidate = 1
+        EndIf
+        spouses = MARAS.GetStatusCount("married")
+    EndIf
+    Return ",\"maras_present\":" + present +            ",\"npc_married\":" + married +            ",\"npc_engaged\":" + engaged +            ",\"npc_candidate\":" + candidate +            ",\"player_spouse_count\":" + spouses
+EndFunction
+
 Bool Function MarasPresent() Global
     { GLOBAL and uncached, same reasoning as SeverActionsPresent: a Global has
       no instance state to cache into, and IsPluginInstalled is a cheap native
@@ -2994,7 +3066,7 @@ Bool Function SeedActor(Actor akActor)
         Romantasy.GetPoints(akActor) + " pts, tier " + (Romantasy.GetLevel(akActor) - 1) + \
         " (" + Romantasy.GetLevelName(akActor) + "). rapport=" + rapportNow + \
         " rank=" + akActor.GetRelationshipRank(Game.GetPlayer()) + \
-        " marasAffection=" + affection + " (logged for calibration only, unused)")
+        " marasAffection=" + affection + " (logged for calibration only, unused)" +         MarasStateLine(akActor))
 
     SeedRomanticFlag(akActor)
     Return True
@@ -3330,7 +3402,7 @@ Function AssessTalk(Actor akActor, Float afSince = 0.0)
         ",\"npc_ardor\":\"" + SNRom_Decorators.ArdorWord(StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2)) + "\"" + \
         ",\"npc_why\":\"" + SNRom_Decorators.JsonEscape(StoreGetText(akActor, "Why")) + "\"" + \
         ",\"npc_since_sec\":" + sinceSec + \
-        ",\"npc_since_hours\":" + sinceHours + "}"
+        ",\"npc_since_hours\":" + sinceHours + MarasContext(akActor) + "}"
     Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_talk_assess", VariantName(), ctx, \
         Self, "SNRom_Bridge", "OnTalkAssessed")
     ; Log the SEND, not just the failure. Logging only failures made a
@@ -3681,7 +3753,7 @@ Function AssessSpark(Actor akActor)
     ; of differently hard - the opposite of the point.
     String ctx = "{\"npc_name\":\"" + _sparkName + "\"" + \
         ",\"npc_formid\":" + akActor.GetFormID() + \
-        ",\"npc_ardor\":\"" + SNRom_Decorators.ArdorWord(StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2)) + "\"}"
+        ",\"npc_ardor\":\"" + SNRom_Decorators.ArdorWord(StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2)) + "\"" + MarasContext(akActor) + "}"
     Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_spark_assess", VariantName(), ctx, \
         Self, "SNRom_Bridge", "OnSparkAssessed")
     Diag(LOG_INFO(), "Spark assessment sent for " + _sparkName + " (rc=" + rc + ")")
@@ -4057,7 +4129,7 @@ Function AssessDrift(Actor akActor)
         ",\"drift_field\":\"" + DriftFieldName(_driftField) + "\"" + \
         ",\"drift_current\":\"" + Escape(current) + "\"" + \
         ",\"drift_days\":" + DriftDays() + \
-        ",\"npc_why\":\"" + Escape(StoreGetText(akActor, "Why")) + "\"}"
+        ",\"npc_why\":\"" + Escape(StoreGetText(akActor, "Why")) + "\"" + MarasContext(akActor) + "}"
 
     Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_disposition_drift", VariantName(), ctx, \
         Self, "SNRom_Bridge", "OnDriftAssessed")

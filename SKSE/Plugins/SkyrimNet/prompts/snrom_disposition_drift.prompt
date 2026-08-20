@@ -77,6 +77,12 @@ Note the direction carefully: "open" here means open to sharing, which is a lowe
 
 A pattern is made of **occasions**: specific things that happened, more than once, that you can point at in the material below. If you cannot name at least two, the answer is NO.
 
+{% if maras_present == 1 %}{% if npc_married == 1 %}
+{{ npc_name }} is married to {{ player.name }}. A settled marriage is context for reading the material, not a pattern of change in itself.
+{% else if npc_engaged == 1 %}
+{{ npc_name }} is engaged to {{ player.name }}. An engagement is context for reading the material, not a pattern of change in itself.
+{% endif %}{% endif %}
+
 **You will be asked to list them, so find them first.** Before deciding anything, go through the material and see whether you can pick out two or more separate moments — different conversations, different diary entries, different days — that show the same new behavior. If only one exists, or if the two you found are the same event described twice, stop there: the answer is NO. Restating one vivid recent moment in different words is the most common way this goes wrong.
 
 The most recent thing you read is not automatically the most important thing. A striking line from last night is one occasion. It is not a pattern, however much it stands out.

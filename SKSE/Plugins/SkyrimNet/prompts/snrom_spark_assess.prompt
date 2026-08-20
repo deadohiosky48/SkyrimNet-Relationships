@@ -45,6 +45,12 @@ A stirring in the chest, a lump in the throat, a sudden certainty — these desc
 WHEN THEIR PROFILE ALREADY ANSWERS THIS, BELIEVE IT
 Everything below is for deciding an OPEN question. If their profile already states what they are to {{ player.name }} — lover, spouse, devoted, a parent of their child, bound in some named way — then it is settled and the answer is YES. Say so and name the thing the profile records.
 
+{% if maras_present == 1 %}{% if npc_married == 1 %}
+The world records {{ npc_name }} as married to {{ player.name }}. That is a fact, not an inference from anything written about her, and it settles this question: the answer is YES. Say so and name the marriage as the reason.
+{% else if npc_engaged == 1 %}
+The world records {{ npc_name }} as engaged to {{ player.name }}. That is a fact, not an inference, and it settles this question: the answer is YES.
+{% endif %}{% endif %}
+
 That is not evidence to weigh, it is the established fact of their life, and it is frequently there deliberately. Do not reason past it, and do not discount it because they are written as compliant, submissive or devoted: that is a description of how they love, not a reason to doubt that they do.
 
 The rest of this applies only when nothing establishes the relationship and you must judge it from what has happened.

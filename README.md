@@ -134,9 +134,12 @@ because a refusal that left them one good conversation short of asking again
 would be no refusal at all. The friendship grows again from there, on its own
 terms, and they may raise it once more when there is real ground for it.
 
-**Nothing creeps past the question while it is unanswered.** Depth is held one
-point below Spouse until you have answered, so no companion arrives at
-marriage-eligible by accumulation alone.
+**Nothing creeps past the question while it is unanswered.** The gate is on
+romance, not on depth: a companion who has sparked but whose question you have not
+answered is held just short of marriage-eligible, so nobody arrives there by
+accumulation alone. The points are banked, not lost, and return in full when you
+answer. A purely platonic companion has no question to answer and climbs to the
+top of the ladder freely.
 
 **Spouse is the rung that makes marriage possible.** It is not a claim to be
 married — the proposal itself happens through whatever marriage system you use.
@@ -164,6 +167,9 @@ inert; nothing errors and no prompt breaks.
 | OStim Community Resource | physical attraction as an input, for characters whose disposition allows it to matter |
 | MARAS | marriage and engagement are read as facts rather than judged |
 | [SkyrimNet-Kinship](https://github.com/deadohiosky48/SkyrimNet-Kinship) | your own children are barred from the romantic and sexual ladders |
+
+What this mod reads from MARAS, and why it never gates on it, is written up in
+[Working with M.A.R.A.S](docs/MARAS_INTEGRATION.md).
 
 ## Installation
 
