@@ -1,0 +1,53 @@
+# ELIGIBILITY USES ONLY NATIVE DECORATORS - DELIBERATELY.
+# SkyrimNet evaluates and CACHES action eligibility at startup, ~13 seconds
+# before a quest script's OnInit can call RegisterDecorator. A mod-added
+# decorator referenced here resolves to "not found", is cached false, and the
+# action stays permanently ineligible with no further errors logged.
+# Surveyed all 10 registered decorators across Baka, Player Needs, Playwright,
+# iActions and OStimNet: every one is used in prompts, NONE in eligibility.
+# The real gates (receptivity, orientation, attraction floor) live in Papyrus,
+# where they cannot be cached stale - and where the model cannot route past
+# them either.
+# Deliberate ending. Rare, and it should stay rare.
+#
+# The marker faction is deliberately NOT removed - the NPC keeps their history
+# and stays visible in the Romantasy dashboard. An ended romance is part of the
+# record, not an erasure of it.
+
+customCategory: romance
+name: RomanceEndIt
+description: |
+  Decide that whatever this was between you and {{ player.name }} is over.
+
+  USE ONLY after something that cannot be walked back: a betrayal you will not forgive, cruelty that showed you who they really are, a line crossed that matters to you specifically. Or because you have simply come to know your own mind, and it is not this.
+
+  DO NOT USE for an argument, a bad day, a single slight, or a wound that could heal. Those are RomanceMarkMoment with a negative magnitude. This is the door closing.
+
+  Consider first whether you would still feel this way in a week. If the answer is no, this is the wrong action.
+
+questEditorId: SNRom_Quest
+scriptName: SNRom_Bridge
+executionFunctionName: EndRomance
+
+parameterMapping:
+  - type: speaker
+    name: akActor
+    description: you, the one ending it
+  - type: dynamic
+    name: asReason
+    description: "one specific sentence naming why, in your own voice. Recorded in the player's romance journal."
+
+eligibilityRules:
+  - conditions:
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "ROM_RomanceLevel"]
+        comparisonOperator: ">="
+        expectedValue: 0
+    logicalOperator: "AND"
+    required: true
+
+eventString: "{{ actor.name }} ended things with {{ player.name }}: {{ asReason }}"
+isShortLived: false
+
+enabled: true
+defaultPriority: 1

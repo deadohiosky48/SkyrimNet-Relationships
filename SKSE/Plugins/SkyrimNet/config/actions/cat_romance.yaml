@@ -1,0 +1,36 @@
+# Romance category.
+#
+# These live under a custom category so they do not crowd the top-level action
+# list. Action slots compete for the model's attention - SeverActions disabled
+# its own AdjustRelationship specifically to free one - so three actions behind
+# a category gate is the right footprint for this.
+#
+# ---------------------------------------------------------------------------
+# THIS DESCRIPTION IS A ROUTER, NOT A GATE. Do not put thresholds here.
+#
+# SkyrimNet selects in TWO STAGES: the model picks a category from this one
+# line, and only THEN is it shown the action descriptions. Proven from
+# openrouter_input.log - across 36 consecutive prompts covering banter, a walk,
+# a picnic, shared scenery, a hug, a kiss, an invitation to bed and sex, the
+# string "RomanceBeginSpark" appeared ZERO times, while `SNBaka_Pose`'s
+# PoseKneel appeared as soon as that category was chosen. Every word of
+# RomanceBeginSpark's carefully written threshold was unreachable.
+#
+# The old description ended "Enter only when... not for ordinary friendly
+# conversation", duplicating the action's discouragement at the routing stage.
+# Against SNBaka_Scene, ModifyArousal and ~30 concrete options during a
+# physical scene, an abstract self-limiting blurb loses every time - and losing
+# here means the threshold text is never read at all.
+#
+# So: this line names situations CONCRETELY and errs toward entering. The
+# actual "most followers, most of the time, should never trigger this" strictness
+# stays in RomanceBeginSpark.description, where it is read at the moment of
+# decision, and the unbypassable gates stay in Papyrus (romance_can_begin).
+# Entering this category and then correctly declining costs nothing.
+# ---------------------------------------------------------------------------
+
+customCategory: romance
+actionType: category
+name: Romance
+description: "Marking or ending an EXISTING romance with the player - recording a moment that changed how you feel about them, or deliberately ending things. SELECT THIS when the two of you are already close and something has just deepened or damaged it. Choosing this does not commit you to anything - you will be shown the specific options and may still decline. (Beginning a romance is NOT here: that is the top-level RomanceBeginSpark action.)"
+enabled: true

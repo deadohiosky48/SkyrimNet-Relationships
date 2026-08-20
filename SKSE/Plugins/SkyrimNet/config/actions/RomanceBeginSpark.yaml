@@ -1,0 +1,137 @@
+# ELIGIBILITY USES ONLY NATIVE DECORATORS - DELIBERATELY.
+# SkyrimNet evaluates and CACHES action eligibility at startup, ~13 seconds
+# before a quest script's OnInit can call RegisterDecorator. A mod-added
+# decorator referenced here resolves to "not found", is cached false, and the
+# action stays permanently ineligible with no further errors logged.
+# Surveyed all 10 registered decorators across Baka, Player Needs, Playwright,
+# iActions and OStimNet: every one is used in prompts, NONE in eligibility.
+# The real gates (receptivity, orientation, attraction floor) live in Papyrus,
+# where they cannot be cached stale - and where the model cannot route past
+# them either.
+# Enrollment. Fires once per NPC, ever.
+#
+# The hard gates - already enrolled, not receptive, orientation, attraction
+# floor - all live inside romance_can_begin() in Papyrus, deliberately, so the
+# model cannot reason its way past them. The description below only has to
+# convey the THRESHOLD, not enforce it.
+#
+# Note the honest limitation: Romantasy reads its follower roster at load, so
+# the dashboard and passive activity scoring for this NPC begin on the next
+# load. Authored moments score immediately, and the bridge seeds an opening
+# award, so the bond is never sitting at zero after a real moment.
+
+# DELIBERATELY TOP-LEVEL, NOT UNDER THE `romance` CATEGORY.
+#
+# It lived under the category until 2026-07-28 and NEVER ONCE FIRED, because
+# SkyrimNet selects in two stages: the model picks a category from a one-line
+# blurb, and only then sees action descriptions. Everything below - the whole
+# carefully written threshold - was unreachable at decision time.
+#
+# Proven twice from openrouter_input.log. Trial 1: 36 consecutive Tormir
+# prompts covering banter, a walk, a picnic, shared scenery, a hug, a kiss,
+# an invitation to bed and sex - "RomanceBeginSpark" appeared ZERO times.
+# Trial 2: after rewriting the category blurb to be a pure router, Lynea
+# mutually acknowledged feelings past friendship ("perhaps even more than a
+# friend" / "I'm glad you're thinking of me that way") and it STILL appeared
+# zero times, while the eligibility API confirmed action_eligible=true,
+# action_cached=false for her at that moment. The machinery was never broken;
+# the text simply never arrived.
+#
+# So this one action pays a top-level slot. That is the correct trade: it
+# fires ONCE PER NPC EVER and it is the entry point to the entire mod - an
+# action that cannot be reached is worth less than a slot. MarkMoment and
+# EndIt stay in the category, where they belong: both are post-enrollment, so
+# by the time they matter the player has already demonstrated intent and the
+# model has a reason to look there.
+#
+# See memory: skyrimnet-two-stage-action-selection.
+
+name: RomanceBeginSpark
+# DESCRIPTION MUST STAY ANCHORED TO SPEECH OR BEHAVIOUR. Do not reintroduce
+# "nothing is said aloud".
+#
+# Every dialogue prompt ends with SkyrimNet's own binding guideline:
+#     "Only use an action if it matches what you said, agreed to, or are doing"
+# The original description said "Nothing is said aloud and this is not a
+# declaration" - declaring, in the model's own words, that this action matches
+# neither speech nor behaviour. Under that guideline it was UNSELECTABLE BY
+# CONSTRUCTION, and the model was obeying its instructions by refusing it.
+#
+# That is why it never fired across 39+ prompts and two NPCs, through mutual
+# confessions and sex, with no error anywhere: an action defined as purely
+# internal cannot be chosen by a system that requires outward correspondence.
+#
+# The private, unspoken FEELING is preserved - it is just now tied to the line
+# she actually spoke, which is the half the model can see itself performing.
+description: |
+  Acknowledge that something has changed in how you regard {{ player.name }} - that they are no longer just the person you travel with.
+
+  USE WHEN what you just said or did shows it: admitting you have grown closer than you expected, returning or inviting affection, leaning into them, accepting an embrace or a kiss, sharing a bed, naming feelings that go past friendship, or letting a vulnerable moment stand instead of deflecting it. Saying yes to closeness counts. So does quietly choosing not to hide how you feel.
+
+  DO NOT USE for ordinary friendliness, gratitude, loyalty, or because they are famous, powerful, or generous. Being a good employer is not this.
+
+  Pair this with the line you just spoke: your words are the outward half, this is the inward half finally catching up to them. Once only - it cannot be taken back or repeated.
+
+questEditorId: SNRom_Quest
+scriptName: SNRom_Bridge
+executionFunctionName: BeginSpark
+
+parameterMapping:
+  - type: speaker
+    name: akActor
+    description: you, the one whose regard has shifted
+  - type: dynamic
+    name: asReason
+    description: "one specific sentence naming the moment that did it, in your own voice. Recorded in the player's romance journal, so name the actual thing that happened."
+
+eligibilityRules:
+  # Must be travelling with the player - Romantasy only scores active followers,
+  # so enrolling a settled NPC produces a bond that cannot move.
+  - conditions:
+      - decoratorName: "is_follower"
+        arguments: ["currentActor"]
+        comparisonOperator: "=="
+        expectedValue: true
+    logicalOperator: "AND"
+    required: true
+
+  # Everything else - not already enrolled, receptive at all, orientation,
+  # attraction floor - is folded into this one call.
+  - conditions:
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "ROM_RomanceLevel"]
+        comparisonOperator: "<"
+        expectedValue: 0
+    logicalOperator: "AND"
+    required: true
+
+eventString: "Something shifted in how {{ actor.name }} regards {{ player.name }}: {{ asReason }}"
+isShortLived: false
+
+enabled: true
+
+# Priority 9, raised from 2 on 2026-07-28. Two reasons it was wrong.
+#
+# 1. It was BELOW NORMAL. Every example in WORKFLOW_ACTIONS.md uses 5, and a
+#    survey of the 126 loaded action YAMLs shows 43 of them sitting at 2 -
+#    the crowded bottom tier. This action was competing from below average,
+#    not from a deliberate "be rare" position.
+# 2. Rarity is the WRONG reason to lower priority here. Priority governs how
+#    hard the action competes for the model's attention when it IS relevant;
+#    it is not a firing probability. A once-per-NPC-ever action gets exactly
+#    one chance to be noticed at the right moment, so it should compete
+#    HARDER than a repeatable one, not less.
+#
+# 9 puts it in the same tier as followerleaves, escalate and demandransom -
+# consequential, infrequent, and unmissable when the moment arrives. 10 is
+# left alone (only aggressively_comply uses it).
+#
+# Over-firing is bounded by design and cheap: the description still carries
+# the threshold, and romance_can_begin() in Papyrus is an unbypassable gate
+# that logs "BeginSpark declined" rather than enrolling anyone wrongly.
+#
+# NOT changed, deliberately: RomanceMarkMoment (3) and RomanceEndIt (1).
+# Those are repeatable, so a low priority genuinely is correct - it stops
+# every fond exchange becoming a scored beat. Revisit only if MarkMoment
+# proves too quiet once enrollment actually works. One variable at a time.
+defaultPriority: 9

@@ -391,6 +391,54 @@ Get-ChildItem $prompts -Filter '*.prompt' -File -Recurse | ForEach-Object {
 Get-ChildItem (Join-Path $cfg 'actions') -Filter '*.yaml' -File -ErrorAction SilentlyContinue | ForEach-Object {
     $deployables += ($_.FullName.Substring($repo.Length + 1))
 }
+# ---------------------------------------------------------------------------
+# ANYTHING OF OURS IN Data MUST EXIST IN THE REPO.
+#
+# Every deploy check above compares files that are already tracked, so all of
+# them are blind to a file that was NEVER ADDED. Four action definitions -
+# cat_romance, RomanceMarkMoment, RomanceBeginSpark, RomanceEndIt - sat loose in
+# Data from the first week of development, untracked, and shipped in NO release
+# from 0.9.0 to 0.9.3. RomanceMarkMoment calls itself "the workhorse" in its own
+# header. Players got the background assessors and none of the in-conversation
+# actions, and nothing noticed for four releases: the author's own game had them
+# the whole time, because that is where they were written.
+#
+# So this asks the opposite question to every other check here - not "does what
+# we track still match?" but "is there anything of ours we are not tracking?"
+# ---------------------------------------------------------------------------
+$untracked = @()
+$snTree = Join-Path $data 'SKSE\Plugins\SkyrimNet'
+if (Test-Path $snTree) {
+    Get-ChildItem $snTree -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object {
+            $p = $_.FullName
+            $p -notlike '*\logs\*' -and $p -notlike '*\characters\*' -and
+            $p -notlike '*\original_*' -and $_.Extension -notin '.bak', '.log' -and
+            $_.Name -notlike '*-bak'
+        } |
+        ForEach-Object {
+            $isOurs = $_.Name -match '^snrom' -or $_.Name -match '^cat_romance'
+            if (-not $isOurs -and $_.Length -lt 200KB) {
+                $head = Get-Content $_.FullName -TotalCount 60 -ErrorAction SilentlyContinue
+                if ($head -match 'SNRom_Quest|SNRom_Bridge') { $isOurs = $true }
+            }
+            if ($isOurs) {
+                $rel = $_.FullName.Substring($snTree.Length + 1)
+                $mine = Join-Path $repo (Join-Path 'SKSE\Plugins\SkyrimNet' $rel)
+                if (-not (Test-Path $mine)) { $untracked += $rel }
+            }
+        }
+}
+if ($untracked) {
+    Write-Host ""
+    Write-Host "Ours in Data, absent from the repo - these would never ship" -ForegroundColor Cyan
+    foreach ($u in $untracked) { Fail 'untracked' "$u is ours and is not in the repo - it cannot be packaged" }
+} else {
+    Write-Host ""
+    Write-Host "Ours in Data, absent from the repo - these would never ship" -ForegroundColor Cyan
+    Ok 'untracked' "nothing of ours is missing from the repo"
+}
+
 function Get-DeployHash([string]$path) {
     # .pex carries the BUILD MACHINE'S IDENTITY in its header - the compiling
     # account's username and the computer name - and tools\sanitize-pex.ps1
