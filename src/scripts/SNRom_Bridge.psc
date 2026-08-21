@@ -2830,10 +2830,10 @@ Int Function SeedTarget(Actor akActor)
     ; same ladder, so this reads the game's own answer rather than inventing a
     ; conversion. Shifted down one deliberately: a vanilla Lover seeds to
     ; Confidant, not Lover, so the romance still has somewhere to go afterwards.
-    ; Tiers are confirmed 500 apart, 2500 at Spouse (verified in Romantasy's UI
     ; Tiers are exactly 500 apart, 2500 at Spouse - confirmed by ColdSun on
     ; 2026-08-20, and before that by Romantasy's UI on 2026-08-03 and by Kayla's
     ; seed landing exactly on tier 1.
+    ; ---- RANK 3 IS CONTAMINATED, AND EVERYTHING BELOW LOVER WITH IT --------
     ; Measured over 34 live seeds on 2026-08-10: THIRTY-ONE came back rank 3,
     ; including Alva and Jonna, both recruited the day before and neither
     ; previously known to the player. Follower frameworks set the vanilla rank
