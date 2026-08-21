@@ -6,40 +6,13 @@ Every companion forms their own opinion of you — and it changes.
 
 ---
 
-> ### ⚠ Beta — read this before installing
+> ### Requires Romantasy 1.1.0 or newer
 >
-> **Some of what this mod does cannot be undone, and that is why it is beta.**
->
-> Romantasy stores each companion's likes and dislikes itself and restores its own
-> copy whenever you load. This mod can add to them; **nothing can remove them** —
-> not this mod, not uninstalling, not reverting to an earlier save once they have
-> been written. If a companion is authored with preferences you dislike, they keep
-> those preferences.
->
-> Uninstalling stops anything new from happening. It does not return a save to the
-> state it was in before. Character data written here lives in the co-save, and
-> applied preferences stay applied.
->
-> **Use it on a save you are willing to keep it on, and back that save up first.**
-> It will stay beta until Romantasy ships the ability to modify preferences, at
-> which point these become reversible and the label comes off.
->
-> ---
->
-> **A companion you recruit does not start scoring until your next game load.**
->
-> Romantasy reads its follower configuration once, at load. This mod enrolls
-> people the moment they join you, but Romantasy cannot see that enrollment until
-> the game is loaded again — so for the rest of that session the companion is
-> observed and nothing accrues. Points earned in the gap are rejected rather than
-> banked.
->
-> Nothing is broken and nothing is lost: reload, and they score normally from then
-> on. Recruit, save, reload is the reliable pattern.
->
-> This is the reason for the beta label. ColdSun has a Romantasy release in
-> progress that adds the entry point needed to fix it, at which point this
-> disappears entirely and the change here is one line.
+> Earlier Romantasy versions cannot see a follower enrolled mid-session until the
+> game is reloaded, and cannot remove a preference once it is written. This mod
+> degrades gracefully on them rather than breaking — but two of its central
+> promises, that a companion starts scoring the moment they join you and that an
+> authored character can be corrected, are simply not deliverable there.
 
 ---
 
@@ -150,7 +123,7 @@ This mod's job is making sure you both meant it before you get that far.
 | | |
 |---|---|
 | [SkyrimNet](https://www.nexusmods.com/skyrimspecialedition/mods/151960) | required |
-| [Romantasy](https://www.nexusmods.com/skyrimspecialedition/mods/186060) | required |
+| [Romantasy](https://www.nexusmods.com/skyrimspecialedition/mods/186060) | required — **1.1.0 or newer** |
 | SKSE64 | required |
 | PapyrusUtil SE | required — StorageUtil, JsonUtil, MiscUtil |
 | Papyrus MessageBox ([Nexus 83578](https://www.nexusmods.com/skyrimspecialedition/mods/83578)) | required for the consent prompt; bundled by MARAS |
@@ -197,25 +170,25 @@ work, since this mod leans on them harder than on anything else.
 
 ## Status
 
-**Beta.** The four subsystems — enrollment, authoring, conversational scoring and
-the romantic gate — are built and confirmed working in live play across dozens of
-companions. Disposition drift and the consent prompt are newer and have fewer
-hours on them.
+**Released.** Enrollment, authoring, conversational scoring, the romantic gate,
+disposition drift and the consent prompt are all built and confirmed in live play
+across dozens of companions.
 
 Known limitations, honestly:
 
-- **Enrollment is not live until the next game load.** See the notice at the top.
-  This is the headline caveat and the reason for the beta label.
-- **Preferences are append-only.** Romantasy restores its own copy on load, so a
-  companion's likes and dislikes can be added to but never removed. A re-author
-  only ever adds. Romantasy's next release is expected to change this.
-- **There is no in-game repair tool yet.** If an authored character reads wrong,
+- **Preferences are shared ground, and first writer keeps them.** If another mod
+  or a follower's own author has already given someone likes and dislikes, this
+  mod leaves them alone and authors only the character. It will not overwrite
+  another author's work, and it will not overwrite preferences you have set by
+  hand in Romantasy's own editor.
+- **Preferences do not yet change over time.** They are written once, when a
+  companion is first authored. Dispositions drift; likes and dislikes do not, yet.
+- **There is no in-game repair tool.** If an authored character reads wrong,
   correcting it means the SkyrimNet web API — see Troubleshooting below.
-- **Uninstalling does not fully reverse it.** Preferences already applied stay
-  applied, because Romantasy restores them; the character data this mod writes
-  lives in the co-save. Removing the mod stops anything new from happening, but a
-  save that has run it does not return to a pristine state. Try it on a save you
-  are willing to keep it on.
+- **Uninstalling does not fully reverse it.** The character data this mod writes
+  lives in the co-save, and Romantasy keeps its own record of points and
+  preferences. Removing the mod stops anything new from happening; it does not
+  return a save to the state it was in before.
 
 ## Troubleshooting
 

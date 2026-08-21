@@ -413,7 +413,7 @@ if (Test-Path $snTree) {
         Where-Object {
             $p = $_.FullName
             $p -notlike '*\logs\*' -and $p -notlike '*\characters\*' -and
-            $p -notlike '*\original_*' -and $_.Extension -notin '.bak', '.log' -and
+            $p -notlike '*\original_*' -and $_.Extension -notin '.bak', '.log', '.vortex_backup' -and
             $_.Name -notlike '*-bak'
         } |
         ForEach-Object {

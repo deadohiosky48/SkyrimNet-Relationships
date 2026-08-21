@@ -746,7 +746,6 @@ Int Function LabelToOffset(String asLabel) Global
     EndIf
     Return 0
 EndFunction
-
 ; ===========================================================================
 ; Authored-disposition mappers
 ;

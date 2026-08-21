@@ -24,6 +24,21 @@
 # an ActorBase and awkward to turn back into a reference, as the tier trigger
 # documents. str_arg carries the display name directly and renders identically.
 
+# ── CONTENT IS PROSE, NOT INSTRUCTIONS. THIS IS NOT A STYLE PREFERENCE ───────
+# direct_narration stores `content` VERBATIM as a persistent event, and every NPC
+# in scene reads it back for the rest of the save. Written as stage directions -
+# "Give her reaction in one short beat", "Do not name a tier" - those directions
+# become the stored event, and the model later reproduces them as narration.
+# Observed 2026-08-21: a paragraph of our own instructions turned up in a
+# conversation with an unrelated NPC, attributed to an actor nobody could find,
+# because it was replayed out of event history rather than generated.
+#
+# So: state what happened, in as few words as carry it. Where a constraint
+# matters, encode it as a FACT rather than an order - "and is waiting for his
+# answer" does the work "do not resolve it" used to do, and survives being
+# stored. Short also matters on its own: this text is read by every NPC in scene,
+# forever.
+
 name: "snrom_question_raised"
 description: "A follower who has reached the point of asking is raising, in her own words, where she and the player stand."
 
@@ -38,25 +53,9 @@ eventCriteria:
 response:
   type: "direct_narration"
   content: |
-    {{ event_json.str_arg }} has decided to ask {{ player_name }} where the two of
-    them actually stand. Give the moment she asks it — a line or two in her own
-    voice, and the smallest amount of staging around it.
-
-    How she asks is entirely a matter of who she is. Someone forward asks
-    plainly and holds eye contact. Someone guarded circles it, or asks it badly,
-    or asks it while looking at something else. Someone who has been hurt before
-    may make it easy to refuse on purpose. Read that from her, not from the fact
-    that the question is being asked.
-
-    Three hard rules:
-    - She ASKS. She does not answer, and she does not tell {{ player_name }} what
-      he feels or what he is about to say.
-    - Do not name a tier, a level, a milestone, a score, or a stance. Nobody in
-      Skyrim thinks in those terms.
-    - Do not resolve it. She has just put the question down between them; it is
-      not hers to pick back up.
-
-    Two or three sentences at the very most.
+    {{ event_json.str_arg }} has just asked {{ player_name }} where the two of them
+    actually stand, in her own way and on her own terms, and is waiting for his
+    answer.
 
 audience: "everyone"
 enabled: true

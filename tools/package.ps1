@@ -112,6 +112,7 @@ try {
     New-Item -ItemType Directory -Force -Path $srcOut | Out-Null
     Get-ChildItem (Join-Path $repo 'src\scripts') -Filter 'SNRom_*.psc' -File | Copy-Item -Destination $srcOut
     Get-ChildItem (Join-Path $repo 'src\scripts') -Filter '_labelmap.inc'  -File | Copy-Item -Destination $srcOut
+    Get-ChildItem (Join-Path $repo 'src\scripts') -Filter '_statnames.inc' -File | Copy-Item -Destination $srcOut
 
     # --- 6. documentation --------------------------------------------------
     # README and LICENSE only. Build docs stay in the repo: this package contains

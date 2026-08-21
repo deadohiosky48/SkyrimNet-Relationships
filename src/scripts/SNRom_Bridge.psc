@@ -128,6 +128,17 @@ Function Bootstrap(Bool abForce = False)
     EndIf
 
     _ready = True
+    ; ROMANTASY API LEVEL, read ONCE per session and cached.
+    ;
+    ; Papyrus cannot test whether a native exists. Against Romantasy 1.01 this
+    ; call is unregistered, logs a Papyrus error and returns 0 - and 0 < 3 is
+    ; exactly the answer we want, so the gate bootstraps itself. But every call
+    ; to a missing native writes to Papyrus.0.log, so it must not be per-award.
+    ;
+    ; Held in StorageUtil rather than a script variable because CommitConfig and
+    ; the preference writer are Global and cannot see script state.
+    StorageUtil.SetIntValue(None, "SNRom_RomApi", Romantasy.GetApiVersion())
+    Diag(LOG_INFO(), "Romantasy API level " + RomApi() + " (3 = Romantasy 1.1.0+; below 3 means no live enrollment and no preference removal)")
     ; Arm the spark timer. Safe to call on every bootstrap - a single-update
     ; registration simply replaces any prior one rather than stacking.
     RegisterForSingleUpdateGameTime(SparkIntervalHours())
@@ -185,6 +196,236 @@ EndFunction
 ; The one line that changes when Romantasy ships RefreshFollower
 ; ===========================================================================
 
+; ===========================================================================
+; OffsetToStatName lives HERE, not beside LabelToOffset in SNRom_Decorators,
+; and the reason is not organisational.
+;
+; Papyrus interns strings CASE-INSENSITIVELY, first spelling wins. The label
+; whitelist in SNRom_Decorators stores "ANIMALS KILLED"; putting "Animals
+; Killed" in that same script folded it onto the uppercase form, and the
+; compiled pex returned "ANIMALS KILLED" for forty-eight of the fifty-eight
+; names. Only the ten shorthand-differing ones survived intact - proven by
+; grepping the pex, which is the only place this is visible at all.
+;
+; This script holds none of those uppercase literals, so the canonical names
+; survive compilation. Verify after ANY edit here: the pex must contain
+; "Animals Killed" in title case.
+; ===========================================================================
+
+String Function OffsetToStatName(Int aiOffset) Global
+    { Maps a ROM_ preference faction's plugin-local FormID to the statistic NAME
+      Romantasy.SetPreference expects. GENERATED from CS_Romantasy.esp, from each
+      FACT record's FULL field, so it cannot drift from the records themselves.
+
+      THIS IS NOT _labelmap.inc REVERSED, and that is the whole reason it exists.
+      Ten of our prompt-facing labels are shorthands that are NOT the statistic
+      name: CIVIL WAR COMPLETED is really "Civil War Quests Completed", COMPANIONS
+      COMPLETED is "The Companions Quests Completed". That never mattered while a
+      FormID was the identity and the label only had to be unique among labels.
+      SetPreference matches on the NAME, so reusing the label would fail for
+      exactly those ten and no others - ten silent rejections out of fifty-eight,
+      which would read like a model fault for weeks.
+
+      Returns "" for anything unmapped; callers must treat that as do-not-write. }
+    If aiOffset == 0x801
+        Return "Locations Discovered"
+    ElseIf aiOffset == 0x802
+        Return "Dungeons Cleared"
+    ElseIf aiOffset == 0x803
+        Return "Days Passed"
+    ElseIf aiOffset == 0x804
+        Return "Standing Stones Found"
+    ElseIf aiOffset == 0x805
+        Return "Chests Looted"
+    ElseIf aiOffset == 0x806
+        Return "Skill Increases"
+    ElseIf aiOffset == 0x807
+        Return "Skill Books Read"
+    ElseIf aiOffset == 0x808
+        Return "Barters"
+    ElseIf aiOffset == 0x809
+        Return "Persuasions"
+    ElseIf aiOffset == 0x80A
+        Return "Bribes"
+    ElseIf aiOffset == 0x80B
+        Return "Intimidations"
+    ElseIf aiOffset == 0x80C
+        Return "Diseases Contracted"
+    ElseIf aiOffset == 0x80D
+        Return "Days as a Vampire"
+    ElseIf aiOffset == 0x80E
+        Return "Days as a Werewolf"
+    ElseIf aiOffset == 0x80F
+        Return "Necks Bitten"
+    ElseIf aiOffset == 0x810
+        Return "Vampirism Cures"
+    ElseIf aiOffset == 0x811
+        Return "Werewolf Transformations"
+    ElseIf aiOffset == 0x812
+        Return "Mauls"
+    ElseIf aiOffset == 0x813
+        Return "Quests Completed"
+    ElseIf aiOffset == 0x814
+        Return "Misc Objectives Completed"
+    ElseIf aiOffset == 0x815
+        Return "Main Quests Completed"
+    ElseIf aiOffset == 0x816
+        Return "Side Quests Completed"
+    ElseIf aiOffset == 0x817
+        Return "The Companions Quests Completed"
+    ElseIf aiOffset == 0x818
+        Return "College of Winterhold Quests Completed"
+    ElseIf aiOffset == 0x819
+        Return "Thieves' Guild Quests Completed"
+    ElseIf aiOffset == 0x81A
+        Return "The Dark Brotherhood Quests Completed"
+    ElseIf aiOffset == 0x81B
+        Return "Civil War Quests Completed"
+    ElseIf aiOffset == 0x81C
+        Return "Daedric Quests Completed"
+    ElseIf aiOffset == 0x81D
+        Return "Dawnguard Quests Completed"
+    ElseIf aiOffset == 0x81E
+        Return "Dragonborn Quests Completed"
+    ElseIf aiOffset == 0x81F
+        Return "Questlines Completed"
+    ElseIf aiOffset == 0x820
+        Return "People Killed"
+    ElseIf aiOffset == 0x821
+        Return "Animals Killed"
+    ElseIf aiOffset == 0x822
+        Return "Creatures Killed"
+    ElseIf aiOffset == 0x823
+        Return "Undead Killed"
+    ElseIf aiOffset == 0x824
+        Return "Daedra Killed"
+    ElseIf aiOffset == 0x825
+        Return "Automatons Killed"
+    ElseIf aiOffset == 0x826
+        Return "Critical Strikes"
+    ElseIf aiOffset == 0x827
+        Return "Sneak Attacks"
+    ElseIf aiOffset == 0x828
+        Return "Backstabs"
+    ElseIf aiOffset == 0x829
+        Return "Weapons Disarmed"
+    ElseIf aiOffset == 0x82A
+        Return "Bunnies Slaughtered"
+    ElseIf aiOffset == 0x82B
+        Return "Spells Learned"
+    ElseIf aiOffset == 0x82C
+        Return "Dragon Souls Collected"
+    ElseIf aiOffset == 0x82D
+        Return "Shouts Learned"
+    ElseIf aiOffset == 0x82E
+        Return "Souls Trapped"
+    ElseIf aiOffset == 0x82F
+        Return "Magic Items Made"
+    ElseIf aiOffset == 0x830
+        Return "Weapons Made"
+    ElseIf aiOffset == 0x831
+        Return "Armor Made"
+    ElseIf aiOffset == 0x832
+        Return "Potions Mixed"
+    ElseIf aiOffset == 0x833
+        Return "Poisons Mixed"
+    ElseIf aiOffset == 0x834
+        Return "Locks Picked"
+    ElseIf aiOffset == 0x835
+        Return "Pockets Picked"
+    ElseIf aiOffset == 0x836
+        Return "Items Stolen"
+    ElseIf aiOffset == 0x837
+        Return "Assaults"
+    ElseIf aiOffset == 0x838
+        Return "Murders"
+    ElseIf aiOffset == 0x839
+        Return "Horses Stolen"
+    ElseIf aiOffset == 0x83A
+        Return "Trespasses"
+    EndIf
+    Return ""
+EndFunction
+
+Int Function HeldPreferenceCount(Actor akActor) Global
+    { How many preference factions this actor holds, of ANY kind. Walks the same
+      contiguous 0x801-0x83A range CountHighFrequencyHeld and ClearDisposition
+      use, so there is one enumeration of that range to be wrong about.
+
+      Faction reads rather than GetPreference on purpose: this has to answer on
+      Romantasy 1.01 too, where there is no read API and factions are all there
+      is. }
+    If akActor == None
+        Return 0
+    EndIf
+    Int held = 0
+    Int off = 0x801
+    While off <= 0x83A
+        Faction f = Game.GetFormFromFile(off, "CS_Romantasy.esp") as Faction
+        If f != None && akActor.GetFactionRank(f) >= 0
+            held += 1
+        EndIf
+        off += 1
+    EndWhile
+    Return held
+EndFunction
+
+Bool Function PreferencesAreForeign(Actor akActor) Global
+    { True when this actor already holds preferences THIS MOD did not write.
+
+      WE DO NOT OVERWRITE ANOTHER AUTHOR'S WORK. A custom-follower framework can
+      register its NPCs into Romantasy at runtime and give them the likes and
+      dislikes their author wrote by hand - Troth does exactly this. Those
+      preferences are part of the character somebody designed, and they arrive
+      through the same faction ranks ours do, so nothing distinguishes them at
+      the data level. Whoever writes last would win, and after API 3 that is us,
+      with ClearPreferences.
+
+      Neither existing guard covers this. IsPreferencesManual only catches a
+      player who sealed them in Romantasy's editor. Romantasy's own
+      author-defined rejection only covers followers slaved through plugin
+      records - a runtime AddToFaction produces an `external` follower, the same
+      class as ours, which is provably writable: every SetPreference we made for
+      Silana Petreia succeeded on 2026-08-21.
+
+      So the rule is FIRST WRITER KEEPS IT, decided by evidence rather than by
+      load order. Ours is anything we have authored; everything else is somebody
+      else's. }
+    If akActor == None
+        Return False
+    EndIf
+    ; STICKY, and it has to be. The detection site also sets
+    ; SNRom_DispositionAuthored so we stop pestering the LLM about someone we are
+    ; never going to write - but that flag is what the ours/theirs test below
+    ; reads, so without this line the guard would protect them exactly once and
+    ; then classify them as ours forever. Found before shipping, by asking what
+    ; the SECOND authoring attempt would do.
+    If StorageUtil.GetIntValue(akActor, "SNRom_PrefsForeign", 0) == 1
+        Return True
+    EndIf
+    ; ANY non-zero means WE wrote them. 1 is LLM-authored, 2 is the archetype
+    ; fallback - ApplyArchetype writes preferences directly and marks them 2.
+    ; Testing == 1 would have classified every archetype follower as somebody
+    ; else's work, marked them sticky, and silently stopped us ever authoring
+    ; them. Caught by reading ApplyArchetype rather than assuming the flag was
+    ; a boolean.
+    If StorageUtil.GetIntValue(akActor, "SNRom_DispositionAuthored", 0) > 0
+        Return False
+    EndIf
+    Return HeldPreferenceCount(akActor) > 0
+EndFunction
+
+Int Function RomApi() Global
+    { Romantasy's API level, 0 if it predates GetApiVersion. Cached at bootstrap;
+      see the note there for why it is not read on demand.
+
+      LEVEL 3 IS ROMANTASY 1.1.0 on Nexus. The API level and the Nexus version
+      are different numbers and nothing in either mod states the mapping, so it
+      is written down here: anything below 3 means 1.01 or earlier, where
+      enrollment needs a reload and preferences cannot be removed. }
+    Return StorageUtil.GetIntValue(None, "SNRom_RomApi", 0)
+EndFunction
+
 Bool Function CommitConfig(Actor akActor) Global
     { Makes faction-level configuration (roster membership, preference ranks)
       visible to Romantasy WITHOUT a reload.
@@ -204,8 +445,40 @@ Bool Function CommitConfig(Actor akActor) Global
       to change:
         True  - config is live now
         False - config written, effective next load; caller should notify the
-                player and fall back to interim scoring. }
-    Return False
+                player and fall back to interim scoring.
+
+      API 3 GIVES US THE CALL, and it is not the RefreshFollower above. It is
+      ClearPreferences, which synchronously locates or discovers the actor,
+      mutates its factions, refreshes its cached preferences and returns. It
+      does not wait for RefreshLoadedFollowers, which only runs on dashboard
+      sync, a tracked-stat event or the debug point operation. AutoEnroll adds
+      them to ROM_RomanceLevel immediately before calling this, which satisfies
+      the documented precondition.
+
+      A new enrollee has no preferences, so the clear is a no-op on data and
+      exists only to force that discovery. }
+    If RomApi() < 3
+        Return False
+    EndIf
+    If PreferencesAreForeign(akActor)
+        ; SOMEBODY ELSE AUTHORED THESE. ClearPreferences is our discovery
+        ; mechanism, but an actor who already holds preferences is by definition
+        ; already known to Romantasy - somebody set them - so there is nothing to
+        ; discover and everything to lose. Report not-live; passive discovery
+        ; reaches them on its own schedule.
+        Return False
+    EndIf
+    If Romantasy.IsPreferencesManual(akActor)
+        ; THE PLAYER OWNS THIS ONE'S PREFERENCES, and ClearPreferences is the
+        ; only call we have that forces discovery. Destroying their editing to
+        ; make a log line read True is the wrong trade - report not-live and let
+        ; Romantasy's passive discovery reach them on its own schedule.
+        ; No Diag here - this function is Global and Diag is a member. The
+        ; caller logs the live/not-live outcome; this comment is the record of
+        ; WHY it came back false for a player-managed follower.
+        Return False
+    EndIf
+    Return Romantasy.ClearPreferences(akActor)
 EndFunction
 
 ; ===========================================================================
@@ -1705,6 +1978,9 @@ Function ClearDisposition(Actor akActor)
     StorageUtil.UnsetIntValue(akActor, "SNRom_Ardor")
     StorageUtil.UnsetIntValue(akActor, "SNRom_Exclusivity")
     StorageUtil.SetIntValue(akActor, "SNRom_DispositionAuthored", 0)
+    ; A deliberate reset really resets - otherwise an actor mistakenly marked as
+    ; somebody else's could never be re-adopted without editing the co-save.
+    StorageUtil.UnsetIntValue(akActor, "SNRom_PrefsForeign")
     Diag(LOG_INFO(), "Cleared disposition for " + akActor.GetDisplayName() + \
         " - removed " + removed + " preference factions, character fields unset")
 EndFunction
@@ -4452,6 +4728,33 @@ Event OnDispositionAuthored(String asResponse, Int aiSuccess)
     ; These are RECOGNIZED counts; newLikes/newDislikes are what actually
     ; changed. Falling back on "nothing NEW applied" wrongly discarded a good
     ; response for any already-established NPC.
+    ; THE PLAYER MAY HAVE TAKEN THIS ONE OVER.
+    ;
+    ; Romantasy API 3 carries a per-actor ownership flag its own editor sets when
+    ; a player edits someone's likes and dislikes by hand. The flag covers
+    ; PREFERENCES ONLY, so this skips the preference write and lets the character
+    ; block through - orientation, intimacy, ardor, exclusivity, WHY and LIMIT are
+    ; ours, live in our own store, and his editor never touches them. That split
+    ; already exists here as ReauthorCharacter versus ReauthorDisposition.
+    ;
+    ; We only ever READ this flag. SetPreferencesManual is for a genuine
+    ; player-facing editor, and this mod is the automated authoring the flag
+    ; exists to hold off - setting it would be claiming the player's edits as
+    ; our own.
+    If PreferencesAreForeign(who)
+        Diag(LOG_INFO(), asked + " already holds preferences this mod did not write (" +             HeldPreferenceCount(who) + " of them) - another mod or a follower author " +             "owns them. Left untouched; character fields still authored.")
+        LogDisposition(asked, aiSuccess, asResponse, "foreign-preferences")
+        StorageUtil.SetIntValue(who, "SNRom_PrefsForeign", 1)
+        StorageUtil.SetIntValue(who, "SNRom_DispositionAuthored", 1)
+        Return
+    EndIf
+    If RomApi() >= 3 && Romantasy.IsPreferencesManual(who)
+        Diag(LOG_INFO(), asked + " is player-managed in Romantasy - preferences left alone, " +             "character fields still authored")
+        LogDisposition(asked, aiSuccess, asResponse, "player-managed")
+        StorageUtil.SetIntValue(who, "SNRom_DispositionAuthored", 1)
+        Return
+    EndIf
+
     Int liked    = ApplyPreferenceList(who, likesCsv, 1, 7)
     Int newLikes = _lastApplied
     Int disliked = ApplyPreferenceList(who, SNRom_Decorators.FieldValue(asResponse, "DISLIKES:"), 0, 4)
@@ -4697,6 +5000,18 @@ Int Function ApplyPreferenceList(Actor akActor, String asCsv, Int aiRank, Int ai
     If asCsv == ""
         Return 0
     EndIf
+    ; MIND THE ZERO.
+    ;
+    ; Our aiRank convention is 1 = LIKE and 0 = DISLIKE, and that is what both
+    ; call sites pass. Romantasy's aiDirection uses 0 for REMOVE. Passing aiRank
+    ; straight through to SetPreference would delete every dislike in the game,
+    ; on every authored character, and the only symptom would be characters who
+    ; mysteriously object to nothing. Derived here once so the two conventions
+    ; never meet.
+    Int dir = -1
+    If aiRank == 1
+        dir = 1
+    EndIf
     ; Normalize separators first - a model that copies the catalogue's own
     ; display separator into its answer otherwise yields ONE giant unrecognized
     ; "name". See SNRom_Decorators.NormalizeSeparators.
@@ -4752,19 +5067,42 @@ Int Function ApplyPreferenceList(Actor akActor, String asCsv, Int aiRank, Int ai
                 ElseIf f == None
                     Diag(LOG_ERROR(), "GetFormFromFile failed for '" + label + "' (offset " + offset + \
                         ") - CS_Romantasy.esp not loaded, or ESL indirection failed")
-                ElseIf akActor.GetFactionRank(f) >= 0            ; never overwrite an existing opinion
+                ElseIf RomApi() < 3 && akActor.GetFactionRank(f) >= 0
+                    ; LEGACY PATH ONLY, and the reason this branch existed at all:
+                    ; before API 3 a preference could not be removed across a
+                    ; reload, so an overwrite was a permanent addition rather than
+                    ; a replacement, and not overwriting was the least bad option.
                     Diag(LOG_INFO(), "Kept " + akActor.GetDisplayName() + "'s existing opinion on '" + label + "'")
                     recognized += 1
                     If hf
                         hiFreq += 1                              ; still spends frequency budget
                     EndIf
                 Else
-                    akActor.AddToFaction(f)
-                    akActor.SetFactionRank(f, aiRank)
-                    applied += 1
-                    recognized += 1
-                    If hf
-                        hiFreq += 1
+                    Bool wrote = False
+                    If RomApi() >= 3
+                        ; NOT the label. Ten of the fifty-eight labels are
+                        ; shorthands that are not the statistic name - see
+                        ; OffsetToStatName, generated from the plugin's own records.
+                        String statName = OffsetToStatName(offset)
+                        If statName == ""
+                            Diag(LOG_ERROR(), "No Romantasy stat name for offset " + offset +                                 " ('" + label + "') - preference NOT written")
+                        Else
+                            wrote = Romantasy.SetPreference(akActor, statName, dir)
+                            If !wrote
+                                Diag(LOG_ERROR(), "SetPreference refused '" + statName + "' for " +                                     akActor.GetDisplayName() + " - SkyrimNet.log carries Romantasy's reason")
+                            EndIf
+                        EndIf
+                    Else
+                        akActor.AddToFaction(f)
+                        akActor.SetFactionRank(f, aiRank)
+                        wrote = True
+                    EndIf
+                    If wrote
+                        applied += 1
+                        recognized += 1
+                        If hf
+                            hiFreq += 1
+                        EndIf
                     EndIf
                 EndIf
             EndIf

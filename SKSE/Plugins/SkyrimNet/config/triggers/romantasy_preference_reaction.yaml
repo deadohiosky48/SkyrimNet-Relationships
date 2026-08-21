@@ -25,6 +25,27 @@
 # never assume - the sender_name field plus the NPC's own bio carry that, and
 # baking "she" into the instruction would override the character.
 
+# ── CONTENT IS PROSE, NOT INSTRUCTIONS. THIS IS NOT A STYLE PREFERENCE ───────
+# direct_narration stores `content` VERBATIM as a persistent event, and every NPC
+# in scene reads it back for the rest of the save. Written as stage directions -
+# "Give her reaction in one short beat", "Do not name a tier" - those directions
+# become the stored event, and the model later reproduces them as narration.
+# Observed 2026-08-21: a paragraph of our own instructions turned up in a
+# conversation with an unrelated NPC, attributed to an actor nobody could find,
+# because it was replayed out of event history rather than generated.
+#
+# So: state what happened, in as few words as carry it. Where a constraint
+# matters, encode it as a FACT rather than an order - "and is waiting for his
+# answer" does the work "do not resolve it" used to do, and survives being
+# stored. Short also matters on its own: this text is read by every NPC in scene,
+# forever.
+#
+# ── num_arg WAS READ BARE, WHICH IS THE TRAP THIS FILE ALREADY WARNS ABOUT ───
+# The approve/disapprove branch tested `{% if num_arg > 0 %}` with no event_json
+# prefix. Per-event fields do not resolve bare, so that condition could never see
+# a positive value and every reaction rendered as disapproval. Now
+# event_json.num_arg, like every other per-event field here.
+
 name: "romantasy_preference_reaction"
 description: "A follower notices the player doing something they have strong feelings about, one way or the other."
 
@@ -39,25 +60,13 @@ eventCriteria:
 response:
   type: "direct_narration"
   content: |
-    {{ player_name }} has just been occupied with something {{ event_json.sender_name }}
-    has feelings about — {{ event_json.str_arg }}.
-
-    {% if num_arg > 0 %}
-    {{ event_json.sender_name }} approves, and it costs them something to let it show.
-    Give one small beat of it: a remark drier than the warmth behind it, an
-    offer of help, a look that lasts a moment past useful. Nobody makes a
-    speech about a lockpick.
+    {% if event_json.num_arg > 0 %}
+    {{ player_name }} has been busy with {{ event_json.str_arg }}, and it sits well with
+    {{ event_json.sender_name }} - more than they would say out loud.
     {% else %}
-    It sits badly with {{ event_json.sender_name }}. Give one small beat of that: a
-    silence where a comment would go, a flat observation, half a step of
-    distance they may not know they took. No lecture unless that is genuinely
-    who they are.
+    {{ player_name }} has been busy with {{ event_json.str_arg }}, and it sits badly with
+    {{ event_json.sender_name }}.
     {% endif %}
-
-    One sentence. Match their personality exactly — a mercenary and a temple
-    healer do not disapprove the same way. Use their own voice and their own
-    manner; nothing here presumes anything about who they are. Do not mention
-    points, bonds, or the fact that anyone is keeping score.
 
 audience: "nearby_npcs"
 enabled: true
