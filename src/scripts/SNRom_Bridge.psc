@@ -2807,9 +2807,13 @@ Int Function SeedTarget(Actor akActor)
       with the player. Deterministic beats judged, when the deterministic thing
       is measuring the right quantity.
 
-      A tier is ~500 - INFERRED from "2500 to Spouse", never verified - so these
-      ratios are expressed against 500 and the caller logs what tier actually
-      landed rather than trusting the arithmetic. }
+      A tier is exactly 500. Confirmed by ColdSun directly on 2026-08-20, after
+      two independent observations had already agreed: Romantasy's own UI on
+      2026-08-03, and Kayla's seed landing precisely on tier 1. This was carried
+      as an inference for weeks and this docstring outlived the evidence that
+      settled it. The ratios below are still expressed against 500 and the caller
+      still logs the tier that actually landed rather than trusting the
+      arithmetic, which is worth keeping regardless. }
     ; THE HIGHEST ESTIMATE WINS - these are not contributions to be summed.
     ;
     ; Each signal is a COMPLETE estimate of one quantity (how deep is this bond)
@@ -2827,8 +2831,9 @@ Int Function SeedTarget(Actor akActor)
     ; conversion. Shifted down one deliberately: a vanilla Lover seeds to
     ; Confidant, not Lover, so the romance still has somewhere to go afterwards.
     ; Tiers are confirmed 500 apart, 2500 at Spouse (verified in Romantasy's UI
-    ; 2026-08-03, and independently by Kayla's seed landing exactly on tier 1).
-    ; ---- RANK 3 IS CONTAMINATED, AND EVERYTHING BELOW LOVER WITH IT --------
+    ; Tiers are exactly 500 apart, 2500 at Spouse - confirmed by ColdSun on
+    ; 2026-08-20, and before that by Romantasy's UI on 2026-08-03 and by Kayla's
+    ; seed landing exactly on tier 1.
     ; Measured over 34 live seeds on 2026-08-10: THIRTY-ONE came back rank 3,
     ; including Alva and Jonna, both recruited the day before and neither
     ; previously known to the player. Follower frameworks set the vanilla rank
