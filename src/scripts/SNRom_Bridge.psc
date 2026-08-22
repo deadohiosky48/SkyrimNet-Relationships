@@ -138,7 +138,7 @@ Function Bootstrap(Bool abForce = False)
     ; Held in StorageUtil rather than a script variable because CommitConfig and
     ; the preference writer are Global and cannot see script state.
     StorageUtil.SetIntValue(None, "SNRom_RomApi", Romantasy.GetApiVersion())
-    Diag(LOG_INFO(), "Romantasy API level " + RomApi() + " (3 = Romantasy 1.1.0+; below 3 means no live enrollment and no preference removal)")
+    Diag(LOG_INFO(), "Romantasy API level " + RomApi() + " (3+ enables live enrollment and preference removal; Romantasy 1.1.0 reports 4)")
     ; Arm the spark timer. Safe to call on every bootstrap - a single-update
     ; registration simply replaces any prior one rather than stacking.
     RegisterForSingleUpdateGameTime(SparkIntervalHours())
@@ -419,9 +419,12 @@ Int Function RomApi() Global
     { Romantasy's API level, 0 if it predates GetApiVersion. Cached at bootstrap;
       see the note there for why it is not read on demand.
 
-      LEVEL 3 IS ROMANTASY 1.1.0 on Nexus. The API level and the Nexus version
-      are different numbers and nothing in either mod states the mapping, so it
-      is written down here: anything below 3 means 1.01 or earlier, where
+      THE API LEVEL AND THE NEXUS VERSION ARE DIFFERENT NUMBERS, and nothing in
+      either mod states the mapping. Romantasy 1.1.0 on Nexus reports level 4.
+      The private builds this was developed against reported 3, which is why an
+      earlier comment here said "3 = 1.1.0" - wrong, and it shipped that way in
+      1.0.0. The gate tests >= 3 because 3 is the level that introduced the
+      calls; 4 satisfies it. Anything below 3 is 1.01 or earlier, where
       enrollment needs a reload and preferences cannot be removed. }
     Return StorageUtil.GetIntValue(None, "SNRom_RomApi", 0)
 EndFunction
@@ -478,7 +481,18 @@ Bool Function CommitConfig(Actor akActor) Global
         ; WHY it came back false for a player-managed follower.
         Return False
     EndIf
-    Return Romantasy.ClearPreferences(akActor)
+    If Romantasy.ClearPreferences(akActor)
+        Return True
+    EndIf
+    ; THE CLEAR CAN BE REFUSED WITHOUT ANYTHING BEING WRONG. Romantasy rejects it
+    ; for a follower it considers author-defined, and that says nothing about
+    ; whether the follower is live - Endarie was mirrored to ROM_RomanceLevel and
+    ; refused a clear 56ms later, on 2026-08-21. Reporting not-live there made the
+    ; log claim the reload caveat was back.
+    ;
+    ; So ask the question that actually matters: does Romantasy have a level for
+    ; them? That is the same test CanBegin uses for "already enrolled".
+    Return Romantasy.GetLevel(akActor) > 0
 EndFunction
 
 ; ===========================================================================
@@ -4755,10 +4769,23 @@ Event OnDispositionAuthored(String asResponse, Int aiSuccess)
         Return
     EndIf
 
+    _prefsRefused = False
     Int liked    = ApplyPreferenceList(who, likesCsv, 1, 7)
     Int newLikes = _lastApplied
     Int disliked = ApplyPreferenceList(who, SNRom_Decorators.FieldValue(asResponse, "DISLIKES:"), 0, 4)
     Int newDislikes = _lastApplied
+
+    If _prefsRefused
+        ; DO NOT FALL THROUGH TO THE ARCHETYPE. Its fallback writes preferences
+        ; with AddToFaction/SetFactionRank - the legacy path, which Romantasy does
+        ; not guard - so a refused write followed by "no valid likes" put our
+        ; archetype preferences on Endarie through the back door on 2026-08-21,
+        ; overriding the exact ownership the refusal was protecting. Refused means
+        ; refused, by every route we have.
+        LogDisposition(asked, aiSuccess, asResponse, "romantasy-refused")
+        StorageUtil.SetIntValue(who, "SNRom_DispositionAuthored", 1)
+        Return
+    EndIf
 
     If liked == 0
         Diag(LOG_WARN(), "No valid likes parsed for " + asked + " - archetype fallback (character fields kept)")
@@ -4977,6 +5004,13 @@ Int Function CountHighFrequencyHeld(Actor akActor)
     Return held
 EndFunction
 
+; Set by ApplyPreferenceList when Romantasy REFUSED a write. A refusal is not a
+; failure of ours and it is not a bad LLM response - it is Romantasy saying these
+; preferences belong to somebody else. The caller has to know the difference,
+; because its fallback for "no valid likes" is to write archetype preferences
+; through AddToFaction, which bypasses the very protection that just refused us.
+Bool _prefsRefused
+
 Int Function ApplyPreferenceList(Actor akActor, String asCsv, Int aiRank, Int aiMax)
     { Returns how many names were RECOGNIZED - newly applied plus already
       held. _lastApplied carries the newly-applied count for logging.
@@ -5029,7 +5063,7 @@ Int Function ApplyPreferenceList(Actor akActor, String asCsv, Int aiRank, Int ai
     ; actor's CURRENT faction membership makes the cap mean what its comment
     ; always claimed.
     Int hiFreq = CountHighFrequencyHeld(akActor)
-    While i < parts.Length && applied < aiMax
+    While i < parts.Length && applied < aiMax && !_prefsRefused
         String label = SNRom_Decorators.Trim(parts[i])
         ; Papyrus has no Continue, so the whole body is guarded instead. Empty
         ; entries are normal here: separator normalization turns a multi-byte
@@ -5089,7 +5123,16 @@ Int Function ApplyPreferenceList(Actor akActor, String asCsv, Int aiRank, Int ai
                         Else
                             wrote = Romantasy.SetPreference(akActor, statName, dir)
                             If !wrote
-                                Diag(LOG_ERROR(), "SetPreference refused '" + statName + "' for " +                                     akActor.GetDisplayName() + " - SkyrimNet.log carries Romantasy's reason")
+                                ; ONE LINE, NOT TEN, AND STOP. Romantasy refuses every
+                                ; write for a follower it considers author-defined, so
+                                ; carrying on produced ten identical ERROR lines that
+                                ; looked like our bug. The refusal is also the only
+                                ; detection we have - there is no API to ask - so it
+                                ; sets the same sticky flag PreferencesAreForeign uses
+                                ; and we never try this actor again.
+                                _prefsRefused = True
+                                StorageUtil.SetIntValue(akActor, "SNRom_PrefsForeign", 1)
+                                Diag(LOG_INFO(), "Romantasy refused '" + statName + "' for " +                                     akActor.GetDisplayName() + " - it owns their preferences. " +                                     "Leaving all of them alone; character fields still authored.")
                             EndIf
                         EndIf
                     Else
