@@ -6,7 +6,7 @@ Every companion forms their own opinion of you — and it changes.
 
 ---
 
-> ### Requires Romantasy 1.1.0 or newer
+> ### Requires Romantasy 1.1.1 or newer
 >
 > Earlier Romantasy versions cannot see a follower enrolled mid-session until the
 > game is reloaded, and cannot remove a preference once it is written. This mod
