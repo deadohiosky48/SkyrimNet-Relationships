@@ -400,6 +400,15 @@ Bool Function PreferencesAreForeign(Actor akActor) Global
     ; reads, so without this line the guard would protect them exactly once and
     ; then classify them as ours forever. Found before shipping, by asking what
     ; the SECOND authoring attempt would do.
+    ; NO SNRom_ForceAuthor CHECK HERE, and it is worth saying why so nobody adds
+    ; one. AuthorDisposition CONSUMES that flag when it dispatches, long before
+    ; the LLM answers, and this function runs in the callback - so the flag is
+    ; always gone by the time we could read it. A check on it would look like an
+    ; ownership override and do nothing at all.
+    ;
+    ; Preserving SNRom_DispositionAuthored across a re-author is what actually
+    ; solves that, and ClearDisposition is the escape hatch for an actor marked
+    ; foreign by mistake.
     If StorageUtil.GetIntValue(akActor, "SNRom_PrefsForeign", 0) == 1
         Return True
     EndIf
@@ -520,6 +529,10 @@ Function BeginSpark(Actor akActor, String asReason)
     akActor.SetFactionRank(_romanceLevel, 0)
 
     Bool live = CommitConfig(akActor)
+    If StorageUtil.GetIntValue(akActor, "SNRom_ClearRefused", 0) == 1
+        StorageUtil.UnsetIntValue(akActor, "SNRom_ClearRefused")
+        Diag(LOG_WARN(), "Romantasy refused the preference clear for " + akActor.GetDisplayName() + " - it considers them author-defined. Enrollment itself is live=" + live + "; their preferences belong to whoever authored them.")
+    EndIf
     StorageUtil.SetIntValue(akActor, "SNRom_Enrolled", 1)
     StorageUtil.SetFloatValue(akActor, "SNRom_EnrolledAt", Utility.GetCurrentGameTime())
     ; BeginSpark IS the spark - this is what puts her on the romantic ladder in
@@ -888,6 +901,10 @@ Function AutoEnroll(Actor akActor)
     akActor.AddToFaction(_romanceLevel)
     akActor.SetFactionRank(_romanceLevel, 0)
     Bool live = CommitConfig(akActor)
+    If StorageUtil.GetIntValue(akActor, "SNRom_ClearRefused", 0) == 1
+        StorageUtil.UnsetIntValue(akActor, "SNRom_ClearRefused")
+        Diag(LOG_WARN(), "Romantasy refused the preference clear for " + akActor.GetDisplayName() + " - it considers them author-defined. Enrollment itself is live=" + live + "; their preferences belong to whoever authored them.")
+    EndIf
 
     StorageUtil.SetIntValue(akActor, "SNRom_Enrolled", 1)
     ; THE flag that keeps IsSparked honest. Faction membership used to imply a
@@ -2244,7 +2261,19 @@ Function ReauthorDisposition(Actor akActor)
         Return
     EndIf
     Diag(LOG_INFO(), "Re-authoring disposition for " + akActor.GetDisplayName())
-    StorageUtil.SetIntValue(akActor, "SNRom_DispositionAuthored", 0)
+    ; DELIBERATELY NOT ZEROING SNRom_DispositionAuthored.
+    ;
+    ; It used to be zeroed here to get past AuthorDisposition's once-only check,
+    ; and SNRom_ForceAuthor below has been the real bypass since the on-disk
+    ; store started being consulted. The zero was legacy - and once
+    ; PreferencesAreForeign started reading that same flag as the ours/theirs
+    ; marker, it became actively harmful: zeroing it made this mod's OWN
+    ; preferences look like another author's, so the guard refused to touch them
+    ; and re-authoring silently stopped replacing anything.
+    ;
+    ; That defeated the whole point of API 3's replaceable preferences. Observed
+    ; on Endarie 2026-08-22: "already holds preferences this mod did not write
+    ; (2 of them)" - both of them ours.
     ; Zeroing the Int is no longer sufficient on its own - AuthorDisposition
     ; also consults the on-disk store, which does not roll back and would
     ; refuse. This says "yes, I mean it", and AuthorDisposition consumes it.
@@ -2261,7 +2290,27 @@ Function AuthorDisposition(Actor akActor)
     ; 2 = archetype fallback: DO retry - the fallback was a stopgap, and a
     ; fresh enrollment is the natural moment to upgrade it to the real thing
     ; (ApplyPreferenceList never overwrites, so the archetype picks survive).
-    If StorageUtil.GetIntValue(akActor, "SNRom_DispositionAuthored", 0) == 1
+    ;
+    ; SNRom_ForceAuthor BYPASSES THIS GUARD TOO, and leaving it out of the
+    ; condition made ReauthorDisposition a silent no-op for exactly the actors
+    ; it exists to serve.
+    ;
+    ; ReauthorDisposition used to zero the flag above, which got it past this
+    ; line. 1.0.2 stopped doing that - correctly, because zeroing it made this
+    ; mod's own preferences look foreign to PreferencesAreForeign - and set
+    ; SNRom_ForceAuthor instead, on the understanding that the force flag was
+    ; "the real bypass". It was only ever the bypass for the ON-DISK guard
+    ; below. This one still tested the Int alone, hit Return before the force
+    ; flag was ever read, and returned WITHOUT LOGGING ANYTHING.
+    ;
+    ; Caught on Silana and Lisette 2026-08-24: both logged "Re-authoring
+    ; disposition", neither ever dispatched, and nothing said why. Fastred in
+    ; the same batch worked, which is what made it look like an LLM problem
+    ; rather than a gate - her flag was 0, so she sailed past a guard the other
+    ; two hit. A silent Return that only fires for SOME actors is the worst
+    ; possible shape for this bug, hence the log line.
+    If StorageUtil.GetIntValue(akActor, "SNRom_DispositionAuthored", 0) == 1 &&        StorageUtil.GetIntValue(akActor, "SNRom_ForceAuthor", 0) == 0
+        Diag(LOG_INFO(), "Not authoring " + akActor.GetDisplayName() +             " - already LLM-authored. ReauthorDisposition forces a redo.")
         Return
     EndIf
     ; SECOND GUARD, ON DISK RATHER THAN IN THE SAVE.
@@ -2298,18 +2347,32 @@ Function AuthorDisposition(Actor akActor)
         StorageUtil.SetIntValue(akActor, "SNRom_DispositionAuthored", 1)
         Return
     EndIf
-    ; Consumed here, so a forced run cannot leak into the next enrollment.
-    StorageUtil.UnsetIntValue(akActor, "SNRom_ForceAuthor")
     If _pendingActor != None
         ; QUEUED, not dropped. Dropping was acceptable while authoring only
         ; happened on a deliberate one-at-a-time BeginSpark; with auto-enroll,
         ; hiring two mercenaries in the same breath would have silently left
         ; the second one with no personality forever.
+        ;
+        ; SNRom_ForceAuthor IS DELIBERATELY STILL SET WHEN THIS RETURNS. Being
+        ; queued is not being authored - the dequeue calls this function again
+        ; from the top, and the flag has to survive that round trip or the
+        ; second pass refuses the very work the first pass accepted.
+        ;
+        ; It used to be consumed ABOVE this block, so a forced re-author lost
+        ; its force the moment anything else was already in flight. Invisible
+        ; until the guard at the top learned to read the flag: re-authoring
+        ; three followers at once, the first was authored and the other two
+        ; were refused on dequeue (Silana yes, Lisette and Fastred no,
+        ; 2026-08-24).
         StorageUtil.FormListAdd(None, "SNRom_AuthorQueue", akActor, False)
         Diag(LOG_INFO(), "Authoring busy; queued " + akActor.GetDisplayName() + \
             " (queue depth " + StorageUtil.FormListCount(None, "SNRom_AuthorQueue") + ")")
         Return
     EndIf
+    ; Consumed here - past every early return that could still need it, and
+    ; before anything that actually authors, so a forced run cannot leak into
+    ; the next enrollment.
+    StorageUtil.UnsetIntValue(akActor, "SNRom_ForceAuthor")
     If SkyrimNetApi.GetConfigBool(CFG(), "enrollmentLlmPreferences", True) == False
         ApplyArchetype(akActor)
         Return
@@ -4863,11 +4926,23 @@ Function ApplyProse(Actor akActor, String asResponse, String asName)
     ; contextual: a wife says "Honey" at home and "my husband" to a stranger;
     ; a housecarl switches between a name and a title depending on who is
     ; listening. "Haruk, or Thane in public" carries that; a bare string cannot.
+    ; NOT WARNED ON WHEN ABSENT, unlike WHY and LIMIT above. The authoring
+    ; prompt does not ask for ADDRESS and should not: a form of address is
+    ; established in play, by someone actually saying it, and authoring runs
+    ; the moment an NPC enrolls - inventing a pet name for a person they have
+    ; barely met is exactly the "forcing a guess" failure the orientation BASIS
+    ; field exists to prevent.
+    ;
+    ; snrom_talk_assess owns this field, and its reader (SEE the ADDRESS
+    ; re-establish block in the talk path) treats absence as "unchanged" with
+    ; no warning at all. This path only takes one if a model volunteers it.
+    ;
+    ; It DID warn until 1.0.2, on a field its own prompt never requested: 65 of
+    ; 72 authorings logged it, against 0 for WHY and 0 for LIMIT. A warning that
+    ; fires on 90% of healthy runs trains you to ignore the log.
     String addressLine = SNRom_Decorators.FieldValue(asResponse, "ADDRESS:")
     If addressLine != ""
         StoreSetText(akActor, "Address", addressLine)
-    Else
-        Diag(LOG_WARN(), "No ADDRESS in response for " + asName + " - previous form kept")
     EndIf
 EndFunction
 
@@ -4907,7 +4982,7 @@ Function ApplyCharacter(Actor akActor, String asResponse)
     Int minTier = SNRom_Decorators.IntimacyToMinTier(intimWord)
     Int bypass  = SNRom_Decorators.IntimacyToBypass(intimWord)
     Int ardor   = SNRom_Decorators.ArdorToInt(SNRom_Decorators.FieldValue(asResponse, "ARDOR:"))
-    Int excl    = SNRom_Decorators.ClampInt(SNRom_Decorators.FieldValue(asResponse, "EXCLUSIVITY:"), 0, 100, 50)
+    Int excl    = SNRom_Decorators.ExclusivityToInt(SNRom_Decorators.FieldValue(asResponse, "EXCLUSIVITY:"))
 
     ; ONLY write a field the response actually contained. An ABSENT field is
     ; not an answer of "default" - it means the response was truncated or
