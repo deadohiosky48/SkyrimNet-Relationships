@@ -48,9 +48,20 @@ parameterMapping:
   - type: dynamic
     name: asReason
     description: "one specific sentence naming what actually happened, in your own voice. This is read by the player."
+  # optional/default IS THE FIX, NOT THE WORD "optional" IN THE DESCRIPTION.
+  # The description is advice to the model; this is the contract with the
+  # dispatcher. Without these two lines a response that omits the key entirely
+  # fails at SkyrimNet's missing-parameter check (ActionLibrary.cpp:851) and
+  # the WHOLE action is discarded - the NPC decided a moment mattered, wrote
+  # the reason, and none of it was ever recorded. Observed three times on
+  # 2026-08-23/24, all from responses carrying only aiMagnitude and asReason.
+  # Papyrus already treats "" as "no activity" (MarkMoment, StatWeight), so
+  # the default lands on the path that was always intended.
   - type: dynamic
     name: asActivity
-    description: "optional. If the moment was about a tracked pursuit, name it exactly - e.g. Persuasions, Murders, Locks Picked, Dungeons Cleared, Potions Mixed - and it will be judged against your own feelings about that pursuit. Leave empty if the moment was purely personal."
+    description: "optional, but ALWAYS include the key - use an empty string when it does not apply. If the moment was about a tracked pursuit, name it exactly - e.g. Persuasions, Murders, Locks Picked, Dungeons Cleared, Potions Mixed - and it will be judged against your own feelings about that pursuit. Empty if the moment was purely personal."
+    optional: true
+    default: ""
 
 eligibilityRules:
   - conditions:

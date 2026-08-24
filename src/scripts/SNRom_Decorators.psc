@@ -905,6 +905,65 @@ String Function ArdorWord(Int aiArdor) Global
     Return "intense and unmistakable"
 EndFunction
 
+Int Function ExclusivityToInt(String asWord) Global
+    { How much they need to be the only one, 0-100. Authored as a WORD.
+
+      SAME FIX AS ArdorToInt, AND FOR THE SAME REASON - this axis was simply
+      missed when that one was converted. It stayed "0 (untroubled by others)
+      to 100 (cannot share)": two anchors, both endpoints, nothing in between.
+
+      The log settled it. Over the twenty most recent authorings, ARDOR - words
+      since the conversion - came back 0,1,2,3,4 with every value represented.
+      EXCLUSIVITY came back 100 seventeen times out of twenty. Same NPCs, same
+      model, same run, same prompt; the only difference was the scale. Across
+      all 102 authorings on record, 45 are exactly 100.
+
+      100 is "cannot share under any circumstance". It is the most extreme
+      answer on the axis and it was the modal one, landing on people the same
+      response had just called RESERVED - someone who gives almost nothing away
+      being simultaneously and maximally possessive. That is not a character,
+      it is a scale with no middle.
+
+      Values are seeds, not buckets: drift moves this by 20 a review, so the
+      stored int keeps its full 0-100 resolution and only the FIRST answer
+      comes from this table.
+
+      TOLERANT IS THE OLD SPELLING OF ACCEPTING, kept because it costs nothing
+      and a model that reaches for either must land on the same number.
+
+      THE AXIS MEASURES A DEMAND, NOT AN ATTACHMENT, and the first vocabulary
+      blurred that. "POSSESSIVE - needs to be the only one; a rival would wound
+      them" reads as a description of how deeply someone loves, so the model
+      answered it for anyone deeply in love. Re-authoring three long-established
+      followers returned POSSESSIVE three times out of three - and ARDOR, which
+      is well spread over twenty other authorings, pinned to INTENSE on the same
+      three. Two axes moving together like that means they were being read as one
+      question.
+
+      The author's own case settled it: followers who have long known the player
+      has other partners, are at peace with it, and intend to have no one else
+      themselves. Wholly devoted, entirely undemanding. Under the old wording
+      that is POSSESSIVE, which is exactly backwards - so the prompt now asks
+      only what they require OF the player, and says outright that their own
+      fidelity is not a demand on anybody.
+
+      Digits still parse, for older saves and any model that ignores the
+      vocabulary - a visible wrong answer beats a silently defaulted one. }
+    String w = SNRom_Decorators.Upper(SNRom_Decorators.Trim(asWord))
+    If w == "UNTROUBLED"
+        Return 0
+    ElseIf w == "ACCEPTING" || w == "TOLERANT"
+        Return 25
+    ElseIf w == "CONVENTIONAL"
+        Return 50
+    ElseIf w == "POSSESSIVE"
+        Return 75
+    ElseIf w == "CONSUMING"
+        Return 100
+    EndIf
+    Return SNRom_Decorators.ClampInt(asWord, 0, 100, 50)
+EndFunction
+
 Int Function ClampInt(String asText, Int aiLow, Int aiHigh, Int aiFallback) Global
     { Papyrus has no TryParse: a non-numeric string casts to 0, which is a
       LEGAL value for both ardor and exclusivity and so cannot be distinguished

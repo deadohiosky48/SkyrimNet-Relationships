@@ -194,7 +194,7 @@ It settles the orientation question by itself. Whatever you might otherwise have
 
 Do not reason past this, and do not treat a quiet profile as evidence against it. A bio that fails to mention a marriage is an incomplete bio, not an unmarried character.
 
-It settles nothing else. How much they show (`ARDOR`), what closeness requires of them (`INTIMACY`), how much they need to be the only one (`EXCLUSIVITY`) and what they refuse (`LIMIT`) are all still open — married people are as various in those as anyone. A marriage is not a personality.
+It settles nothing else. How much they show (`ARDOR`), what closeness requires of them (`INTIMACY`), what they ask of {{ player.name }} about other partners (`EXCLUSIVITY`) and what they refuse (`LIMIT`) are all still open — married people are as various in those as anyone. A marriage is not a personality.
 {% endif %}
 
 
@@ -224,7 +224,19 @@ INTIMACY - what physical closeness requires of them:
 
 ARDOR - how much of what they feel actually shows: `RESERVED` (gives almost nothing away), `MEASURED` (shows little, and rarely first), `WARM` (openly fond, without display), `OPEN` (says what they feel plainly), or `INTENSE` (unmistakable, and they do not try to hide it).
 
-EXCLUSIVITY - how much they need to be the only one, 0 (untroubled by others) to 100 (cannot share).
+EXCLUSIVITY - what they ask OF {{ player.name }} about other partners. This is the one question here that is NOT about the strength of their feeling. It asks only what they require of {{ player.name }} - never how much they care, and never how faithful they are themselves.
+
+- `UNTROUBLED` - content for {{ player.name }} to have other partners; it genuinely does not trouble them
+- `ACCEPTING` - would rather be the only one, but has accepted that they are not, and does not hold it against them
+- `CONVENTIONAL` - expects to be the only one, the way most people do
+- `POSSESSIVE` - asks to be the only one, and a rival would be a real injury
+- `CONSUMING` - cannot share at all; another partner would end it
+
+It reduces to one question: does it trouble them that {{ player.name }} has, or may have, other partners? Nothing else about the relationship bears on it.
+
+Someone wholly devoted to {{ player.name }}, who intends to have no one else themselves, may still be `UNTROUBLED` or `ACCEPTING`. Their own fidelity is not a demand on anybody. Someone who has long known that {{ player.name }} has other partners and is at peace with it is `ACCEPTING` or `UNTROUBLED`, however much they love them.
+
+WANTING TO BELONG IS NOT THE SAME AS WANTING TO OWN, and the two are easy to read as one. Wanting to be wholly {{ player.name }}'s - to be claimed, kept, or owned by them, gladly and completely - says nothing whatever about whether anyone else may be theirs too. Someone who asks to be his entirely and asks nothing back is `UNTROUBLED`. Devotion, surrender, worship and a wish to be possessed are answers to ARDOR and WHY. They are never answers to this.
 
 LIMIT - one line this person does not cross, whatever they feel and however much they are pressed.
 
@@ -250,10 +262,11 @@ Judge these from who this person actually is, reading the material above. The fo
 
 **THE RESTRICTIVE ANSWERS REQUIRE EVIDENCE. Absence of evidence is not one.**
 
-`NEVER`, `RESERVED` and a very low `EXCLUSIVITY` are claims about who they ARE, not about what you could not find. Most profiles say nothing at all about someone's private life — that is normal, and it does not mean the answer is no.
+`NEVER`, `RESERVED`, `UNTROUBLED` and `CONSUMING` are claims about who they ARE, not about what you could not find. Most profiles say nothing at all about someone's private life — that is normal, and it does not mean the answer is no.
 
 - Answer `NEVER` only if the material establishes they are genuinely not interested in sex with anyone. Not because it never comes up.
 - Answer `RESERVED` only if they are actually described as guarded or undemonstrative. Not because you were not told how they express themselves.
+- Answer `CONSUMING` or `UNTROUBLED` only if the material establishes it. BOTH ends of that axis are strong claims - one that they could never share, one that they genuinely would not mind. Being told nothing about it makes them `CONVENTIONAL`, not either extreme.
 
 If the material is thin, answer with what is ordinary for a person like them — most people are somewhere in the middle on all of these. A wrong restrictive answer is not neutral: it permanently forecloses parts of their story, and unlike a wrong permissive one, nothing in play can ever open it back up.
 
@@ -335,7 +348,7 @@ SEXUAL_ORIENTATION: <ATTRACTED_TO_MEN|ATTRACTED_TO_WOMEN|ATTRACTED_TO_BOTH|ATTRA
 SEXUAL_ORIENTATION_BASIS: <STATED|IMPLIED|UNKNOWN>
 INTIMACY: <NEVER|GUARDED|ROMANTIC|CASUAL>
 ARDOR: <RESERVED|MEASURED|WARM|OPEN|INTENSE>
-EXCLUSIVITY: <0-100>
+EXCLUSIVITY: <UNTROUBLED|ACCEPTING|CONVENTIONAL|POSSESSIVE|CONSUMING>
 WHY: <one short sentence, in third person, on what these say about them>
 LIMIT: <one short sentence, in third person, on a line they will not cross>
 LIKES: <at most 7 names, copied from the catalogue>
