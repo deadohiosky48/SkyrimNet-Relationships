@@ -282,8 +282,8 @@ Weigh only what appears above. Do not score a conversation you did not read, and
 **A line where {{ npc_name }} addresses someone by name who is not {{ player.name }} is not part of this conversation, whoever it is labeled as being spoken to.** When several people stand close together their words get attributed to the wrong listener, and a reply they made to a companion can arrive here looking like it was said to {{ player.name }}. Judge it by who they are plainly talking to, not by the label.
 
 WEIGHT — how far this moved them:
-- `NOTHING` — they talked. Nothing changed. **This is the usual answer.**
-- `SMALL` — a flicker. Warmth that registered, a small kindness noticed.
+- `NOTHING` — nothing actually passed between them. Directions, haggling, orders, logistics, small talk that could have been with anyone, or a sour exchange that changed nothing. Still a common answer.
+- `SMALL` — a flicker, and **the bar for this one is deliberately low**. Warmth that registered, a kindness noticed, a confidence volunteered, a joke that landed, a pretext invented to stay near each other. If BOTH of them chose to be a little closer than they had to be, that is `SMALL` — even when neither said so plainly, and even when nothing in it would look decisive written down.
 - `REAL` — something that mattered. Vulnerability offered or met, a kindness that cost {{ player.name }} something, a moment they will think about later.
 - `MAJOR` — the terms between them changed. A boundary moved, something was confessed, something was forgiven that did not have to be.
 - `LANDMARK` — they explicitly and mutually decided to be something new to each other. Rare, and never merely implied.
@@ -295,7 +295,11 @@ This is the distinction that matters most in the two answers above, and getting 
 
 
 
-And most disagreements are not even that. Couples bicker. People are tired, or frightened, or wrong, and say so badly. `NOTHING` remains the usual answer on a bad day exactly as it is on a good one.
+And most disagreements are not even that. Couples bicker. People are tired, or frightened, or wrong, and say so badly. `NOTHING` is as available on a bad day as on a good one.
+
+**A COURTSHIP IS BUILT OUT OF `SMALL`.** Most real attraction is deniable while it is happening — a pretext to stay, a compliment aimed slightly off target, a question asked because it keeps them talking, an offer of help nobody needed. None of that survives being written down as a decisive moment, and all of it is how people actually get closer. If every deniable exchange scores `NOTHING`, the entire early arc of a romance is invisible and the player learns that what they say does not matter.
+
+So keep `NOTHING` for exchanges where nothing passed between them — not for exchanges where what passed was quiet. A flicker is not nothing. `SMALL` is a fiftieth of a tier; it is meant to be spent freely, and seeing the needle move a little is the point of it.
 
 
 `LANDMARK` requires **mutual** agreement — both of them, explicitly, deciding to be something new. One person declaring love is not a `LANDMARK` if the other did not answer.

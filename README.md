@@ -207,6 +207,31 @@ as it appears in game, and works even if they are nowhere near you:
  "functionName":"UnenrollByName","arguments":["Lydia"]}
 ```
 
+**They were enrolled but have no likes or dislikes.** This is the Romantasy
+1.1.0 bug: that version treated every follower this mod enrolled as
+author-managed and refused all preference writes. **Update Romantasy to 1.1.1
+first** — the repair cannot work on 1.1.0, it will simply be refused again.
+
+Then, once per affected follower:
+
+```json
+{"questEditorId":"SNRom_Quest","scriptName":"SNRom_Bridge",
+ "functionName":"RepairPreferences","arguments":["0x000A2C95"]}
+```
+
+They must be loaded and near you. Existing likes and dislikes are kept — nothing is
+wiped — but this re-runs the full authoring pass, so **their character is rewritten**:
+orientation, intimacy, ardor and exclusivity all come back fresh. That is usually
+what you want, since anything authored before 1.0.5 used the old exclusivity scale.
+If you like a character as-is and only want the gates adjusted, use
+`ReauthorCharacter` or `SetCharacterField` instead.
+
+The log confirms it with `Repairing preferences for …`, then `Disposition authored
+for …`, then the individual preference writes.
+
+If the log instead shows `SetPreference refused`, Romantasy is still rejecting
+the writes and the version is the thing to check.
+
 **An authored character reads wrong.** Rewrites who they are without touching
 their likes and dislikes. They must be loaded and near you, or the model has
 nothing to read:
