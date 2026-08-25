@@ -1,6 +1,6 @@
 plugin:
   name: "SkyrimNet Relationships"
-  version: "1.0.2"
+  version: "1.1.2"
   description: "Lets SkyrimNet drive romance through ColdSun's Romantasy framework — organic enrollment, LLM-authored preferences, and bond-aware dialogue."
   icon: "🥀"
 
@@ -232,6 +232,24 @@ schema:
       defaultValue: 0.15
       category: "Barks"
 
+    # ── Pacing ───────────────────────────────────────────────────────────────
+    # ONE LEVER ABOVE FOURTEEN KNOBS. awardMaxPoints, talkCooldownHours,
+    # talkDailyCap, sparkCooldownHours, driftMinDays and nine more are all pacing
+    # knobs, and nobody is going to tune fourteen numbers coherently. They stay
+    # for people who want them; this moves the whole thing at once.
+    #
+    # It multiplies what is EARNED. It cannot move the finish line - a tier is
+    # exactly 500 and that number is Romantasy's, not ours.
+    - name: "Bond Pace"
+      path: "bondPace"
+      type: "select"
+      description: "How quickly bonds move. Slow takes about twice as long, Fast about half. This multiplies points EARNED - conversation, authored moments, the spark beat and setbacks - in both directions, so Slow also makes mistakes cost less. It does NOT change the distance: a tier is always 500 points, so this changes how long the same journey takes, never where it ends. Two things are deliberately never scaled: points held back at Lover and handed back when the question is answered (scaling one side of that round trip would destroy points you watched accrue), and the seed for a relationship that already existed before this mod was installed. On Slow, any award that would round away to nothing is kept at a single point instead - seeing the needle move a little is the point of it. Default: Normal."
+      defaultValue: "Normal"
+      options:
+        - Slow
+        - Normal
+        - Fast
+      category: "Pacing"
     - name: "LLM Variant"
       path: "llmVariant"
       type: "select"

@@ -44,6 +44,66 @@ Int Function LOG_DEBUG() Global
     Return 4
 EndFunction
 
+Float Function PaceMultiplier() Global
+    { The one lever, resolved from the named speed the player picked.
+
+      THREE SPEEDS, NOT FIVE. A first cut deliberately: half, normal, double is
+      easy to hold in your head and easy to judge from play. Finer strata are a
+      later decision, and only worth making once these three have been felt.
+
+      NAMED SPEEDS, NOT A NUMBER. Players understand "relationships take about
+      twice as long"; nobody understands 0.5. The select carries the words and
+      this maps them, so the mapping can be retuned without retraining anyone.
+
+      Unknown or empty means Normal. A typo in a config file must not silently
+      stop a relationship from moving. }
+    String w = SNRom_Decorators.Upper(SNRom_Decorators.Trim( \
+        SkyrimNetApi.GetConfigString(CFG(), "bondPace", "Normal")))
+    If w == "SLOW"
+        Return 0.5
+    ElseIf w == "FAST"
+        Return 2.0
+    EndIf
+    Return 1.0
+EndFunction
+
+Int Function ScaleAward(Int aiPoints) Global
+    { THE ONLY PLACE THE PACE MULTIPLIER IS APPLIED. Points leave this mod
+      through ten separate Romantasy calls and seven of them are earnings, so the
+      arithmetic lives here once and each site says for itself whether it is an
+      earning or a transfer. A wrapper around ModifyPoints was the other option
+      and was rejected: it would need telling which kind it was anyway, and two
+      near-identical wrappers hide the distinction that actually matters.
+
+      NEVER CALL THIS ON A TRANSFER. EnforceLoverCeiling claws back the overflow
+      above 2499 and banks it; AcceptRomance returns the banked amount in full.
+      Scale either and points evaporate - claw back 200, hand back 50 - and the
+      player watched those points accrue and was promised them back. Seeding is
+      excluded too: "Prior history together" describes a relationship that
+      existed before this mod was installed, and a slow setting has no business
+      retroactively shrinking someone's past.
+
+      THE FLOOR IS THE WHOLE POINT AT THE SLOW END. Points are Ints, so at 0.25x
+      a SMALL award of 10 becomes 2 and an award of 1 becomes 0 - the axis stops
+      registering entirely and the player learns their behaviour does not matter.
+      Any non-zero award stays non-zero and keeps its sign. Better to move the
+      needle by one than not at all; that is the entire reason this exists. }
+    If aiPoints == 0
+        Return 0
+    EndIf
+    Float mult = PaceMultiplier()
+    If mult == 1.0
+        Return aiPoints
+    EndIf
+    Int scaled = (aiPoints * mult) as Int
+    If scaled == 0
+        If aiPoints > 0
+            Return 1
+        EndIf
+        Return -1
+    EndIf
+    Return scaled
+EndFunction
 String Function CFG() Global
     { SkyrimNet namespaces plugin manifests as "Plugin_<plugin name>" - see
       /config?api=list, which shows "Plugin_SeverActions" and
@@ -139,6 +199,44 @@ Function Bootstrap(Bool abForce = False)
     ; the preference writer are Global and cannot see script state.
     StorageUtil.SetIntValue(None, "SNRom_RomApi", Romantasy.GetApiVersion())
     Diag(LOG_INFO(), "Romantasy API level " + RomApi() + " (3+ enables live enrollment and preference removal; Romantasy 1.1.0 reports 4)")
+    ; ONE-TIME WARNING: SEVERACTIONS' INTIMACY & CONSENT SECTION.
+    ;
+    ; SeverActions 3.9.10 renders its own receptivity stance into every NPC bio
+    ; from an assessor that states outright "Do NOT derive desire from
+    ; friendship, trust, or relationship rank", where a single welcomed evening
+    ; can reach "willing". This mod's model is earned tier. Two contradictory
+    ; sets of instructions in one bio reads to the player as an NPC that cannot
+    ; make up its mind.
+    ;
+    ; IT SHIPS ENABLED - IntimateHistoryEnabled defaults to true - and it does
+    ; not skip followers, so anyone running both mods has the conflict and no
+    ; reason to suspect it. That is the whole reason this is a MessageBox and
+    ; not a Diag line: the people affected are exactly the people not reading
+    ; the log.
+    ;
+    ; DELIBERATELY NOT READING THEIR SETTING, so this fires even for users who
+    ; have already turned it off. Reading it means a compile-time reference to
+    ; SeverActions_FollowerManager and a hard build coupling to their releases,
+    ; to save one dismissible box once per save. Their toggle is also mirrored
+    ; into a native settings store, so the Papyrus property is not reliably the
+    ; live value anyway.
+    ;
+    ; Once per save, not once per install: a new playthrough is exactly when
+    ; someone would want reminding, and the flag rolling back with a reload is
+    ; the harmless direction for a warning.
+    ; NO SEVERACTIONS WARNING HERE ANY MORE, and the reason is worth keeping.
+    ; 1.0.4 popped a MessageBox telling the player to disable SeverActions'
+    ; Intimacy & Consent section, because it shipped enabled and contradicted
+    ; this mod's pacing. Sever fixed it at the source in 3.9.11:
+    ; IntimacyGate::DetectExternalRomance looks for SNRom_Integration.esl by
+    ; name and stands the whole layer down - blurb, stance decorator AND the
+    ; assessments, so it stops spending LLM calls too. A player can revert that
+    ; deliberately in his settings, and if they do, our bio block still
+    ; countermands because it is gated on HIS intimacySurfaced flag rather than
+    ; on the plugin being present. So the override survives and the nag does not.
+    ;
+    ; Warning about a conflict another author has already fixed is how a mod
+    ; teaches players to dismiss its warnings.
     ; Arm the spark timer. Safe to call on every bootstrap - a single-update
     ; registration simply replaces any prior one rather than stacking.
     RegisterForSingleUpdateGameTime(SparkIntervalHours())
@@ -548,7 +646,7 @@ Function BeginSpark(Actor akActor, String asReason)
     ; Authored beats land immediately regardless of the load-time constraint,
     ; so the bond is never sitting at a bare zero after a real moment.
     MarkSelfAward(akActor)
-    Romantasy.ModifyPoints(akActor, 25, asReason, False)
+    Romantasy.ModifyPoints(akActor, ScaleAward(25), asReason, False)
 
     SkyrimNetApi.RegisterPersistentEvent( \
         akActor.GetDisplayName() + " and " + Game.GetPlayer().GetDisplayName() + \
@@ -974,7 +1072,7 @@ Function MarkMoment(Actor akActor, Int aiMagnitude, String asReason, String asAc
     EndIf
 
     Int cap = SkyrimNetApi.GetConfigInt(CFG(), "awardMaxPoints", 75)
-    Int magnitude = ClampAward(aiMagnitude, asActivity, cap)
+    Int magnitude = ScaleAward(ClampAward(aiMagnitude, asActivity, cap))
 
     ; Armed once for the whole award. Whichever branch below fires - preference
     ; routing or a flat award - it is still one point change and one echoed
@@ -1114,6 +1212,8 @@ Function EnforceLoverCeiling(Actor akActor)
     ; No Ledger call on this path. Ledger is what CALLS us, and logging the
     ; clawback through it would recurse. The Diag line is the record.
     MarkSelfAward(akActor)
+    ; NOT ScaleAward: this is a TRANSFER. It banks the overflow for AcceptRomance
+    ; to hand back in full, and scaling one side of a round trip destroys points.
     If Romantasy.ModifyPoints(akActor, -over, "Held at Lover pending an answer", True)
         Int banked = StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0) + over
         StorageUtil.SetIntValue(akActor, "SNRom_BankedPoints", banked)
@@ -1140,6 +1240,8 @@ Function AcceptRomance(Actor akActor)
     EndIf
     StorageUtil.UnsetIntValue(akActor, "SNRom_BankedPoints")
     MarkSelfAward(akActor)
+    ; NOT ScaleAward: the other half of the ceiling round trip. The player watched
+    ; these accrue and was promised them back, whole.
     If Romantasy.ModifyPoints(akActor, banked, "What was held while the question waited", True)
         Ledger(akActor, "unbank", "", banked, 1, "Released on acceptance")
         Diag(LOG_INFO(), "Released " + banked + " banked pts to " + akActor.GetDisplayName() + \
@@ -1197,7 +1299,7 @@ Function DeclineRomance(Actor akActor)
         Return
     EndIf
     MarkSelfAward(akActor)
-    If Romantasy.ModifyPoints(akActor, drop, "Turned down", True)
+    If Romantasy.ModifyPoints(akActor, ScaleAward(drop), "Turned down", True)
         Ledger(akActor, "declined", "", drop, 1, "Turned down")
         Diag(LOG_INFO(), "Turned down " + who + ": " + had + " -> " + Romantasy.GetPoints(akActor) + \
             " pts, tier " + (Romantasy.GetLevel(akActor) - 1) + ". She keeps the spark and everything " + \
@@ -1353,7 +1455,7 @@ Function EndRomance(Actor akActor, String asReason)
     Int drop = ENDED_CAP() - had
     If drop < 0
         MarkSelfAward(akActor)
-        If Romantasy.ModifyPoints(akActor, drop, asReason, True)
+        If Romantasy.ModifyPoints(akActor, ScaleAward(drop), asReason, True)
             Ledger(akActor, "end", "", drop, 1, asReason)
             Diag(LOG_INFO(), "Romance ended for " + who + ": " + had + " -> " + \
                 Romantasy.GetPoints(akActor) + " pts, tier " + (Romantasy.GetLevel(akActor) - 1) + \
@@ -2240,6 +2342,61 @@ Function ReauthorCharacter(Actor akActor)
     StorageUtil.SetIntValue(akActor, "SNRom_CharOnly", 1)
     Diag(LOG_INFO(), "Re-authoring CHARACTER ONLY for " + akActor.GetDisplayName() + \
         " - preferences will not be touched")
+    ReauthorDisposition(akActor)
+EndFunction
+
+Function RepairPreferences(Actor akActor)
+    { THE REPAIR FOR ROMANTASY 1.1.0's AUTHOR-DEFINED BUG. One argument, so it
+      dispatches from the dashboard.
+
+      1.1.0 classified every runtime-enrolled follower as author-defined and
+      refused all preference writes. This mod handled that correctly - it stopped
+      writing rather than fighting - and latched SNRom_PrefsForeign so it would
+      never overwrite preferences it had decided belonged to someone else. That
+      latch is deliberately sticky: first writer keeps it.
+
+      The problem is that it OUTLIVES the bug. Updating to 1.1.1 fixes Romantasy,
+      but our own flag is still set, so ReauthorDisposition keeps declining and
+      the follower stays permanently preference-less. Reported by two users
+      2026-08-24, both enrolled under 1.1.0.
+
+      WHY NOT JUST TELL THEM TO RUN ClearDisposition FIRST. That works - it is
+      what every repair in development used - but it removes the 58 preference
+      factions AND unsets orientation, intimacy, ardor and exclusivity, so the
+      character is rerolled to fix the preferences. For these users the character
+      authored FINE; only the preferences were refused. Throwing away the half
+      that worked to repair the half that did not is the wrong trade, and asking
+      a user to make two calls in the right order invites making one.
+
+      So this clears only what actually blocks: the ownership latch and the
+      refusal marker. ApplyPreferenceList never overwrites an existing opinion,
+      so a follower who does hold real preferences keeps them.
+
+      IT DOES REWRITE THE CHARACTER, and the first version of this comment
+      claimed otherwise. ReauthorDisposition dispatches ONE authoring call whose
+      response carries the character block and the preference lists together and
+      the callback applies both - there is no preferences-only path. Measured on
+      Endarie 2026-08-25: orientation BOTH -> MEN, ardor 0 -> 1, exclusivity
+      100 -> 50.
+
+      That is the right outcome HERE, because her old values were authored under
+      the unanchored exclusivity scale and 100 was the bug. But it is not what
+      the name promises, so it gets said plainly: repairing preferences re-rolls
+      the person. ReauthorCharacter is the character-only tool.
+
+      If they are still on 1.1.0 this will simply be refused again, the latch
+      will be re-set, and the log will say so - which is the honest outcome and
+      tells them the update is the actual fix. }
+    If akActor == None || !_ready
+        Return
+    EndIf
+    Int held = HeldPreferenceCount(akActor)
+    Bool wasForeign = StorageUtil.GetIntValue(akActor, "SNRom_PrefsForeign", 0) == 1
+    StorageUtil.UnsetIntValue(akActor, "SNRom_PrefsForeign")
+    StorageUtil.UnsetIntValue(akActor, "SNRom_ClearRefused")
+    Diag(LOG_INFO(), "Repairing preferences for " + akActor.GetDisplayName() + \
+        " - held " + held + ", ownership latch was " + wasForeign + \
+        ". Re-authoring: preferences are added, character is rewritten.")
     ReauthorDisposition(akActor)
 EndFunction
 
@@ -3205,18 +3362,33 @@ Int Function SeedTarget(Actor akActor)
     ; Rank 4 is left alone. Vanilla only reaches it through marriage or a
     ; specific quest, never through recruitment, so it is the one rung that
     ; still means what it says.
+    ; SCALED DOWN A SECOND TIME, 2026-08-24. 750 shut the intimacy gate but
+    ; still landed a brand-new companion at tier 1 and halfway through it -
+    ; Senna, Orla and Hamal all seeded at exactly 750 two game hours after
+    ; being met, having done nothing together but talk. Clearing the whole of
+    ; Stranger on the strength of recruitment is the same error the 1250 cut
+    ; addressed, one rung down: rank 3 carries no information about closeness,
+    ; so it must not buy a tier.
+    ;
+    ; Ratios between the sub-Lover rungs are preserved exactly (5:4:2:1), so
+    ; the ladder still cannot invert.
+    ;
+    ; This also hands the axis back to rapport, the signal that means
+    ; something: at 15 points per rapport it overtakes rank 3 from about 14
+    ; rapport rather than 50, so someone who has genuinely travelled with the
+    ; player now outranks someone hired this morning by a wide margin.
     Int rank = akActor.GetRelationshipRank(Game.GetPlayer())
     Int byRank = 0
     If rank >= 4                                ; Lover - uncontaminated
         byRank = 1500                           ; -> Confidant
     ElseIf rank == 3                            ; Ally - set by recruitment
-        byRank = 750                            ; -> Acquaintance, gate stays shut
+        byRank = 200                            ; -> Stranger, and only part way
     ElseIf rank == 2                            ; Confidant
-        byRank = 600
+        byRank = 160
     ElseIf rank == 1                            ; Friend
-        byRank = 300
+        byRank = 80
     ElseIf rank == 0                            ; Acquaintance
-        byRank = 150
+        byRank = 40
     EndIf                                       ; hostile ranks estimate nothing
     If byRank > best
         best = byRank
@@ -3389,6 +3561,8 @@ Bool Function SeedActor(Actor akActor)
     EndIf
 
     MarkSelfAward(akActor)
+    ; NOT ScaleAward: seeding describes a relationship that existed before this mod
+    ; was installed. A slow setting must not retroactively shrink someone's past.
     Bool applied = Romantasy.ModifyPoints(akActor, delta, "Prior history together", True)
     If !applied
         ; NOT an error, and deliberately not stamped. This is the EXPECTED path
@@ -3895,7 +4069,12 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
     ; deliberately exempt: the whole point is that the day two people decide
     ; what they are to each other is not an ordinary day.
     If !defining
-        Int cap = SkyrimNetApi.GetConfigInt(CFG(), "talkDailyCap", 200)
+        ; THE CAP SCALES WITH THE LEVER, or the fast end silently stops being fast.
+        ; talkDailyCap is 200 - four REAL awards. Triple the awards without
+        ; touching the cap and a talkative day hits the ceiling three times sooner,
+        ; so "Much Faster" would quietly become "Normal, but earlier" with nothing
+        ; saying so. Scaling it keeps the setting honest in both directions.
+        Int cap = ScaleAward(SkyrimNetApi.GetConfigInt(CFG(), "talkDailyCap", 200))
         Int day = now as Int
         If StorageUtil.GetIntValue(akActor, "SNRom_TalkDay", -1) != day
             StorageUtil.SetIntValue(akActor, "SNRom_TalkDay", day)
@@ -3931,7 +4110,7 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
     ; both actually discarded. The tell is `ta:-1`, i.e. GetLevel() == 0.
     ; analyze_romance.py would have reported ~390 phantom points as earned.
     MarkSelfAward(akActor)
-    Bool applied = Romantasy.ModifyPoints(akActor, points, asWhat, True)
+    Bool applied = Romantasy.ModifyPoints(akActor, ScaleAward(points), asWhat, True)
     If !applied
         ; Roll back what we already spent. Without this a rejected award still
         ; burns the 3-day landmark cooldown and the daily conversation budget -
@@ -4164,7 +4343,7 @@ Function ApplySpark(Actor akActor, String asMoment)
     StorageUtil.SetFloatValue(akActor, "SNRom_SparkedAt", Utility.GetCurrentGameTime())
 
     MarkSelfAward(akActor)
-    Romantasy.ModifyPoints(akActor, 25, asMoment, False)
+    Romantasy.ModifyPoints(akActor, ScaleAward(25), asMoment, False)
 
     SkyrimNetApi.RegisterPersistentEvent( \
         akActor.GetDisplayName() + " and " + Game.GetPlayer().GetDisplayName() + \
