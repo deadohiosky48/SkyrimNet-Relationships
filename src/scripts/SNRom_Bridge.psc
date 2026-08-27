@@ -3445,6 +3445,39 @@ Int Function SeedTarget(Actor akActor)
     Return best
 EndFunction
 
+Int Function CommitmentState(Actor akActor) Global
+    { How far this person has formally committed: 0 nothing, 1 candidate,
+      2 engaged, 3 married. Ordered on purpose, so a rising number is a real
+      step forward and a falling one is a real step back.
+
+      READ, NEVER RECORDED. MARAS already owns this state machine -
+      candidate, engaged, married, divorced, jilted - and vanilla owns
+      PlayerMarriedFaction. Keeping our own copy would mean two records that
+      can disagree, and the one that disagrees is always ours, because a
+      marriage or a divorce can happen entirely through their dialogue while
+      nothing tells us about it.
+
+      Married is checked FIRST and by IsMarriedToPlayer, which accepts either
+      the vanilla faction or MARAS, because a completed marriage outranks any
+      earlier rung regardless of which mod recorded it. Without MARAS the
+      middle two rungs simply do not exist and this collapses to 0 or 3, which
+      is the correct answer for a game that only models the wedding. }
+    If akActor == None
+        Return 0
+    EndIf
+    If IsMarriedToPlayer(akActor)
+        Return 3
+    EndIf
+    If MarasPresent()
+        If MARAS.IsNPCStatus(akActor, "engaged")
+            Return 2
+        EndIf
+        If MARAS.IsNPCStatus(akActor, "candidate")
+            Return 1
+        EndIf
+    EndIf
+    Return 0
+EndFunction
 Bool Function IsMarriedToPlayer(Actor akActor) Global
     { Married, by whichever system the player actually uses. Vanilla and MARAS
       both count and neither is preferred - the question is whether the game
@@ -4040,6 +4073,40 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
     Bool defining = landmark || rupture
     Float now = Utility.GetCurrentGameTime()
 
+    ; -- A STATE CANNOT BE ENTERED TWICE -------------------------------------
+    ; Lisette was paid a landmark 350 for agreeing to marry, and 350 again 6.9
+    ; game days later for agreeing to marry a second time. Neither award broke a
+    ; rule: talkLandmarkDays is 3.0, and the gate limits how OFTEN a bond may be
+    ; redefined, not what the redefinition is about.
+    ;
+    ; That is the right shape for most beats - "we grew closer than we were" can
+    ; honestly happen more than once, so a generic landmark stays repeatable and
+    ; is guarded only by the cooldown below. What cannot honestly happen twice is
+    ; ENTERING A STATE YOU ARE ALREADY IN. Nobody agrees to marry the person they
+    ; are already married to.
+    ;
+    ; The latch is a COMPARISON, not a flag, which is why there is no unlatch
+    ; anywhere: it tests the stored state against the CURRENT one. A divorce drops
+    ; the current state, the two stop matching, and the next real transition pays
+    ; in full. The release is the event, which is what the design asked for.
+    ;
+    ; RUPTURES ARE EXEMPT. A negative landmark is not entering a state, and two
+    ; people at the same rung can wound each other more than once.
+    ;
+    ; Doubly worth having now: Bond Pace multiplies earnings, so on Fast a
+    ; double-paid landmark is 700 a time. The amplifier shipped in 1.1.2 before
+    ; this leak was closed.
+    Int commitState = CommitmentState(akActor)
+    If landmark && commitState > 0 && \
+       StorageUtil.GetIntValue(akActor, "SNRom_LandmarkState", 0) == commitState
+        Diag(LOG_INFO(), "Landmark for " + akActor.GetDisplayName() + \
+            " downgraded - already at commitment state " + commitState + \
+            " and a landmark was already paid for reaching it. Nothing new was decided.")
+        points   = SNRom_Decorators.WeightToPoints("MAJOR")
+        landmark = False
+        defining = False
+    EndIf
+
     If defining
         ; A relationship gets to be redefined rarely. Without this, two
         ; enthusiastic conversations in an afternoon would carry someone from
@@ -4062,8 +4129,30 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
             defining = False
         Else
             StorageUtil.SetFloatValue(akActor, "SNRom_LastLandmark", now)
+            If landmark && commitState > 0
+                StorageUtil.SetIntValue(akActor, "SNRom_LandmarkState", commitState)
+            EndIf
         EndIf
     EndIf
+
+    ; -- SCALE ONCE, HERE, AND USE THE RESULT EVERYWHERE ---------------------
+    ; points is the weight the assessor chose. awarded is what actually lands.
+    ; Keeping both is the fix for two bugs found together on 2026-08-27.
+    ;
+    ; THE LOG WAS LYING. The award line reported "SMALL 10 pts" while Romantasy
+    ; recorded 5 - the Diag was composed from the unscaled value and the scaling
+    ; happened later, inside the ModifyPoints call. On Slow every line overstated
+    ; by double; on Fast it halved. This log is how the mod gets diagnosed, so a
+    ; number in it that never happened is worse than no number at all.
+    ;
+    ; THE LEVER WAS QUADRATIC, which only became visible once the two numbers
+    ; were put side by side. The daily cap was scaled but the running total
+    ; counted RAW points, so Slow halved each award AND halved how many fit in a
+    ; day - 50 points where 100 was intended, 800 on Fast where 400 was.
+    ; Counting the APPLIED value against the scaled cap makes it linear: the
+    ; same number of awards a day at every setting, each worth proportionally
+    ; more or less. That is what one lever is supposed to mean.
+    Int awarded = ScaleAward(points)
 
     ; Daily budget, so ordinary conversation cannot be farmed. Landmarks are
     ; deliberately exempt: the whole point is that the day two people decide
@@ -4086,12 +4175,12 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
             Diag(LOG_INFO(), "Daily conversation budget spent for " + akActor.GetDisplayName() + " - award dropped")
             Return
         EndIf
-        If points > room
-            points = room
-        ElseIf points < -room
-            points = -room
+        If awarded > room
+            awarded = room
+        ElseIf awarded < -room
+            awarded = -room
         EndIf
-        Int used = points
+        Int used = awarded
         If used < 0
             used = -used
         EndIf
@@ -4110,7 +4199,7 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
     ; both actually discarded. The tell is `ta:-1`, i.e. GetLevel() == 0.
     ; analyze_romance.py would have reported ~390 phantom points as earned.
     MarkSelfAward(akActor)
-    Bool applied = Romantasy.ModifyPoints(akActor, ScaleAward(points), asWhat, True)
+    Bool applied = Romantasy.ModifyPoints(akActor, awarded, asWhat, True)
     If !applied
         ; Roll back what we already spent. Without this a rejected award still
         ; burns the 3-day landmark cooldown and the daily conversation budget -
@@ -4118,22 +4207,33 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
         ; landmark to MAJOR, for an award that never existed.
         If defining
             StorageUtil.UnsetFloatValue(akActor, "SNRom_LastLandmark")
+            ; And the state latch, for the same reason - a refused award must not
+            ; consume the one landmark this transition is allowed.
+            StorageUtil.UnsetIntValue(akActor, "SNRom_LandmarkState")
         Else
-            Int refund = points
+            Int refund = awarded
             If refund < 0
                 refund = -refund
             EndIf
             StorageUtil.SetIntValue(akActor, "SNRom_TalkToday", \
                 StorageUtil.GetIntValue(akActor, "SNRom_TalkToday", 0) - refund)
         EndIf
-        Diag(LOG_ERROR(), "Romantasy REJECTED " + points + " pts for " + \
+        Diag(LOG_ERROR(), "Romantasy REJECTED " + awarded + " pts for " + \
             akActor.GetDisplayName() + " (tier=" + (Romantasy.GetLevel(akActor) - 1) + \
             ") - she is enrolled in our roster but not live in Romantasy yet, which " + \
             "needs one game load after enrollment. Award LOST, no ledger row written.")
         Return
     EndIf
-    Ledger(akActor, "talk", "", points, 1, asWhat)
-    Diag(LOG_INFO(), "Talk award for " + akActor.GetDisplayName() + ": " + asWeight + " " + points + " pts - " + asWhat)
+    Ledger(akActor, "talk", "", awarded, 1, asWhat)
+    ; REPORT BOTH. The weight the assessor chose is diagnostically useful and so
+    ; is the number that landed; showing only one of them is how this was missed.
+    String paceNote = ""
+    If awarded != points
+        paceNote = " -> " + awarded + " applied (Bond Pace: " + \
+            SkyrimNetApi.GetConfigString(CFG(), "bondPace", "Normal") + ")"
+    EndIf
+    Diag(LOG_INFO(), "Talk award for " + akActor.GetDisplayName() + ": " + \
+        asWeight + " " + points + " pts" + paceNote + " - " + asWhat)
 
     ; Only a redefinition is worth writing into the world as an event others
     ; can refer to. Everything smaller is a private shift and stays one.
