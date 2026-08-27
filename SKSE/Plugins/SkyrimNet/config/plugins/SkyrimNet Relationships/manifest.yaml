@@ -1,6 +1,6 @@
 plugin:
   name: "SkyrimNet Relationships"
-  version: "1.1.2"
+  version: "1.1.4"
   description: "Lets SkyrimNet drive romance through ColdSun's Romantasy framework — organic enrollment, LLM-authored preferences, and bond-aware dialogue."
   icon: "🥀"
 
