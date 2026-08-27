@@ -4,6 +4,8 @@
 
 Every companion forms their own opinion of you — and it changes.
 
+**[How it works, in pictures](https://deadohiosky48.github.io/SkyrimNet-Relationships/)**
+
 ---
 
 > ### Requires Romantasy 1.1.1 or newer
@@ -13,6 +15,11 @@ Every companion forms their own opinion of you — and it changes.
 > degrades gracefully on them rather than breaking — but two of its central
 > promises, that a companion starts scoring the moment they join you and that an
 > authored character can be corrected, are simply not deliverable there.
+>
+> **1.1.0 specifically** treated every follower this mod enrolled as though a mod
+> author had written their preferences, and refused to let anything set them. If
+> you enrolled companions on 1.1.0 they may have no likes or dislikes at all, and
+> updating alone does not fix them — see *Troubleshooting* below.
 
 ---
 
@@ -123,7 +130,7 @@ This mod's job is making sure you both meant it before you get that far.
 | | |
 |---|---|
 | [SkyrimNet](https://www.nexusmods.com/skyrimspecialedition/mods/151960) | required |
-| [Romantasy](https://www.nexusmods.com/skyrimspecialedition/mods/186060) | required — **1.1.0 or newer** |
+| [Romantasy](https://www.nexusmods.com/skyrimspecialedition/mods/186060) | required — **1.1.1 or newer** |
 | SKSE64 | required |
 | PapyrusUtil SE | required — StorageUtil, JsonUtil, MiscUtil |
 | Papyrus MessageBox ([Nexus 83578](https://www.nexusmods.com/skyrimspecialedition/mods/83578)) | required for the consent prompt; bundled by MARAS |
@@ -136,7 +143,7 @@ inert; nothing errors and no prompt breaks.
 
 | | adds |
 |---|---|
-| SeverActions | follower detection and rapport-based head starts for companions you already know |
+| SeverActions | follower detection and rapport-based head starts for companions you already know. From **3.9.11** it detects this mod and steps its own Intimacy & Consent section aside, so nobody is handed two ideas of how receptive they are |
 | OStim Community Resource | physical attraction as an input, for characters whose disposition allows it to matter |
 | MARAS | marriage and engagement are read as facts rather than judged |
 | [SkyrimNet-Kinship](https://github.com/deadohiosky48/SkyrimNet-Kinship) | your own children are barred from the romantic and sexual ladders |
@@ -157,12 +164,18 @@ Everything is tunable from SkyrimNet's settings page. The defaults are calibrate
 so that an authored emotional beat is worth roughly what clearing a dungeon is
 worth, and so that nothing moves quickly.
 
+**Bond Pace** is the setting most people will want. Slow, Normal or Fast, under *Pacing*
+— roughly twice as long, as-is, or roughly half. It multiplies what is earned in
+both directions, so on Slow a misstep also costs less, and it never changes where
+a relationship can end up: only how long the road is. Fourteen finer knobs sit
+underneath it and all of them still work; this moves them together.
+
 Notable knobs: how much conversation can move a bond in a day, how long between
 moments where a relationship is allowed to be redefined, how long two people must
 travel together before romance can begin at all, whether personalities are
 allowed to change over time and how much must have happened first.
 
-The most consequential single setting is **LLM Variant**, which chooses the model
+The setting that matters most to whether the mod works at all is **LLM Variant**, which chooses the model
 serving every background assessment this mod makes. See
 [Diary entries, and which model sees what](docs/DIARY_AND_LLM_ROUTING.md) for
 what to point it at and why — and for how SkyrimNet's automatic diary entries
