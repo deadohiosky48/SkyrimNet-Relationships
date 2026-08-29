@@ -237,11 +237,16 @@ Function Bootstrap(Bool abForce = False)
     ;
     ; Warning about a conflict another author has already fixed is how a mod
     ; teaches players to dismiss its warnings.
-    ; Arm the spark timer. Safe to call on every bootstrap - a single-update
+    ; Arm the tick. Safe to call on every bootstrap - a single-update
     ; registration simply replaces any prior one rather than stacking.
-    RegisterForSingleUpdateGameTime(SparkIntervalHours())
-    Diag(LOG_INFO(), "Bridge ready. ROM_RomanceLevel resolved. Spark timer armed (" + \
-        SparkIntervalHours() + "h).")
+    ;
+    ; Armed on the ASSESSMENT cadence, which reads a follower count cached in the
+    ; co-save, so the first tick of a session already knows how large the party
+    ; was when it ended. SweepFollowers runs at the end of this function and
+    ; refreshes it before the tick after that.
+    RegisterForSingleUpdateGameTime(AssessIntervalHours())
+    Diag(LOG_INFO(), "Bridge ready. ROM_RomanceLevel resolved. Assessing every " + \
+        AssessIntervalHours() + "h, housekeeping every " + SparkIntervalHours() + "h.")
     ; Catch up immediately rather than waiting a game hour or two. This is the
     ; path that finds followers SeverActions never announces.
     SweepFollowers()
@@ -772,6 +777,11 @@ Function SweepFollowers()
     ; returned nothing or the follower test rejected everyone. Two completely
     ; different bugs, indistinguishable from outside. Never ship a sweep
     ; without its counts.
+    ; Cached for AssessIntervalHours. The sweep already knows this number and it
+    ; costs a walk of the roster to recompute, so it is stored rather than asked
+    ; for again. Up to one housekeeping period stale, which is harmless for a
+    ; pacing decision.
+    StorageUtil.SetIntValue(None, "SNRom_FollowerCount", followers)
     Diag(LOG_INFO(), "Follower sweep: " + scanned + " actors in range, " + followers + \
         " following, roster now " + StorageUtil.FormListCount(None, "SNRom_Roster"))
 EndFunction
@@ -1071,8 +1081,32 @@ Function MarkMoment(Actor akActor, Int aiMagnitude, String asReason, String asAc
         Return
     EndIf
 
+    ; -- A MAGNITUDE OF ZERO IS A DAMAGED CALL, NOT A NEUTRAL ONE ------------
+    ; SkyrimNet converts the model's parameter to an Int before it reaches us,
+    ; so anything unparseable arrives here as 0 with no indication it was ever
+    ; anything else. The model has no legitimate reason to author a zero: this
+    ; action exists to record that something moved, and "nothing moved" is said
+    ; by not calling it. Zero therefore always means the payload was damaged.
+    ;
+    ; Measured 2026-08-29 on Fenja Secret-Fire, two damaged payloads in eleven
+    ; minutes. One collapsed to {"aiMagnitude": ", "} and was caught by
+    ; SkyrimNet for its missing asReason - loudly, in its own log. The other
+    ; arrived as "}35", a stray brace glued to the number, and was NOT caught:
+    ; it dispatched, scored zero, and reached the line below that writes the
+    ; player-visible journal row. That row would name a moment that mattered and
+    ; award nothing for it - the same failure the refusal guard further down
+    ; already exists to prevent, arriving by a different route.
+    If aiMagnitude == 0
+        Diag(LOG_ERROR(), "MarkMoment for " + akActor.GetDisplayName() + \
+            " arrived with magnitude 0 - the model parameter did not parse as " + \
+            "a number, so the payload was damaged in transit. No points and no " + \
+            "ledger row. The reason it sent was: " + asReason)
+        Return
+    EndIf
+
     Int cap = SkyrimNetApi.GetConfigInt(CFG(), "awardMaxPoints", 75)
-    Int magnitude = ScaleAward(ClampAward(aiMagnitude, asActivity, cap))
+    Int clamped   = ClampAward(aiMagnitude, asActivity, cap)
+    Int magnitude = ScaleAward(clamped)
 
     ; Armed once for the whole award. Whichever branch below fires - preference
     ; routing or a flat award - it is still one point change and one echoed
@@ -1086,9 +1120,57 @@ Function MarkMoment(Actor akActor, Int aiMagnitude, String asReason, String asAc
         routed = Romantasy.ApplyPreference(akActor, asActivity, magnitude, True)
     EndIf
 
+    Bool landed = routed
     If !routed
-        Romantasy.ModifyPoints(akActor, magnitude, asReason, True)
+        landed = Romantasy.ModifyPoints(akActor, magnitude, asReason, True)
     EndIf
+
+    ; -- A REFUSED AWARD MUST NOT LEAVE A LEDGER ROW -------------------------
+    ; The return value used to be discarded and the row written unconditionally,
+    ; so when Romantasy declined, this function awarded nothing, said nothing, and
+    ; then wrote the points into the journal anyway. The player reads that journal.
+    ;
+    ; The talk path has always handled this - "Award LOST, no ledger row written" -
+    ; so this was an inconsistency between the two award routes rather than an
+    ; oversight in the design.
+    ;
+    ; THE COMMON TRIGGER IS DISMISSAL, not anything exotic. Romantasy only adjusts
+    ; points for someone actively following, so an authored beat for a companion
+    ; waiting at home is refused outright:
+    ;
+    ;   Romantasy skipped <reason> point adjustment for Jordis the Sword-Maiden;
+    ;   follower is not actively following
+    ;
+    ; Measured 2026-08-28. It is silent on our side and always was.
+    If !landed
+        Diag(LOG_ERROR(), "Romantasy refused " + magnitude + " pts for " + \
+            akActor.GetDisplayName() + " - it only adjusts points for someone " + \
+            "actively following, so a dismissed or waiting companion is declined. " + \
+            "Award LOST, no ledger row written.")
+        Return
+    EndIf
+
+    ; -- SAY WHAT LANDED --------------------------------------------------
+    ; Until now this path logged only its failures, so a working award left no
+    ; trace on our side at all and had to be reconstructed from SkyrimNet own
+    ; log. That is backwards: the successes are what the tuning is judged on.
+    ; Report the whole chain, because each step can change the number and the
+    ; quadratic pace bug was invisible precisely while only one end was shown -
+    ; what the model asked for, what the cap allowed, what the pace applied.
+    String moved = ""
+    If clamped != aiMagnitude
+        moved = " (model asked " + aiMagnitude + ", capped at " + cap + ")"
+    EndIf
+    If magnitude != clamped
+        moved = moved + " -> " + magnitude + " applied (Bond Pace: " + \
+            SkyrimNetApi.GetConfigString(CFG(), "bondPace", "Normal") + ")"
+    EndIf
+    String route = "flat"
+    If routed
+        route = "routed through " + asActivity
+    EndIf
+    Diag(LOG_INFO(), "Moment for " + akActor.GetDisplayName() + ": " + \
+        clamped + " pts" + moved + " [" + route + "] - " + asReason)
 
     Ledger(akActor, "moment", asActivity, magnitude, 1, asReason)
 EndFunction
@@ -3608,6 +3690,8 @@ Bool Function SeedActor(Actor akActor)
     EndIf
 
     StorageUtil.SetIntValue(akActor, "SNRom_Seeded", 1)
+    Diag(LOG_INFO(), "Seeding: " + akActor.GetDisplayName() + " granted " + delta + \
+        " pts of prior history, now at " + target + ". Deliberately not pace-scaled.")
     ; Record the rapport this seed CONSUMED. The SeverActions rapport bridge was
     ; designed but never built; if it ever is, it must convert deltas measured
     ; from here rather than from zero, or every point of rapport already spent
@@ -3760,40 +3844,107 @@ EndFunction
 ; independent timers without them stepping on each other.
 ; ===========================================================================
 
+Float Function AssessIntervalHours() Global
+    { How long until the next ASSESSMENT tick. Housekeeping keeps its own,
+      slower schedule - see OnUpdateGameTime.
+
+      THE QUEUE WAS THE BOTTLENECK, NOT THE COOLDOWN. Each AssessNext* serves
+      exactly one actor and holds a single pending slot until the answer lands,
+      so a fixed two-hour tick meant a party of seven waited fourteen game hours
+      between assessments each - while talkCooldownHours, the setting that is
+      supposed to govern the rate, is 3.0 and never came close to binding.
+
+      Dividing the window by the party size hands the cooldown back its job: the
+      roster drains in roughly one window and each follower is then limited by
+      their own cooldown, which is what it was written for.
+
+      FLOORED AT HALF AN HOUR. Every tick is an LLM call for anyone eligible, and
+      at a default timescale half a game hour is about ninety real seconds - fast
+      enough that a large party still drains, slow enough not to hammer a local
+      model. A party of eight drains in four hours, just past the cooldown, which
+      is the right side of it.
+
+      Count comes from the sweep rather than a fresh walk, so it can be one
+      housekeeping period stale. That is fine: dismissing someone should not
+      change the tick rate the instant it happens. }
+    Int followers = StorageUtil.GetIntValue(None, "SNRom_FollowerCount", 1)
+    If followers < 1
+        followers = 1
+    EndIf
+    Float every = 2.0 / (followers as Float)
+    If every < 0.5
+        every = 0.5
+    ElseIf every > 2.0
+        every = 2.0
+    EndIf
+    Return every
+EndFunction
+
 Float Function SparkIntervalHours() Global
+    { THE HOUSEKEEPING WINDOW, despite the name - kept because it is referenced
+      in comments and in the 0.9.2 crash notes, and renaming it would orphan
+      those. It bounds the sweep, the attraction refresh and seeding.
+
+      It is also the numerator AssessIntervalHours divides by party size, so the
+      roster is meant to drain in about one of these. }
     Return 2.0
 EndFunction
 
 Event OnUpdateGameTime()
-    ; Sweep FIRST. Both assessors iterate the roster, so a follower who is not
-    ; on it is invisible to them - and the event we used to rely on never
-    ; fires for anyone SeverActions already knows.
-    SweepFollowers()
-    ; Attraction BEFORE the assessors. It is the cheap deterministic one and it
-    ; feeds a gate the spark assessment's outcome is read against, so a tick
-    ; that runs out of Papyrus budget should have spent it here first.
-    RefreshNextAttraction()
-    ; Seeding BEFORE the assessors, and before the spark one in particular: it
-    ; sets SNRom_SeedRomantic, which is what lets an established spouse be
-    ; spark-assessed without serving the tenure gate. Running it after would
-    ; cost a whole extra tick for no reason.
-    SeedNextActor()
-    ; The outstanding question goes BEFORE the assessors. It is cheap, local
-    ; and spends no LLM budget, and if a tick runs short of Papyrus time the
-    ; thing the player is owed should not be what gets dropped.
+    { TWO CADENCES, ONE TIMER. Papyrus gives a script one game-time update, so
+      the FAST one drives the event and the slow work is gated on elapsed time
+      inside it rather than getting a registration of its own.
+
+      WHY NOT SIMPLY TICK EVERYTHING FASTER. SweepFollowers calls
+      MiscUtil.ScanCellNPCs, which is the call a VR user crashed inside on a
+      heavily patched cell in 0.9.2. Running that scan four times as often to
+      make conversation scoring keep up would be paying for the fix with the
+      bug. RefreshNextAttraction and SeedNextActor are both once-per-actor work
+      with nothing to gain from hurrying.
+
+      The three assessors and the ask queue run every tick. Each assessor serves
+      one actor, holds a single pending slot until the answer lands, and obeys
+      its own per-actor cooldown - so a faster tick drains the roster without
+      assessing anyone more often than their cooldown already allows. That was
+      the whole problem: at a fixed two hours a party of seven waited fourteen
+      game hours apiece while talkCooldownHours sat at 3.0 and never bound. }
+    Float now = Utility.GetCurrentGameTime()
+    Float sinceKeep = now - StorageUtil.GetFloatValue(None, "SNRom_LastHousekeep", 0.0)
+    ; A negative delta means the clock moved backwards - a load of an older save.
+    ; Run housekeeping rather than wait out a window that will never elapse.
+    If sinceKeep >= (SparkIntervalHours() / 24.0) || sinceKeep < 0.0
+        StorageUtil.SetFloatValue(None, "SNRom_LastHousekeep", now)
+        ; Sweep FIRST. All three assessors iterate the roster, so a follower who
+        ; is not on it is invisible to them - and the event we used to rely on
+        ; never fires for anyone SeverActions already knows.
+        SweepFollowers()
+        ; Attraction BEFORE the assessors. It is the cheap deterministic one and
+        ; it feeds a gate the spark assessment's outcome is read against.
+        RefreshNextAttraction()
+        ; Seeding BEFORE the assessors, and before the spark one in particular:
+        ; it sets SNRom_SeedRomantic, which is what lets an established spouse be
+        ; spark-assessed without serving the tenure gate.
+        SeedNextActor()
+    EndIf
+
+    ; The outstanding question goes BEFORE the assessors. It is cheap, local and
+    ; spends no LLM budget, and if a tick runs short of Papyrus time the thing
+    ; the player is owed should not be what gets dropped. On the fast tick now,
+    ; because a question waiting to be asked is the most latency-sensitive thing
+    ; here and it was previously waiting up to two game hours for no reason.
     PumpAskQueue()
     AssessNextTalk()
     AssessNextSpark()
-    ; Drift LAST of the three assessors, deliberately. It is the rarest and the
-    ; least urgent - its own gates are measured in game weeks - so if a tick
-    ; runs short of Papyrus budget this is the right thing to lose. It also
-    ; reads values the other two write, and reading them one tick stale would
-    ; mean judging her against who she was before tonight.
+    ; Drift LAST of the three, deliberately. It is the rarest and least urgent -
+    ; its own gates are measured in game weeks - so if a tick runs short of
+    ; Papyrus budget this is the right thing to lose. It also reads values the
+    ; other two write, and reading them one tick stale would mean judging her
+    ; against who she was before tonight.
     AssessNextDrift()
-    ; Re-arm unconditionally, including on every early return inside
-    ; AssessNextSpark. A timer that stops when there is nothing to do never
-    ; starts again when there is.
-    RegisterForSingleUpdateGameTime(SparkIntervalHours())
+    ; Re-arm unconditionally, including on every early return inside the
+    ; assessors. A timer that stops when there is nothing to do never starts
+    ; again when there is.
+    RegisterForSingleUpdateGameTime(AssessIntervalHours())
 EndEvent
 
 ; ===========================================================================
