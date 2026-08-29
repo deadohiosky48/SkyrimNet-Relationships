@@ -50,8 +50,13 @@
 # ---------------------------------------------------------------------------
 /docs/BACKLOG.md
 /docs/ANNOUNCEMENT.md
-/docs/KINSHIP_INTEGRATION_REQUEST.md
-/docs/KINSHIP_INTEGRATION_RESPONSE.md
+# Cross-mod design correspondence between this project and Kinship. Working
+# notes and negotiated contracts, not documentation - they name unreleased
+# features, quote each other's internals, and record decisions that changed
+# under scrutiny. A glob rather than a list so the next one is covered without
+# anyone remembering to add it: docs/ is served by GitHub Pages, so a tracked
+# file here is a published web page.
+/docs/KINSHIP_*.md
 /docs/SPEC_parentage_mod.md
 
 # Local scratch, editors, OS

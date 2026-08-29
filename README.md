@@ -78,6 +78,7 @@ than time — see below.
 
 **Scores conversation.** Talking matters. A background judge reads what actually
 passed between you and decides whether it moved anything — usually it did not.
+Everyone travelling with you is judged, so a large party is not a queue.
 Pacing lives in code, not in the prompt: daily caps, cooldowns, and a rarity
 limit on the moments where two people redefine what they are.
 

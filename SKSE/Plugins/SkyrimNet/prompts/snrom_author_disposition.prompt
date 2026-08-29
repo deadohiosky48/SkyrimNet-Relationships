@@ -136,26 +136,25 @@ WHAT IS PUBLICLY RECORDED ABOUT {{ npc_name }}
    would be assumed rather than known. #}
 {% set profile = render_character_profile("bio_summary", npc_uuid) + render_character_profile("bio_background", npc_uuid) + render_character_profile("bio_personality", npc_uuid) + render_character_profile("bio_aspirations", npc_uuid) + render_character_profile("bio_occupation", npc_uuid) + render_character_profile("bio_relationships", npc_uuid) %}
 
-{# ── SeverActions custom bio blocks, called DIRECTLY ────────────────────────
-   Their submodules (0350_sever_bioslot01 and 49 siblings) fire on
-   full/thoughts/transform and NOT on bio_*, so narrowing the profile above to
-   kill the inventory bleed also cut these off - and they are the OPPOSITE of
-   inventory: hand-curated, deliberate, exactly the established facts this call
-   most wants. Losing them silently would have been a bad trade made without
-   noticing, which is the trade this project keeps having to catch.
+{# -- SEVERACTIONS BIO SLOTS ARE GONE, and this block is kept as a record ----
+   This described calling SeverActions' bioslot decorators directly - slots 1-3
+   of 50 - to pull hand-curated established facts into the authoring call while
+   keeping item lists out.
 
-   Calling the decorators here instead of widening the render mode keeps both
-   properties: curated content in, item lists out. Slots 1-3 only - the store
-   supports 50 but blocks are written by hand and nobody fills fifty, so this
-   is the useful range without fifty decorator calls per authoring.
+   SeverActions REMOVED the whole bioslot feature in 3.9.11: no submodule files,
+   no decorator, no strings left in the DLL. Verified 2026-08-27 against both the
+   3.9.11 source archive and the live install.
 
-   Guarded with is_plugin_loaded, NOT exists(). These decorators belong to
-   SeverActions and are unregistered without it. exists() tests a CONTEXT
-   VARIABLE - every use of it in this codebase is a variable name
-   (npc_since_sec, events, npc) and never a function - so it would not have
-   guarded anything. is_plugin_loaded is the idiom our own 0330 and 0331 use
-   for exactly this, and dynamic_character_bio uses it for Romantasy and
-   Wintersun. Checked against those before writing it, rather than after. #}
+   Two things worth keeping from it. First, the call never actually existed here -
+   only the plan for it did, and the profile assembled below from six bio_* render
+   modes is what does the job instead. So nothing broke when the feature vanished,
+   which is the only reason this was not a live bug.
+
+   Second, the guard idiom it argued for is still right and still used elsewhere:
+   is_plugin_loaded, NOT exists(). exists() tests a CONTEXT VARIABLE - every use
+   of it in this codebase is a variable name and never a function - so it would
+   not have guarded a decorator call at all. That is the same reasoning behind the
+   existsIn guard on SeverActions' intimacy flag in 0330. #}
 {% endif %}
 {% if profile and profile != "" %}
 {{ profile }}
