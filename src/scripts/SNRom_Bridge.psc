@@ -2627,9 +2627,16 @@ Function AuthorDisposition(Actor akActor)
     ; It invented one for Lynea and hard-blocked her romance. The stub is kept
     ; as a fallback ONLY, for when the profile fails to render.
     ;
-    ; It also picks up SeverActions' custom bio blocks for free: those render
-    ; into the character profile, so anything the player pre-seeds in PrismaUI
-    ; reaches this call as established fact with no API we do not have.
+    ; IT DOES NOT PICK UP SeverActions' custom bio blocks. This comment used to
+    ; claim it did - that they rendered into the character profile, so anything
+    ; pre-seeded in PrismaUI arrived as established fact for free. It was never
+    ; true under either of SeverActions' designs: the old bioslot submodules and
+    ; the revived 0040_severactions_bio_blocks both gate on full/thoughts/
+    ; transform, and the profile is assembled from six bio_* modes. The prompt
+    ; now calls custom_bio_blocks(npc_uuid) itself, guarded on SeverActions.esp.
+    ; A comment asserting a thing works is not evidence that it does; this one
+    ; sat here unexamined while the feature it described was removed entirely
+    ; and then rebuilt differently.
     ; npc_formid is an INTEGER and the template derives the UUID from it with
     ; formid_to_uuid(). Passing GetEntityUUID's STRING instead looks obviously
     ; right and silently fails: render_character_profile returns "" with NO

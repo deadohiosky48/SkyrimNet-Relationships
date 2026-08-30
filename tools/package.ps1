@@ -123,6 +123,16 @@ try {
     Copy-Item (Join-Path $repo 'README.md') $docOut
     Copy-Item (Join-Path $repo 'LICENSE')   $docOut
 
+    # The SeverActions bio-block library ships here rather than under SKSE\ on
+    # purpose. It is not a runtime file: nothing reads it, and dropping it into
+    # a config directory would only invite SkyrimNet to try. It is imported by
+    # hand through SeverActions' own UI, so it belongs where a player looks for
+    # something to open - next to the README that explains what to do with it.
+    # NOT merged into SeverActions_BioBlocks.json by us: that store lives in
+    # Documents, is shared by every save, and carries their nextId and version.
+    # Writing another mod's store is the thing we asked Kinship not to do to us.
+    Copy-Item (Join-Path $repo 'library\relationships_bio_blocks.json') $docOut
+
     # --- 7. REFUSE TO SHIP A BUILD MACHINE'S DIRECTORY LAYOUT ---------------
     # Every text file about to be shipped is scanned for absolute paths. The repo
     # is kept clean of them by hand and by tools\local.settings.ps1, but this is
