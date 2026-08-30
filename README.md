@@ -144,7 +144,7 @@ inert; nothing errors and no prompt breaks.
 
 | | adds |
 |---|---|
-| SeverActions | follower detection and rapport-based head starts for companions you already know. From **3.9.11** it detects this mod and steps its own Intimacy & Consent section aside, so nobody is handed two ideas of how receptive they are |
+| SeverActions | follower detection and rapport-based head starts for companions you already know. From **3.9.11** it detects this mod and steps its own Intimacy & Consent section aside, so nobody is handed two ideas of how receptive they are. Its custom bio blocks are read as direct evidence when a character is authored - see below |
 | OStim Community Resource | physical attraction as an input, for characters whose disposition allows it to matter |
 | MARAS | marriage and engagement are read as facts rather than judged |
 | [SkyrimNet-Kinship](https://github.com/deadohiosky48/SkyrimNet-Kinship) | your own children are barred from the romantic and sexual ladders |
@@ -158,6 +158,42 @@ Install with a mod manager, or copy the contents over your `Data` folder.
 `SNRom_Integration.esl` is ESL-flagged and does not consume a load-order slot.
 
 Settings appear in SkyrimNet's plugin panel under **SkyrimNet Relationships**.
+
+### Optional: the disposition block library
+
+If you use SeverActions, this mod ships a library of character blocks you can
+import and apply to anyone:
+`Docs/SkyrimNet Relationships/relationships_bio_blocks.json`.
+
+**It is optional and changes no mechanics.** Everything works without it. What
+it does is make the judge more accurate. Applied blocks are the most direct
+evidence this mod ever gets about someone - written deliberately about that
+person rather than inferred from a bio - so they outrank the bio where the two
+disagree. Without them nothing breaks; the mod simply goes on guessing from
+what it can read.
+
+To use it:
+
+1. Open SeverActions' bio block UI and import the file above.
+2. Apply blocks to a companion.
+
+Four tabs, one per axis this mod reads:
+
+| tab | what it settles |
+|---|---|
+| Relationships: Attachment | how much they need to be the only one |
+| Relationships: Expression | how much of what they feel they show |
+| Relationships: Drawn To | who they are drawn to |
+| Relationships: Limits | the line they will not cross |
+
+Apply **one** block from Attachment, Expression and Drawn To. Each is a single
+value, so two at once is a contradiction the judge then has to resolve rather
+than a preference stated twice. Limits can take several.
+
+Blocks are read when a character is first authored, and again whenever their
+disposition is reviewed - so applying one later is not wasted. It pulls them
+toward it gradually instead of all at once. To have it land immediately,
+re-author the character; see Troubleshooting.
 
 ## Configuration
 

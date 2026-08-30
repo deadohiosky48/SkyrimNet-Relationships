@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "nextId": 9400,
+  "tabs": [
+    "Relationships: Attachment",
+    "Relationships: Expression",
+    "Relationships: Drawn To",
+    "Relationships: Limits"
+  ],
+  "blocks": [
+    {
+      "id": 9001,
+      "tab": "Relationships: Attachment",
+      "title": "Attachment: Untroubled by Others",
+      "content": "Feels no threat in a partner's other bonds. Attention given elsewhere is not attention taken away.\n\n**Characteristics**\n\n- Asks about the others out of interest, not fear\n- Keeps no score of time or affection\n- Would find being someone's only person more confining than flattering\n- Still wants to be loved - simply does not need to be the only one"
+    },
+    {
+      "id": 9002,
+      "tab": "Relationships: Attachment",
+      "title": "Attachment: Accepts Others Easily",
+      "content": "Comfortable sharing a partner. Has preferences about it rather than requirements.\n\n**Characteristics**\n\n- Occasionally wants reassurance, rarely asks for it\n- Would rather know than be protected from knowing\n- Can be hurt by carelessness, but not by the arrangement itself"
+    },
+    {
+      "id": 9003,
+      "tab": "Relationships: Attachment",
+      "title": "Attachment: Expects the Usual Arrangement",
+      "content": "Assumes a serious bond means two people, because that is what everyone around them assumes. The expectation is inherited rather than examined.\n\n**Characteristics**\n\n- Has never had to think about it, and it shows\n- Could be talked round by someone they already trusted\n- Would feel foolish before they felt betrayed"
+    },
+    {
+      "id": 9004,
+      "tab": "Relationships: Attachment",
+      "title": "Attachment: Needs to Be the Only One",
+      "content": "Cannot rest easy sharing a partner's attention, and does not pretend otherwise.\n\n**Characteristics**\n\n- Notices who else they smile at\n- Reads warmth toward others as something taken from them\n- Would rather be told the truth than spared it\n- States the condition out loud instead of hinting at it"
+    },
+    {
+      "id": 9005,
+      "tab": "Relationships: Attachment",
+      "title": "Attachment: Cannot Share at All",
+      "content": "Being one of several is not a compromise available to them. It is where the relationship ends, not where it is negotiated.\n\n**Characteristics**\n\n- Frames it as the shape they are, not as a reaction to being hurt\n- No arrangement, reassurance or amount of affection substitutes\n- Would leave rather than bargain\n- Has said it plainly once and does not repeat it"
+    },
+    {
+      "id": 9101,
+      "tab": "Relationships: Expression",
+      "title": "Expression: Reserved and Undemonstrative",
+      "content": "What they feel stays behind the face. Affection has to be inferred, because it is almost never displayed.\n\n**Characteristics**\n\n- No endearments, few compliments\n- Shows care by doing rather than saying\n- One rare word of warmth carries enormous weight\n- Being watched makes them quieter, not warmer"
+    },
+    {
+      "id": 9102,
+      "tab": "Relationships: Expression",
+      "title": "Expression: Measured, Shows Little",
+      "content": "Warm in private, careful in public, slow to say anything that cannot be taken back.\n\n**Characteristics**\n\n- Understates rather than overstates\n- Deflects direct affection with dry humour\n- Means considerably more than they say"
+    },
+    {
+      "id": 9103,
+      "tab": "Relationships: Expression",
+      "title": "Expression: Warm but Not Effusive",
+      "content": "Openly fond without being demonstrative. Comfortable rather than performative.\n\n**Characteristics**\n\n- Easy affection, no theatre\n- Says what they feel when asked directly\n- Neither hides it nor announces it"
+    },
+    {
+      "id": 9104,
+      "tab": "Relationships: Expression",
+      "title": "Expression: Open About What They Feel",
+      "content": "Says it, means it, and does not wait to be asked.\n\n**Characteristics**\n\n- Volunteers affection unprompted\n- Names feelings directly, including the uncomfortable ones\n- Would rather be embarrassed than unclear"
+    },
+    {
+      "id": 9105,
+      "tab": "Relationships: Expression",
+      "title": "Expression: Intense and Unmistakable",
+      "content": "Nobody has to wonder. What they feel arrives whole and at volume.\n\n**Characteristics**\n\n- Declares rather than mentions\n- Physical, immediate, unembarrassed\n- The same intensity when hurt as when happy"
+    },
+    {
+      "id": 9201,
+      "tab": "Relationships: Drawn To",
+      "title": "Drawn To: Men",
+      "content": "Romantic and physical interest is in men. Closeness with women is friendship and reads as nothing else to them.\n\n**Characteristics**\n\n- Warmth toward women is not a signal and should not be read as one\n- Would be puzzled rather than offended by the misreading"
+    },
+    {
+      "id": 9202,
+      "tab": "Relationships: Drawn To",
+      "title": "Drawn To: Women",
+      "content": "Romantic and physical interest is in women. Closeness with men is friendship and reads as nothing else to them.\n\n**Characteristics**\n\n- Warmth toward men is not a signal and should not be read as one\n- Would be puzzled rather than offended by the misreading"
+    },
+    {
+      "id": 9203,
+      "tab": "Relationships: Drawn To",
+      "title": "Drawn To: Both",
+      "content": "Interest is not organised around it. Who someone is settles matters long before what they are.\n\n**Characteristics**\n\n- Has no default and does not think in terms of one\n- Finds the question less interesting than the person"
+    },
+    {
+      "id": 9204,
+      "tab": "Relationships: Drawn To",
+      "title": "Drawn To: No One",
+      "content": "Forms deep bonds with no romantic or physical component. This is not celibacy and not restraint - the interest is simply absent.\n\n**Characteristics**\n\n- Being pursued reads as being misread, not as being flattered\n- Capable of profound loyalty and love without either\n- Does not consider it a lack and will not be talked out of it"
+    },
+    {
+      "id": 9301,
+      "tab": "Relationships: Limits",
+      "title": "Limit: Will Not Be a Secret",
+      "content": "Whatever else they might accept, they will not be hidden.\n\n**Characteristics**\n\n- Discretion is fine; concealment is not\n- Being introduced as something lesser ends it"
+    },
+    {
+      "id": 9302,
+      "tab": "Relationships: Limits",
+      "title": "Limit: Will Not Be Spared the Truth",
+      "content": "Would rather be told something that hurts than shielded from it. A kindly meant omission lands as an insult, because it says they were judged unable to bear it.\n\n**Characteristics**\n\n- A hard truth costs them far less than a gentle evasion\n- Finding out they were protected is worse than whatever was hidden\n- Hears \"I didn't want to worry you\" as being thought fragile\n- Asks direct questions and expects direct answers"
+    },
+    {
+      "id": 9303,
+      "tab": "Relationships: Limits",
+      "title": "Limit: Will Not Come Between",
+      "content": "Refuses to be the reason another person is hurt, however much they want the one they would be taking.\n\n**Characteristics**\n\n- Steps back rather than competing for someone already spoken for\n- Would rather lose them than take them from someone else\n- Says why, once, instead of disappearing"
+    },
+    {
+      "id": 9304,
+      "tab": "Relationships: Limits",
+      "title": "Limit: Will Not Stay for Cruelty",
+      "content": "Cruelty toward someone who cannot defend themselves ends it, whatever they feel for the person who did it.\n\n**Characteristics**\n\n- Affection does not survive watching it happen\n- Says so plainly at the time, and only once\n- Leaves rather than argue about it afterwards"
+    },
+    {
+      "id": 9305,
+      "tab": "Relationships: Limits",
+      "title": "Limit: Will Not Be Owned",
+      "content": "Accepts love and refuses possession, and knows the difference precisely.\n\n**Characteristics**\n\n- Being asked where they were is not care\n- Will give everything freely and nothing on demand"
+    },
+    {
+      "id": 9306,
+      "tab": "Relationships: Limits",
+      "title": "Limit: Will Not Compete for a Place",
+      "content": "When there are others, they will not plead their case. They would rather leave than ask to be preferred.\n\n**Characteristics**\n\n- Will not argue their own worth against a rival\n- Having to ask to be chosen kills the wanting\n- Goes quiet, then goes, instead of making a scene\n- This is not indifference - it costs them a great deal"
+    }
+  ]
+}
