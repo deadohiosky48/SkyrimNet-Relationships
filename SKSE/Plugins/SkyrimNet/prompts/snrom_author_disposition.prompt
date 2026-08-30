@@ -178,6 +178,10 @@ WHAT SOMEONE DELIBERATELY ESTABLISHED ABOUT {{ npc_name }}
 
 THIS OUTRANKS THE PROFILE ABOVE. Everything else here was inferred from a bio; this was chosen for this person on purpose. Where the two disagree, this wins.
 
+BLOCKS TITLED FOR THESE FIELDS ARE DIRECT ANSWERS, AND THEY WIN. A block whose title begins `Attachment:`, `Expression:`, `Drawn To:` or `Limit:` was written to answer one of the questions below and applied to this person deliberately. On its own field it outranks everything - the bio, your own reading, and any number of other blocks pointing the other way. Twenty blocks describing what someone enjoys do not outvote one block stating how much they show; they are answers to different questions and only one of them was aimed at this one.
+
+Where no such block exists for a field, weigh everything normally and decide for yourself.
+
 IT IS EVIDENCE, NOT SUBJECT MATTER. It is phrased in the vocabulary of intimacy because that is the library it comes from - but you are authoring a disposition, not a bedroom. Read through the surface to the person. A block naming who they are drawn to settles ORIENTATION outright. A block saying they form deep lasting attachments and value commitment is direct testimony on EXCLUSIVITY. A block calling them reserved, shy, bold or openly expressive is testimony on ARDOR. A block listing what they will not do is where a LIMIT may already be stated.
 
 DO NOT RESTATE ANY OF IT. The WHY and the LIMIT are one line each, in their own voice, about how they love. Someone who has never seen this section must not be able to reconstruct it from what you write.
@@ -236,7 +240,15 @@ INTIMACY - what physical closeness requires of them:
 - `ROMANTIC` - only once genuinely in love
 - `CASUAL` - strong attraction is reason enough; it need not be love
 
+THIS AXIS OWNS EVERY PHYSICAL SIGNAL. Appetite, adventurousness, performance, what someone enjoys in bed, how often they want it - all of it is evidence HERE and nowhere else. It answers one question and only one: how much emotional ground has to exist first.
+
+`GUARDED` AND `ROMANTIC` ARE DIFFERENT ANSWERS, and the difference is not degree. `GUARDED` waits for a settled, committed bond - the arrangement has to be safe before the person can be. `ROMANTIC` waits for love, which routinely arrives long before any arrangement does. Someone who would go to bed with a person they had fallen for but promised nothing to is `ROMANTIC`. That is the ordinary human answer and it is chosen far too rarely; if you are reaching for `GUARDED`, check that it is the commitment they need and not the feeling.
+
 ARDOR - how much of what they feel actually shows: `RESERVED` (gives almost nothing away), `MEASURED` (shows little, and rarely first), `WARM` (openly fond, without display), `OPEN` (says what they feel plainly), or `INTENSE` (unmistakable, and they do not try to hide it).
+
+PHYSICAL APPETITE IS NOT ARDOR. Someone can be adventurous, uninhibited and utterly demonstrative in bed and still be measured about saying what they feel. Someone who gives almost nothing away physically can be unmistakable about love. Those signals are `INTIMACY`'s evidence, not this axis's. This one asks a single question: how legible are their FEELINGS to the person they are aimed at.
+
+THESE TWO AXES VARY INDEPENDENTLY, AND THE COMBINATION IS WHAT MAKES SOMEONE SPECIFIC RATHER THAN A TYPE. Physically open and emotionally guarded is a real person. So is physically reserved and emotionally unmistakable. Do not let one answer decide the other - if both landed at the same end of their scales, go back and check the evidence said so twice, rather than once in two places.
 
 EXCLUSIVITY - what they ask OF {{ player.name }} about other partners. This is the one question here that is NOT about the strength of their feeling. It asks only what they require of {{ player.name }} - never how much they care, and never how faithful they are themselves.
 
@@ -360,9 +372,9 @@ Answer in exactly this form and nothing else:
 NAME: {{ npc_name }}
 SEXUAL_ORIENTATION: <ATTRACTED_TO_MEN|ATTRACTED_TO_WOMEN|ATTRACTED_TO_BOTH|ATTRACTED_TO_NEITHER>
 SEXUAL_ORIENTATION_BASIS: <STATED|IMPLIED|UNKNOWN>
-INTIMACY: <NEVER|GUARDED|ROMANTIC|CASUAL>
-ARDOR: <RESERVED|MEASURED|WARM|OPEN|INTENSE>
-EXCLUSIVITY: <UNTROUBLED|ACCEPTING|CONVENTIONAL|POSSESSIVE|CONSUMING>
+INTIMACY: <NEVER|GUARDED|ROMANTIC|CASUAL>   <- if a `Drawn To:` block named an orientation this is not that question; this one is how much feeling must come first. Every physical signal in the blocks is evidence HERE.
+ARDOR: <RESERVED|MEASURED|WARM|OPEN|INTENSE>   <- if an `Expression:` block was applied, COPY ITS ANSWER. `Measured, Shows Little`=MEASURED, `Warm but Not Effusive`=WARM, `Open About What They Feel`=OPEN, `Intense and Unmistakable`=INTENSE, `Reserved and Undemonstrative`=RESERVED. Twenty blocks about what they enjoy in bed do not change this number.
+EXCLUSIVITY: <UNTROUBLED|ACCEPTING|CONVENTIONAL|POSSESSIVE|CONSUMING>   <- if an `Attachment:` block was applied, COPY ITS ANSWER.
 WHY: <one short sentence, in third person, on what these say about them>
 LIMIT: <one short sentence, in third person, on a line they will not cross>
 LIKES: <at most 7 names, copied from the catalogue>

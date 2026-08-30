@@ -190,6 +190,13 @@ Apply **one** block from Attachment, Expression and Drawn To. Each is a single
 value, so two at once is a contradiction the judge then has to resolve rather
 than a preference stated twice. Limits can take several.
 
+**Balance matters more than restraint.** Blocks describing physical taste say
+nothing about how someone expresses feeling, so a character carrying twenty of
+those and none of these leaves the emotional questions to be answered from
+whatever else is lying around - and what is lying around is the physical.
+Apply as many true blocks as you like; just make sure the emotional side is
+described too.
+
 Blocks are read when a character is first authored, and again whenever their
 disposition is reviewed - so applying one later is not wasted. It pulls them
 toward it gradually instead of all at once. To have it land immediately,
