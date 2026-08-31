@@ -3714,8 +3714,7 @@ Bool Function SeedActor(Actor akActor)
 
     StorageUtil.SetIntValue(akActor, "SNRom_Seeded", 1)
     Diag(LOG_INFO(), "Seeding: " + akActor.GetDisplayName() + " granted " + delta + \
-        " pts of prior history, now at " + target + ". Deliberately not pace-scaled." + \
-            MarasStateLine(akActor))
+        " pts of prior history, now at " + target + ". Deliberately not pace-scaled.")
     ; Record the rapport this seed CONSUMED. The SeverActions rapport bridge was
     ; designed but never built; if it ever is, it must convert deltas measured
     ; from here rather than from zero, or every point of rapport already spent
