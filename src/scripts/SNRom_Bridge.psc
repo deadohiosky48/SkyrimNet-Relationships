@@ -171,6 +171,14 @@ Function Bootstrap(Bool abForce = False)
         Return
     EndIf
     _lastBootstrap = now
+    ; SESSION COUNTER, not a boolean. The marriage reconciliation needs to know
+    ; whether it has checked a GIVEN ACTOR this session, and StorageUtil values
+    ; persist in the save, so there is nothing per-actor that resets on its own.
+    ; Incrementing one None-scoped Int here makes every actor's stored marker
+    ; stale at once, which is the reset - and it costs one write per load rather
+    ; than a walk over the roster clearing flags.
+    StorageUtil.SetIntValue(None, "SNRom_SessionId", \
+        StorageUtil.GetIntValue(None, "SNRom_SessionId", 0) + 1)
     _ledgerBuf = new String[32]
     _ledgerCount = 0
 
@@ -276,6 +284,14 @@ Function RegisterEvents()
     ; nobody auto-enrolls. Nothing errors, and BeginSpark still works. See
     ; the note in AutoEnroll about what a standalone fallback would cost.
     RegisterForModEvent("SeverActions_NewTeammateDetected", "OnNewTeammate")
+    ; MARAS owns the marriage state machine and ANNOUNCES changes. We read that
+    ; state in six places and never listened for it changing, so a marriage that
+    ; happened - or became visible - after an actor was seeded reached us never.
+    ; The seed stamps SNRom_Seeded and the sweep then skips that actor forever,
+    ; so a missed marriage was permanent rather than eventually-consistent.
+    ; Signature is the standard SKSE shape, documented in MARAS.psc:585:
+    ;   (String eventName, String status, Float statusEnum, Form npc)
+    RegisterForModEvent("maras_status_changed", "OnMarasStatusChanged")
 EndFunction
 
 ; NOTE: there is deliberately no decorator self-test. Mod-added decorators
@@ -3698,7 +3714,8 @@ Bool Function SeedActor(Actor akActor)
 
     StorageUtil.SetIntValue(akActor, "SNRom_Seeded", 1)
     Diag(LOG_INFO(), "Seeding: " + akActor.GetDisplayName() + " granted " + delta + \
-        " pts of prior history, now at " + target + ". Deliberately not pace-scaled.")
+        " pts of prior history, now at " + target + ". Deliberately not pace-scaled." + \
+            MarasStateLine(akActor))
     ; Record the rapport this seed CONSUMED. The SeverActions rapport bridge was
     ; designed but never built; if it ever is, it must convert deltas measured
     ; from here rather than from zero, or every point of rapport already spent
@@ -3775,6 +3792,102 @@ Function SeedRomanticFlag(Actor akActor)
     EndIf
 EndFunction
 
+Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEnum, Form akSender)
+    { MARAS announced a relationship change. The only one that matters here is a
+      marriage: it raises the seed ceiling from 2000 to 2500, and it is the one
+      fact an authored trait is never allowed to contradict.
+
+      Re-seeds rather than topping up, because ReseedActor already clears the
+      stamp and re-runs the whole computation, which will now see the marriage
+      and land on Spouse. Other statuses are ignored: engagement is already read
+      at seed time, and a divorce must NOT claw points back - those were earned,
+      and Romantasy owns what a break-up costs. }
+    Actor who = akSender as Actor
+    If who == None || !_ready
+        Return
+    EndIf
+    If SNRom_Decorators.Upper(SNRom_Decorators.Trim(asStatus)) != "MARRIED"
+        Return
+    EndIf
+    If !IsEnrolled(who)
+        Return
+    EndIf
+    Diag(LOG_INFO(), "MARAS reports " + who.GetDisplayName() + \
+        " is now married - re-seeding so the Spouse ceiling applies." + MarasStateLine(who))
+    ReseedActor(who)
+EndEvent
+
+Function ReconcileMarriages()
+    { Heal a spouse who was seeded before MARAS could say they were married.
+      ONE CHECK PER FOLLOWER PER SAVE LOAD.
+
+      THIS IS THE ONE THAT FIXES AN ALREADY-BROKEN SAVE, and the obvious
+      alternative does not. Declining to stamp SNRom_Seeded when a marriage is
+      missed cannot work: in the race IsMarriedToPlayer returns FALSE at seed
+      time, so there is no fact for such a guard to notice. It cannot detect
+      what it cannot see. Only a later re-read can.
+
+      WHY NOT IN Bootstrap. MARAS initialises on load exactly as we do, and
+      IsNPCStatus reads its native state. Checking at load would race the same
+      way the original seed did and reach the same wrong answer. This runs on the
+      housekeeping tick, after the sweep has refreshed follower states.
+
+      THE MARKER IS PER ACTOR AND PER SESSION, not one flag for the whole pass.
+      A single flag meant a spouse recruited later in the same session waited for
+      the next load. Keyed this way, someone who becomes a follower mid-session
+      is checked on the next tick instead.
+
+      AND IT IS CHEAP, because the ordering does the work. An actor already
+      checked this session costs one StorageUtil Int read and nothing else - no
+      faction lookup, no MARAS call, no GetPoints. Only an unchecked FOLLOWER
+      pays for those, at most once per load each.
+
+      NON-FOLLOWERS ARE NEVER STAMPED, deliberately. Romantasy refuses to adjust
+      points for anyone not actively following, so stamping a spouse waiting at
+      home would mark them checked while doing nothing for them, and they would
+      be skipped for the rest of the session once they started travelling. }
+    If !_ready
+        Return
+    EndIf
+    If SkyrimNetApi.GetConfigBool(CFG(), "seedEnabled", True) == False
+        Return
+    EndIf
+    Int session      = StorageUtil.GetIntValue(None, "SNRom_SessionId", 0)
+    Int spouseFloor  = 2500
+    Int i = 0
+    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    While i < n
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        ; Cheapest test first: everyone settled this session stops here.
+        If a != None && StorageUtil.GetIntValue(a, "SNRom_MarriageChecked", -1) != session
+            If !a.IsDead() && IsFollowing(a)
+                StorageUtil.SetIntValue(a, "SNRom_MarriageChecked", session)
+                If IsMarriedToPlayer(a)
+                    Int have = Romantasy.GetPoints(a)
+                    If have < spouseFloor
+                        MarkSelfAward(a)
+                        ; NOT ScaleAward: a correction to prior history, the same
+                        ; exemption seeding has. Bond Pace must not shrink a
+                        ; marriage that already happened.
+                        If Romantasy.ModifyPoints(a, spouseFloor - have, "Married to you", True)
+                            Diag(LOG_INFO(), "Marriage reconcile: " + a.GetDisplayName() + \
+                                " is married but held only " + have + " pts - raised to " + \
+                                spouseFloor + "." + MarasStateLine(a))
+                        Else
+                            ; Unstamp so the next tick tries again - a refusal here
+                            ; means they stopped following between the check above
+                            ; and this call, which is a race worth retrying.
+                            StorageUtil.SetIntValue(a, "SNRom_MarriageChecked", -1)
+                            Diag(LOG_WARN(), "Marriage reconcile: Romantasy refused the top-up for " + \
+                                a.GetDisplayName() + " - not following any more? Will retry.")
+                        EndIf
+                    EndIf
+                EndIf
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+EndFunction
 Function ReseedActor(Actor akActor)
     { Clear the once-ever stamp and seed again. ONE argument, so it dispatches
       from the web API.
@@ -3932,6 +4045,12 @@ Event OnUpdateGameTime()
         ; it sets SNRom_SeedRomantic, which is what lets an established spouse be
         ; spark-assessed without serving the tenure gate.
         SeedNextActor()
+        ; AFTER the sweep, so follower states are current, and after seeding so a
+        ; first-time seed is not immediately topped up twice. Runs on EVERY tick
+        ; by design and costs one Int read per roster entry once everyone present
+        ; has been checked - that is what lets a follower recruited mid-session be
+        ; picked up on the next tick rather than on the next load.
+        ReconcileMarriages()
     EndIf
 
     ; The outstanding question goes BEFORE the assessors. It is cheap, local and
