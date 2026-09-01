@@ -52,6 +52,10 @@ If the two of them, in this conversation, explicitly and mutually agreed to beco
 
 But it must be MUTUAL and it must be EXPLICIT. One proposing it and the other not objecting is not agreement. Accepting a role they were handed is not agreement. If you cannot point to both of them choosing it, it is not that.
 
+COMMITTING TO MARRY IS ALSO THIS, and it may be the strongest version of it. Two people saying aloud that they want to marry each other is a larger step than becoming partners was, not a formality on the way to one. Do not score it small because no ceremony has happened.
+
+When you answer `LANDMARK`, say which kind it was. That is a classification, not a judgement of size - answer it honestly and let the size be whatever the moment deserved.
+
 {% if maras_present == 1 %}
 WHAT THE WORLD ACTUALLY RECORDS
 {% if npc_married == 1 %}
@@ -339,6 +343,7 @@ Answer in exactly this form and nothing else:
 
 NAME: {{ npc_name }}
 WEIGHT: <NOTHING|SMALL|REAL|MAJOR|LANDMARK>
+LANDMARK_KIND: <COUPLE|MARRIAGE>   <- omit unless WEIGHT is `LANDMARK`. `COUPLE` if what they named aloud was becoming partners. `MARRIAGE` if what they named was marrying - proposing, accepting, or both plainly committing to it. Answer truthfully; nothing about the score depends on which you pick.
 ADDRESS: <NONE, unless one of them explicitly set or changed what {{ npc_name }} calls {{ player.name }} in the exchange above>
 DIRECTION: <TOWARD|AWAY>
 WHAT: <if not NOTHING, one sentence in their voice naming the specific thing above that did it — spoken, remembered or written, whichever actually carries it. If NOTHING, write NONE.>
