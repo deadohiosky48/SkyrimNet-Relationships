@@ -162,16 +162,25 @@ Settings appear in SkyrimNet's plugin panel under **SkyrimNet Relationships**.
 ### Optional: the disposition block library
 
 If you use SeverActions, this mod ships a library of character blocks you can
-import and apply to anyone. The file is **`relationships_bio_blocks.json`**, and
-you do not need it installed to use it - SeverActions imports a file you point
-it at, so the simplest route is to open the downloaded
-`SkyrimNet-Relationships-*.zip`, go to `Docs\SkyrimNet Relationships\`, and copy
-that one file somewhere you can find it.
+import and apply to anyone.
 
-If the mod is already installed, the same file is in your game folder:
+SeverActions' import window takes **pasted JSON text**, not a file, so all you
+need is the text:
 
-- Vortex or manual: `...\Skyrim Special Edition\Data\Docs\SkyrimNet Relationships\`
-- MO2: inside the mod's own folder, under `Docs\SkyrimNet Relationships\`
+1. Open [relationships_bio_blocks.json](https://raw.githubusercontent.com/deadohiosky48/SkyrimNet-Relationships/main/library/relationships_bio_blocks.json)
+   in a browser.
+2. Select all and copy.
+3. Paste it into SeverActions' bio block import window.
+4. Apply blocks to a companion.
+
+A copy also ships in the download, as `relationships_bio_blocks.json` under
+`Docs\SkyrimNet Relationships\` *inside the zip* - open it in a text editor and
+copy the contents. Once installed it is at
+`...\Skyrim Special Edition\Data\Docs\SkyrimNet Relationships\` with Vortex or a
+manual install, or inside the mod's own folder under MO2.
+
+> This is **not** the `docs` folder in the GitHub repository. That one holds
+> developer documentation; the library lives in `library/`.
 
 **It is optional and changes no mechanics.** Everything works without it. What
 it does is make the judge more accurate. Applied blocks are the most direct
@@ -180,10 +189,6 @@ person rather than inferred from a bio - so they outrank the bio where the two
 disagree. Without them nothing breaks; the mod simply goes on guessing from
 what it can read.
 
-To use it:
-
-1. Open SeverActions' bio block UI and import the file above.
-2. Apply blocks to a companion.
 
 Four tabs, one per axis this mod reads:
 
