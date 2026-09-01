@@ -162,8 +162,16 @@ Settings appear in SkyrimNet's plugin panel under **SkyrimNet Relationships**.
 ### Optional: the disposition block library
 
 If you use SeverActions, this mod ships a library of character blocks you can
-import and apply to anyone:
-`Docs/SkyrimNet Relationships/relationships_bio_blocks.json`.
+import and apply to anyone. The file is **`relationships_bio_blocks.json`**, and
+you do not need it installed to use it - SeverActions imports a file you point
+it at, so the simplest route is to open the downloaded
+`SkyrimNet-Relationships-*.zip`, go to `Docs\SkyrimNet Relationships\`, and copy
+that one file somewhere you can find it.
+
+If the mod is already installed, the same file is in your game folder:
+
+- Vortex or manual: `...\Skyrim Special Edition\Data\Docs\SkyrimNet Relationships\`
+- MO2: inside the mod's own folder, under `Docs\SkyrimNet Relationships\`
 
 **It is optional and changes no mechanics.** Everything works without it. What
 it does is make the judge more accurate. Applied blocks are the most direct
