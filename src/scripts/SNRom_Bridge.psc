@@ -1269,20 +1269,38 @@ Int Function STANCE_ACCEPTED() Global
     Return 1
 EndFunction
 
-Int Function LOVER_MAX() Global
-    { One point below Spouse.
+Int Function UNANSWERED_MAX() Global
+    { The most an UNANSWERED romance may hold: one point below Lover.
 
-      LOVER IS THE ONLY HARD GATE (the author, 2026-08-08). Spouse is not a claim to
-      be married - it is the rung that makes marriage ELIGIBLE, and the proposal
-      itself happens outside this mod. So the gate has to bite at the top of
-      Lover: while the question is unanswered she may occupy Lover, but passing
-      it would make her marriage-eligible without the player ever having
-      answered, which makes the whole consent loop decorative. }
-    Return 2499
+      CORRECTED 2026-09-01. This returned 2499 - one below SPOUSE - on the
+      reasoning that the gate should bite where marriage becomes eligible. That
+      was the wrong rung, and the author, who designed the ladder, restated it:
+
+        1. Stranger to Confidant: natural progression, no gate.
+        2. Crossing into LOVER pops the consent question. Yes -> Lover. No ->
+           mid-Friend. Undecided -> held below Lover, asked again later.
+        3. Lover to Spouse: natural progression, NO GATE. Crossing into Spouse
+           is what makes a formal marriage proposal eligible.
+
+      At 2499 an unanswered romance could occupy the whole of Lover, which is the
+      one rung the answer is supposed to govern. The question fired at 2000 and
+      then nothing stopped her sitting at 2400 unanswered - a realized romance in
+      everything except the record of consent.
+
+      AND THERE IS NO CONSENT GATE AT SPOUSE. A formal proposal and its
+      acceptance ARE the consent to marry, and that proposal only becomes
+      possible at Spouse. Gating Spouse as well asked the same question twice and
+      made the second asking ours rather than the marriage system.
+
+      THE ORDERING IS WHAT MAKES THIS WORK, and it was already right: Ledger
+      calls CheckRomanceQuestion BEFORE EnforceLoverCeiling. So an award to 2100
+      is seen at 2100, the question is flagged, and only then is the overflow
+      banked down to this ceiling. Reverse them and the question could never
+      fire, because she would never be observed above 1999. }
+    Return LOVER_MIN() - 1
 EndFunction
-
 Function EnforceLoverCeiling(Actor akActor)
-    { Hold an UNANSWERED romance at the top of Lover, banking the overflow.
+    { Hold an UNANSWERED romance just below Lover, banking the overflow.
 
       BANKED, NOT DISCARDED. The points were earned and the player watched them
       accrue; deleting them to enforce a gate would be the one direction that
@@ -1303,7 +1321,7 @@ Function EnforceLoverCeiling(Actor akActor)
     If !SNRom_Decorators.IsSparked(akActor)
         Return
     EndIf
-    Int over = Romantasy.GetPoints(akActor) - LOVER_MAX()
+    Int over = Romantasy.GetPoints(akActor) - UNANSWERED_MAX()
     If over <= 0
         Return
     EndIf
@@ -1312,14 +1330,14 @@ Function EnforceLoverCeiling(Actor akActor)
     MarkSelfAward(akActor)
     ; NOT ScaleAward: this is a TRANSFER. It banks the overflow for AcceptRomance
     ; to hand back in full, and scaling one side of a round trip destroys points.
-    If Romantasy.ModifyPoints(akActor, -over, "Held at Lover pending an answer", True)
+    If Romantasy.ModifyPoints(akActor, -over, "Held short of Lover pending an answer", True)
         Int banked = StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0) + over
         StorageUtil.SetIntValue(akActor, "SNRom_BankedPoints", banked)
-        Diag(LOG_INFO(), "Held " + akActor.GetDisplayName() + " at the top of Lover - " + over + \
+        Diag(LOG_INFO(), "Held " + akActor.GetDisplayName() + " just below Lover - " + over + \
             " pts banked (" + banked + " total) until the question is answered. She keeps what she earned.")
     Else
         Diag(LOG_ERROR(), "ModifyPoints refused the Lover ceiling for " + akActor.GetDisplayName() + \
-            " - she is past " + LOVER_MAX() + " with the question still unanswered")
+            " - she is past " + UNANSWERED_MAX() + " with the question still unanswered")
     EndIf
 EndFunction
 
@@ -3887,6 +3905,269 @@ Function ReconcileMarriages()
         i += 1
     EndWhile
 EndFunction
+Function TestProposalBlock(Actor akActor, Int aiMode)
+    { DIAGNOSTIC, NOT THE FEATURE. Delete once it has answered.
+
+      THE QUESTION: does MARAS actually gate its proposal on the
+      TTM_IgnoreProposal keyword, and does it still do so for an actor MARAS has
+      ALREADY registered as a candidate? The keyword is a record in TT_MARAS.esp
+      and appears in none of the SKSE DLLs, so it is almost certainly read by a
+      dialogue condition - which would be ideal, because conditions re-evaluate
+      every time dialogue is built and a runtime toggle would bite immediately.
+      That is an INFERENCE from where the string is absent. It has not been read
+      out of the plugin, and this function exists so nobody builds the gate on
+      top of a guess.
+
+      MODES, because base and reference are different questions and answering
+      them together would tell us nothing about which one MARAS looks at:
+        1 - add to the ACTOR BASE   (what HasKeyword resolves through)
+        2 - add to the REFERENCE    (leaves other instances alone)
+        3 - add to both
+        0 - remove from both
+
+      HOW TO READ THE RESULT: set a mode, then talk to them. If the MARAS
+      proposal option is gone, the keyword gates it and the gate is buildable.
+      If it is still there, the keyword gates something earlier - candidacy
+      registration, most likely - and blocking an existing candidate needs a
+      different lever entirely.
+
+      SAFETY: po3 describes AddKeywordToForm as runtime-only rather than
+      persisted, so a reload should clear anything this adds. UNVERIFIED. Mode 0
+      is the intended undo; a reload is the fallback, not the plan. }
+    If akActor == None || !_ready
+        Return
+    EndIf
+    Keyword kw = Keyword.GetKeyword("TTM_IgnoreProposal")
+    If kw == None
+        Diag(LOG_ERROR(), "TestProposalBlock: TTM_IgnoreProposal did not resolve. " + \
+            "TT_MARAS.esp not loaded, or the keyword is named differently than the " + \
+            "SPID ini implies.")
+        Return
+    EndIf
+    ActorBase b   = akActor.GetActorBase()
+    Bool before   = akActor.HasKeyword(kw)
+    String didWhat = "none"
+    If aiMode == 1
+        PO3_SKSEFunctions.AddKeywordToForm(b, kw)
+        didWhat = "added to base"
+    ElseIf aiMode == 2
+        PO3_SKSEFunctions.AddKeywordToRef(akActor, kw)
+        didWhat = "added to ref"
+    ElseIf aiMode == 3
+        PO3_SKSEFunctions.AddKeywordToForm(b, kw)
+        PO3_SKSEFunctions.AddKeywordToRef(akActor, kw)
+        didWhat = "added to base and ref"
+    Else
+        PO3_SKSEFunctions.RemoveKeywordOnForm(b, kw)
+        PO3_SKSEFunctions.RemoveKeywordFromRef(akActor, kw)
+        didWhat = "removed from base and ref"
+    EndIf
+    Diag(LOG_INFO(), "TestProposalBlock " + akActor.GetDisplayName() + ": " + didWhat + \
+        " | HasKeyword before=" + before + " after=" + akActor.HasKeyword(kw) + \
+        " | points=" + Romantasy.GetPoints(akActor) + MarasStateLine(akActor))
+EndFunction
+Actor  _seedActor
+String _seedName
+
+Int Function StandingToPoints(String asWord) Global
+    { A tier WORD, not a number, for the same reason ArdorWord exists: a judge
+      calibrates far better against "confidant" than against 1750.
+
+      FIVE WORDS, NOT FOUR, AND `DEVOTED` IS WHY. The first version stopped at
+      CONFIDANT and mapped it to the ceiling, so every strong read landed on the
+      same 1999 - "deep and mutual" and "married in all but name" collapsed into
+      one answer. That is the bimodal failure this project has already measured
+      twice: EXCLUSIVITY offered only endpoints and came back 22-of-55 at the
+      top, and INTIMACY skipped its middle value entirely, 1 in 55. A word doing
+      double duty is how a scale loses its middle.
+
+      So the top of the range is split. `CONFIDANT` sits mid-rung and `DEVOTED`
+      takes the ceiling, which means the judge has to actually decide whether
+      this is a deep bond or a love affair in everything but the saying of it.
+
+      THE CEILING IS UNANSWERED_MAX BY DESIGN. The author asked for the seeding
+      ceiling to sit just under the Lover floor, so overwhelming evidence lands
+      one conversation away from the consent question rather than through it.
+      Seeding must never answer, on the player behalf, a question the player is
+      supposed to be asked. }
+    String w = SNRom_Decorators.Upper(SNRom_Decorators.Trim(asWord))
+    If w == "DEVOTED"
+        Return UNANSWERED_MAX()                 ; 1999 - one point short of Lover
+    ElseIf w == "CONFIDANT"
+        Return 1650                             ; mid Confidant (1500-1999)
+    ElseIf w == "FRIEND"
+        Return 1250                             ; mid Friend (1000-1499)
+    ElseIf w == "ACQUAINTANCE"
+        Return 750                              ; mid Acquaintance (500-999)
+    ElseIf w == "STRANGER"
+        Return 200
+    EndIf
+    Return 0                                    ; unreadable - contributes nothing
+EndFunction
+Function AssessSeed(Actor akActor)
+    { Read the record and say where this relationship already stands.
+
+      WHY THIS EXISTS. Measured 2026-09-01 across 63 seeded followers: rapport
+      was exactly 5.0 for 57% of them and rank was 3 for 61 of 63, so SeedTarget
+      returned about 200 for almost everyone whatever had happened between them.
+      Its docstring called rapport "a persisted number expressing how she
+      actually feels, earned in real play" - it was not being earned at all.
+
+      The original design wanted an LLM read of the diary and was talked out of
+      it on the grounds that deterministic beats judged WHEN THE DETERMINISTIC
+      THING MEASURES THE RIGHT QUANTITY. It did not. This is that read restored,
+      against a far richer store than existed when it was dropped.
+
+      ONE PENDING AT A TIME, same discipline as the other three assessors. }
+    If akActor == None || !_ready
+        Return
+    EndIf
+    If _seedActor != None
+        ; SAY SO. Lisbet was requested while Silana was still pending and this
+        ; returned in silence, so the test looked like a failed call rather than
+        ; a queue doing its job. One line is the difference.
+        Diag(LOG_WARN(), "Seed assessment for " + akActor.GetDisplayName() + \
+            " skipped - a read for " + _seedName + " is still pending. Ask again.")
+        Return
+    EndIf
+    _seedActor = akActor
+    _seedName  = akActor.GetDisplayName()
+    String prior = "vanilla relationship rank " + akActor.GetRelationshipRank(Game.GetPlayer())
+    If SeverActionsPresent()
+        prior = prior + ", SeverActions rapport " + SeverActionsNative.Native_GetRapport(akActor)
+    EndIf
+    String ctx = "{\"npc_name\":\"" + _seedName + "\"" + \
+        ",\"npc_formid\":" + akActor.GetFormID() + \
+        ",\"npc_bio\":\"" + Escape(akActor.GetActorBase().GetRace().GetName()) + ", traveling companion\"" + \
+        ",\"npc_prior\":\"" + Escape(prior) + "\"" + MarasContext(akActor) + "}"
+    Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_seed_assess", VariantName(), ctx, \
+        Self, "SNRom_Bridge", "OnSeedAssessed")
+    Diag(LOG_INFO(), "Seed assessment sent for " + _seedName + " (rc=" + rc + ")")
+    If rc != 1
+        _seedActor = None
+    EndIf
+EndFunction
+
+Event OnSeedAssessed(String asResponse, Int aiSuccess)
+    { The read comes back as a tier word. Papyrus decides what it is worth.
+
+      TOPS UP, NEVER CLAWS BACK. The author's call, and it is the rule seeding has
+      had: if the read lands at or below what they already hold, do nothing.
+      Taking points off an established relationship on the strength of one LLM
+      call is the one direction that cannot be justified.
+
+      RANK AND RAPPORT SURVIVE AS A FLOOR. SeedTarget still runs and still wins
+      where it is higher, so a cautious read cannot lower a Hroki whose rapport
+      of 65 already justifies 975. They were only ever meant to be one input
+      among several rather than the signal. }
+    Actor  who   = _seedActor
+    String asked = _seedName
+    _seedActor = None
+    If who == None || aiSuccess != 1
+        Diag(LOG_WARN(), "Seed assessment for " + asked + " failed or returned nothing")
+        Return
+    EndIf
+    String echoed = SNRom_Decorators.NameCore(SNRom_Decorators.FieldValue(asResponse, "NAME:"))
+    If echoed != "" && echoed != SNRom_Decorators.NameCore(asked)
+        Diag(LOG_ERROR(), "Seed echo mismatch: asked about " + asked + ", answered as " + \
+            echoed + ". Discarded.")
+        Return
+    EndIf
+    String standing = SNRom_Decorators.FieldValue(asResponse, "STANDING:")
+    String because  = SNRom_Decorators.FieldValue(asResponse, "BECAUSE:")
+    Int byRead = StandingToPoints(standing)
+    If byRead == 0
+        Diag(LOG_WARN(), "Seed read for " + asked + " returned an unreadable standing: '" + \
+            standing + "'. Falling back to rank and rapport alone.")
+    EndIf
+    Int byOld  = SeedTarget(who)
+    Int target = byRead
+    If byOld > target
+        target = byOld
+    EndIf
+    Int cap = UNANSWERED_MAX()
+    If IsMarriedToPlayer(who)
+        cap = 2500
+    EndIf
+    If target > cap
+        target = cap
+    EndIf
+    Int held = Romantasy.GetPoints(who)
+    Diag(LOG_INFO(), "Seed read for " + asked + ": " + standing + " -> " + byRead + \
+        " pts (rank/rapport floor " + byOld + ", cap " + cap + ", holds " + held + \
+        "). Because: " + because)
+    If target <= held
+        Diag(LOG_INFO(), "Seed read for " + asked + " is at or below what they hold - nothing " + \
+            "added. Seeding tops up and never claws back.")
+        StorageUtil.SetIntValue(who, "SNRom_Seeded", 1)
+        SeedRomanticFlag(who)
+        Return
+    EndIf
+    MarkSelfAward(who)
+    ; NOT ScaleAward: prior history predates this mod, and Bond Pace has no
+    ; business retroactively shrinking someone's past. Same exemption SeedActor
+    ; carries for the same reason.
+    If Romantasy.ModifyPoints(who, target - held, "Prior history together", True)
+        StorageUtil.SetIntValue(who, "SNRom_Seeded", 1)
+        SeedRomanticFlag(who)
+        Diag(LOG_INFO(), "Seeded " + asked + " from the record: " + held + " -> " + \
+            Romantasy.GetPoints(who) + " pts." + MarasStateLine(who))
+    Else
+        Diag(LOG_DEBUG(), "Romantasy is not scoring " + asked + " yet - the seed read will be " + \
+            "reapplied. Normal until one game load after enrollment.")
+    EndIf
+EndEvent
+
+Function TestSetPoints(Actor akActor, Int aiTarget)
+    { DIAGNOSTIC. Move someone to an exact point total, up or down.
+
+      EXISTS BECAUSE SEEDING ONLY EVER TOPS UP, which is the right rule and is
+      also why a bad read cannot be undone by a better one. Silana Petreia was
+      read as DEVOTED on the strength of her own hedged longing - "perhaps in
+      time, I will find a way bridge the gap" - and jumped 967 -> 1999. A
+      corrected read returns FRIEND and changes nothing, because 1250 is below
+      what she now holds.
+
+      So the correction has to be explicit and by hand. Not wired to anything,
+      not called by any tick, and it has no business surviving into a release. }
+    If akActor == None || !_ready
+        Return
+    EndIf
+    Int held = Romantasy.GetPoints(akActor)
+    Int delta = aiTarget - held
+    If delta == 0
+        Diag(LOG_INFO(), "TestSetPoints: " + akActor.GetDisplayName() + " already holds " + held)
+        Return
+    EndIf
+    MarkSelfAward(akActor)
+    ; NOT ScaleAward. This is a correction to a number this mod got wrong, not an
+    ; earning, and Bond Pace has no business scaling an apology.
+    If Romantasy.ModifyPoints(akActor, delta, "Correcting an earlier misread", True)
+        Diag(LOG_INFO(), "TestSetPoints: " + akActor.GetDisplayName() + " " + held + " -> " + \
+            Romantasy.GetPoints(akActor) + " pts (asked for " + aiTarget + ")")
+    Else
+        Diag(LOG_ERROR(), "TestSetPoints: Romantasy refused the correction for " + \
+            akActor.GetDisplayName() + " - are they actively following?")
+    EndIf
+EndFunction
+
+Function TestSeedAssess(Actor akActor)
+    { DIAGNOSTIC ENTRY POINT, for trying the new read on chosen followers before
+      it goes anywhere near the whole roster. Clears the stamp and re-reads.
+
+      DELIBERATELY NOT WIRED INTO THE HOUSEKEEPING TICK. 63 enrolled actors is 63
+      LLM calls rewriting points on a live save, and the author asked to test select
+      followers first. Wiring it in is a separate decision, taken after the reads
+      have been seen. }
+    If akActor == None || !_ready
+        Return
+    EndIf
+    StorageUtil.UnsetIntValue(akActor, "SNRom_Seeded")
+    Diag(LOG_INFO(), "TestSeedAssess: re-reading " + akActor.GetDisplayName() + \
+        " from the record (currently " + Romantasy.GetPoints(akActor) + " pts)")
+    AssessSeed(akActor)
+EndFunction
+
 Function ReseedActor(Actor akActor)
     { Clear the once-ever stamp and seed again. ONE argument, so it dispatches
       from the web API.
@@ -4326,6 +4607,42 @@ Event OnTalkAssessed(String asResponse, Int aiSuccess)
             points = -points
         EndIf
     EndIf
+    ; -- A COMMITMENT TO MARRY IS THE LARGEST BEAT THERE IS. IT ALSO HAS A FLOOR.
+    ; The author's reasoning, not mine: two people saying aloud that they want to
+    ; marry each other is a bigger step than becoming partners was, not a
+    ; formality on the way to one. So this does NOT forbid the landmark, and an
+    ; earlier version of this fix did - wrongly.
+    ;
+    ; WHAT IT FORBIDS IS REACHING IT FROM NOWHERE. Fenja Secret-Fire was paid
+    ; LANDMARK 350 for "sealing our bond as husband and wife" while sitting at
+    ; tier 2, unmarried, with an authored INTIMACY of ROMANTIC that will not even
+    ; let her be touched until tier 4. The prompt had already told the judge she
+    ; was not married and that a wedding is not a conversation; it obeyed the
+    ; nearer, absolute rule instead. That is the whole reason this mod exists: an
+    ; agreeable model will let you talk a stranger into marrying you inside a day.
+    ;
+    ; THE MODEL CLASSIFIES, PAPYRUS GATES. LANDMARK_KIND is a fact about what was
+    ; said and the judge is good at it; whether that fact may pay 350 is a rule,
+    ; and rules do not belong anywhere the model can reason past them. Same
+    ; division as the eligibility gates in the action configs.
+    ;
+    ; Downgraded to MAJOR rather than discarded, because the moment DID happen and
+    ; refusing it outright would teach the player their evening did not count.
+    ; They can reach Lover and mean it again; the second time it pays in full.
+    String landKind = SNRom_Decorators.Upper(SNRom_Decorators.Trim(\
+        SNRom_Decorators.FieldValue(asResponse, "LANDMARK_KIND:")))
+    If SNRom_Decorators.Upper(weightWord) == "LANDMARK" && landKind == "MARRIAGE"
+        Int held = Romantasy.GetPoints(who)
+        If held < LOVER_MIN()
+            Diag(LOG_INFO(), "Talk landmark for " + asked + " was a commitment to " + \
+                "marry, and they hold " + held + " pts - below Lover at " + LOVER_MIN() + \
+                ". Downgraded to MAJOR: the moment counts, but marrying is not a step " + \
+                "you take from here. It pays in full once they are actually lovers.")
+            weightWord = "MAJOR"
+            points     = SNRom_Decorators.WeightToPoints("MAJOR")
+        EndIf
+    EndIf
+
     ApplyTalkAward(who, points, weightWord, what)
 EndEvent
 

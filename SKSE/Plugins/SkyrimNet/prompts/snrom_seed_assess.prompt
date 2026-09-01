@@ -1,0 +1,110 @@
+[ system ]
+{# ── SEEDING, READ FROM THE RECORD RATHER THAN GUESSED FROM A NUMBER ─────────
+   Replaces rapport as the primary seeding signal. Measured 2026-09-01 across 63
+   seeded followers: rapport was exactly 5.0 for 57% of them and <= 10 for 76%,
+   and rank was 3 for 61 of 63. Both inputs were near-constant, so the seed was
+   ~200 for almost everyone regardless of what had actually happened between
+   them. SeedTarget's own docstring claimed rapport was "a persisted number
+   expressing how she actually feels, earned in real play" - it was not being
+   earned at all.
+
+   The original design called for an LLM read of the diary and was talked out of
+   it on the grounds that "deterministic beats judged, when the deterministic
+   thing is measuring the right quantity". The measurement was never checked and
+   it was not measuring the quantity. This is that read, restored, and the
+   material is far richer now than when it was dropped - 4,211 memories and 368
+   diary entries in the store on the development save.
+
+   RANK AND RAPPORT SURVIVE AS A FLOOR, never as a ceiling: a cautious read must
+   not be able to lower someone a high rapport already justifies. They were only
+   ever meant to be one of many inputs rather than the primary one. #}
+{% set npc_uuid = formid_to_uuid(npc_formid) %}
+You are judging how far along a relationship ALREADY IS, from the record of what has happened. You are not deciding what should happen next and you are not scoring a conversation.
+
+{{ npc_name }} has just come under observation. Everything below already happened, before anyone was watching. Your one job is to say where they actually stand with {{ player.name }} today, so the record starts from the truth instead of from zero.
+
+WHAT YOU ARE CHOOSING BETWEEN
+
+- `STRANGER` - they have met. Nothing has passed between them that either would remember.
+- `ACQUAINTANCE` - known to each other, on ordinary terms. Shared errands, shared road, no weight.
+- `FRIEND` - they matter to each other. Trust, easy company, and something either would defend.
+- `CONFIDANT` - deep and mutual, the person you would call first. Real weight, and more than friendship, but you could still describe it without using the word love.
+- `DEVOTED` - a love affair in everything but the saying of it. BOTH of them behave as partners, or as good as married, and the record shows it as a shared and settled fact rather than as something either of them feels or hopes for.
+
+THE TOP TWO ARE A REAL CHOICE, so make it. `CONFIDANT` is the honest answer for a bond that is deep. `DEVOTED` is for one where being together is already an established fact of both their lives.
+
+ONE-SIDED LONGING IS NOT `DEVOTED`, however intense it is. Someone wanting {{ player.name }}, aching for them, calling it a consuming desire, or hoping it becomes something one day is describing THEIR OWN FEELINGS - and feelings that strong are exactly what a relationship on its way somewhere looks like. That is `FRIEND`, or `CONFIDANT` if the closeness is real and mutual. It is not the top of this scale.
+
+THE TEST FOR `DEVOTED` IS WHETHER YOU CAN NAME WHAT THEY BOTH DID. "She is his First Wife and the mother of his children" is a shared, settled fact and passes. "She hopes in time to bridge the gap between her faith and her desire for him" is one person's inner life, hedged, and does not - no matter how moving it reads.
+
+AND HEDGED LANGUAGE DISQUALIFIES IT. "Perhaps", "in time", "one day", "if he ever" - anything written in the conditional is a relationship that has not arrived. Score where they ARE.
+
+THERE IS NOTHING ABOVE `DEVOTED` HERE, and that is deliberate rather than a judgement about them. Whether two people become lovers is a question {{ player.name }} has to answer out loud, and it is not yours to answer on their behalf by handing it over as a starting position. `DEVOTED` places them one conversation away from being asked, which is exactly where overwhelming evidence should leave them.
+
+READ THE RECORD, NOT THE ROLE. A housecarl sworn to protect {{ player.name }} is doing her job; that is not intimacy. A follower who has travelled a thousand miles has logged distance, not closeness. What counts is what the two of them have actually said and done to each other.
+
+AND BELIEVE THE RECORD WHEN IT STATES A FACT. If a diary entry or a memory says in plain words that they are lovers, that they share a bed or a home or a child, that they married - believe it, and do not discount it for being plainly worded. This mod's usual caution runs the other way and guards against inventing feeling that is not there; here the opposite failure has also happened, with recorded, mutual devotion read as ordinary companionship. But a FACT about the relationship is what earns this. An intensity of feeling, however vividly written, is not the same thing and must not be read as one.
+
+{% if npc_married == 1 %}
+{{ npc_name }} and {{ player.name }} ARE MARRIED. This is recorded, not claimed. Answer `DEVOTED` unless the record contradicts the marriage itself.
+{% endif %}
+
+[ user ]
+WHO THEY ARE
+{% set profile = "" %}
+{% if npc_uuid and npc_uuid != 0 %}
+{# NOT render_character_profile("transform"). Copied verbatim from
+   snrom_author_disposition, which refuses transform for exactly this reason and
+   says so at length. I used transform here anyway and it produced the failure
+   below, measured 2026-09-01 on Olfina Gray-Mane:
+
+   The judge was asked how devoted she is and handed, in order, twelve
+   SeverActions kink blocks, the PLAYER'S ENTIRE INVENTORY - 51 armour pieces,
+   60 potions, 84 ingredients, 91 books, 40 keys - her gold, her job, her hunger,
+   and the line "You have only recently begun traveling with Haruk." It answered
+   DEVOTED and moved her 229 -> 1999.
+
+   The six bio_* modes each resolve to exactly one submodule, which is what keeps
+   curated character content in and item lists out. #}
+{% set profile = render_character_profile("bio_summary", npc_uuid) + render_character_profile("bio_background", npc_uuid) + render_character_profile("bio_personality", npc_uuid) + render_character_profile("bio_aspirations", npc_uuid) + render_character_profile("bio_occupation", npc_uuid) + render_character_profile("bio_relationships", npc_uuid) %}
+{% endif %}
+{% if profile and profile != "" %}
+{{ profile }}
+{% else %}
+{{ npc_bio }}
+{% endif %}
+
+{# BOTH OF THESE RETURN LISTS, NOT STRINGS, and testing them with != "" is why
+   neither section rendered on the first three reads. The judge was asked to
+   weigh a relationship and given no diary and no memories at all - measured
+   2026-09-01. Tested with length() and iterated, copied verbatim from
+   snrom_author_disposition rather than paraphrased, which is what I should have
+   done the first time. #}
+{% set diaries = get_diary_entries(npc_uuid, 8) %}
+{% if diaries and length(diaries) > 0 %}
+WHAT {{ npc_name }} WRITES WHEN NO ONE IS READING
+
+Their own private account, and the most reliable thing here. Read it before anything else and let it settle any question the rest of this leaves open.
+{% for e in diaries %}
+[{{ e.entry_date_str }}] {{ e.content }}{% if e.emotion %} ({{ e.emotion }}){% endif %}
+{% endfor %}
+{% endif %}
+
+{% set mem = get_relevant_memories(npc_uuid, 8) %}
+{% if length(mem) > 0 %}
+WHAT {{ npc_name }} REMEMBERS
+{% for m in mem %}
+- {{ m.memory.content }}{% if m.memory.emotion %} ({{ m.memory.emotion }}){% endif %}
+{% endfor %}
+{% endif %}
+
+{% if npc_prior and npc_prior != "" %}
+WHAT OTHER SYSTEMS ALREADY RECORD
+{{ npc_prior }}
+{% endif %}
+
+Answer in exactly this form and nothing else:
+
+NAME: {{ npc_name }}
+STANDING: <STRANGER|ACQUAINTANCE|FRIEND|CONFIDANT|DEVOTED>
+BECAUSE: <one sentence naming the specific thing in the record that decided it - a diary line, a remembered moment. Not a summary of their personalities.>
