@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Give It Something To Read</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground:        #E6E8EC;
+    --panel:         #F3F4F7;
+    --panel-edge:    #CFD3DA;
+    --ink:           #191C23;
+    --ink-soft:      #4A515F;
+    --ink-faint:     #767E8D;
+    --romantic:      #A32F4A;
+    --platonic:      #2F6673;
+    --brass:         #8A6620;
+    --romantic-wash: #A32F4A14;
+    --platonic-wash: #2F667314;
+    --brass-wash:    #8A662014;
+    --f-display: "Newsreader", Georgia, "Times New Roman", serif;
+    --f-body:    "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    --f-data:    "IBM Plex Mono", ui-monospace, Consolas, monospace;
+    --rule: 1px solid var(--panel-edge);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101319; --panel: #191D26; --panel-edge: #2C323E;
+      --ink: #E4E7ED; --ink-soft: #A2AAB9; --ink-faint: #757E8E;
+      --romantic: #D2596F; --platonic: #4E93A4; --brass: #C39843;
+      --romantic-wash: #D2596F22; --platonic-wash: #4E93A422; --brass-wash: #C3984322;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #101319; --panel: #191D26; --panel-edge: #2C323E;
+    --ink: #E4E7ED; --ink-soft: #A2AAB9; --ink-faint: #757E8E;
+    --romantic: #D2596F; --platonic: #4E93A4; --brass: #C39843;
+    --romantic-wash: #D2596F22; --platonic-wash: #4E93A422; --brass-wash: #C3984322;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--f-body); font-size: 15px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1180px; margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 3.25rem) clamp(1rem, 3vw, 2rem) 3.5rem;
+    display: flex; flex-direction: column; gap: clamp(1.75rem, 4vw, 2.75rem);
+  }
+  .masthead { display: flex; flex-direction: column; gap: .6rem; }
+  .kicker {
+    font-family: var(--f-data); font-size: .69rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  h1 {
+    font-family: var(--f-display); font-weight: 600;
+    font-size: clamp(2.1rem, 5.5vw, 3.4rem); line-height: 1.04;
+    letter-spacing: -.02em; margin: 0; text-wrap: balance;
+  }
+  .thesis {
+    font-family: var(--f-display); font-size: clamp(1.02rem, 2.2vw, 1.24rem);
+    font-style: italic; color: var(--ink-soft); max-width: 60ch;
+    margin: 0; text-wrap: balance;
+  }
+  section { display: flex; flex-direction: column; gap: 1rem; }
+  h2.sec {
+    font-family: var(--f-display); font-weight: 600;
+    font-size: clamp(1.45rem, 3vw, 1.95rem); line-height: 1.12;
+    margin: 0; letter-spacing: -.01em; text-wrap: balance;
+  }
+  .lede { margin: 0; color: var(--ink-soft); max-width: 70ch; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+  .rule { border: 0; border-top: var(--rule); margin: 0; }
+
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); gap: 1rem; }
+  .step {
+    background: var(--panel); border: var(--rule); border-top: 2px solid var(--ink-faint);
+    padding: 1.1rem 1.15rem 1.25rem; display: flex; flex-direction: column; gap: .55rem;
+  }
+  .step.best { border-top-color: var(--platonic); }
+  .step.good { border-top-color: var(--brass); }
+  .step.weak { border-top-color: var(--romantic); }
+  .step-n {
+    font-family: var(--f-data); font-size: .69rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .step h3 {
+    font-family: var(--f-display); font-size: 1.2rem; font-weight: 600;
+    margin: 0; line-height: 1.15;
+  }
+  .step p { margin: 0; color: var(--ink-soft); font-size: .91rem; }
+
+  table.src { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  table.src th, table.src td {
+    text-align: left; padding: .55rem .7rem; border-bottom: var(--rule); vertical-align: top;
+  }
+  table.src th {
+    font-family: var(--f-data); font-size: .68rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 500;
+  }
+  table.src td:first-child { font-weight: 600; white-space: nowrap; }
+  table.src td.w { color: var(--ink-soft); }
+  .tag {
+    font-family: var(--f-data); font-size: .66rem; letter-spacing: .1em;
+    text-transform: uppercase; padding: .16rem .42rem; border-radius: 2px; white-space: nowrap;
+  }
+  .tag.a { color: var(--platonic); background: var(--platonic-wash); }
+  .tag.b { color: var(--brass);    background: var(--brass-wash); }
+  .tag.c { color: var(--romantic); background: var(--romantic-wash); }
+  .scroll { overflow-x: auto; }
+
+  .quote {
+    background: var(--panel); border: var(--rule); border-left: 2px solid var(--brass);
+    padding: .85rem 1rem; margin: 0; font-family: var(--f-display);
+    font-style: italic; color: var(--ink-soft); max-width: 74ch;
+  }
+  .quote b { font-style: normal; color: var(--ink); }
+
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+  .card {
+    background: var(--panel); border: var(--rule); padding: 1rem 1.1rem;
+    display: flex; flex-direction: column; gap: .5rem;
+  }
+  .card h4 {
+    margin: 0; font-family: var(--f-data); font-size: .7rem; letter-spacing: .13em;
+    text-transform: uppercase;
+  }
+  .card.do h4  { color: var(--platonic); }
+  .card.dont h4 { color: var(--romantic); }
+  .card ul { margin: 0; padding-left: 1.1rem; color: var(--ink-soft); font-size: .9rem; }
+  .card li { margin-bottom: .35rem; }
+  .card li:last-child { margin-bottom: 0; }
+  .card li b { color: var(--ink); font-weight: 600; }
+
+  ol.seq { margin: 0; padding-left: 1.3rem; max-width: 74ch; }
+  ol.seq li { margin-bottom: .6rem; color: var(--ink-soft); }
+  ol.seq li b { color: var(--ink); font-weight: 600; }
+  code {
+    font-family: var(--f-data); font-size: .86em;
+    background: var(--brass-wash); padding: .08rem .3rem; border-radius: 2px;
+  }
+  footer {
+    font-size: .84rem; color: var(--ink-faint); border-top: var(--rule); padding-top: 1rem;
+  }
+  a { color: var(--brass); }
+  footer a { color: var(--brass); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="kicker">SkyrimNet Relationships &middot; preparing your save</p>
+    <h1>Give It Something To Read</h1>
+    <p class="thesis">This mod does not invent your companions. It reads what your game already
+      says about them &mdash; and the quality of what it says is most of the quality of what
+      you get back.</p>
+  </header>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">The one thing worth understanding</h2>
+    <p class="lede">When a companion comes under observation, the mod asks a question:
+      <em>where do these two actually stand?</em> It answers by reading the record your
+      playthrough has produced &mdash; the bio, the journal, what she remembers. Then it
+      writes down a starting point instead of beginning everyone at zero.</p>
+    <p class="lede">So a follower you have travelled with for eighty hours can still read as
+      a stranger, if nothing in your game ever wrote down that anything happened.
+      <strong>The mod is not guessing badly. It is reading an empty page.</strong></p>
+    <p class="lede">Which means the useful work is not in the mod's settings. It is in making
+      sure your game has something to say.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">What it reads, best first</h2>
+    <p class="lede">Not all sources are equally useful, and the difference is not subtle. The
+      good ones describe <strong>what happened between two people</strong>. The weak ones
+      report a number that could mean anything.</p>
+
+    <div class="scroll">
+    <table class="src">
+      <thead>
+        <tr><th>Source</th><th>Worth</th><th>Why</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Dynamic bios</td>
+          <td><span class="tag a">Best</span></td>
+          <td class="w">A living description of who someone is <em>now</em>, rewritten as you
+            play. When a capable model keeps these updated, they say things like &ldquo;she
+            manages his household and is the mother of his children&rdquo; &mdash; a fact about
+            the relationship, in plain words. Nothing else comes close.</td>
+        </tr>
+        <tr>
+          <td>Diary entries</td>
+          <td><span class="tag a">Best</span></td>
+          <td class="w">Her own private account of what happened, in her voice. The most
+            reliable thing available, because it records events rather than impressions
+            &mdash; and it accumulates on its own as you play.</td>
+        </tr>
+        <tr>
+          <td>Bio blocks<br><span style="font-weight:400;color:var(--ink-faint)">(SeverActions)</span></td>
+          <td><span class="tag a">Best</span></td>
+          <td class="w">The only source you write <em>deliberately</em>. A block you apply is
+            treated as a direct statement and outranks everything else about that one trait.
+            Optional, and the strongest tool you have for a character who is being read wrong.</td>
+        </tr>
+        <tr>
+          <td>Memories</td>
+          <td><span class="tag b">Good</span></td>
+          <td class="w">What she recalls of specific moments. Useful and specific, but
+            fragmentary &mdash; a handful of scenes rather than a picture of the whole.</td>
+        </tr>
+        <tr>
+          <td>Static bio</td>
+          <td><span class="tag b">Good</span></td>
+          <td class="w">Whoever the character was before you met. Real information, but about
+            her rather than about the two of you, and it never changes.</td>
+        </tr>
+        <tr>
+          <td>Relationship rank</td>
+          <td><span class="tag c">Weak</span></td>
+          <td class="w">A single number the game sets, mostly to the same value for everyone
+            you recruit. It cannot tell you <em>why</em>, and on a typical save it is the same
+            for a housecarl and a lover.</td>
+        </tr>
+        <tr>
+          <td>Follower rapport<br><span style="font-weight:400;color:var(--ink-faint)">(SeverActions)</span></td>
+          <td><span class="tag c">Weak</span></td>
+          <td class="w">Can be switched off entirely, and often sits at its starting value even
+            when it is on. Used only as a floor &mdash; it can raise someone, never lower them.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p class="quote"><b>Why prose beats numbers:</b> &ldquo;rank 3&rdquo; is true of almost
+      everyone. &ldquo;He knelt on the stone floor of the Temple of Mara and asked her to
+      marry him&rdquo; can only be true of one pair of people. The second one is what the mod
+      is looking for.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">Setting it up</h2>
+    <div class="steps">
+      <div class="step best">
+        <span class="step-n">Step one</span>
+        <h3>Turn dynamic bios on</h3>
+        <p>In SkyrimNet's settings. This is the single highest-value thing you can do. Without
+          it, every companion is described by a bio written before you ever met them.</p>
+      </div>
+      <div class="step best">
+        <span class="step-n">Step two</span>
+        <h3>Use a good model for them</h3>
+        <p>Bio updates are worth spending your best model on, even if you run a smaller local
+          one for ordinary chat. A capable model writes bios that need almost no correction;
+          a weak one invents things you will have to undo.</p>
+      </div>
+      <div class="step good">
+        <span class="step-n">Step three</span>
+        <h3>Let the journal fill up</h3>
+        <p>Diary entries accumulate by themselves as you play &mdash; nothing to configure.
+          But they do not accumulate <em>reliably</em>, so learn to write one on demand
+          when a moment deserves it. That is the next section, and it matters.</p>
+      </div>
+      <div class="step good">
+        <span class="step-n">Optional</span>
+        <h3>Apply bio blocks</h3>
+        <p>If you use SeverActions, the mod ships a library of blocks describing how someone
+          loves &mdash; how much they need to be the only one, how openly they show feeling,
+          who they are drawn to. Import it and apply what fits; instructions are two
+          sections down.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">You do not have to wait for it</h2>
+    <p class="lede">Diaries and bios update on their own during ordinary play, but
+      <strong>not reliably, and never on cue</strong>. The moment that mattered most is exactly
+      the one that can go unrecorded &mdash; and if it was never written down, nothing can read
+      it. You can trigger both by hand, for any character, at any time.</p>
+    <p class="lede">In the SkyrimNet UI, open the character, and use <strong>Write Diary</strong>
+      and <strong>Update Bio</strong>. Do not hesitate to use them. If you look after something
+      significant and see that neither has been touched, that is the moment to press the
+      buttons yourself.</p>
+
+    <p class="quote"><b>Diary first, then bio &mdash; always in that order.</b> The dynamic bio
+      is written <em>from</em> the diary. Update the bio before the entry exists and it just
+      rewrites itself out of the old material, and the thing you were trying to capture is
+      still missing. If you are triggering both, write the diary entry first and update the
+      bio second.</p>
+
+    <p class="lede"><strong>When it is worth doing:</strong> after anything you would call a
+      turning point &mdash; a confession, a rescue, a betrayal, a night that changed things, a
+      death you both stood over. Check whether the diary picked it up. If it did not, write it,
+      then update the bio. Half a dozen of these across a playthrough will do more for how your
+      companions are read than any setting in this mod.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">Getting the block library into SeverActions</h2>
+    <p class="lede">This is the step that confuses people, so plainly:
+      <strong>SeverActions' import window takes pasted JSON text, not a file.</strong> You are
+      not browsing to the library &mdash; you are opening it, copying the text out, and pasting
+      it in.</p>
+
+    <ol class="seq">
+      <li><b>Open the library.</b> Easiest is straight from the project:
+        <a href="https://raw.githubusercontent.com/deadohiosky48/SkyrimNet-Relationships/main/library/relationships_bio_blocks.json">relationships_bio_blocks.json</a>
+        in a browser. A copy also ships in the download as
+        <code>relationships_bio_blocks.json</code> under
+        <code>Docs\SkyrimNet Relationships\</code> &mdash; open it in a text editor. Once
+        installed that is under <code>Data\Docs\SkyrimNet Relationships\</code> with Vortex
+        or a manual install, or inside the mod's own folder under MO2.</li>
+      <li><b>Select all and copy.</b> The entire contents, brackets included.</li>
+      <li><b>Paste it into SeverActions' bio block import window</b> and import. It adds four
+        tabs: Attachment, Expression, Drawn To and Limits.</li>
+      <li><b>Apply blocks to a companion.</b> One each from Attachment, Expression and Drawn To
+        &mdash; each is a single value, so two at once is a contradiction rather than a
+        preference stated twice. Limits can take several.</li>
+    </ol>
+
+    <p class="quote"><b>Not the repo's <code>docs</code> folder.</b> That one holds these pages.
+      The library lives in <code>library/</code>. Full notes on what each tab settles, and why
+      balance matters more than restraint, are on the
+      <a href="https://github.com/deadohiosky48/SkyrimNet-Relationships#optional-the-disposition-block-library">project page</a>.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">If you are installing mid-playthrough</h2>
+    <p class="lede">This is the case that rewards preparation, because your existing followers
+      already have history and <strong>the mod reads them once</strong> &mdash; a snapshot of
+      whatever the record says at that moment.</p>
+
+    <ol class="seq">
+      <li><b>Turn on dynamic bios and point them at a capable model</b> before installing, not
+        after.</li>
+      <li><b>Let your followers' bios regenerate.</b> Talk to each one, travel a little, give the
+        bios a chance to be rewritten with the relationship in them. This is the step that
+        makes the difference.</li>
+      <li><b>Read a few of them.</b> If a bio describes the relationship you actually have,
+        you are ready. If it still reads like a stranger's dossier, wait a bit longer.</li>
+      <li><b>Then install.</b> Each follower is read as they come under observation, and a
+        starting point is written down.</li>
+    </ol>
+
+    <p class="lede"><strong>How much is enough?</strong> A companion with an accurate bio and
+      a handful of diary entries will read well. One with an untouched bio and an empty journal
+      will read as an acquaintance no matter how long you have travelled together &mdash; and
+      that is honest, because nothing in your save disagrees.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">What goes wrong, and what to do</h2>
+    <div class="two">
+      <div class="card do">
+        <h4>Worth doing</h4>
+        <ul>
+          <li><b>Write the diary entry after the moment that mattered</b> rather than hoping
+            it was caught. Then update the bio &mdash; in that order.</li>
+          <li><b>Fix a bio that is simply wrong.</b> They are editable. A sentence that
+            misdescribes the relationship will be believed, so correcting it is the highest
+            leverage edit available.</li>
+          <li><b>Add a bio block for a trait being read wrong.</b> Faster and more reliable
+            than rewriting prose and hoping.</li>
+          <li><b>Let it surprise you.</b> The point is that each companion reacts differently.
+            Curating every character until they all behave as expected removes the thing you
+            installed this for.</li>
+        </ul>
+      </div>
+      <div class="card dont">
+        <h4>Common traps</h4>
+        <ul>
+          <li><b>An inflated bio gets believed.</b> A weak model may write that someone is
+            your betrothed after a single evening. The mod now checks claims like that against
+            what your marriage system actually recorded &mdash; but an accurate bio is still
+            better than a corrected one.</li>
+          <li><b>Intensity is not the same as commitment.</b> A companion who longs for you is
+            not the same as two people who are together, and it will be read that way. That is
+            deliberate.</li>
+          <li><b>Installing before any of this.</b> Nothing breaks, and nothing is lost &mdash;
+            but everyone starts lower than they deserve.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">Checking your work</h2>
+    <p class="lede">You do not have to guess whether it worked. When a companion is read, the
+      mod records the standing it chose <em>and the reason it chose it</em> &mdash; the specific
+      thing in your save that decided it.</p>
+    <p class="quote"><b>What a good read looks like:</b> &ldquo;&hellip;her diary records that he
+      knelt on the stone floor of the Temple of Mara to ask her to marry him, and she shares his
+      hearth as the mother of his children.&rdquo;</p>
+    <p class="quote"><b>And a thin one:</b> &ldquo;&hellip;I agreed to travel with him and intend
+      to keep my word.&rdquo;</p>
+    <p class="lede">The second is not a mistake. It is an accurate reading of a record that
+      contains very little. <strong>If the reasons look thin, the material is thin</strong>
+      &mdash; and that is the thing to improve, rather than the mod's settings.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">If it read someone wrong and you have since fixed it</h2>
+    <p class="lede">This is the common shape of the problem, and it has an answer. A companion
+      is read from a record that was thin or wrong; you go and improve the record; the standing
+      already written down does not move on its own. <strong>You can ask for a re-read, and it
+      is one keypress.</strong></p>
+
+    <ol class="seq">
+      <li><b>Fix the material first.</b> Correct the bio, write the missing diary entries, apply
+        the blocks. The re-read only ever sees what is there at the moment you press the key, so
+        there is no point asking before the work is done.</li>
+      <li><b>Have them travelling with you, and put them under your crosshair.</b> They must be
+        an active companion &mdash; a follower you have dismissed cannot be re-read, because the
+        scoreboard underneath only tracks people currently with you. Point at anyone else and it
+        will tell you why rather than doing nothing.</li>
+      <li><b>Press <code>Home</code>.</b> No menu, no console, nothing to look up. You will see
+        <em>Re-reading the record for&hellip;</em> straight away, and the verdict a few seconds
+        later.</li>
+    </ol>
+
+    <p class="lede">There are two answers worth recognising, and <strong>both of them are the
+      system working</strong>. Either the companion moves &mdash; read as something higher than
+      the record previously supported, and topped up to it &mdash; or you are told they already
+      stand at or above what the record justifies, and nothing is added. The second is not a
+      failed keypress. It is the mod telling you the standing it already had was right.</p>
+
+    <p class="quote"><b>It can raise someone, but it can never lower them.</b> A re-read tops a
+      companion up to what their history justifies and subtracts whatever they already hold, so
+      it cannot pay twice and cannot take anything away. Which means it fixes an
+      <em>under</em>-read completely, and cannot walk back a read that was too generous. That
+      asymmetry is the real reason to get the material right before the mod first reads someone
+      rather than after.</p>
+
+    <p class="lede">Ask as often as you like. It is not a limited resource and it cannot
+      compound &mdash; asking twice in a row gives the same answer the second time, because it
+      is reading the same record. A companion whose material has not changed will simply keep
+      reading the same way.</p>
+
+    <p class="lede">The key lives under <em>Seeding</em> in the mod's settings, as a
+      <strong>DirectX scan code</strong> rather than a key you press to capture: <code>199</code>
+      is Home, and <code>197</code> Pause, <code>211</code> Delete and <code>87</code> F11 are
+      usually free if something in your load order has already claimed Home. Change the number
+      rather than adding a modifier if it collides &mdash; a held modifier is only checked by
+      this mod, so the other mod still fires on the base key regardless. Set it to
+      <code>0</code> to turn the key off entirely.</p>
+
+    <p class="lede">Everything the key does is also reachable through SkyrimNet's web API if you
+      would rather script it &mdash; see
+      <a href="https://github.com/deadohiosky48/SkyrimNet-Relationships#troubleshooting">Troubleshooting</a>
+      on the project page.</p>
+  </section>
+
+  <footer>
+    <p>Part of <b>SkyrimNet Relationships</b>. For how the mod itself works &mdash; the two
+      ladders, the consent gate, how conversation is scored &mdash; see
+      <a href="./">Two Ladders, Not One</a>.</p>
+  </footer>
+
+</div>
+</body>
+</html>

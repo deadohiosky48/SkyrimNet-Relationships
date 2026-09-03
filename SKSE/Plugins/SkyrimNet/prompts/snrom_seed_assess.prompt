@@ -45,8 +45,21 @@ READ THE RECORD, NOT THE ROLE. A housecarl sworn to protect {{ player.name }} is
 
 AND BELIEVE THE RECORD WHEN IT STATES A FACT. If a diary entry or a memory says in plain words that they are lovers, that they share a bed or a home or a child, that they married - believe it, and do not discount it for being plainly worded. This mod's usual caution runs the other way and guards against inventing feeling that is not there; here the opposite failure has also happened, with recorded, mutual devotion read as ordinary companionship. But a FACT about the relationship is what earns this. An intensity of feeling, however vividly written, is not the same thing and must not be read as one.
 
+WHAT THE WORLD ACTUALLY RECORDS
 {% if npc_married == 1 %}
-{{ npc_name }} and {{ player.name }} ARE MARRIED. This is recorded, not claimed. Answer `DEVOTED` unless the record contradicts the marriage itself.
+{{ npc_name }} and {{ player.name }} ARE married. This is recorded, not claimed.
+{% else if npc_engaged == 1 %}
+{{ npc_name }} and {{ player.name }} ARE engaged. This is recorded, not claimed.
+{% else %}
+{{ npc_name }} is NOT married and NOT engaged to {{ player.name }}. That is the record, whatever anything below says.
+{% endif %}
+
+NOTHING BELOW CAN OVERRULE THAT LINE. The character profile you are about to read is assembled by a separate system that infers and embellishes, and it invents relationship states: on this save it described two followers as the player's "fiancee" while the marriage system recorded no engagements at all. Diary entries can repeat the same invention, because they are generated from the same material.
+
+So if a profile or a diary calls them betrothed, promised, engaged, a fiancee, a wife or a husband, and the line above does not, THE LINE ABOVE IS RIGHT. Read everything else for what actually passed between the two of them - that part is trustworthy and is why you are being shown it - but do not let a borrowed title decide how far along they are.
+
+{% if npc_married == 1 %}
+Because that record says they are married, answer `DEVOTED` unless the rest contradicts the marriage itself.
 {% endif %}
 
 [ user ]

@@ -1,6 +1,6 @@
 plugin:
   name: "SkyrimNet Relationships"
-  version: "1.4.0-diag"
+  version: "1.4.0"
   description: "Lets SkyrimNet drive romance through ColdSun's Romantasy framework — organic enrollment, LLM-authored preferences, and bond-aware dialogue."
   icon: "🥀"
 
@@ -155,6 +155,49 @@ schema:
       type: "bool"
       description: "Start followers you already have a history with partway up the ladder instead of at Stranger, based on how they actually feel about you, your relationship rank, and whether the game records you as married or engaged. Applies once per follower, including everyone already traveling with you when this was installed. Turn it off before loading if you would rather every bond start from nothing."
       defaultValue: true
+      category: "Seeding"
+
+    # ── The re-read hotkey ───────────────────────────────────────────────────
+    # Registered directly in Papyrus rather than through MCM Helper. SkyUI's
+    # mod registry is a Papyrus array capped at 128 entries, and past that a
+    # menu registers but can never render - so an MCM keybind can never be
+    # bound either, because binding happens on the page that will not open.
+    # The setting lives here because the player already has this panel open.
+    #
+    # type: "int", NOT type: "hotkey", AND THAT IS DELIBERATE.
+    #
+    # The hotkey widget is the obvious choice and it is the wrong one: it
+    # captures and stores a VIRTUAL KEY code, while Papyrus RegisterForKey takes
+    # a DIRECTX SCAN CODE. The two are different numbering schemes for the same
+    # keyboard. IntelEngine's manifest says so outright for its own hotkey field
+    # - "VK code, e.g., 55 = 7" - and IntelEngine reads its config from C++,
+    # where VK is the natural unit.
+    #
+    # Measured 2026-09-02: setting this field to End through the widget stored
+    # 35, which is VK_END. Papyrus then registered scan code 35, which is the H
+    # key, and the End key was never listened for at all. Nothing errored.
+    #
+    # So this is a plain int holding a scan code, which is exactly what Kinship
+    # does for the same reason and is proven on this stack. The cost is that the
+    # player types a number instead of pressing a key; the alternative is a
+    # ~100-entry VK-to-scan-code table in Papyrus that breaks silently if the
+    # widget ever changes.
+    - name: "Re-Read Hotkey"
+      path: "reseedHotkey"
+      type: "int"
+      description: "Point at a follower and press this to read their standing again from the record as it now stands. Use it after you have improved what the mod has to read - corrected a bio, written a missing diary entry, applied a bio block - because fixing the material does not move a standing that was already written down. It can only ever raise someone to what their history justifies: it subtracts what they already hold, so it cannot pay twice and cannot take anything away. The answer takes a few seconds and appears as a notification. THIS IS A DIRECTX SCAN CODE, not a virtual key code - the same numbers Dynamic Activation Key and MCM Helper use. Default: 199, which is Home. Also usually free: 197 Pause, 211 Delete, 87 F11. Deliberately NOT 210 Insert (STFU, SSEDisplayTweaks), 207 End or 201/209 PageUp/PageDown (Community Shaders), or 70 Scroll Lock (NPC Renamer). Note the digit row is offset by one: 2 is '1', 10 is '9', 11 is '0'. Changing this takes effect within a couple of minutes - no reload needed. Set to 0 to disable it."
+      defaultValue: 199
+      min: 0
+      max: 255
+      category: "Seeding"
+
+    - name: "Re-Read Hotkey Modifier"
+      path: "reseedHotkeyModifier"
+      type: "int"
+      description: "Optional key that must be held with the hotkey. 0 for none, 42 Left Shift, 29 Left Ctrl, 56 Left Alt. IMPORTANT: a modifier does NOT stop another mod firing on the base key - only this mod checks it, so binding Shift+Insert still opens whatever else owns Insert. If the key collides, change the key itself rather than adding a modifier. Note also that Left Shift is Dynamic Activation Key's own key and Left Alt is TK Dodge's on many setups. Default: 0, a bare keypress."
+      defaultValue: 0
+      min: 0
+      max: 255
       category: "Seeding"
 
     - name: "Most Points a Seed Can Grant"

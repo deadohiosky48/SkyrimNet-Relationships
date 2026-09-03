@@ -25,6 +25,10 @@ Scriptname SNRom_Bridge extends Quest
 ; unfilled.
 ; ---------------------------------------------------------------------------
 Faction  _romanceLevel
+; WHICH SCAN CODE IS ACTUALLY REGISTERED, as opposed to which one the setting
+; asks for. The two diverge the moment the player edits the setting, and the
+; tick reconciles them. See RegisterHotkey.
+Int      _hotkeyArmed
 Int      _seq
 Float    _lastBootstrap
 String[] _ledgerBuf
@@ -187,6 +191,10 @@ Function Bootstrap(Bool abForce = False)
     ; rendering "not enrolled". Degrade quietly, never disappear.
     RegisterDecorators()
     RegisterEvents()
+    ; ARMED BEFORE THE READINESS GATE BELOW RETURNS. If Romantasy is missing the
+    ; key must still answer - "not ready" is a useful thing to be told, and a
+    ; dead key is not.
+    RegisterHotkey()
 
     _romanceLevel = ResolveRomanceFaction()
     If _romanceLevel == None
@@ -1136,8 +1144,16 @@ Function MarkMoment(Actor akActor, Int aiMagnitude, String asReason, String asAc
         routed = Romantasy.ApplyPreference(akActor, asActivity, magnitude, True)
     EndIf
 
+    ; Same single exception as the talk path. Checked only on the flat award:
+    ; ApplyPreference multiplies by the stat weight internally, so the amount that
+    ; would actually land is not knowable here - and a routed award is rarer and
+    ; smaller. EnforceLoverCeiling remains the backstop for that case.
     Bool landed = routed
     If !routed
+        If HoldShortOfLover(akActor, magnitude)
+            Ledger(akActor, "withheld", asActivity, magnitude, 1, asReason)
+            Return
+        EndIf
         landed = Romantasy.ModifyPoints(akActor, magnitude, asReason, True)
     EndIf
 
@@ -1299,6 +1315,62 @@ Int Function UNANSWERED_MAX() Global
       fire, because she would never be observed above 1999. }
     Return LOVER_MIN() - 1
 EndFunction
+Bool Function HoldShortOfLover(Actor akActor, Int aiDelta)
+    { Should this award be WITHHELD instead of written? Returns True when writing
+      it would carry an unanswered romance from Confidant into Lover.
+
+      WITHHELD, NOT WRITTEN-THEN-CORRECTED, and that is the whole point of this
+      function. EnforceLoverCeiling has always clawed back after the fact, which
+      was invisible while the ceiling sat at 2499 - nothing reached it. Moving the
+      ceiling to just under Lover made the correction fire at the crossing for the
+      first time and exposed what it costs: Romantasy received 2009, announced
+      LOVER, then received -10 and announced Confidant again. The player watched a
+      promotion appear and be revoked, and anything reacting to Romantasy's
+      tier-change event saw the same false crossing.
+
+      THE AUTHOR'S RULE, and it is deliberately narrow: there is exactly ONE
+      moment in normal play where points should not reach Romantasy, and it is
+      this one. Everything else - seeding, transfers, ruptures, the Spouse rung -
+      writes normally. So this is a targeted check at the earning paths rather
+      than a wrapper around every point change, and EnforceLoverCeiling stays
+      behind it as a backstop for anything that slips past.
+
+      WHAT HAPPENS TO THE WITHHELD AWARD depends on the answer, and two of the
+      three throw it away:
+        accepted - granted in full, so the wait costs nothing
+        declined  - discarded, because they are dropping to mid-Friend anyway
+        deferred  - discarded, and they stay exactly where they are
+
+      Only bites while SPARKED and UNANSWERED, same as the ceiling: a platonic
+      bond has no question to answer and must be free to reach Spouse-tier depth. }
+    If akActor == None || !_ready || aiDelta <= 0
+        Return False
+    EndIf
+    If StorageUtil.GetIntValue(akActor, "SNRom_PlayerStance", 0) != STANCE_UNANSWERED()
+        Return False
+    EndIf
+    If !SNRom_Decorators.IsSparked(akActor)
+        Return False
+    EndIf
+    Int held = Romantasy.GetPoints(akActor)
+    If held + aiDelta <= UNANSWERED_MAX()
+        Return False                            ; does not reach the crossing
+    EndIf
+    ; Hold the withheld amount so acceptance can grant it. Accumulates across
+    ; awards only if the player never answers, and both non-acceptance answers
+    ; clear it.
+    StorageUtil.SetIntValue(akActor, "SNRom_BankedPoints", \
+        StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0) + aiDelta)
+    ; Level-triggered, so it cannot be lost - but the crossing has not happened,
+    ; so ask on the strength of what WOULD have landed rather than on the total.
+    StorageUtil.SetIntValue(akActor, "SNRom_AskPending", 1)
+    Diag(LOG_INFO(), "Held " + aiDelta + " pts short of Lover for " + \
+        akActor.GetDisplayName() + " - " + held + " + " + aiDelta + " would cross " + \
+        UNANSWERED_MAX() + " with the question unanswered. Nothing written to " + \
+        "Romantasy, so no tier splash. Granted in full on yes, discarded otherwise.")
+    Return True
+EndFunction
+
 Function EnforceLoverCeiling(Actor akActor)
     { Hold an UNANSWERED romance just below Lover, banking the overflow.
 
@@ -1504,6 +1576,12 @@ Function AskTheQuestion(Actor akActor)
         ; Left UNANSWERED on purpose - the question stays live and the retry
         ; timer will raise it again. Logged so a deferral is distinguishable
         ; from a box that never opened, which look identical from outside.
+        ; DISCARD THE WITHHELD AWARD. The author's rule: on "unsure" the points
+        ; that would have been awarded are dropped and the follower stays exactly
+        ; where they are until the next opportunity. Only acceptance grants them.
+        ; Without this the held amount accumulates across deferrals and a late yes
+        ; pays out for every conversation the player declined to answer about.
+        StorageUtil.UnsetIntValue(akActor, "SNRom_BankedPoints")
         Diag(LOG_INFO(), "Question deferred for " + who + " - stance left unanswered, still open.")
     Else
         ; ANSWER_NONE covers BOTH "timed out" and "the box never opened because
@@ -1885,6 +1963,11 @@ Function Ledger(Actor akActor, String asChannel, String asActivity, Int aiDelta,
     ; point change passes through, so it is the only hook that cannot be missed
     ; when a new award path is added.
     EnforceLoverCeiling(akActor)
+    ; And the marriage gate, in the same place and for the same reason: this is
+    ; the one hook every point change passes through, so it is the only place a
+    ; crossing into Spouse cannot be missed. One HasKeyword read in the steady
+    ; state, and it writes only when the answer actually changes.
+    MaintainProposalGate(akActor)
 
     ; And for the third time, same reason: this is the one place every point
     ; change passes through, so it is the only honest place to count how much
@@ -2799,10 +2882,17 @@ Function AuthorDisposition(Actor akActor)
         marriedFlag = 1
     EndIf
 
+    ; MarasContext, not just marriedFlag. Authoring reads the same six bio_*
+    ; modes the seed read does, and SkyrimNet's Dynamic Bio writes into them -
+    ; it called Olfina Gray-Mane and Fastred the fiancee of the player while
+    ; MARAS recorded ZERO engagements on the save. Without npc_engaged and
+    ; npc_candidate the prompt cannot contradict that, so it was believing a
+    ; peer system about a fact that system does not own. One extra call on a
+    ; path that runs once per character, not per tick.
     String ctx = "{\"npc_name\":\"" + _pendingName + "\"" + \
         ",\"npc_formid\":" + akActor.GetFormID() + \
         ",\"cat_seed\":" + catSeed + \
-        ",\"npc_married\":" + marriedFlag + \
+        ",\"npc_married\":" + marriedFlag + MarasContext(akActor) + \
         ",\"circle\":\"" + circleText + "\"" + \
         ",\"npc_bio\":\"" + b.GetRace().GetName() + ", " + \
         SNRom_Decorators.SexWord(b.GetSex()) + ", level " + akActor.GetLevel() + \
@@ -3078,6 +3168,12 @@ Function CollectAskAnswer()
         StorageUtil.UnsetIntValue(who, "SNRom_AskAttempts")
         DeclineRomance(who)
     ElseIf answer == SNRom_Choice.ANSWER_DEFER()
+        ; DISCARD THE WITHHELD AWARD. The author's rule: on "unsure" the points
+        ; that would have been awarded are dropped and the follower stays exactly
+        ; where they are until the next opportunity. Only acceptance grants them.
+        ; Without this the held amount accumulates across deferrals and a late yes
+        ; pays out for every conversation the player declined to answer about.
+        StorageUtil.UnsetIntValue(who, "SNRom_BankedPoints")
         Diag(LOG_INFO(), "Question deferred for " + who.GetDisplayName() + \
             " - still owed, raised again after backoff.")
     Else
@@ -3809,30 +3905,212 @@ Function SeedRomanticFlag(Actor akActor)
     EndIf
 EndFunction
 
-Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEnum, Form akSender)
-    { MARAS announced a relationship change. The only one that matters here is a
-      marriage: it raises the seed ceiling from 2000 to 2500, and it is the one
-      fact an authored trait is never allowed to contradict.
+Int Function SPOUSE_MIN() Global
+    { Points at which Romantasy calls someone "Spouse", and the rung the author's
+      ladder makes a formal marriage proposal eligible at.
 
-      Re-seeds rather than topping up, because ReseedActor already clears the
-      stamp and re-runs the whole computation, which will now see the marriage
-      and land on Spouse. Other statuses are ignored: engagement is already read
-      at seed time, and a divorce must NOT claw points back - those were earned,
-      and Romantasy owns what a break-up costs. }
-    Actor who = akSender as Actor
-    If who == None || !_ready
+      Stranger to Confidant is free. Crossing into Lover pops the consent
+      question. Lover to Spouse is free. Crossing Spouse is what earns the right
+      to be asked - and the proposal and its acceptance ARE the consent to marry,
+      which is why there is no second question here. }
+    Return 2500
+EndFunction
+
+Keyword Function IgnoreProposalKeyword() Global
+    { MARAS's own exclusion keyword, resolved by editor ID.
+
+      LOGS LOUDLY ON None RATHER THAN RETURNING QUIETLY. MARAS resolves this
+      through its own getter (GetIgnoreProposeKeyword), so if they ever rename the
+      record our hardcoded string stops matching, Keyword.GetKeyword returns None,
+      and a gate that silently stops gating is worse than no gate at all. }
+    Return Keyword.GetKeyword("TTM_IgnoreProposal")
+EndFunction
+
+Function MaintainProposalGate(Actor akActor)
+    { Keep MARAS's proposal exclusion in step with the ladder: present below
+      Spouse, absent at or above it.
+
+      THIS IS THE SECONDARY GATE, NOT THE PRIMARY ONE, and that is worth saying
+      plainly. MARAS consults the keyword in two places - a CK condition on its
+      vanilla dialogue topic, and AcceptProposalIsElgigible for the SkyrimNet
+      action. On a SkyrimNet setup NEITHER runs:
+
+        - the vanilla topic is suppressed while TTM_MCM_AllowAIDial is on, which
+          is why no proposal option appears in her dialogue at all
+        - the action's eligibility is a Papyrus call, and SkyrimNet refuses
+          Papyrus calls while the game is paused - which it always is during
+          dialogue. Measured 2026-08-31: "CheckActionEligibility: Blocking VM
+          call for action ACCEPTMARRIAGEPROPOSAL because game is paused", 40
+          times in one session, and the action is then offered ANYWAY. Eligibility
+          fails OPEN.
+
+      So this is maintained for the setups where it does bite, and because it
+      costs almost nothing. The gate that actually holds is the event handler.
+
+      CHEAP BY CONSTRUCTION. One HasKeyword native, and it only writes when the
+      desired state differs from the current one - so the steady state is a single
+      read per point change and nothing else. }
+    If akActor == None || !_ready
         Return
     EndIf
-    If SNRom_Decorators.Upper(SNRom_Decorators.Trim(asStatus)) != "MARRIED"
+    Keyword kw = IgnoreProposalKeyword()
+    If kw == None
+        ; Once per session is enough; this is a broken-integration warning, not a
+        ; per-award one.
+        If StorageUtil.GetIntValue(None, "SNRom_WarnedNoProposalKw", 0) != \
+           StorageUtil.GetIntValue(None, "SNRom_SessionId", 0)
+            StorageUtil.SetIntValue(None, "SNRom_WarnedNoProposalKw", \
+                StorageUtil.GetIntValue(None, "SNRom_SessionId", 0))
+            Diag(LOG_ERROR(), "TTM_IgnoreProposal did not resolve, so the marriage " + \
+                "gate cannot be applied. Either MARAS is absent - in which case this " + \
+                "is harmless - or the keyword has been renamed and the gate is now " + \
+                "silently inert.")
+        EndIf
+        Return
+    EndIf
+    Bool shouldBlock = Romantasy.GetPoints(akActor) < SPOUSE_MIN()
+    Bool isBlocked   = akActor.HasKeyword(kw)
+    If shouldBlock == isBlocked
+        Return                                  ; already correct - the common case
+    EndIf
+    If shouldBlock
+        PO3_SKSEFunctions.AddKeywordToRef(akActor, kw)
+        Diag(LOG_INFO(), "Marriage gate closed for " + akActor.GetDisplayName() + \
+            " - below Spouse at " + Romantasy.GetPoints(akActor) + " pts.")
+    Else
+        PO3_SKSEFunctions.RemoveKeywordFromRef(akActor, kw)
+        PO3_SKSEFunctions.RemoveKeywordOnForm(akActor.GetActorBase(), kw)
+        Diag(LOG_INFO(), "Marriage gate OPEN for " + akActor.GetDisplayName() + \
+            " - reached Spouse at " + Romantasy.GetPoints(akActor) + " pts. A formal " + \
+            "proposal is now earned.")
+    EndIf
+EndFunction
+
+Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEnum, Form akSender)
+    { MARAS announced a relationship change. TWO statuses matter, and the second
+      one was added later - this docstring said "other statuses are ignored:
+      engagement is already read at seed time" while the code below had stopped
+      ignoring it, which is the sort of comment that gets believed.
+
+      ENGAGED is the marriage gate, and it is the one that actually holds. See
+      the note at the branch for why enforcement has to happen on an event rather
+      than through eligibility, and why engagement rather than marriage is the
+      intercept.
+
+      MARRIED re-seeds rather than topping up, because ReseedActor clears the
+      stamp and re-runs the whole computation, which will now see the marriage and
+      land on Spouse. That re-seed is ASYNCHRONOUS since it became a record read,
+      so it can be deferred behind a pending one - which is why ReconcileMarriages
+      and not this is what guarantees a spouse reaches the Spouse floor.
+
+      A DIVORCE MUST NOT CLAW POINTS BACK - those were earned, and Romantasy owns
+      what a break-up costs. Candidate and jilted are genuinely ignored. }
+    Actor who = akSender as Actor
+    If who == None || !_ready
         Return
     EndIf
     If !IsEnrolled(who)
         Return
     EndIf
+    String st = SNRom_Decorators.Upper(SNRom_Decorators.Trim(asStatus))
+
+    ; -- THE MARRIAGE GATE THAT ACTUALLY HOLDS ------------------------------
+    ; The author designed the ladder so a formal proposal is only possible once
+    ; the follower has crossed into Spouse. The keyword MaintainProposalGate
+    ; sets is the polite version of that, and on a SkyrimNet setup it never
+    ; fires: the vanilla topic is suppressed by AllowAIDial, and the action's
+    ; Papyrus eligibility is SKIPPED while the game is paused, which it always
+    ; is during dialogue. Eligibility fails open. So the enforcement has to
+    ; happen after the fact, on an event, which runs unpaused.
+    ;
+    ; ENGAGEMENT IS THE INTERCEPT, not marriage. MARAS goes candidate ->
+    ; engaged -> married, and CANCELWEDDINGENGAGEMENT exists as a separate
+    ; action, so engagement is a real distinct step. Reversing it costs a
+    ; status field. Reversing a COMPLETED marriage would mean unpicking spouse
+    ; assets, hierarchy rank and house tenancy across 13 registered homes, and
+    ; a mod that quietly dissolves marriages is worse than one that leaks.
+    If st == "ENGAGED"
+        Int held = Romantasy.GetPoints(who)
+        If held < SPOUSE_MIN()
+            If MARAS.PromoteNPCToStatus(who, "candidate")
+                Diag(LOG_INFO(), "Engagement reversed for " + who.GetDisplayName() + \
+                    " - they hold " + held + " pts and Spouse begins at " + SPOUSE_MIN() + \
+                    ". A formal proposal is not earned yet, so they are back to candidate. " + \
+                    "Nothing else changes and nothing is lost." + MarasStateLine(who))
+            Else
+                Diag(LOG_ERROR(), "MARAS refused to demote " + who.GetDisplayName() + \
+                    " from engaged, so the marriage gate has leaked. They hold " + held + \
+                    " pts against a Spouse floor of " + SPOUSE_MIN() + "." + MarasStateLine(who))
+            EndIf
+            Return
+        EndIf
+        Diag(LOG_INFO(), "Engagement allowed for " + who.GetDisplayName() + " - " + \
+            held + " pts is at or past Spouse." + MarasStateLine(who))
+        Return
+    EndIf
+
+    If st != "MARRIED"
+        Return
+    EndIf
+    ; A marriage below Spouse means the gate was bypassed - almost certainly a
+    ; proposal accepted during paused dialogue, where eligibility never ran.
+    ; SAID LOUDLY AND NOT UNDONE: see the note above on what unpicking a
+    ; marriage would cost. ReconcileMarriages will still put them at Spouse,
+    ; because a recorded marriage outranks the ladder once it exists.
+    If Romantasy.GetPoints(who) < SPOUSE_MIN()
+        Diag(LOG_ERROR(), "MARRIED BELOW SPOUSE: " + who.GetDisplayName() + " holds " + \
+            Romantasy.GetPoints(who) + " pts against a floor of " + SPOUSE_MIN() + \
+            ". The proposal gate was bypassed - most likely accepted during paused " + \
+            "dialogue, where SkyrimNet skips Papyrus eligibility. Not undone: a " + \
+            "recorded marriage is left standing." + MarasStateLine(who))
+    EndIf
     Diag(LOG_INFO(), "MARAS reports " + who.GetDisplayName() + \
         " is now married - re-seeding so the Spouse ceiling applies." + MarasStateLine(who))
     ReseedActor(who)
 EndEvent
+
+Function SweepProposalGates()
+    { Establish the marriage gate across the whole roster, not just on whoever
+      happened to earn points recently.
+
+      WHY THIS IS NEEDED. MaintainProposalGate is called from Ledger, which fires
+      only on a POINT CHANGE. So the gate was lazily established: measured
+      2026-09-01, only one of five tested followers had ever had it evaluated, and
+      Camilla Valerius was sitting as a MARAS candidate at 1999 pts with an
+      acceptance chance of 0.993 and no keyword on her at all. A gate that exists
+      only for whoever recently earned something is not a gate.
+
+      This runs on the housekeeping tick and closes that hole. It also covers the
+      case Ledger structurally cannot: a follower who is simply idle, and anyone
+      enrolled before this feature existed.
+
+      CHEAP, AND DELIBERATELY SO. MaintainProposalGate reads HasKeyword and
+      returns immediately when the state is already correct, so the steady cost is
+      one native read per roster entry per housekeeping tick - no writes, no
+      GetPoints beyond the one comparison, and nothing at all once every follower
+      is settled. The keyword is resolved ONCE here rather than per actor, because
+      Keyword.GetKeyword is the only part of this that is not trivially cheap.
+
+      NOT GATED ON FOLLOWING. Unlike ReconcileMarriages, which needs Romantasy to
+      accept a point change, this only adds or removes a keyword - so it works for
+      anyone on the roster whether or not they are travelling. A spouse waiting at
+      home should still not be proposable at 900 points. }
+    If !_ready
+        Return
+    EndIf
+    If IgnoreProposalKeyword() == None
+        Return                                  ; MaintainProposalGate logs this once
+    EndIf
+    Int i = 0
+    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    While i < n
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None && !a.IsDead()
+            MaintainProposalGate(a)
+        EndIf
+        i += 1
+    EndWhile
+EndFunction
 
 Function ReconcileMarriages()
     { Heal a spouse who was seeded before MARAS could say they were married.
@@ -3905,69 +4183,17 @@ Function ReconcileMarriages()
         i += 1
     EndWhile
 EndFunction
-Function TestProposalBlock(Actor akActor, Int aiMode)
-    { DIAGNOSTIC, NOT THE FEATURE. Delete once it has answered.
-
-      THE QUESTION: does MARAS actually gate its proposal on the
-      TTM_IgnoreProposal keyword, and does it still do so for an actor MARAS has
-      ALREADY registered as a candidate? The keyword is a record in TT_MARAS.esp
-      and appears in none of the SKSE DLLs, so it is almost certainly read by a
-      dialogue condition - which would be ideal, because conditions re-evaluate
-      every time dialogue is built and a runtime toggle would bite immediately.
-      That is an INFERENCE from where the string is absent. It has not been read
-      out of the plugin, and this function exists so nobody builds the gate on
-      top of a guess.
-
-      MODES, because base and reference are different questions and answering
-      them together would tell us nothing about which one MARAS looks at:
-        1 - add to the ACTOR BASE   (what HasKeyword resolves through)
-        2 - add to the REFERENCE    (leaves other instances alone)
-        3 - add to both
-        0 - remove from both
-
-      HOW TO READ THE RESULT: set a mode, then talk to them. If the MARAS
-      proposal option is gone, the keyword gates it and the gate is buildable.
-      If it is still there, the keyword gates something earlier - candidacy
-      registration, most likely - and blocking an existing candidate needs a
-      different lever entirely.
-
-      SAFETY: po3 describes AddKeywordToForm as runtime-only rather than
-      persisted, so a reload should clear anything this adds. UNVERIFIED. Mode 0
-      is the intended undo; a reload is the fallback, not the plan. }
-    If akActor == None || !_ready
-        Return
-    EndIf
-    Keyword kw = Keyword.GetKeyword("TTM_IgnoreProposal")
-    If kw == None
-        Diag(LOG_ERROR(), "TestProposalBlock: TTM_IgnoreProposal did not resolve. " + \
-            "TT_MARAS.esp not loaded, or the keyword is named differently than the " + \
-            "SPID ini implies.")
-        Return
-    EndIf
-    ActorBase b   = akActor.GetActorBase()
-    Bool before   = akActor.HasKeyword(kw)
-    String didWhat = "none"
-    If aiMode == 1
-        PO3_SKSEFunctions.AddKeywordToForm(b, kw)
-        didWhat = "added to base"
-    ElseIf aiMode == 2
-        PO3_SKSEFunctions.AddKeywordToRef(akActor, kw)
-        didWhat = "added to ref"
-    ElseIf aiMode == 3
-        PO3_SKSEFunctions.AddKeywordToForm(b, kw)
-        PO3_SKSEFunctions.AddKeywordToRef(akActor, kw)
-        didWhat = "added to base and ref"
-    Else
-        PO3_SKSEFunctions.RemoveKeywordOnForm(b, kw)
-        PO3_SKSEFunctions.RemoveKeywordFromRef(akActor, kw)
-        didWhat = "removed from base and ref"
-    EndIf
-    Diag(LOG_INFO(), "TestProposalBlock " + akActor.GetDisplayName() + ": " + didWhat + \
-        " | HasKeyword before=" + before + " after=" + akActor.HasKeyword(kw) + \
-        " | points=" + Romantasy.GetPoints(akActor) + MarasStateLine(akActor))
-EndFunction
 Actor  _seedActor
 String _seedName
+; WHEN THE PENDING READ WAS DISPATCHED, in real seconds, so a callback that
+; never arrives cannot wedge seeding for the rest of the session. See
+; SeedReadInFlight.
+Float  _seedSentAt
+; HAND-REQUESTED, so the answer is announced on screen instead of only in the
+; log. An automatic seed is silent by design - it fires on a housekeeping tick
+; the player did not ask for and must not interrupt them. A seed they pressed a
+; key for is the opposite: they are standing there waiting for it.
+Bool   _seedByHand
 
 Int Function StandingToPoints(String asWord) Global
     { A tier WORD, not a number, for the same reason ArdorWord exists: a judge
@@ -4022,7 +4248,11 @@ Function AssessSeed(Actor akActor)
     If akActor == None || !_ready
         Return
     EndIf
-    If _seedActor != None
+    ; SeedReadInFlight, NOT a bare `_seedActor != None`. The slot is released by
+    ; the callback, so a read that never came back held it for the whole session
+    ; and this - the AUTOMATIC path - would have declined every follower forever
+    ; while logging one line per tick. The timeout lives in that function.
+    If SeedReadInFlight()
         ; SAY SO. Lisbet was requested while Silana was still pending and this
         ; returned in silence, so the test looked like a failed call rather than
         ; a queue doing its job. One line is the difference.
@@ -4030,8 +4260,9 @@ Function AssessSeed(Actor akActor)
             " skipped - a read for " + _seedName + " is still pending. Ask again.")
         Return
     EndIf
-    _seedActor = akActor
-    _seedName  = akActor.GetDisplayName()
+    _seedActor  = akActor
+    _seedName   = akActor.GetDisplayName()
+    _seedSentAt = Utility.GetCurrentRealTime()
     String prior = "vanilla relationship rank " + akActor.GetRelationshipRank(Game.GetPlayer())
     If SeverActionsPresent()
         prior = prior + ", SeverActions rapport " + SeverActionsNative.Native_GetRapport(akActor)
@@ -4044,8 +4275,51 @@ Function AssessSeed(Actor akActor)
         Self, "SNRom_Bridge", "OnSeedAssessed")
     Diag(LOG_INFO(), "Seed assessment sent for " + _seedName + " (rc=" + rc + ")")
     If rc != 1
+        ; SAY SO WHEN SOMEONE IS WAITING ON IT. On the housekeeping path a
+        ; refused dispatch is a log line and the next tick tries again. On the
+        ; hotkey path the player pressed a key and would otherwise be told
+        ; nothing at all, which is indistinguishable from a dead keybind.
+        If _seedByHand
+            Say("Could not reach the model to re-read " + _seedName + ".")
+            _seedByHand = False
+        EndIf
         _seedActor = None
     EndIf
+EndFunction
+
+Bool Function SeedReadInFlight()
+    { Is a seed read already out?
+
+      Checked BEFORE dispatching a hand-requested one, because AssessSeed holds
+      a single pending slot and declines a second request with nothing but a log
+      line - and a hotkey that silently does nothing reads as a broken hotkey
+      rather than as a queue doing its job.
+
+      TIMES THE SLOT OUT, and that is not defensive noise. The slot is released
+      by the callback, so a response that never arrives - a dropped LLM call, a
+      backend that died mid-request - held it for the rest of the session, and
+      SeedNextActor would then never seed anyone again. Nothing surfaced that,
+      because the automatic path fails quietly by design. The hotkey would have
+      turned it into "still reading the record for Lydia" forever.
+
+      NINETY REAL SECONDS is far longer than a read takes and far shorter than a
+      play session. Releasing the slot early costs at worst one duplicate read,
+      which is harmless: seeding tops up and cannot pay twice. }
+    If _seedActor == None
+        Return False
+    EndIf
+    Float waited = Utility.GetCurrentRealTime() - _seedSentAt
+    ; Negative means the save was made in a previous launch, since real time
+    ; counts from game start - so the pending actor is a stale save value and
+    ; there is no read out at all. Same trap as Bootstrap's debounce.
+    If waited < 0.0 || waited > 90.0
+        Diag(LOG_WARN(), "Seed read for " + _seedName + " never came back (" + waited + \
+            "s) - releasing the slot so seeding is not stuck for the session.")
+        _seedActor = None
+        _seedByHand = False
+        Return False
+    EndIf
+    Return True
 EndFunction
 
 Event OnSeedAssessed(String asResponse, Int aiSuccess)
@@ -4062,15 +4336,34 @@ Event OnSeedAssessed(String asResponse, Int aiSuccess)
       among several rather than the signal. }
     Actor  who   = _seedActor
     String asked = _seedName
+    ; CAPTURED AND CLEARED TOGETHER with the pending actor. Every return path
+    ; below reads `announce` rather than the member, so a read that lands while
+    ; a second one is being dispatched cannot announce against the wrong name.
+    Bool   announce = _seedByHand
     _seedActor = None
+    _seedByHand = False
     If who == None || aiSuccess != 1
-        Diag(LOG_WARN(), "Seed assessment for " + asked + " failed or returned nothing")
+        ; FALL BACK TO THE DETERMINISTIC SEED rather than leaving them at zero.
+        ; Without this, a player whose LLM endpoint is down or rate-limited gets
+        ; no seeding at all and every follower sits at Stranger - worse than the
+        ; rank-and-rapport table this replaced, which at least answered something.
+        Diag(LOG_WARN(), "Seed assessment for " + asked + " failed or returned " + \
+            "nothing - falling back to rank and rapport alone.")
+        If announce
+            Say("The re-read of " + asked + " came back empty. Fell back to rank and rapport.")
+        EndIf
+        If who != None
+            SeedActor(who)
+        EndIf
         Return
     EndIf
     String echoed = SNRom_Decorators.NameCore(SNRom_Decorators.FieldValue(asResponse, "NAME:"))
     If echoed != "" && echoed != SNRom_Decorators.NameCore(asked)
         Diag(LOG_ERROR(), "Seed echo mismatch: asked about " + asked + ", answered as " + \
             echoed + ". Discarded.")
+        If announce
+            Say("The answer for " + asked + " came back about " + echoed + " - discarded.")
+        EndIf
         Return
     EndIf
     String standing = SNRom_Decorators.FieldValue(asResponse, "STANDING:")
@@ -4099,6 +4392,12 @@ Event OnSeedAssessed(String asResponse, Int aiSuccess)
     If target <= held
         Diag(LOG_INFO(), "Seed read for " + asked + " is at or below what they hold - nothing " + \
             "added. Seeding tops up and never claws back.")
+        ; NAMES THE STANDING ANYWAY. "Nothing changed" on its own reads as a
+        ; failed keypress; "read as CONFIDANT, already at or above that" is the
+        ; same outcome and is obviously an answer.
+        If announce
+            Say(asked + " reads as " + standing + " - already at or above that, so nothing added.")
+        EndIf
         StorageUtil.SetIntValue(who, "SNRom_Seeded", 1)
         SeedRomanticFlag(who)
         Return
@@ -4112,61 +4411,29 @@ Event OnSeedAssessed(String asResponse, Int aiSuccess)
         SeedRomanticFlag(who)
         Diag(LOG_INFO(), "Seeded " + asked + " from the record: " + held + " -> " + \
             Romantasy.GetPoints(who) + " pts." + MarasStateLine(who))
+        If announce
+            Say(asked + " reads as " + standing + ".")
+        EndIf
     Else
         Diag(LOG_DEBUG(), "Romantasy is not scoring " + asked + " yet - the seed read will be " + \
             "reapplied. Normal until one game load after enrollment.")
+        ; THE ONE OUTCOME A PLAYER CANNOT DIAGNOSE, so it is named rather than
+        ; left as silence - the read was correct, it simply could not be written.
+        ;
+        ; DOES NOT TELL THEM TO RELOAD, and an earlier version of this line did.
+        ; That advice came from the pre-API-3 world, where Romantasy read faction
+        ; tags once at load and runtime enrollment genuinely needed a restart.
+        ; This mod requires Romantasy 1.1.1, which reports API level 4, and
+        ; CommitConfig forces synchronous discovery there - see its docstring.
+        ; A reload is not the remedy and never comes up on a supported install.
+        ; What actually happens is a retry: SNRom_Seeded is still unset, so the
+        ; housekeeping tick picks them up again on its own.
+        If announce
+            Say(asked + " reads as " + standing + ", but Romantasy has not started " + \
+                "scoring them yet. It will be retried automatically.")
+        EndIf
     EndIf
 EndEvent
-
-Function TestSetPoints(Actor akActor, Int aiTarget)
-    { DIAGNOSTIC. Move someone to an exact point total, up or down.
-
-      EXISTS BECAUSE SEEDING ONLY EVER TOPS UP, which is the right rule and is
-      also why a bad read cannot be undone by a better one. Silana Petreia was
-      read as DEVOTED on the strength of her own hedged longing - "perhaps in
-      time, I will find a way bridge the gap" - and jumped 967 -> 1999. A
-      corrected read returns FRIEND and changes nothing, because 1250 is below
-      what she now holds.
-
-      So the correction has to be explicit and by hand. Not wired to anything,
-      not called by any tick, and it has no business surviving into a release. }
-    If akActor == None || !_ready
-        Return
-    EndIf
-    Int held = Romantasy.GetPoints(akActor)
-    Int delta = aiTarget - held
-    If delta == 0
-        Diag(LOG_INFO(), "TestSetPoints: " + akActor.GetDisplayName() + " already holds " + held)
-        Return
-    EndIf
-    MarkSelfAward(akActor)
-    ; NOT ScaleAward. This is a correction to a number this mod got wrong, not an
-    ; earning, and Bond Pace has no business scaling an apology.
-    If Romantasy.ModifyPoints(akActor, delta, "Correcting an earlier misread", True)
-        Diag(LOG_INFO(), "TestSetPoints: " + akActor.GetDisplayName() + " " + held + " -> " + \
-            Romantasy.GetPoints(akActor) + " pts (asked for " + aiTarget + ")")
-    Else
-        Diag(LOG_ERROR(), "TestSetPoints: Romantasy refused the correction for " + \
-            akActor.GetDisplayName() + " - are they actively following?")
-    EndIf
-EndFunction
-
-Function TestSeedAssess(Actor akActor)
-    { DIAGNOSTIC ENTRY POINT, for trying the new read on chosen followers before
-      it goes anywhere near the whole roster. Clears the stamp and re-reads.
-
-      DELIBERATELY NOT WIRED INTO THE HOUSEKEEPING TICK. 63 enrolled actors is 63
-      LLM calls rewriting points on a live save, and the author asked to test select
-      followers first. Wiring it in is a separate decision, taken after the reads
-      have been seen. }
-    If akActor == None || !_ready
-        Return
-    EndIf
-    StorageUtil.UnsetIntValue(akActor, "SNRom_Seeded")
-    Diag(LOG_INFO(), "TestSeedAssess: re-reading " + akActor.GetDisplayName() + \
-        " from the record (currently " + Romantasy.GetPoints(akActor) + " pts)")
-    AssessSeed(akActor)
-EndFunction
 
 Function ReseedActor(Actor akActor)
     { Clear the once-ever stamp and seed again. ONE argument, so it dispatches
@@ -4180,14 +4447,248 @@ Function ReseedActor(Actor akActor)
       Written for the Kayla case. She was seeded on 2026-08-03 by a build whose
       rapport read was against a dead SeverActions key, so her entire target came
       from relationship rank and the rapport half of the estimate was silently
-      zero. Anyone seeded by that build deserves the same second look. }
+      zero. Anyone seeded by that build deserves the same second look.
+
+      GOES THROUGH THE RECORD READ, not SeedTarget, and that correction is the
+      whole point of the function now. This called SeedActor directly, which is
+      the rank-and-rapport path - so the one repair a player reaches for after
+      fixing someone's bio was the one path that could not see the fix. Rapport
+      was 5.0 for 57% of 63 followers and rank was 3 for 61 of them, so a
+      re-seed would have recomputed about 200, found it below what they held,
+      and reported success having read nothing that was written.
+
+      AssessSeed keeps SeedActor as its own failure fallback, so an endpoint
+      that is down still answers something rather than nothing. }
     If akActor == None || !_ready
         Return
     EndIf
     Int had = Romantasy.GetPoints(akActor)
     StorageUtil.UnsetIntValue(akActor, "SNRom_Seeded")
-    Diag(LOG_INFO(), "Re-seeding " + akActor.GetDisplayName() + " (currently " + had + " pts)")
-    SeedActor(akActor)
+    Diag(LOG_INFO(), "Re-seeding " + akActor.GetDisplayName() + " (currently " + had +         " pts) - reading the record again")
+    AssessSeed(akActor)
+EndFunction
+
+; ===========================================================================
+; The re-read hotkey - the one repair a player can reach without the web API
+;
+; EVERY DESIGN CHOICE HERE COMES FROM SkyrimNet Kinship, which solved this on
+; this load order first. Its lessons, in the order they matter:
+;
+;   1. NO MCM. SkyUI's mod registry is a Papyrus array capped at 128 entries,
+;      and past that a menu registers but can never render - so MCM Helper's
+;      keybind can never be bound either, because binding happens ON the page
+;      that will not open. This save is at that ceiling. The key is registered
+;      directly in Papyrus and the setting lives in SkyrimNet's own panel,
+;      which this mod already depends on and the player already has open. That
+;      REMOVES a dependency rather than adding one.
+;
+;   2. THE CROSSHAIR ANSWERS "WHICH NPC" and needs no candidate list at all.
+;      The hard part of identifying one of Skyrim's actors is solved by the
+;      player looking at them, which is why there is no picker here and so no
+;      UI library to depend on. Kinship borrows UILIB_1 from Fertility Mode's
+;      handler quest; this mod has no such dependency and needs none.
+;
+;   3. NO CONFIRMATION PROMPT, and that is what keeps this small. A re-seed
+;      cannot do harm: SeedActor and OnSeedAssessed both seed to a FLOOR and
+;      subtract what the actor already holds, so it can only ever raise someone
+;      to what their history justifies. It cannot pay twice and it cannot take
+;      anything away. A yes/no box would need either a Creation Kit Message
+;      record or a UI dependency, to guard an action that needs no guarding.
+;
+; NO CREATION KIT WORK. RegisterForKey is a Form member and this script is on a
+; Quest, so the whole feature is loose Papyrus on records that already exist.
+; ===========================================================================
+
+Int Function HotkeyCode() Global
+    { DirectX SCAN code for the re-read key. 0 disables it.
+
+      A SCAN CODE, AND THE SETTING IS A PLAIN INT FOR THAT REASON. SkyrimNet's
+      panel offers a `hotkey` field type which captures a keypress, and it was
+      the obvious choice and the wrong one: the widget stores a VIRTUAL KEY
+      code, and RegisterForKey takes a scan code. Setting the field to End
+      through the widget stored 35 - VK_END - so this registered scan code 35,
+      which is the H key, and End was never listened for. Measured 2026-09-02.
+      Nothing errored; the key simply did nothing, twice, for two different
+      reasons.
+
+      This is the same trap the note below records for Community Shaders. Having
+      written that note, I then walked into it. The lesson generalises: a key
+      NUMBER means nothing without its scheme, and the scheme is a property of
+      whoever consumes the number - C++ plugins read VK, Papyrus reads scan.
+
+      DEFAULTS TO HOME (199), AND IT TOOK THREE TRIES TO FIND A FREE KEY.
+      Worth recording, because the reasoning that produced the first two was
+      wrong in a way that will recur.
+
+      It shipped as Insert (210) on the grounds that Insert is unbound in
+      vanilla and rarely claimed. Insert is claimed TWICE here - STFU's
+      MenuHotkey=0xD2 and SSEDisplayTweaks' ToggleKey=0xD2. "Unbound in vanilla"
+      says nothing useful about a large load order: the keys mods reach for are
+      exactly the ones vanilla leaves free, so being unbound is what makes a key
+      CONTESTED rather than available.
+
+      The second attempt was End (207), which Community Shaders owns.
+
+      Claimed on the development load order, measured 2026-09-02:
+
+        210 Insert     STFU, SSEDisplayTweaks
+        207 End        Community Shaders
+        201 / 209      Community Shaders (PageUp / PageDown)
+         68 F10        Community Shaders overlay
+        183 PrtScn     Community Shaders screenshot
+          1 Escape     Community Shaders, SSEDisplayTweaks combo key
+         55 Numpad *   Community Shaders, IntelEngine's dashboard
+         56 Left Alt   TK Dodge RE
+         42 Left Shift Dynamic Activation Key, and Kinship's own modifier
+         29 / 47       po3 Console++ (Left Ctrl + V)
+         10            Kinship
+         39 40 48 49   Follower Stats, DynamicArmor, OStimFurnitureSwitch
+         24 14 70      OpenAnimationReplacer, IED, NPC Renamer
+
+      CROSS-REFERENCING CONFIGS NEEDS CARE, because mods do not agree on what a
+      key number means. Community Shaders stores VIRTUAL KEY codes (its End is
+      35 = VK_END); this mod, Kinship and MCM Helper use DIRECTX SCAN codes
+      (End is 207). The same key is a different number in the two files, so a
+      raw numeric comparison across mods is meaningless - translate first.
+
+      199 Home, 197 Pause, 211 Delete and 87 F11 were the survivors. Home wins
+      on being full-size and present on laptops; it is usually ReShade that
+      claims it, and there is no ReShade or ENB here. Delete is avoided on
+      principle - a key named Delete bound to a mod action invites the wrong
+      kind of muscle memory.
+
+      A BARE KEY RATHER THAN A CHORD, and Kinship documents why a chord does not
+      actually help: the modifier is only checked by the mod that owns it, so
+      whatever else claims the base key still sees the press. Holding Shift with
+      Insert does not stop STFU opening. Only changing the base key does. }
+    Return SkyrimNetApi.GetConfigInt(CFG(), "reseedHotkey", 199)
+EndFunction
+
+Int Function HotkeyModifier() Global
+    { Optional held modifier, Dynamic-Activation-Key style. 0 = none.
+      42 Left Shift, 29 Left Ctrl, 56 Left Alt. }
+    Return SkyrimNetApi.GetConfigInt(CFG(), "reseedHotkeyModifier", 0)
+EndFunction
+
+Function RegisterHotkey()
+    { Arms the re-read key, every load.
+
+      KEY REGISTRATIONS DO NOT SURVIVE A SAVE/LOAD, which is why this belongs
+      in Bootstrap alongside the decorator and ModEvent registrations rather
+      than in OnInit. Same reason, same place, same failure if forgotten.
+
+      UnregisterForAllKeys first, so changing the key does not leave the old one
+      live as well. This script owns no other keys, so unregistering all of them
+      is exactly the set it registered.
+
+      RE-CALLED FROM THE TICK WHEN THE SETTING MOVES, which is what makes the
+      setting live rather than load-only. Registration happens here and nowhere
+      else, so editing the key mid-session used to leave the game registered for
+      the OLD code while OnKeyDown compared against the NEW one - and then
+      NEITHER key worked: the old one arrived and was rejected as the wrong
+      code, and the new one was never delivered because nothing was listening
+      for it. Silently, with a correct-looking setting on screen. Hit while
+      testing 1.4.0 on 2026-09-02, after Insert turned out to be claimed by two
+      other mods.
+
+      _hotkeyArmed is what is REGISTERED; HotkeyCode() is what is ASKED FOR. The
+      tick compares them, so the cost of this is one config read per tick and a
+      re-registration only when the player actually changes the key. }
+    Int code = HotkeyCode()
+    UnregisterForAllKeys()
+    _hotkeyArmed = code
+    If code > 0
+        RegisterForKey(code)
+        Diag(LOG_INFO(), "Re-read hotkey armed on scan code " + code + \
+            " (modifier " + HotkeyModifier() + ").")
+    Else
+        Diag(LOG_INFO(), "Re-read hotkey disabled (reseedHotkey = 0).")
+    EndIf
+EndFunction
+
+Event OnKeyDown(Int aiKeyCode)
+    If aiKeyCode != HotkeyCode()
+        Return
+    EndIf
+    ; NEVER IN MENU MODE. A press during dialogue would dispatch an LLM call
+    ; from a paused game, which is the state SkyrimNet refuses Papyrus in - and
+    ; the crosshair reference is not meaningful there anyway.
+    If Utility.IsInMenuMode()
+        Return
+    EndIf
+    Int held = HotkeyModifier()
+    If held != 0 && !Input.IsKeyPressed(held)
+        Return
+    EndIf
+    ReseedUnderCrosshair()
+EndEvent
+
+Function Say(String asText)
+    { One player-facing line. Distinct from Diag's optional notification, which
+      mirrors the LOG and is off by default: these are answers to a keypress and
+      must appear whatever the log settings say. }
+    Debug.Notification("[Relationships] " + asText)
+EndFunction
+
+Function ReseedUnderCrosshair()
+    { Point at a follower, press the key, and their standing is read again from
+      the record as it now stands.
+
+      WHY THIS EXISTS. Fixing the material is the advice this mod gives - correct
+      the bio, write the missing diary entry, apply a block - and none of it
+      moves a standing that was already written down. The re-read was reachable
+      only by hand-assembling a POST to SkyrimNet's web API with the actor's
+      FormID, which is not a repair a player will perform.
+
+      EVERY REFUSAL BELOW SAYS WHY. A hotkey that declines in silence is
+      indistinguishable from one that is not bound, and the player has no log
+      open. The asynchronous answer arrives in OnSeedAssessed, which announces
+      all four of its outcomes when the request came from here. }
+    If !_ready
+        Say("Not ready - Romantasy did not resolve this session.")
+        Return
+    EndIf
+    Actor who = Game.GetCurrentCrosshairRef() as Actor
+    If who == None
+        Say("Point at someone first.")
+        Return
+    EndIf
+    If who == Game.GetPlayer()
+        Say("That is you.")
+        Return
+    EndIf
+    If who.IsDead()
+        Say(who.GetDisplayName() + " is dead.")
+        Return
+    EndIf
+    If !IsEnrolled(who)
+        ; NOT ENROLLED IS NOT AN ERROR, and saying "no" without saying "yet"
+        ; invites a second and third press. Enrollment is automatic on becoming
+        ; a follower; there is nothing for the player to do but recruit them.
+        Say(who.GetDisplayName() + " is not being observed - only followers are.")
+        Return
+    EndIf
+    If !IsFollowing(who)
+        ; ROMANTASY ONLY SCORES ACTIVE FOLLOWERS, and it rejects a dismissed one
+        ; every time rather than late - see the note in SeedNextActor. Caught
+        ; HERE rather than discovered after the fact, because the alternative is
+        ; spending an LLM call and then announcing a failure whose cause the
+        ; player cannot see. Enrolled and dismissed is the ordinary state of most
+        ; of a large roster, so this is the likely refusal, not an exotic one.
+        Say(who.GetDisplayName() + " is not travelling with you - only active followers are scored.")
+        Return
+    EndIf
+    If SeedReadInFlight()
+        Say("Still reading the record for " + _seedName + " - try again in a moment.")
+        Return
+    EndIf
+    ; SET BEFORE THE DISPATCH, because AssessSeed reports its own refusal and
+    ; reads this to decide whether to announce it. Cleared on every path out of
+    ; OnSeedAssessed and on a refused dispatch, so it cannot leak into the next
+    ; automatic seed and make it noisy.
+    _seedByHand = True
+    Say("Re-reading the record for " + who.GetDisplayName() + "...")
+    ReseedActor(who)
 EndFunction
 
 Function SeedNextActor()
@@ -4227,9 +4728,19 @@ Function SeedNextActor()
     While i < n
         Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
         If a != None && !a.IsDead() && StorageUtil.GetIntValue(a, "SNRom_Seeded", 0) != 1 && IsFollowing(a)
-            If SeedActor(a)
-                Return                          ; settled - that is this tick's budget
-            EndIf
+            ; THE RECORD READ, not the old rank-and-rapport table. Measured
+            ; 2026-09-01 across 63 seeded followers: rapport was exactly 5.0 for
+            ; 57% and rank was 3 for 61 of 63, so SeedTarget returned about 200
+            ; for almost everyone whatever had happened between them. AssessSeed
+            ; reads the diary, the memories and the bio instead; SeedTarget
+            ; survives inside it as a floor.
+            ;
+            ; ONE DISPATCH PER TICK, and the stamp is set by the callback rather
+            ; than here - so a read that fails leaves the actor unseeded and they
+            ; come round again next tick. AssessSeed holds a single pending slot,
+            ; so a tick during an outstanding read simply does nothing.
+            AssessSeed(a)
+            Return
         EndIf
         i += 1
     EndWhile
@@ -4308,6 +4819,12 @@ Event OnUpdateGameTime()
       assessing anyone more often than their cooldown already allows. That was
       the whole problem: at a fixed two hours a party of seven waited fourteen
       game hours apiece while talkCooldownHours sat at 3.0 and never bound. }
+    ; THE HOTKEY SETTING, MADE LIVE. One config read; re-registers only when the
+    ; player has actually changed the key. Without this the setting appears to
+    ; take effect and does nothing at all until the next load.
+    If HotkeyCode() != _hotkeyArmed
+        RegisterHotkey()
+    EndIf
     Float now = Utility.GetCurrentGameTime()
     Float sinceKeep = now - StorageUtil.GetFloatValue(None, "SNRom_LastHousekeep", 0.0)
     ; A negative delta means the clock moved backwards - a load of an older save.
@@ -4331,6 +4848,11 @@ Event OnUpdateGameTime()
         ; has been checked - that is what lets a follower recruited mid-session be
         ; picked up on the next tick rather than on the next load.
         ReconcileMarriages()
+        ; Alongside it, and for the same reason: Ledger only sees actors whose
+        ; points moved, so the marriage gate has to be established here to exist
+        ; for an idle follower at all. One HasKeyword read per roster entry once
+        ; everyone is settled.
+        SweepProposalGates()
     EndIf
 
     ; The outstanding question goes BEFORE the assessors. It is cheap, local and
@@ -4791,6 +5313,13 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
     ; this project ever produced - both recorded in the ledger as if they landed,
     ; both actually discarded. The tell is `ta:-1`, i.e. GetLevel() == 0.
     ; analyze_romance.py would have reported ~390 phantom points as earned.
+    ; The one moment in normal play where an award must not reach Romantasy: it
+    ; would carry an unanswered romance into Lover. Withheld, not written and
+    ; corrected, so there is no false LOVER splash and no phantom tier event.
+    If HoldShortOfLover(akActor, awarded)
+        Ledger(akActor, "withheld", "", awarded, 1, asWhat)
+        Return
+    EndIf
     MarkSelfAward(akActor)
     Bool applied = Romantasy.ModifyPoints(akActor, awarded, asWhat, True)
     If !applied
