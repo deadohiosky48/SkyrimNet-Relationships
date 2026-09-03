@@ -116,15 +116,28 @@ would be no refusal at all. The friendship grows again from there, on its own
 terms, and they may raise it once more when there is real ground for it.
 
 **Nothing creeps past the question while it is unanswered.** The gate is on
-romance, not on depth: a companion who has sparked but whose question you have not
-answered is held just short of marriage-eligible, so nobody arrives there by
-accumulation alone. The points are banked, not lost, and return in full when you
-answer. A purely platonic companion has no question to answer and climbs to the
-top of the ladder freely.
+romance, not on depth: a companion who has sparked but whose question you have
+not answered is held just short of Lover, so nobody becomes your lover by
+accumulation alone. An award that would carry them across is withheld rather
+than paid and taken back, so you never see a tier arrive and vanish. Say yes and
+it is granted in full. A purely platonic companion has no question to answer and
+climbs to the top of the ladder freely.
 
-**Spouse is the rung that makes marriage possible.** It is not a claim to be
-married — the proposal itself happens through whatever marriage system you use.
-This mod's job is making sure you both meant it before you get that far.
+**Spouse is the rung that makes marriage possible, and it is enforced.** Until a
+companion has earned it, a formal proposal is off the table — MARAS will not
+offer one, and an engagement that slips through some other route is put back. The
+ceremony itself still happens through whatever marriage system you use; this mod
+decides when you have both earned the right to hold it.
+
+Reaching Spouse is ordinary progression, and talking about marriage is part of
+it. Two people who are already lovers discussing a future, and meaning it, is one
+of the largest things that can happen between them — so it moves the bond like
+one, and it is often what carries them the last of the way.
+
+**Getting the most out of it.** What this mod reads about your companions, and how to
+make sure your save has something worth reading - especially if you are installing
+mid-playthrough with followers who already have history:
+[Give It Something To Read](https://deadohiosky48.github.io/SkyrimNet-Relationships/preparing.html).
 
 ## Requirements
 
@@ -132,6 +145,7 @@ This mod's job is making sure you both meant it before you get that far.
 |---|---|
 | [SkyrimNet](https://www.nexusmods.com/skyrimspecialedition/mods/151960) | required |
 | [Romantasy](https://www.nexusmods.com/skyrimspecialedition/mods/186060) | required — **1.1.1 or newer** |
+| [powerofthree's Papyrus Extender](https://www.nexusmods.com/skyrimspecialedition/mods/22854) | required — the marriage gate uses it to hold a keyword on a companion. Most load orders already have it |
 | SKSE64 | required |
 | PapyrusUtil SE | required — StorageUtil, JsonUtil, MiscUtil |
 | Papyrus MessageBox ([Nexus 83578](https://www.nexusmods.com/skyrimspecialedition/mods/83578)) | required for the consent prompt; bundled by MARAS |
@@ -144,7 +158,7 @@ inert; nothing errors and no prompt breaks.
 
 | | adds |
 |---|---|
-| SeverActions | follower detection and rapport-based head starts for companions you already know. From **3.9.11** it detects this mod and steps its own Intimacy & Consent section aside, so nobody is handed two ideas of how receptive they are. Its custom bio blocks are read as direct evidence when a character is authored - see below |
+| SeverActions | follower detection, including for companions you already know. From **3.9.11** it detects this mod and steps its own Intimacy & Consent section aside, so nobody is handed two ideas of how receptive they are. Its custom bio blocks are read as direct evidence when a character is authored - see below |
 | OStim Community Resource | physical attraction as an input, for characters whose disposition allows it to matter |
 | MARAS | marriage and engagement are read as facts rather than judged |
 | [SkyrimNet-Kinship](https://github.com/deadohiosky48/SkyrimNet-Kinship) | your own children are barred from the romantic and sexual ladders |
@@ -231,6 +245,10 @@ Notable knobs: how much conversation can move a bond in a day, how long between
 moments where a relationship is allowed to be redefined, how long two people must
 travel together before romance can begin at all, whether personalities are
 allowed to change over time and how much must have happened first.
+
+Under *Seeding* there is also a **Re-Read Hotkey** — point at a follower, press
+it, and their standing is read again from the record as it now stands. Default
+`Home`, 0 to disable. See Troubleshooting for what it is for.
 
 The setting that matters most to whether the mod works at all is **LLM Variant**, which chooses the model
 serving every background assessment this mod makes. See
@@ -319,6 +337,37 @@ All three arguments are required:
 {"questEditorId":"SNRom_Quest","scriptName":"SNRom_Bridge",
  "functionName":"SetCharacterField","arguments":["0x000A2C95",2,60]}
 ```
+
+**Someone was read from a bio or a journal that was wrong, and you have since
+fixed it.** Re-reads the record as it now stands and re-seeds from that. Fix the
+material first — correct the bio, write the missing diary entries, apply the
+blocks — then ask for the re-read.
+
+**In game: point at them and press `Home`.** No console and no API call. The
+key is configurable under *Seeding* in the settings panel as a **DirectX scan
+code** (199 is Home; 197 Pause, 211 Delete and 87 F11 are usually free), and 0
+disables it. If `Home` is taken on your setup, change the key rather than adding
+a modifier — a modifier is only checked by this mod, so the other mod still
+fires on the base key regardless. You will get a notification confirming the read was
+sent and another with the answer a few seconds later. Every refusal says why —
+not a follower, not being observed, already at or above the read standing.
+
+The same thing by hand, if you would rather script it. They must be loaded,
+near you, and currently following:
+
+```json
+{"questEditorId":"SNRom_Quest","scriptName":"SNRom_Bridge",
+ "functionName":"ReseedActor","arguments":["0x000A2C95"]}
+```
+
+**It can raise someone but never lower them.** The seed is a floor: it tops
+someone up to what their history justifies and subtracts whatever they already
+have, so it cannot pay twice for the same history and cannot take anything away.
+An under-read is fixed completely; a read that was too generous is not walked
+back by this.
+
+The log confirms it with `Re-seeding …`, then `Seed assessment sent for …`, then
+`Seed read for …` with the standing and the reason it chose.
 
 **Nothing seems to be happening at all.** Check
 `Data\SKSE\Plugins\SkyrimNet Relationships\logs\snrom.log`. A healthy log shows
