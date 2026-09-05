@@ -58,6 +58,11 @@
 # file here is a published web page.
 /docs/KINSHIP_*.md
 /docs/SPEC_parentage_mod.md
+# Internal design work in progress. Same reason as the line above: docs/ is
+# served by GitHub Pages, so a tracked .md here is a published web page - and
+# these name unreleased plans and quote another author's source while a
+# decision is still open.
+/docs/STANDALONE_*.md
 
 # Local scratch, editors, OS
 *.bak

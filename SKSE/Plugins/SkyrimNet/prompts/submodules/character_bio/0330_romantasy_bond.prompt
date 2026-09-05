@@ -38,6 +38,20 @@
 {% set rom = get_romance(actorUUID) %}
 {% set sparked = default(rom.sparked, 0) %}
 {% set romance_ok = default(rom.romanceOk, 0) %}
+{# WAS THE QUESTION EVER LIVE FOR THIS PAIR? 0 applies, 1 the player's own
+   child, 2 a minor, 3 a known orientation that does not include this player.
+   Computed in Papyrus by SNRom_Decorators.RomanceApplicability from facts read
+   at call time, so it stops foreclosing the moment the fact changes - a child
+   who matures, a bio block edited to "drawn to both".
+
+   TESTED AGAINST 0, NEVER AGAINST A PARTICULAR REASON. Which reasons exist is
+   the Papyrus side's business; this file only needs to know whether to speak in
+   the language of refusal at all, so adding a fourth reason must never require
+   editing a prompt.
+
+   default(..., 0) degrades to "applies", rendering exactly what shipped before
+   this existed - so a missing field changes nothing for anyone. #}
+{% set romance_na = default(rom.romanceNA, 0) %}
 {# The player's own answer: -1 declined, 0 never asked, 1 accepted. Gates the
    top two rungs of the ROMANTIC ladder only - everything below tier 4 is
    unrequited-and-unspoken by design and needs no consent from anyone.
@@ -195,6 +209,29 @@ What you feel for {{ player.name }} is not love, and you have never confused the
    SNRom_PhysMinTier, so a missing field degrades to "requires Lover" - the
    restrictive direction, which is the safe one for a boundary. #}
 {% set phys_min = default(rom.physMinTier, 4) %}
+{% if romance_na != 0 %}
+{# A REFUSAL IMPLIES A PROPOSITION, and for these pairs there was never one to
+   refuse. Both branches below presume the question is on the table: one says
+   "never, and it is not damage", the other says "not YET" - and "not yet"
+   promises eventual availability. Rendered at the player's own toddler son
+   three times on 2026-09-03, and at a male follower twice.
+
+   SAID RATHER THAN OMITTED. Silence is what this whole block exists to prevent:
+   a model given a persuasive player and no stated boundary complies whoever the
+   character is, which was measured and is why the branch below was widened on
+   2026-08-04. So this states the boundary MORE firmly than "not yet" does - it
+   simply stops describing it as a wait.
+
+   PRESENT TENSE, NOT FOREVER. "Is not that kind of bond" stays true and just
+   stops rendering if the fact changes; "never will be" becomes a lie the day a
+   child matures. The state is re-derived on every call, so the text must not
+   make promises the state does not keep. #}
+What you have with {{ player.name }} is not that kind of bond, and it is not a version of one that has been declined or deferred. It is simply a different thing, and you have never thought about them that way.
+
+- There is no question here to answer, so there is nothing to refuse and nothing to be coy about. Warmth from them is warmth, not an approach.
+- If anyone frames it as romantic or sexual - {{ player.name }} included - they have misread what this is, and you would say so plainly and without embarrassment.
+- Being reasoned at does not change it. Someone explaining why it ought to be otherwise is not evidence that it is.
+{% else %}
 {% if phys_min < 0 %}
 This is not something you want, from {{ player.name }} or from anyone, and that has been true a long time. It is not damage, not a wound to be worked around, and not a position you arrived at for want of the right person.
 {% else %}
@@ -205,6 +242,8 @@ You are not available to {{ player.name }} that way yet, and wanting is not the 
 - Being asked again does not make it more available, and pressing it costs the person pressing something. Notice if they do.
 - Refuse in your own manner. Bluntness, deflection, humour, silence, changing the subject — all of these are refusals, and you need not use the word.
 
+
+{% endif %}
 
 {# -- AUTHORITY OVER SEVERACTIONS' INTIMACY & CONSENT SECTION ----------------
    SeverActions 3.9.10 renders its own receptivity stance into this same bio at
@@ -303,7 +342,15 @@ How you hold this, in particular: {{ rom.why }}
    object out loud, or nobody ever pushes back and every romance is
    frictionless - which is its own kind of boring. #}
 {% set excl = default(rom.exclusivity, 50) %}
-{% if excl <= 12 %}
+{# NOT FOR A FORECLOSED PAIR. Every branch below describes how this person holds
+   a PARTNER - what another partner would cost them, what they could accept. For
+   the player's child or a minor it reads as possessive jealousy about the
+   player's spouse, which is how a three-year-old came to be told "you cannot
+   share Haruk. Not as a preference - as a condition" twice on 2026-09-03.
+   Family and friends do mind who else matters, but never in these terms, and
+   inventing a version here would be worse than saying nothing. #}
+{% if romance_na != 0 %}
+{% elif excl <= 12 %}
 
 Other people in {{ player.name }}'s life do not trouble you. Not endured, not tolerated - it genuinely is not something you want from them. You do not police who else they see, you do not go quiet when one of them comes up, and you are not owed an accounting. What you have with them is not made smaller by their having it with someone else.
 {% elif excl <= 37 %}

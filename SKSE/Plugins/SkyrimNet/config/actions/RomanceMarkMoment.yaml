@@ -44,7 +44,7 @@ parameterMapping:
     description: you, the one whose feelings moved
   - type: dynamic
     name: aiMagnitude
-    description: "how much this moved you, signed. 5-15 for a warm or cool exchange; 20-40 for real vulnerability, a shared risk, or a genuine slight; 50-75 only for something that changed things between you. Negative for betrayal, cruelty, or a promise broken."
+    description: "how much this moved you, signed. A BARE INTEGER and nothing else - 35 or -20, never \"35 points\", never a range, never braces or quotes around it. 5-15 for a warm or cool exchange; 20-40 for real vulnerability, a shared risk, or a genuine slight; 50-75 only for something that changed things between you. Negative for betrayal, cruelty, or a promise broken."
   - type: dynamic
     name: asReason
     description: "one specific sentence naming what actually happened, in your own voice. This is read by the player."
@@ -60,6 +60,30 @@ parameterMapping:
   - type: dynamic
     name: asActivity
     description: "optional, but ALWAYS include the key - use an empty string when it does not apply. If the moment was about a tracked pursuit, name it exactly - e.g. Persuasions, Murders, Locks Picked, Dungeons Cleared, Potions Mixed - and it will be judged against your own feelings about that pursuit. Empty if the moment was purely personal."
+    optional: true
+    default: ""
+
+  # THE SAME NUMBER AGAIN, AS TEXT, AND IT IS NOT REDUNDANT.
+  #
+  # aiMagnitude is coerced to an Int before it reaches Papyrus, so a value with
+  # any debris in it arrives as 0 and the whole moment is discarded - the NPC
+  # decided something mattered, wrote the reason, and none of it was recorded.
+  # Captured verbatim from openrouter_output on 2026-09-03:
+  #
+  #   {"aiMagnitude": "}35", "asActivity": "", "asReason": "He held me so close
+  #    in the quiet, making me feel like the only person in the world who
+  #    mattered."}
+  #
+  # A stray brace glued to the number. Three of those in five game days (Fenja,
+  # Tormir, Kayla). This parameter survives the coercion because it IS a string,
+  # so MarkMoment can pull the digits out and keep the moment.
+  #
+  # OPTIONAL WITH A DEFAULT, deliberately: the Int stays the primary and is
+  # preferred whenever it survived, so a model that ignores this key behaves
+  # exactly as before. Nothing regresses if it is never sent.
+  - type: dynamic
+    name: asMagnitude
+    description: "the same number as aiMagnitude, written as text - \"35\", \"-20\". Always include it. It is a safety copy: if the numeric field is damaged in transit this one is used instead, and the moment is kept rather than lost."
     optional: true
     default: ""
 

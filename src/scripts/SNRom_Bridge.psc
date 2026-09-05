@@ -189,6 +189,12 @@ Function Bootstrap(Bool abForce = False)
     ; Register FIRST, unconditionally. If Romantasy is missing the decorators
     ; must still exist, or every prompt referencing them errors out instead of
     ; rendering "not enrolled". Degrade quietly, never disappear.
+    ; BEFORE ANYTHING TOUCHES THE STORE. StoreFile() reads the save id, so a
+    ; decorator or a sweep that ran first would read and write the previous
+    ; playthrough's file. Same ordering constraint Kinship documents.
+    EnsureSaveId()
+    WriteStorePointer()
+
     RegisterDecorators()
     RegisterEvents()
     ; ARMED BEFORE THE READINESS GATE BELOW RETURNS. If Romantasy is missing the
@@ -1093,7 +1099,66 @@ Function AutoEnroll(Actor akActor)
     AuthorDisposition(akActor)
 EndFunction
 
-Function MarkMoment(Actor akActor, Int aiMagnitude, String asReason, String asActivity)
+; ---------------------------------------------------------------------------
+; A MAGNITUDE THAT DID NOT SURVIVE COERCION, RECOVERED.
+;
+; Captured verbatim from openrouter_output on 2026-09-03, a live
+; RomanceMarkMoment call - written as a line comment rather than a docstring
+; because Papyrus docstrings are brace-delimited and the payload contains
+; braces, which closes the docstring early and produces five errors on
+; unrelated lines:
+;
+;   PARAMS: "aiMagnitude": "}35", "asActivity": "", "asReason": "He held me
+;   so close in the quiet, making me feel like the only person in the world
+;   who mattered."
+;
+; A stray closing brace glued to the number. SkyrimNet coerces the value to
+; the Int the signature asks for, that coercion fails, and the action arrives
+; with magnitude 0 - so the moment is discarded along with the reason the NPC
+; wrote for it. Three of those in five game days: Fenja, Tormir, Kayla.
+;
+; Note the value is QUOTED even when well formed, so string-to-int coercion is
+; the normal path and this only differs in tolerating debris around the digits.
+; ---------------------------------------------------------------------------
+Int Function DigitsToInt(String asText) Global
+    { Pull a signed integer out of whatever the model actually sent.
+
+      Deliberately strict about what it will invent: digits and one leading
+      sign, nothing else. A stray brace before the digits gives the number,
+      "-20" gives -20, "+35" gives 35, and "a lot" gives 0 - which the caller
+      still treats as a damaged payload, because it is. }
+    Int n = StringUtil.GetLength(asText)
+    If n == 0
+        Return 0
+    EndIf
+    Int i = 0
+    Int val = 0
+    Bool neg = False
+    Bool seen = False
+    While i < n
+        String c = StringUtil.GetNthChar(asText, i)
+        Int o = StringUtil.AsOrd(c)
+        If o >= 48 && o <= 57
+            val = (val * 10) + (o - 48)
+            seen = True
+        ElseIf c == "-" && !seen
+            ; Only meaningful BEFORE any digit. A trailing dash is punctuation,
+            ; and "35-40" is a range the model should not have sent - taking the
+            ; first number is the least surprising reading.
+            neg = True
+        ElseIf seen
+            ; Debris after the number ends it. Prevents "35 of 40" becoming 3540.
+            i = n
+        EndIf
+        i += 1
+    EndWhile
+    If neg
+        Return -val
+    EndIf
+    Return val
+EndFunction
+
+Function MarkMoment(Actor akActor, Int aiMagnitude, String asReason, String asActivity, String asMagnitude = "")
     { RomanceMarkMoment. The workhorse: an authored beat, optionally routed
       through her own like/dislike config so one event helps, hurts, or does
       nothing depending on who she is. }
@@ -1120,16 +1185,33 @@ Function MarkMoment(Actor akActor, Int aiMagnitude, String asReason, String asAc
     ; player-visible journal row. That row would name a moment that mattered and
     ; award nothing for it - the same failure the refusal guard further down
     ; already exists to prevent, arriving by a different route.
-    If aiMagnitude == 0
+    ; RECOVER BEFORE REFUSING. asMagnitude carries the same value as text, so a
+    ; number SkyrimNet could not coerce is still readable here - see DigitsToInt
+    ; for the captured payload this exists for. Prefer the Int when it survived:
+    ; it is the value SkyrimNet already validated.
+    Int mag = aiMagnitude
+    If mag == 0 && asMagnitude != ""
+        mag = DigitsToInt(asMagnitude)
+        If mag != 0
+            Diag(LOG_WARN(), "Recovered magnitude " + mag + " for " + \
+                akActor.GetDisplayName() + " from a damaged parameter ('" + asMagnitude + \
+                "'). The moment was kept.")
+        EndIf
+    EndIf
+    ; -- STILL ZERO MEANS GENUINELY DAMAGED ---------------------------------
+    ; SHORT ON PURPOSE. This is LOG_ERROR, and logNotifications mirrors every
+    ; line to a corner toast - the previous version of this message ran to 307
+    ; characters, which Skyrim renders by shrinking the font until it cannot be
+    ; read. The reason text belongs in the log, not on screen.
+    If mag == 0
         Diag(LOG_ERROR(), "MarkMoment for " + akActor.GetDisplayName() + \
-            " arrived with magnitude 0 - the model parameter did not parse as " + \
-            "a number, so the payload was damaged in transit. No points and no " + \
-            "ledger row. The reason it sent was: " + asReason)
+            ": magnitude did not parse. Moment dropped.")
+        Diag(LOG_INFO(), "  dropped reason was: " + asReason)
         Return
     EndIf
 
     Int cap = SkyrimNetApi.GetConfigInt(CFG(), "awardMaxPoints", 75)
-    Int clamped   = ClampAward(aiMagnitude, asActivity, cap)
+    Int clamped   = ClampAward(mag, asActivity, cap)
     Int magnitude = ScaleAward(clamped)
 
     ; Armed once for the whole award. Whichever branch below fires - preference
@@ -1190,8 +1272,8 @@ Function MarkMoment(Actor akActor, Int aiMagnitude, String asReason, String asAc
     ; quadratic pace bug was invisible precisely while only one end was shown -
     ; what the model asked for, what the cap allowed, what the pace applied.
     String moved = ""
-    If clamped != aiMagnitude
-        moved = " (model asked " + aiMagnitude + ", capped at " + cap + ")"
+    If clamped != mag
+        moved = " (model asked " + mag + ", capped at " + cap + ")"
     EndIf
     If magnitude != clamped
         moved = moved + " -> " + magnitude + " applied (Bond Pace: " + \
@@ -1349,8 +1431,25 @@ Bool Function HoldShortOfLover(Actor akActor, Int aiDelta)
     If StorageUtil.GetIntValue(akActor, "SNRom_PlayerStance", 0) != STANCE_UNANSWERED()
         Return False
     EndIf
-    If !SNRom_Decorators.IsSparked(akActor)
-        Return False
+    ; THREE STATES, NOT TWO, and this is the fix for Jarl Laila Law-Giver
+    ; crossing into Lover unasked on 2026-09-05.
+    ;
+    ;   sparked + unanswered  -> hold, and ask the player
+    ;   judged platonic       -> let it climb; a friendship owes no answer and
+    ;                            must be free to reach Spouse-tier depth
+    ;   NOT YET JUDGED        -> hold, and ask the ASSESSOR
+    ;
+    ; The third state used to fall through to "not sparked, so no question to
+    ; answer" and wrote the points. That is right for a bond somebody looked at
+    ; and called platonic, and wrong for one nobody has looked at yet. Laila was
+    ; enrolled, seeded to 1999 from a diary describing physical intimacy, and
+    ; given a 10-point talk award 0.2 game days later - all before the tenure
+    ; gate would let the spark assessor near her. She arrived at Lover with the
+    ; consent question never raised, which is the one crossing this mod exists
+    ; to put a question in front of.
+    Bool sparked = SNRom_Decorators.IsSparked(akActor)
+    If !sparked && SparkDecided(akActor)
+        Return False                            ; judged platonic; depth is free
     EndIf
     Int held = Romantasy.GetPoints(akActor)
     If held + aiDelta <= UNANSWERED_MAX()
@@ -1361,13 +1460,26 @@ Bool Function HoldShortOfLover(Actor akActor, Int aiDelta)
     ; clear it.
     StorageUtil.SetIntValue(akActor, "SNRom_BankedPoints", \
         StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0) + aiDelta)
-    ; Level-triggered, so it cannot be lost - but the crossing has not happened,
-    ; so ask on the strength of what WOULD have landed rather than on the total.
-    StorageUtil.SetIntValue(akActor, "SNRom_AskPending", 1)
-    Diag(LOG_INFO(), "Held " + aiDelta + " pts short of Lover for " + \
-        akActor.GetDisplayName() + " - " + held + " + " + aiDelta + " would cross " + \
-        UNANSWERED_MAX() + " with the question unanswered. Nothing written to " + \
-        "Romantasy, so no tier splash. Granted in full on yes, discarded otherwise.")
+    If sparked
+        ; Level-triggered, so it cannot be lost - but the crossing has not
+        ; happened, so ask on the strength of what WOULD have landed rather than
+        ; on the total.
+        StorageUtil.SetIntValue(akActor, "SNRom_AskPending", 1)
+        Diag(LOG_INFO(), "Held " + aiDelta + " pts short of Lover for " + \
+            akActor.GetDisplayName() + " - " + held + " + " + aiDelta + " would cross " + \
+            UNANSWERED_MAX() + " with the question unanswered. Nothing written to " + \
+            "Romantasy, so no tier splash. Granted in full on yes, discarded otherwise.")
+    Else
+        ; NO ASK PENDING HERE. The consent question presupposes a spark - asking
+        ; "do you want this to become romantic" of a bond nobody has judged puts
+        ; the second question first. Ask the assessor instead; whichever way it
+        ; answers, ApplySpark or the NO branch settles what happens to the bank.
+        Diag(LOG_INFO(), "Held " + aiDelta + " pts short of Lover for " + \
+            akActor.GetDisplayName() + " - " + held + " + " + aiDelta + " would cross " + \
+            UNANSWERED_MAX() + " and the spark has not been judged yet. Asking the " + \
+            "assessor first; nothing written to Romantasy, so no tier splash.")
+        RequestSparkNow(akActor)
+    EndIf
     Return True
 EndFunction
 
@@ -1871,6 +1983,17 @@ Bool Function OrientationExcludesPlayer(Int aiOrient) Global
     Return False
 EndFunction
 
+Int Function CONFIDANT_MIN() Global
+    { Points at which Romantasy calls someone "Confidant" - tier 3, the rung
+      below Lover. 500 per tier, same arithmetic as LOVER_MIN.
+
+      Used as the "deep enough that the spark question is now urgent" line: a
+      seed landing here puts someone within one ordinary award of the Lover
+      floor, so the assessor is asked immediately rather than in two game days.
+      See the seed hook in OnSeedAssessed. }
+    Return 1500
+EndFunction
+
 Int Function LOVER_MIN() Global
     { Points at which Romantasy calls someone "Lover".
 
@@ -2153,11 +2276,195 @@ EndFunction
 ; ---------------------------------------------------------------------------
 
 
-String Function StoreFile() Global
-    { Flat filename, no subfolder. JsonUtil accepts a path here, but whether it
-      CREATES a missing directory is undocumented, and a silent write failure is
-      the one outcome this whole store exists to avoid. }
+String Function LegacyStoreFile() Global
+    { The one file every install had before playthroughs were separated. Still
+      the live store for whichever save claims it - see EnsureSaveId. }
     Return "SNRom_Dispositions"
+EndFunction
+
+String Function PlaythroughId() Global
+    { Which playthrough this save belongs to, as SkyrimNet knows it.
+
+      THE PROBLEM THIS SOLVES. Everything our store keys on is written by us,
+      so it only exists in saves made AFTER we first wrote it - which makes an
+      older save of the same playthrough indistinguishable from a different one.
+      Two earlier attempts failed on exactly that: a `claimedBy` boolean divorced
+      a 205-day playthrough from a 19,780-byte store, and the character name that
+      replaced it is not unique across playthroughs.
+
+      Skyrim itself does carry a real per-playthrough id - the second field of a
+      save filename, e.g. 3D42EC5C, constant across 390 saves spanning weeks on
+      this install and distinct for each of six other characters in the same
+      folder. Papyrus cannot read it, and po3's extender does not expose it.
+
+      SKYRIMNET ALREADY SOLVED THIS AND PUBLISHES THE ANSWER. It keeps one
+      SQLite database per playthrough (data/SkyrimNet-<id>.db, eleven of them
+      here) and exposes the id natively. Being an SKSE plugin it can read the
+      save itself, so the value is stable for every save of a playthrough
+      including ones made long before this mod was installed - which is the
+      property nothing we write can have.
+
+      SkyrimNet is already a hard dependency, so this costs nothing. We are the
+      first Papyrus caller of it, so treat an empty return as normal rather than
+      as impossible.
+
+      SANITISED, because it becomes a filename. A JsonUtil write to a bad path
+      is the silent failure this whole store exists to avoid, and a format change
+      upstream must not be able to cause one. }
+    String raw = SkyrimNetApi.GetSaveUniqueID()
+    Int n = StringUtil.GetLength(raw)
+    If n == 0
+        Return ""
+    EndIf
+    String out = ""
+    Int i = 0
+    While i < n
+        String c = StringUtil.GetNthChar(raw, i)
+        Int o = StringUtil.AsOrd(c)
+        If (o >= 48 && o <= 57) || (o >= 65 && o <= 90) || (o >= 97 && o <= 122) || c == "-" || c == "_"
+            out = out + c
+        EndIf
+        i += 1
+    EndWhile
+    Return out
+EndFunction
+
+String Function StoreFile() Global
+    { The disposition store FOR THIS PLAYTHROUGH.
+
+      Flat filename, no subfolder. JsonUtil accepts a path here, but whether it
+      CREATES a missing directory is undocumented, and a silent write failure is
+      the one outcome this whole store exists to avoid.
+
+      WHY THIS IS NOT A CONSTANT. JsonUtil writes one file per INSTALL, not per
+      save, and dispositions are keyed on reference FormID - stable for every
+      vanilla NPC. So a second playthrough read the FIRST one's authored WHY,
+      LIMIT and ADDRESS for everyone, AND the authoring guard then found those
+      values and refused to write new ones. The two halves hid each other,
+      because a stale disposition looks like a working one.
+
+      SNRom_SaveId is a cached DECISION, not an identity: 1 means this
+      playthrough owns the legacy file, 2 means it uses its own. Ints survive a
+      reload; strings do not, which is why the id itself is re-read from
+      SkyrimNet rather than stored. }
+    If StorageUtil.GetIntValue(None, "SNRom_SaveId", 0) == 1
+        Return LegacyStoreFile()
+    EndIf
+    String id = PlaythroughId()
+    If id == ""
+        ; SkyrimNet has not answered yet. Share rather than invent a file:
+        ; sharing is visible and recoverable, a wrong new file looks like the
+        ; mod forgetting everyone.
+        Return LegacyStoreFile()
+    EndIf
+    Return LegacyStoreFile() + "_" + id
+EndFunction
+
+Function EnsureSaveId()
+    { Decides, once per playthrough, whether this save owns the original
+      disposition file or gets its own.
+
+      THE FIRST PLAYTHROUGH TO RUN THIS INHERITS THE EXISTING DATA, deliberately.
+      On an install that has only ever had one character - the overwhelming
+      majority, and every current user - it is silently correct and nobody loses
+      the characters they have authored.
+
+      The claim is recorded INSIDE the legacy file, because the question "who
+      owns this" has to be answerable from a save that has never seen our
+      co-save state.
+
+      SNRom_SaveId IS A DECISION, AND ONLY 0, 1 AND 2 ARE VALID. 0 undecided,
+      1 owns the legacy file, 2 has its own. Any other value is a leftover from
+      the short-lived scheme that stored a RANDOM id there, and it must be
+      re-decided rather than trusted - under the current reading a stale random
+      id silently means "not 1", so a save carrying one would quietly use a
+      per-playthrough file it never chose. Measured 2026-09-05: a save holding
+      1350563096 from an earlier build skipped the decision entirely and went on
+      reading the wrong store with nothing logged. }
+    Int decided = StorageUtil.GetIntValue(None, "SNRom_SaveId", 0)
+    If decided == 1 || decided == 2
+        Return
+    EndIf
+    If decided != 0
+        Diag(LOG_INFO(), "Save id " + decided + " is from the earlier random-id scheme. " + \
+            "Re-deciding which disposition store this playthrough owns.")
+    EndIf
+
+    String id = PlaythroughId()
+    If id == ""
+        ; Undecided rather than wrong. StoreFile falls back to the legacy file
+        ; meanwhile, and the next bootstrap asks again.
+        Diag(LOG_WARN(), "SkyrimNet returned no save id, so the disposition store " + \
+            "cannot be assigned to a playthrough yet. Using the shared file for now.")
+        Return
+    EndIf
+
+    String owner = JsonUtil.GetStringValue(LegacyStoreFile(), "claimedById", "")
+    If owner == ""
+        JsonUtil.SetStringValue(LegacyStoreFile(), "claimedById", id)
+        JsonUtil.Save(LegacyStoreFile())
+        StorageUtil.SetIntValue(None, "SNRom_SaveId", 1)
+        Diag(LOG_INFO(), "This playthrough (" + id + ") now owns the existing disposition " + \
+            "store. Everyone already authored keeps their character.")
+    ElseIf owner == id
+        StorageUtil.SetIntValue(None, "SNRom_SaveId", 1)
+        Diag(LOG_INFO(), "Rejoined the main disposition store - same playthrough (" + id + \
+            "), just a save made before it was claimed.")
+    Else
+        StorageUtil.SetIntValue(None, "SNRom_SaveId", 2)
+        Diag(LOG_INFO(), "A different playthrough (" + id + "; the main store belongs to " + \
+            owner + "). This one uses " + LegacyStoreFile() + "_" + id + ".json and " + \
+            "everyone begins as a stranger, which is what a new game should mean.")
+    EndIf
+EndFunction
+
+Function StartFreshStore()
+    { Give THIS playthrough its own disposition store, leaving the legacy one to
+      whoever claimed it. Takes no arguments, so it dispatches from the web API.
+
+      Nothing is deleted: the store it leaves is untouched on disk, and
+      AdoptLegacyStore returns to it. }
+    If !_ready
+        Return
+    EndIf
+    StorageUtil.SetIntValue(None, "SNRom_SaveId", 2)
+    WriteStorePointer()
+    Diag(LOG_INFO(), "This playthrough now has its own disposition store: " + StoreFile() + \
+        ".json. Nothing was deleted - the previous store is untouched, and " + \
+        "AdoptLegacyStore returns to it.")
+EndFunction
+
+Function AdoptLegacyStore()
+    { Reattach THIS playthrough to the main disposition store, taking ownership
+      of it. For a save that was separated by an earlier version of this logic.
+
+      Takes no arguments, so it dispatches from the web API. Safe and
+      reversible: it moves which file this save READS and deletes nothing. }
+    If !_ready
+        Return
+    EndIf
+    String id = PlaythroughId()
+    StorageUtil.SetIntValue(None, "SNRom_SaveId", 1)
+    If id != ""
+        JsonUtil.SetStringValue(LegacyStoreFile(), "claimedById", id)
+        JsonUtil.Save(LegacyStoreFile())
+    EndIf
+    WriteStorePointer()
+    Diag(LOG_INFO(), "Adopted the main disposition store, now claimed by playthrough '" + \
+        id + "'. Reading " + StoreFile() + ".json - authored characters are visible again.")
+EndFunction
+
+
+Function WriteStorePointer() Global
+    { Publishes which disposition file is live, for anything reading from
+      outside the game - our own log analysis included.
+
+      The store name is derived from a co-save Int, so nothing outside Skyrim
+      can work it out. One key, rewritten every bootstrap so it can never go
+      stale. This is also why the store is JsonUtil rather than the co-save at
+      all: prefer a store you can verify over one you have to trust. }
+    JsonUtil.SetStringValue("SNRom_Current", "store", StoreFile())
+    JsonUtil.Save("SNRom_Current")
 EndFunction
 
 String Function StoreKey(Actor akActor, String asField) Global
@@ -2678,10 +2985,19 @@ Function AuthorDisposition(Actor akActor)
     ; then stack a whole fresh set on top, permanently, and preference removal
     ; cannot survive a reload either.
     ;
-    ; StoreGetText reads SNRom_Dispositions.json, a FILE - not save data, so it
+    ; StoreGetText reads the disposition JSON, a FILE - not save data, so it
     ; does not roll back. A stored WHY is durable evidence that this person was
     ; authored, whatever the save believes. Checked second because it is a
     ; string read and the Int above answers the common case.
+    ;
+    ; THE FILE IS NOW PER-PLAYTHROUGH, and this guard is the reason that matters
+    ; more than the prose inheritance. Before StoreFile() was split by save id,
+    ; a SECOND playthrough read the FIRST one's file - so this check found a WHY
+    ; for every vanilla NPC and refused to author them. A new game therefore
+    ; kept the old character AND could never write a new one; the two halves of
+    ; the bug hid each other, because the stale disposition looked like a
+    ; working one. Scoped to the playthrough, "does not roll back" is true where
+    ; it needs to be and false where it must be.
     ;
     ; THE HAZARD IS REAL BUT UNPROVEN. It was added believing Karita had been
     ; double-authored, 4 likes then 7. She had not: there are TWO NPCs named
@@ -4414,6 +4730,23 @@ Event OnSeedAssessed(String asResponse, Int aiSuccess)
         If announce
             Say(asked + " reads as " + standing + ".")
         EndIf
+        ; SEEDING DEEP AND SAYING NOTHING ABOUT THE SPARK IS THE HOLE LAILA FELL
+        ; THROUGH. A seed of CONFIDANT or above puts someone within one ordinary
+        ; award of the Lover floor, and the tick will not look at their spark for
+        ; two game days. Ask now.
+        ;
+        ; The threshold is the Confidant floor rather than the exact exposure
+        ; (UNANSWERED_MAX minus awardMaxPoints), because the cost of asking early
+        ; is one LLM call and the cost of asking late is a crossing nobody was
+        ; offered. Generous on purpose.
+        ;
+        ; NOT the same as setting SNRom_SeedRomantic. That flag waives the
+        ; probation permanently and is reserved for a romance the game records;
+        ; this only changes WHEN the question is put. The assessor still decides,
+        ; and it is free to answer no.
+        If Romantasy.GetPoints(who) >= CONFIDANT_MIN()
+            RequestSparkNow(who)
+        EndIf
     Else
         Diag(LOG_DEBUG(), "Romantasy is not scoring " + asked + " yet - the seed read will be " + \
             "reapplied. Normal until one game load after enrollment.")
@@ -5547,7 +5880,25 @@ Event OnSparkAssessed(String asResponse, Int aiSuccess)
     ; the answer not to act on - and MOMENT is the last field, so its absence
     ; also catches a truncated response.
     If verdict != "YES"
+        ; A CLEAN NO IS AN ANSWER, and recording it is what frees the bond to
+        ; climb. Until this existed, "no romance here" and "never asked" looked
+        ; identical, so HoldShortOfLover could not tell a deep friendship from
+        ; an unexamined one.
+        StorageUtil.SetIntValue(who, "SNRom_SparkDecided", 1)
         Diag(LOG_INFO(), "No spark for " + asked + " (answered '" + verdict + "')")
+        ; Anything held back while the answer was pending was held for a question
+        ; that will now never be put. A platonic bond has no consent to give, so
+        ; the points are simply owed.
+        Int held = StorageUtil.GetIntValue(who, "SNRom_BankedPoints", 0)
+        If held > 0
+            StorageUtil.UnsetIntValue(who, "SNRom_BankedPoints")
+            StorageUtil.UnsetIntValue(who, "SNRom_AskPending")
+            MarkSelfAward(who)
+            If Romantasy.ModifyPoints(who, held, "Held while the bond was still unnamed", True)
+                Ledger(who, "unbank", "", held, 1, "Released - judged platonic")
+                Diag(LOG_INFO(), "Released " + held + " pts held for " + asked +                     " while the spark was undecided - judged platonic, so depth is free. " +                     "Now " + Romantasy.GetPoints(who) + " pts.")
+            EndIf
+        EndIf
         Return
     EndIf
     If momentText == "" || SNRom_Decorators.Upper(momentText) == "NONE"
@@ -5558,11 +5909,82 @@ Event OnSparkAssessed(String asResponse, Int aiSuccess)
     ApplySpark(who, momentText)
 EndEvent
 
+Bool Function SparkDecided(Actor akActor) Global
+    { Has the spark assessor ever returned a USABLE verdict for this actor?
+
+      THE THIRD STATE, and its absence is what let Jarl Laila Law-Giver cross
+      into Lover unasked on 2026-09-05. Before this there were two observable
+      conditions - sparked, and not sparked - and "judged platonic" was
+      indistinguishable from "never looked at". HoldShortOfLover keys on the
+      difference: a bond JUDGED platonic must climb freely to Spouse-tier depth,
+      but one nobody has judged yet has to wait, because the question it would
+      be asked has not been put.
+
+      SET ONLY BY A CLEAN VERDICT. An echo mismatch, a truncated response, a
+      YES with no moment named - none of those are answers, and marking them
+      decided would silence the gate on exactly the actors whose reads are
+      failing. }
+    If akActor == None
+        Return False
+    EndIf
+    Return StorageUtil.GetIntValue(akActor, "SNRom_SparkDecided", 0) == 1
+EndFunction
+
+Function RequestSparkNow(Actor akActor)
+    { Ask the spark assessor about someone OUT OF TURN, bypassing the tenure and
+      cooldown gates that the tick applies.
+
+      WHY THE TICK IS NOT ENOUGH. SparkEligible makes an actor wait
+      sparkMinDaysEnrolled (2.0) unless SNRom_SeedRomantic is set, and that flag
+      is only written for a romance the game RECORDS - a MARAS marriage or
+      vanilla rank 4. Laila had neither: a fresh enrollment, a seed read of
+      DEVOTED from a diary describing physical intimacy, and 1999 points inside
+      0.2 game days. The talk assessor reached her long before the spark
+      assessor was allowed to.
+
+      This does NOT set the spark, and that distinction is the same one
+      SeedRomanticFlag makes: the assessor still decides, it is simply asked
+      sooner. Everything that protects the answer stays - the echo check, the
+      required moment, RomanceOk, and the single pending slot.
+
+      Cheap and self-limiting: it declines immediately if a read is already out,
+      if they are already sparked, or if a verdict is already on record. }
+    If akActor == None || !_ready
+        Return
+    EndIf
+    If SNRom_Decorators.IsSparked(akActor) || SparkDecided(akActor)
+        Return
+    EndIf
+    If !akActor.Is3DLoaded()
+        Return                                  ; the prompt reads recent dialogue
+    EndIf
+    If !SNRom_Decorators.RomanceOk(akActor)
+        Return                                  ; sparking an impossible pairing strands it
+    EndIf
+    If _sparkActor != None
+        ; The tick will come round again, and HoldShortOfLover keeps holding
+        ; until it does, so this costs nothing but a log line.
+        Diag(LOG_DEBUG(), "Spark request for " + akActor.GetDisplayName() +             " deferred - a read for " + _sparkName + " is still out.")
+        Return
+    EndIf
+    Diag(LOG_INFO(), "Asking the spark assessor about " + akActor.GetDisplayName() +         " out of turn - they are deep enough that the next award could cross Lover.")
+    AssessSpark(akActor)
+EndFunction
+
 Function ApplySpark(Actor akActor, String asMoment)
     { The crossing itself. Everything AutoEnroll deliberately withheld happens
       here, because now something actually has happened. }
     StorageUtil.SetIntValue(akActor, "SNRom_Sparked", 1)
+    StorageUtil.SetIntValue(akActor, "SNRom_SparkDecided", 1)
     StorageUtil.SetFloatValue(akActor, "SNRom_SparkedAt", Utility.GetCurrentGameTime())
+    ; A HOLD THAT PREDATES THE VERDICT NOW HAS ITS QUESTION. Points banked while
+    ; the spark was undecided were withheld precisely because nobody could be
+    ; asked yet; the moment the answer is YES, the asking is owed. Without this
+    ; the bank would sit until the next award happened to arrive.
+    If StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0) > 0
+        StorageUtil.SetIntValue(akActor, "SNRom_AskPending", 1)
+        Diag(LOG_INFO(), "Spark confirmed for " + akActor.GetDisplayName() +             " with " + StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0) +             " pts already held - raising the question now.")
+    EndIf
 
     MarkSelfAward(akActor)
     Romantasy.ModifyPoints(akActor, ScaleAward(25), asMoment, False)
