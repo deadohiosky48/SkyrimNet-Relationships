@@ -82,10 +82,21 @@ String Function PhysicalOk(Actor akActor) Global
     If akActor == None
         Return "false"
     EndIf
-    ; Same bar as RomanceOk, and needed separately: intimacy has its own gate,
-    ; and a CASUAL disposition with the attraction bypass set would otherwise
-    ; open it regardless of what the romantic ladder says.
-    If KinGuardOn() && SNRom_Decorators.IsPlayerKin(akActor)
+    ; FORECLOSED PAIRS FIRST, and this used to be the kin check alone - which is
+    ; why the comment below claimed "same bar as RomanceOk" while being nothing
+    ; of the sort. RomanceOk consults orientation; this did not, so the physical
+    ; axis never knew whether the pairing was possible at all.
+    ;
+    ; Measured 2026-09-03 in the live prompt log: Leif, a male follower, was
+    ; handed "you are not available to Haruk that way yet" twice, and any
+    ; platonic follower reaching tier 4 with the default physMinTier of 4 gets
+    ; the POSITIVE desire text - "that has nothing to do with whether you want
+    ; them" - regardless of who they are drawn to. A platonic bond climbs to the
+    ; top of the ladder freely by design, so that is reachable in ordinary play.
+    ;
+    ; Applicability carries the kin guard and its setting, so this is still
+    ; gated on "Never Romance Your Own Children" exactly as before.
+    If SNRom_Decorators.RomanceApplicability(akActor) != 0
         Return "false"
     EndIf
     Int minTier = StorageUtil.GetIntValue(akActor, "SNRom_PhysMinTier", 4)
@@ -229,6 +240,87 @@ Bool Function KinGuardOn() Global
     Return SkyrimNetApi.GetConfigBool(SNRom_Bridge.CFG(), "kinshipBlockRomance", True)
 EndFunction
 
+Int Function RomanceApplicability(Actor akActor) Global
+    { Is the romantic question FORECLOSED for this pair by something outside the
+      character's own disposition? 0 applies, 1 kin, 2 minor, 3 orientation.
+
+      WHY THIS IS NOT RomanceOk. They answer different questions and must not be
+      collapsed:
+
+        RomanceOk      - can this pair cross into Lover? Includes the character's
+                         OWN choice, so an authored "drawn to nobody" refuses.
+        Applicability  - was it ever a live question at all? Only structural
+                         facts, never a preference.
+
+      The distinction earns its keep in the prompt. A character who wants nobody
+      already has text written for her - "this is not something you want, from
+      anyone, and that has been true a long time. It is not damage" - and that is
+      a better line than any generic not-applicable phrasing. She keeps it. What
+      needs the new state is the pair for whom the question never arose: the
+      player's child, a minor, someone whose known orientation does not include
+      this player.
+
+      DERIVED, NEVER STORED, and that is the whole design. Every input is read at
+      call time, so the answer changes the moment the fact does - a child who
+      matures stops being a minor, a bio block changed to "drawn to both" stops
+      foreclosing on the next disposition review. Persisting this would need
+      invalidating, and latched state that nothing invalidates is this mod's most
+      repeated bug: the seed stamp, the marriage snapshot, the assessor's pending
+      slot. There is no SNRom_ key here on purpose.
+
+      ONE PLACE TO ADD A REASON. Callers ask "is it foreclosed", never "is this a
+      child" - the prompt tests the field against 0 and nothing else - so a fourth
+      reason is one branch here and zero edits anywhere else.
+
+      AN INT, NOT A REASON STRING. Papyrus interns strings case-insensitively, so
+      a "kin" literal can ship as "Kin" depending on what else holds the slot in
+      the .pex - the failure documented at length in GetRomance. An Int cannot
+      case-fold. }
+    If akActor == None
+        Return 0
+    EndIf
+    ; KIN IS GATED ON ITS SETTING - "Never Romance Your Own Children". Ungated,
+    ; the setting would be decoration: turning it off would still leave the
+    ; player's children foreclosed here, and the bio would still say so.
+    ; Same gate, same function, as RomanceOk and PhysicalOk already use.
+    If KinGuardOn() && SNRom_Decorators.IsPlayerKin(akActor)
+        Return 1
+    EndIf
+    ; MINORS ARE NOT GATED ON A SETTING, deliberately. IsChild is vanilla and
+    ; race-derived, so it needs no mod to answer and it flips on its own if the
+    ; actor ever matures. Kin is a preference about the player's own family and
+    ; reasonably has a switch; this is not the same kind of line and does not get
+    ; one. It also sits ABOVE the marriage override below, which the kin guard
+    ; does for the same reason.
+    If akActor.IsChild()
+        Return 2
+    EndIf
+    ; A RECORDED CEREMONY ANSWERS THE QUESTION. Same precedence RomanceOk gives
+    ; it, and for the same reason: an inferred trait must not be able to tell a
+    ; married couple their marriage was never on the table.
+    If SNRom_Bridge.IsMarriedToPlayer(akActor)
+        Return 0
+    EndIf
+    ; ONLY A KNOWN ORIENTATION CAN FORECLOSE. Unknown and merely inferred both
+    ; pass, exactly as in RomanceOk - an inference colours how she behaves, it
+    ; does not get to declare a storyline was never possible.
+    If StorageUtil.GetIntValue(akActor, "SNRom_OrientationKnown", 0) < 2
+        Return 0
+    EndIf
+    ; 0 none, 1 men, 2 women, 3 any.
+    Int orient = StorageUtil.GetIntValue(akActor, "SNRom_Orientation", 3)
+    If orient == 0
+        Return 0                                ; her own nature; the NEVER branch says it better
+    EndIf
+    Int playerSex = Game.GetPlayer().GetActorBase().GetSex()
+    If orient == 1 && playerSex != 0
+        Return 3
+    ElseIf orient == 2 && playerSex != 1
+        Return 3
+    EndIf
+    Return 0
+EndFunction
+
 Bool Function RomanceOk(Actor akActor) Global
     { Does this person's orientation permit crossing into Lover with THIS
       player? Gates the top two rungs of the romantic ladder.
@@ -363,6 +455,7 @@ String Function GetRomance(Actor akActor) Global
         ",\"why\":\"" + SNRom_Decorators.JsonEscape(SNRom_Bridge.StoreGetText(akActor, "Why")) + "\"" + \
         ",\"limit\":\"" + SNRom_Decorators.JsonEscape(SNRom_Bridge.StoreGetText(akActor, "Limit")) + "\"" + \
         ",\"address\":\"" + SNRom_Decorators.JsonEscape(SNRom_Bridge.StoreGetText(akActor, "Address")) + "\"" + \
+        ",\"romanceNA\":" + SNRom_Decorators.RomanceApplicability(akActor) + \
         ",\"physMinTier\":" + StorageUtil.GetIntValue(akActor, "SNRom_PhysMinTier", 4) + \
         ",\"stance\":" + StorageUtil.GetIntValue(akActor, "SNRom_PlayerStance", 0) + "}"
 EndFunction
