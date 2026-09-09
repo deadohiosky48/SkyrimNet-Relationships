@@ -246,9 +246,18 @@ moments where a relationship is allowed to be redefined, how long two people mus
 travel together before romance can begin at all, whether personalities are
 allowed to change over time and how much must have happened first.
 
-Under *Seeding* there is also a **Re-Read Hotkey** — point at a follower, press
-it, and their standing is read again from the record as it now stands. Default
-`Home`, 0 to disable. See Troubleshooting for what it is for.
+Under *Seeding* there are two hotkeys. The **Re-Read Hotkey** points at a
+follower and reads their standing again from the record as it now stands —
+default `Home`, 0 to disable. The **Re-Author Hotkey** rewrites who someone *is*
+rather than how far you have come, and ships **unbound**, because unlike the
+re-read it discards the character currently there. See Troubleshooting for what
+each is for.
+
+Under *Spark* there is **Unanswered Headroom**. If a companion's points sit a
+couple of hundred short of where you expect, this is why: someone who has
+reached the point of asking is parked below the threshold until you answer, so
+that neither this mod nor Romantasy's own activity scoring can promote them
+behind your back. Everything held is returned in full the moment you say yes.
 
 The setting that matters most to whether the mod works at all is **LLM Variant**, which chooses the model
 serving every background assessment this mod makes. See
@@ -321,8 +330,30 @@ If the log instead shows `SetPreference refused`, Romantasy is still rejecting
 the writes and the version is the thing to check.
 
 **An authored character reads wrong.** Rewrites who they are without touching
-their likes and dislikes. They must be loaded and near you, or the model has
-nothing to read:
+their likes and dislikes.
+
+**In game: set the Re-Author Hotkey, then point at them and press it.** It is
+under *Seeding* next to the re-read key, as a **DirectX scan code**, and it
+starts at 0 — deliberately, because this is the one key here that can lose work:
+it throws away the character currently on file, including everything that has
+drifted over a long acquaintance, and there is no undo. Having to bind it
+yourself is the confirmation prompt. 197 Pause, 211 Delete and 87 F11 are usually
+free.
+
+Unlike the re-read, they do **not** have to be travelling with you — enrolled is
+enough, so a roster of companions waiting at home can be repaired where they
+stand. They do have to be loaded and under your crosshair. The old orientation,
+intimacy, ardor and exclusivity are written to the mod's log before anything is
+overwritten, so a mistaken press is legible afterwards. A companion who has no
+authored character yet is announced as a first authoring rather than a rewrite.
+
+**Reach for this rather than the re-read when the problem is the person, not the
+progress** — a devoted companion who still refuses to share you, or whose stated
+reasons are about someone she is not. Re-reading re-scores a standing and will
+never move a character.
+
+The same thing by hand, if you would rather script it. They must be loaded and
+near you, or the model has nothing to read:
 
 ```json
 {"questEditorId":"SNRom_Quest","scriptName":"SNRom_Bridge",

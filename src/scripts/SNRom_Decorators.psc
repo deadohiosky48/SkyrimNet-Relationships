@@ -107,6 +107,43 @@ String Function PhysicalOk(Actor akActor) Global
     If tier >= minTier
         Return "true"
     EndIf
+    ; BANKED POINTS COUNT TOWARD THE TIER SHE HAS EARNED.
+    ;
+    ; HoldShortOfLover pins an unanswered romance one point below Lover and
+    ; banks the overflow, and it logs "she keeps what she earned" and "the
+    ; waiting cost her nothing" while it does so. This line is where that stopped
+    ; being true. Her stored tier is 3 because of a hold, so a ROMANTIC intimacy
+    ; requirement of tier 4 refused her - and the reason she is at 3 is that the
+    ; PLAYER has not yet been asked whether he accepts an arrangement involving
+    ; other people.
+    ;
+    ; WHICH COUPLES TWO AXES THAT ARE DESIGNED TO BE INDEPENDENT. Intimacy asks
+    ; what THIS relationship must be before she will engage; exclusivity asks how
+    ; one-on-one it has to be. Neither is meant to answer the other. But intimacy
+    ; is expressed as a tier threshold, and the tier ladder has the consent
+    ; question welded across it at 1999 - so "be in love with me first", a fact
+    ; about the two of them, was being enforced by a gate whose whole subject is
+    ; everybody else. Raised by the author 2026-09-07 after Nilsine, ROMANTIC and
+    ; CONVENTIONAL, refused absolutely while her exclusivity band was telling her
+    ; the matter was negotiable.
+    ;
+    ; POINTS + BANKED, DIVIDED, RATHER THAN "IS SHE HELD". Testing banked > 0 and
+    ; assuming Lover would work today, because the hold only ever fires at that
+    ; one boundary - and it would be wrong the moment a second hold is added
+    ; anywhere else on the ladder. Deriving the tier from the total cannot go
+    ; stale that way, and it keeps GUARDED honest: banked points reaching Lover
+    ; must not unlock someone whose requirement is Spouse.
+    ;
+    ; 500 PER TIER is Romantasy's arithmetic, read off its own ledger rather than
+    ; its documentation - see LOVER_MIN. If that ever changes, this changes with
+    ; it, and the constant is the thing to grep for.
+    Int banked = StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)
+    If banked > 0
+        Int earned = (Romantasy.GetPoints(akActor) + banked) / 500
+        If earned >= minTier
+            Return "true"
+        EndIf
+    EndIf
     If StorageUtil.GetIntValue(akActor, "SNRom_PhysAttrBypass", 0) == 1
         ; The bar was hardcoded 1.5 for as long as nothing wrote the ratio, so
         ; it was never once compared against a real number. Now that SNRom_Bridge
@@ -398,6 +435,31 @@ String Function OrientationWord(Actor akActor) Global
     Return "both men and women"
 EndFunction
 
+Int Function OtherPartners(Actor akActor) Global
+    { Acknowledged romances the player has with someone OTHER than this actor.
+
+      MINUS SELF, which is the whole point: a woman who is one of two partners
+      has ONE other, not two, and telling her otherwise makes her count herself
+      as a rival. The total is cached by RefreshPartnerCount on the housekeeping
+      tick; this only subtracts.
+
+      Reads 0 when nothing has been counted yet, which renders as "no others" -
+      the same thing the prompt said before this field existed, so a missing
+      count changes nothing. }
+    If akActor == None
+        Return 0
+    EndIf
+    Int total = StorageUtil.GetIntValue(None, "SNRom_PartnerCount", 0)
+    If SNRom_Decorators.IsSparked(akActor) && \
+       StorageUtil.GetIntValue(akActor, "SNRom_PlayerStance", 0) == 1
+        total -= 1
+    EndIf
+    If total < 0
+        Return 0
+    EndIf
+    Return total
+EndFunction
+
 String Function GetRomance(Actor akActor) Global
     { Rich state for prompts. Never call inside a get_nearby_npc_list loop -
       mod-added decorators only resolve for the current speaker or target. }
@@ -457,6 +519,7 @@ String Function GetRomance(Actor akActor) Global
         ",\"address\":\"" + SNRom_Decorators.JsonEscape(SNRom_Bridge.StoreGetText(akActor, "Address")) + "\"" + \
         ",\"romanceNA\":" + SNRom_Decorators.RomanceApplicability(akActor) + \
         ",\"physMinTier\":" + StorageUtil.GetIntValue(akActor, "SNRom_PhysMinTier", 4) + \
+        ",\"otherPartners\":" + SNRom_Decorators.OtherPartners(akActor) + \
         ",\"stance\":" + StorageUtil.GetIntValue(akActor, "SNRom_PlayerStance", 0) + "}"
 EndFunction
 
