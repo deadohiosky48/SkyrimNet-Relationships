@@ -387,7 +387,7 @@ SEXUAL_ORIENTATION: <ATTRACTED_TO_MEN|ATTRACTED_TO_WOMEN|ATTRACTED_TO_BOTH|ATTRA
 SEXUAL_ORIENTATION_BASIS: <STATED|IMPLIED|UNKNOWN>
 INTIMACY: <NEVER|GUARDED|ROMANTIC|CASUAL>   <- if a `Drawn To:` block named an orientation this is not that question; this one is how much feeling must come first. Every physical signal in the blocks is evidence HERE.
 ARDOR: <RESERVED|MEASURED|WARM|OPEN|INTENSE>   <- if an `Expression:` block was applied, COPY ITS ANSWER. `Measured, Shows Little`=MEASURED, `Warm but Not Effusive`=WARM, `Open About What They Feel`=OPEN, `Intense and Unmistakable`=INTENSE, `Reserved and Undemonstrative`=RESERVED. Twenty blocks about what they enjoy in bed do not change this number.
-EXCLUSIVITY: <UNTROUBLED|ACCEPTING|CONVENTIONAL|POSSESSIVE|CONSUMING>   <- if an `Attachment:` block was applied, COPY ITS ANSWER.
+EXCLUSIVITY: <UNTROUBLED|ACCEPTING|CONVENTIONAL|POSSESSIVE|CONSUMING>   <- if an `Attachment:` block was applied, COPY ITS ANSWER. `Untroubled by Others`=UNTROUBLED, `Accepts Others Easily`=ACCEPTING, `Expects the Usual Arrangement`=CONVENTIONAL, `Needs to Be the Only One`=POSSESSIVE, `Cannot Share at All`=CONSUMING. The block is the answer; do not read past it to the bio. With NO block applied, CONVENTIONAL is the ordinary answer and the one most people deserve - it is the societal norm, not a weak reading. CONSUMING is the rarest answer here and describes someone for whom a rival ends the relationship outright, not someone who would merely mind very much; do not reach for it because the bio is passionate.
 WHY: <one short sentence, in third person, on what these say about them>
 LIMIT: <one short sentence, in third person, on a line they will not cross>
 LIKES: <at most 7 names, copied from the catalogue>

@@ -1,6 +1,6 @@
 plugin:
   name: "SkyrimNet Relationships"
-  version: "1.4.1"
+  version: "1.5.0"
   description: "Lets SkyrimNet drive romance through ColdSun's Romantasy framework — organic enrollment, LLM-authored preferences, and bond-aware dialogue."
   icon: "🥀"
 
@@ -199,6 +199,41 @@ schema:
       min: 0
       max: 255
       category: "Seeding"
+
+    # THE ONLY DESTRUCTIVE KEY THIS MOD OWNS, hence defaultValue 0 while its
+    # sibling above ships bound. Re-reading a standing can only raise someone
+    # toward what their history justifies; re-authoring a character throws the
+    # current one away. An action with no undo should have to be armed on
+    # purpose, and that requirement IS the confirmation prompt - paid once at
+    # bind time rather than on every press, and costing no UI dependency.
+    #
+    # It also spares every user a second key claim. Finding one uncontested
+    # code on a large load order took three attempts; see the Re-Read Hotkey
+    # notes above for the audit.
+    - name: "Re-Author Hotkey"
+      path: "reauthorHotkey"
+      type: "int"
+      description: "Point at a companion and press this to write their CHARACTER again from scratch - who they are drawn to, how guarded they are, how ardent, and how willing they are to share you. Different job from the Re-Read Hotkey above: that one re-scores a standing, this one re-decides a personality, and re-reading someone will never move a character that was written down before you improved what the mod had to read. Use it after adding a bio block, correcting a bio, or writing the diary entry that explains someone - or on a companion the mod enrolled long ago and never got right. THIS ONE CAN LOSE WORK: it discards the drift a long relationship has accumulated, and there is no undo, which is why it starts unbound - set a scan code here on purpose and it becomes live within a couple of minutes. Their likes and dislikes are NOT touched. The old values are written to the log first, so a mistaken press on the wrong companion is at least legible afterwards. SCAN CODE, as above: usually free are 197 Pause, 211 Delete, 87 F11. Default: 0, which is off."
+      defaultValue: 0
+      min: 0
+      max: 255
+      category: "Seeding"
+
+
+    # THE BUFFER THAT KEEPS ROMANTASY'S OWN SPLASH OFF THE SCREEN. Its point
+    # scoring is internal and credits everyone in the romance faction, including
+    # a follower sandboxing on the other side of Skyrim - so the withhold path in
+    # this mod never sees it. Parked at 1999 the next internal award always
+    # crosses. Observed 2026-09-08 on a follower who went 967 -> 2084 with one
+    # 10-point award from this mod in the whole span.
+    - name: "Unanswered Headroom"
+      path: "unansweredHeadroom"
+      type: "int"
+      description: "How far below the Lover threshold a companion is parked while you have not yet answered whether you accept the relationship. Romantasy awards points from its own activity scoring, and that never passes through this mod - so a companion held one single point below Lover gets pushed over it by the next thing you do, Romantasy announces the new tier with its own splash, and only afterwards is she pulled back and the question raised. You were told the answer before you were asked. This buffer gives that scoring room to land without crossing. It costs nothing you can see: tiers are 500 apart, so anywhere in this range still reads as Confidant, and every point held back is returned in full the moment you say yes. Larger values are safer against big awards; the buffer is capped so it can never drag someone below Confidant. Default: 250."
+      defaultValue: 250
+      min: 0
+      max: 499
+      category: "Spark"
 
     - name: "Most Points a Seed Can Grant"
       path: "seedMaxPoints"

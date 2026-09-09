@@ -25,10 +25,11 @@ Scriptname SNRom_Bridge extends Quest
 ; unfilled.
 ; ---------------------------------------------------------------------------
 Faction  _romanceLevel
-; WHICH SCAN CODE IS ACTUALLY REGISTERED, as opposed to which one the setting
-; asks for. The two diverge the moment the player edits the setting, and the
-; tick reconciles them. See RegisterHotkey.
+; WHICH SCAN CODES ARE ACTUALLY REGISTERED, as opposed to which ones the
+; settings ask for. Each pair diverges the moment the player edits that setting,
+; and the tick reconciles both. See RegisterHotkey.
 Int      _hotkeyArmed
+Int      _reauthorArmed
 Int      _seq
 Float    _lastBootstrap
 String[] _ledgerBuf
@@ -1483,6 +1484,46 @@ Bool Function HoldShortOfLover(Actor akActor, Int aiDelta)
     Return True
 EndFunction
 
+Int Function UnansweredRest() Global
+    { Where the reactive ceiling PUTS someone, as opposed to the line it detects
+      them crossing. Deliberately below UNANSWERED_MAX rather than equal to it.
+
+      RETURNING HER TO 1999 LEAVES ZERO HEADROOM, and that is what made the gate
+      visible. Romantasy scores from its own economy - deeds credited to everyone
+      in the romance faction - and that path never passes through this mod at
+      all, so `HoldShortOfLover` cannot withhold it. Parked one point under Lover,
+      the very next internal award crosses, Romantasy announces LOVER with its own
+      PrismaUI splash and levelup.wav, and only then does this function claw the
+      overflow back. The consent question is raised correctly - and the player has
+      already been told the answer.
+
+      Reported 2026-09-08 on Silana Petreia, sandboxing out of range: 967 -> 2084
+      with exactly one 10-point award from us in the whole span. Everything else
+      arrived from Romantasy. Measured overflows on this save were 4, 4, 48, 58,
+      85, 88, 122, 122 - and one outlier of 501 on Camilla Valerius. A 250-point
+      buffer absorbs every one but the outlier.
+
+      COSTS NOTHING IN TIER, WHICH IS WHY IT IS AFFORDABLE. Tiers are 500 apart
+      and Confidant runs 1500-1999, so resting at 1749 and resting at 1999 are
+      the same rung - same ladder prose, same gates, same everything the player
+      is told. What changes is the raw number in Romantasy's panel, and the
+      difference is banked and returned in full on acceptance.
+
+      NOT UNANSWERED_MAX ITSELF, and that separation is the point. That constant
+      is also the SEED cap - the author's deliberate "seed to one under Lover" -
+      and three subsystems already reason about it. Moving it to buy headroom here
+      would silently lower every seed too. When a constant appears in more than
+      one subsystem's reasoning, give the second subsystem its own. }
+    Int rest = UNANSWERED_MAX() - SkyrimNetApi.GetConfigInt(CFG(), "unansweredHeadroom", 250)
+    ; NEVER BELOW THE TIER FLOOR. A headroom big enough to drop her out of
+    ; Confidant would trade a splash for a visible demotion, which is worse -
+    ; and it would be the player own setting doing it, silently.
+    If rest < CONFIDANT_MIN()
+        Return CONFIDANT_MIN()
+    EndIf
+    Return rest
+EndFunction
+
 Function EnforceLoverCeiling(Actor akActor)
     { Hold an UNANSWERED romance just below Lover, banking the overflow.
 
@@ -1505,7 +1546,22 @@ Function EnforceLoverCeiling(Actor akActor)
     If !SNRom_Decorators.IsSparked(akActor)
         Return
     EndIf
-    Int over = Romantasy.GetPoints(akActor) - UNANSWERED_MAX()
+    ; DETECT AT THE REST POINT, NOT AT THE CEILING. The first version of this
+    ; detected at UNANSWERED_MAX and relocated to the rest point, reasoning that
+    ; trimming someone who had not crossed anything would be officious. That was
+    ; wrong, and it made the buffer WORTHLESS - one-shot rather than maintained.
+    ;
+    ; Measured 2026-09-08, on the build that introduced it: Silana was parked at
+    ; 1749 and climbed to 2003 over about a game day and a half in small
+    ; increments, none of which tripped a detector sitting at 1999. She crossed
+    ; Lover, Romantasy splashed, and only then was she pulled back - buffer spent,
+    ; nothing prevented. A buffer you drift through is not a buffer.
+    ;
+    ; Detecting here means every Romantasy award is trimmed as it lands and she
+    ; never accumulates toward the line at all. Only a SINGLE award larger than
+    ; the headroom can still cross, which is the case the setting is sized for.
+    ; Nothing is lost either way: the difference is banked, not deleted.
+    Int over = Romantasy.GetPoints(akActor) - UnansweredRest()
     If over <= 0
         Return
     EndIf
@@ -1514,11 +1570,20 @@ Function EnforceLoverCeiling(Actor akActor)
     MarkSelfAward(akActor)
     ; NOT ScaleAward: this is a TRANSFER. It banks the overflow for AcceptRomance
     ; to hand back in full, and scaling one side of a round trip destroys points.
-    If Romantasy.ModifyPoints(akActor, -over, "Held short of Lover pending an answer", True)
+    ; abShowLevelUp FALSE. Romantasy takes a flag on this native and we were
+    ; passing True, so the correction played loselevel.wav and splashed a
+    ; DEMOTION on top of the promotion it had just splashed - the player watched
+    ; a tier arrive and be taken away. The clawback is bookkeeping against a
+    ; question that has not been asked yet; it is not news, and it is certainly
+    ; not a loss. The release at AcceptRomance still announces, because that one
+    ; is real.
+    If Romantasy.ModifyPoints(akActor, -over, "Held short of Lover pending an answer", False)
         Int banked = StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0) + over
         StorageUtil.SetIntValue(akActor, "SNRom_BankedPoints", banked)
-        Diag(LOG_INFO(), "Held " + akActor.GetDisplayName() + " just below Lover - " + over + \
-            " pts banked (" + banked + " total) until the question is answered. She keeps what she earned.")
+        Diag(LOG_INFO(), "Held " + akActor.GetDisplayName() + " at " + UnansweredRest() + \
+            " - " + over + " pts banked (" + banked + \
+            " total) until the question is answered. She keeps what she earned, and the " + \
+            "buffer is what stops Romantasy's own scoring re-crossing Lover next tick.")
     Else
         Diag(LOG_ERROR(), "ModifyPoints refused the Lover ceiling for " + akActor.GetDisplayName() + \
             " - she is past " + UNANSWERED_MAX() + " with the question still unanswered")
@@ -2184,14 +2249,30 @@ String Function Escape(String asText) Global
     Return SNRom_Decorators.JsonEscape(StringUtil.Substring(asText, 0, 300))
 EndFunction
 
-Function Diag(Int aiLevel, String asText)
+Function Diag(Int aiLevel, String asText, Bool abQuiet = False)
     { Every line carries its own sequence number and game time.
 
       MiscUtil.WriteToFile does NOT guarantee ordering - entries arrive in
       blocks, grouped by call site rather than chronologically, and recent
       writes can lag behind by minutes. Reading position in the file as
       "when it happened" is wrong, and reading absence as "it did not run" is
-      worse. Self-stamping every line is the only way to reconstruct order. }
+      worse. Self-stamping every line is the only way to reconstruct order.
+
+      abQuiet WRITES THE FILE AND SKIPS THE NOTIFICATION MIRROR, for the one
+      shape of line the mirror cannot carry: a forensic record of arbitrary
+      length, containing authored PROSE.
+
+      Notifications are a single line of fixed width. Skyrim shrinks the font
+      to fit and then clips, so a long one arrives unreadable AND pushes the
+      short useful ones out of the queue - which is how a player with
+      logNotifications on ends up seeing less than one with it off. Reported
+      2026-09-05 on the parse-failure notification: "the notification text is
+      so long that it shrinks the font to where I can't read it."
+
+      This is the emission-point rule again: the constraint belongs on the line
+      that emits, not on a caller who has to remember it. Anything the player
+      should actually READ goes through Say, which is one short sentence by
+      construction and does not depend on a log setting at all. }
     Int configured = SkyrimNetApi.GetConfigInt(CFG(), "logLevel", 3)
     If aiLevel > configured
         Return
@@ -2199,7 +2280,7 @@ Function Diag(Int aiLevel, String asText)
     _seq += 1
     String line = "[" + _seq + "] gd=" + Utility.GetCurrentGameTime() + " L" + aiLevel + " " + asText
     MiscUtil.WriteToFile(DiagPath(), line + NL(), True, False)
-    If SkyrimNetApi.GetConfigBool(CFG(), "logNotifications", False)
+    If !abQuiet && SkyrimNetApi.GetConfigBool(CFG(), "logNotifications", False)
         Debug.Notification("[SNRom] " + asText)
     EndIf
 EndFunction
@@ -4385,6 +4466,190 @@ Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEn
     ReseedActor(who)
 EndEvent
 
+Function RefreshPartnerCount()
+    { How many people the player has an ACKNOWLEDGED romance with, cached for
+      the bio prompt.
+
+      WHY THE BOND PROMPT NEEDS THIS. The exclusivity block describes what
+      another partner WOULD cost - "if they take another partner that is not a
+      disappointment to absorb, it is the end of what you have". For a player who
+      already has two, that is not a hypothetical, it is a description of the
+      present, and the character is being told to defend a line that was crossed
+      long ago and survived. Observed 2026-09-06 on Iddra: she agreed to bear the
+      player's child knowing there were others, then refused to share him on the
+      grounds of a rule she had already been living under.
+
+      ACKNOWLEDGED, NOT MERELY DEEP. Sparked AND the player answered yes. A
+      companion nobody has said anything to is not a rival, and counting depth
+      alone would make every close friend one.
+
+      ON THE HOUSEKEEPING TICK, NOT PER RENDER. GetRomance is called on every bio
+      render; walking a 71-entry roster there would be a per-prompt cost for a
+      number that changes a handful of times per playthrough. }
+    If !_ready
+        Return
+    EndIf
+    Int n = 0
+    Int i = 0
+    Int total = StorageUtil.FormListCount(None, "SNRom_Roster")
+    While i < total
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None && !a.IsDead() && SNRom_Decorators.IsSparked(a) && \
+           StorageUtil.GetIntValue(a, "SNRom_PlayerStance", 0) == STANCE_ACCEPTED()
+            n += 1
+        EndIf
+        i += 1
+    EndWhile
+    If StorageUtil.GetIntValue(None, "SNRom_PartnerCount", -1) != n
+        Diag(LOG_INFO(), "Acknowledged partners: " + n + ". The bond prompt uses this " + \
+            "so an exclusivity boundary is not described as hypothetical to someone " + \
+            "already living with the answer.")
+    EndIf
+    StorageUtil.SetIntValue(None, "SNRom_PartnerCount", n)
+EndFunction
+
+Int Function EXCL_MIGRATION_VERSION() Global
+    { Bump this ONLY to run a NEW migration. Changing it re-runs the sweep on
+      every existing save, which is a data mutation - so it is a deliberate act,
+      not a version number that tracks the mod's. }
+    Return 1
+EndFunction
+
+Int Function CONSUMING_MIN() Global
+    { Where the bond prompt's "you cannot share them" band begins. Duplicated
+      from the prompt on purpose and flagged here: if that boundary moves, this
+      constant and the migration below both have to move with it, and a silent
+      divergence would sweep the wrong people. }
+    Return 88
+EndFunction
+
+Function MigrateLegacyExclusivity()
+    { ONE-SHOT. Pulls every roster member at CONSUMING down into POSSESSIVE,
+      because values written at that extreme predate the scale being anchored and
+      are not trustworthy.
+
+      WHY THIS IS NOT COSMETIC, and it is the whole reason it exists. 1.5.0 gives
+      the >= 88 band an "and there are already N others" continuation, and that
+      text says the relationship ENDS rather than gets negotiated. Correct for
+      someone deliberately authored that way. But measured 2026-09-06: 29 roster
+      members sat at 88+, 27 of them at exactly 100, and every single one was
+      authored before the calibration landed - while the block that would justify
+      it, `Attachment: Cannot Share at All`, had never been applied to anybody.
+      Shipping the continuation without this sweep would hand 29 relationships a
+      script for ending, on the strength of a number nobody chose. That is worse
+      than the version it replaces, which stated the condition abstractly and let
+      it lie.
+
+      UNCONDITIONAL, AND THAT IS THE HONEST FORM. The tempting version exempts
+      anyone carrying the Cannot-Share block - but Papyrus cannot see bio blocks
+      at all (`custom_bio_blocks` is a prompt decorator, not a native), and it
+      does not need to: re-authoring reads that block correctly now and restores
+      100 for anyone who genuinely holds it. So this claims only what it can
+      support - "the old scale's extreme is not evidence" - and leaves the actual
+      judgment to a re-author.
+
+      75 IS THE TARGET because it is mid-POSSESSIVE, so it cannot be mistaken for
+      a boundary value, and because that band's own others-continuation is the
+      MOVABLE one - a real refusal that can still be brought round at a cost.
+      Verified in play on Jora at 75 on 2026-09-06, which is the arc these
+      characters should have been getting all along.
+
+      RUNS FROM HOUSEKEEPING, NOT BOOTSTRAP, so SweepFollowers has already had a
+      pass and the roster is settled before anything is rewritten. Once the stamp
+      is set the steady cost is one Int read per housekeeping tick.
+
+      EVERY CHANGE IS LOGGED WITH ITS OLD VALUE, quietly. Quietly because 29
+      notifications would be a toast storm that buries the one line worth reading
+      - and with the old numbers in the log, a character who should have stayed at
+      100 is restored with SetCharacterField rather than guessed at. }
+    If StorageUtil.GetIntValue(None, "SNRom_ExclMigration", 0) >= EXCL_MIGRATION_VERSION()
+        Return
+    EndIf
+    ; STAMPED BEFORE THE WORK, not after. A mid-sweep interruption - a load, a
+    ; crash, a script lag spike - must not leave this eligible to run again on a
+    ; roster it has already half-rewritten, because the second pass would read
+    ; the values the first pass wrote and could not tell them apart from
+    ; originals. Missing a few actors is recoverable by hand; a partial re-run is
+    ; not distinguishable from a correct one.
+    StorageUtil.SetIntValue(None, "SNRom_ExclMigration", EXCL_MIGRATION_VERSION())
+    Int moved = 0
+    Int i = 0
+    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    While i < n
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None
+            ; NO IsDead OR IsFollowing FILTER, deliberately, unlike the other
+            ; roster sweeps. Those gate live behaviour; this repairs stored data,
+            ; and a dismissed companion is exactly who this is for - they are the
+            ; ones nobody has got around to re-authoring. A dead one costs a
+            ; single Int read.
+            ; DEFAULT -1, A SENTINEL, NOT 50. Elsewhere in this script 50 is
+            ; the right default to READ for an unauthored actor - it is the
+            ; sensible middle. Here it would be a value this function COMPARES,
+            ; and a migration that cannot tell "never authored" from "authored
+            ; to the middle" is one bump away from rewriting people who have no
+            ; stored opinion at all. Read a sentinel, write nothing.
+            Int had = StorageUtil.GetIntValue(a, "SNRom_Exclusivity", -1)
+            If had >= CONSUMING_MIN()
+                StorageUtil.SetIntValue(a, "SNRom_Exclusivity", 75)
+                moved += 1
+                Diag(LOG_WARN(), "Recalibrated " + a.GetDisplayName() + \
+                    " exclusivity " + had + " -> 75. Written under the old " + \
+                    "unanchored scale; re-author to restore " + had + \
+                    " if it was genuinely meant.", True)
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    Diag(LOG_INFO(), "Exclusivity migration " + EXCL_MIGRATION_VERSION() + \
+        " complete: " + moved + " of " + n + " roster members recalibrated.")
+    If moved > 0
+        Say(moved + " companions had their limits on sharing you re-read - the old readings were unreliable at the extreme.")
+    EndIf
+EndFunction
+
+Function SweepLoverCeiling()
+    { Establish the unanswered ceiling across the whole roster, not just on
+      whoever earned something recently.
+
+      THE SAME LAZY-GATE BUG SweepProposalGates WAS WRITTEN TO FIX, and the
+      argument is identical: EnforceLoverCeiling is called from Ledger, Ledger
+      fires only on a point change, so the ceiling was only ever applied to
+      someone the moment they moved. For an actor already parked AT the old
+      ceiling that is too late by construction - she is one point under Lover, so
+      the very next award crosses before anything can trim her, and the crossing
+      is what splashes.
+
+      Fastred, 2026-09-08. Left at 1999 by the previous build, sandboxing well out
+      of range, 388 already banked. The headroom shipped, but nothing re-parked
+      her: the only code that could was waiting for a point change, and any point
+      change from 1999 crosses Lover first. She crossed, exactly as before, and
+      the fix looked broken when it was merely unreachable.
+
+      A gate that exists only for whoever recently earned something is not a
+      gate. This closes the same hole for the same reason, and it is what carries
+      everyone parked at the old ceiling down to the new rest point without
+      having to cross once to get there.
+
+      CHEAP IN THE STEADY STATE. EnforceLoverCeiling returns after one GetPoints
+      for anyone at or below the rest point, and writes nothing. }
+    Int i = 0
+    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    While i < n
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None && !a.IsDead()
+            ; NO IsFollowing OR Is3DLoaded FILTER. The actor this exists for is
+            ; precisely the one nobody is looking at: Romantasy credits its own
+            ; scoring to everyone in the romance faction regardless of presence,
+            ; so a follower sandboxing on the far side of Skyrim accrues exactly
+            ; like one standing next to the player. Both reported cases were out
+            ; of range.
+            EnforceLoverCeiling(a)
+        EndIf
+        i += 1
+    EndWhile
+EndFunction
+
 Function SweepProposalGates()
     { Establish the marriage gate across the whole roster, not just on whoever
       happened to earn points recently.
@@ -4828,6 +5093,14 @@ EndFunction
 ;      anything away. A yes/no box would need either a Creation Kit Message
 ;      record or a UI dependency, to guard an action that needs no guarding.
 ;
+;      THE SECOND KEY IS NOT LIKE THAT, and the argument above must not be read
+;      as covering it. Re-AUTHORING rewrites who someone is and discards
+;      accumulated drift, so it genuinely wants a confirmation - and it has one,
+;      moved from press time to BIND time: reauthorHotkey defaults to 0, so the
+;      only way to reach a destructive keypress is to have typed a scan code
+;      into the setting on purpose. That buys the same protection as a yes/no
+;      box, once instead of every time, and still needs no UI dependency.
+;
 ; NO CREATION KIT WORK. RegisterForKey is a Form member and this script is on a
 ; Quest, so the whole feature is loose Papyrus on records that already exist.
 ; ===========================================================================
@@ -4897,6 +5170,32 @@ Int Function HotkeyCode() Global
     Return SkyrimNetApi.GetConfigInt(CFG(), "reseedHotkey", 199)
 EndFunction
 
+Int Function ReauthorHotkeyCode() Global
+    { DirectX SCAN code for the re-author key. 0 disables it, AND 0 IS THE
+      DEFAULT - deliberately, for two reasons.
+
+      RE-AUTHORING IS DESTRUCTIVE AND RE-READING IS NOT. A re-read seeds to a
+      floor, subtracts what someone already holds, and its worst case is that
+      nothing happens. Re-authoring rewrites orientation, intimacy, ardor,
+      exclusivity, WHY, LIMIT and ADDRESS from a fresh response and DISCARDS
+      ACCUMULATED DRIFT - for a long-running companion that is weeks of change,
+      and there is no undo. An action that can lose work should have to be bound
+      on purpose; an action that cannot should be ready to hand.
+
+      That asymmetry is also why these are two keys rather than one key doing
+      both. Fused, the safe repair could never be taken without accepting the
+      destructive one - and they are wanted at different moments anyway: a
+      re-read after fixing what the mod READS, a re-author after changing who it
+      is reading ABOUT.
+
+      AND KEYS ARE SCARCE. Finding one free code took three attempts and three
+      test loads on this load order - see HotkeyCode for the audit. Claiming a
+      second one for every user by default would spend that scarcity on a repair
+      most players will never reach for. Free here if you want one: 197 Pause,
+      211 Delete, 87 F11. Same scheme as HotkeyCode: SCAN codes, not VK. }
+    Return SkyrimNetApi.GetConfigInt(CFG(), "reauthorHotkey", 0)
+EndFunction
+
 Int Function HotkeyModifier() Global
     { Optional held modifier, Dynamic-Activation-Key style. 0 = none.
       42 Left Shift, 29 Left Ctrl, 56 Left Alt. }
@@ -4904,15 +5203,16 @@ Int Function HotkeyModifier() Global
 EndFunction
 
 Function RegisterHotkey()
-    { Arms the re-read key, every load.
+    { Arms both hotkeys, every load.
 
       KEY REGISTRATIONS DO NOT SURVIVE A SAVE/LOAD, which is why this belongs
       in Bootstrap alongside the decorator and ModEvent registrations rather
       than in OnInit. Same reason, same place, same failure if forgotten.
 
-      UnregisterForAllKeys first, so changing the key does not leave the old one
-      live as well. This script owns no other keys, so unregistering all of them
-      is exactly the set it registered.
+      UnregisterForAllKeys first, so changing a key does not leave the old one
+      live as well - and then BOTH are registered again, because clearing all of
+      them drops the sibling too. This script owns no keys but these two, so
+      clearing all of them is exactly the set it re-arms.
 
       RE-CALLED FROM THE TICK WHEN THE SETTING MOVES, which is what makes the
       setting live rather than load-only. Registration happens here and nowhere
@@ -4924,12 +5224,15 @@ Function RegisterHotkey()
       testing 1.4.0 on 2026-09-02, after Insert turned out to be claimed by two
       other mods.
 
-      _hotkeyArmed is what is REGISTERED; HotkeyCode() is what is ASKED FOR. The
-      tick compares them, so the cost of this is one config read per tick and a
-      re-registration only when the player actually changes the key. }
+      _hotkeyArmed and _reauthorArmed are what is REGISTERED; HotkeyCode() and
+      ReauthorHotkeyCode() are what is ASKED FOR. The tick compares both pairs,
+      so the cost is two config reads per tick and a re-registration only when
+      the player actually changes a key. }
     Int code = HotkeyCode()
+    Int recode = ReauthorHotkeyCode()
     UnregisterForAllKeys()
     _hotkeyArmed = code
+    _reauthorArmed = recode
     If code > 0
         RegisterForKey(code)
         Diag(LOG_INFO(), "Re-read hotkey armed on scan code " + code + \
@@ -4937,10 +5240,26 @@ Function RegisterHotkey()
     Else
         Diag(LOG_INFO(), "Re-read hotkey disabled (reseedHotkey = 0).")
     EndIf
+    ; BOTH SETTINGS POINTING AT ONE KEY is not worth refusing, but it must not
+    ; silently let the destructive action shadow the safe one. OnKeyDown gives
+    ; the tie to the re-read; this says so out loud rather than choosing
+    ; quietly, because the player who typed the same number twice meant
+    ; something by it and cannot otherwise see which half won.
+    If recode > 0 && recode != code
+        RegisterForKey(recode)
+        Diag(LOG_INFO(), "Re-author hotkey armed on scan code " + recode + \
+            " - that key REWRITES a character and discards accumulated drift.")
+    ElseIf recode > 0
+        Diag(LOG_WARN(), "reauthorHotkey and reseedHotkey are both " + code + \
+            ", so that key will only ever re-read. Give them different keys.")
+    Else
+        Diag(LOG_INFO(), "Re-author hotkey disabled (reauthorHotkey = 0).")
+    EndIf
 EndFunction
 
 Event OnKeyDown(Int aiKeyCode)
-    If aiKeyCode != HotkeyCode()
+    Int reseedKey = HotkeyCode()
+    If aiKeyCode != reseedKey && aiKeyCode != ReauthorHotkeyCode()
         Return
     EndIf
     ; NEVER IN MENU MODE. A press during dialogue would dispatch an LLM call
@@ -4953,8 +5272,70 @@ Event OnKeyDown(Int aiKeyCode)
     If held != 0 && !Input.IsKeyPressed(held)
         Return
     EndIf
-    ReseedUnderCrosshair()
+    ; The re-read wins a tie, per the note in RegisterHotkey: if both settings
+    ; name the same key, the harmless action is the one that fires.
+    If aiKeyCode == reseedKey
+        ReseedUnderCrosshair()
+    Else
+        ReauthorUnderCrosshair()
+    EndIf
 EndEvent
+
+String Function EnrollmentPendingReason(Actor akActor)
+    { Why this person is not being observed YET, in words that match what the
+      player can see. Returns "" when they are fully enrolled and scoreable.
+
+      WHY THIS EXISTS. Both hotkeys said "X is not being observed - only
+      followers are" for every unenrolled actor, which is true of the mod and
+      false to the player: they are pointing at a companion who is plainly
+      following them, so the sentence reads as a bug. Reported 2026-09-07 on
+      Irgnir, who was genuinely not enrolled - noticed following at gd 153.45,
+      stopped following at gd 163.10 which reset her waiting period, and never
+      noticed again in the 44 game days since. The refusal was correct. The
+      explanation was not, and there was nothing in it to act on.
+
+      FOUR STATES, NOT ONE, and this is the same mistake this project keeps
+      making: a gate that cannot tell "no" from "not yet" tells the player
+      neither. Enrolled-and-scoreable; enrolled but invisible to Romantasy until
+      a reload; following and serving the waiting period; not noticed at all.
+      Every one of them has a different thing for the player to do, and three of
+      the four are just waiting.
+
+      ONE HELPER FOR BOTH KEYS so the wording cannot drift apart, and the tenure
+      numbers are read live from the same config the gate itself reads - a
+      hardcoded "2 hours" here would quietly lie the moment anyone tuned it. }
+    If akActor == None
+        Return "Point at someone first."
+    EndIf
+    If IsEnrolled(akActor)
+        Return ""
+    EndIf
+    Bool ours = StorageUtil.GetIntValue(akActor, "SNRom_Enrolled", 0) == 1
+    If ours
+        ; ENROLLED BY US, INVISIBLE TO ROMANTASY. Documented at the enrollment
+        ; site: a runtime AddToFaction is not seen until the next load, so
+        ; GetLevel stays 0 for the rest of the session. Nothing is wrong and
+        ; nothing needs fixing - it needs a reload, which is worth saying rather
+        ; than leaving as an apparent refusal.
+        Return akActor.GetDisplayName() + " was enrolled this session - reload before their standing can be scored."
+    EndIf
+    If !IsFollowing(akActor)
+        Return akActor.GetDisplayName() + " is not travelling with you - only companions are observed."
+    EndIf
+    Float firstSeen = StorageUtil.GetFloatValue(akActor, "SNRom_FirstSeenFollowing", 0.0)
+    Float wait = SkyrimNetApi.GetConfigFloat(CFG(), "enrollmentDelayHours", 2.0)
+    If firstSeen <= 0.0
+        Return akActor.GetDisplayName() + " has not been noticed following yet - they are picked up on the next check."
+    EndIf
+    Float left = wait - ((Utility.GetCurrentGameTime() - firstSeen) * 24.0)
+    If left < 0.0
+        ; A NEGATIVE REMAINDER means the clock ran backwards - an older save
+        ; loaded - and the sweep will settle it on its own pass. Do not report a
+        ; negative wait, and do not claim they are ready either.
+        Return akActor.GetDisplayName() + " is waiting to be enrolled - the next check will settle it."
+    EndIf
+    Return akActor.GetDisplayName() + " is still new - enrolled once they have been with you " + wait + " game hours, about " + left + " to go."
+EndFunction
 
 Function Say(String asText)
     { One player-facing line. Distinct from Diag's optional notification, which
@@ -4996,9 +5377,15 @@ Function ReseedUnderCrosshair()
     EndIf
     If !IsEnrolled(who)
         ; NOT ENROLLED IS NOT AN ERROR, and saying "no" without saying "yet"
-        ; invites a second and third press. Enrollment is automatic on becoming
-        ; a follower; there is nothing for the player to do but recruit them.
-        Say(who.GetDisplayName() + " is not being observed - only followers are.")
+        ; invites a second and third press. The reason is deferred to
+        ; EnrollmentPendingReason because there are four of them and the flat
+        ; version contradicted what the player could see.
+        ;
+        ; THIS KEY KEEPS THE STRICT TEST. A re-read writes POINTS, and Romantasy
+        ; cannot receive them for someone it has not seen since the last load -
+        ; so "enrolled by us this session" is genuinely not good enough here,
+        ; and the reason string says so in those words.
+        Say(EnrollmentPendingReason(who))
         Return
     EndIf
     If !IsFollowing(who)
@@ -5022,6 +5409,166 @@ Function ReseedUnderCrosshair()
     _seedByHand = True
     Say("Re-reading the record for " + who.GetDisplayName() + "...")
     ReseedActor(who)
+EndFunction
+
+Function ReauthorUnderCrosshair()
+    { Point at someone, press the OTHER key, and their character is written
+      again from scratch - orientation, intimacy, ardor, exclusivity, WHY, LIMIT
+      and ADDRESS.
+
+      WHY THIS EXISTS, and it is a different need from the re-read. The re-read
+      fixes a STANDING that was scored before the material improved. This fixes
+      a CHARACTER that was authored before the material improved - and no amount
+      of re-reading touches it, because points and personality are written by
+      two different calls. Measured 2026-09-05: 45 of 136 authored characters
+      hold exclusivity 100, nearly all of them from before the axis was
+      anchored to named bands, and every one of them will keep refusing to share
+      the player forever unless something rewrites the number. Reaching that
+      repair meant hand-assembling a POST with a hex FormID, which is not
+      something a player does.
+
+      ROUTES TO ReauthorCharacter, NOT ReauthorDisposition, and that choice is
+      load-bearing rather than incidental. ReauthorDisposition ADDS preferences
+      on every run and they cannot be removed across a reload, so a player who
+      pressed this a few times on the same companion would inflate what she
+      cares about until nothing about her stood out - the tool would degrade
+      exactly the characters it was reached for. Character-only re-authoring is
+      idempotent in the way that matters: press it twice and you get one
+      character, not one character and six new hobbies.
+
+      NO IsFollowing GUARD, unlike ReseedUnderCrosshair, and the difference is
+      real rather than an oversight. The re-read must refuse a dismissed
+      follower because Romantasy scores active followers only and will reject
+      the points write. Authoring writes this mod's own fields plus preference
+      factions, and enrollment - not travelling - is what those need. A roster of
+      companions waiting at home is the population this exists for, so refusing
+      them would refuse the actual case.
+
+      IT LOGS WHAT IT IS ABOUT TO OVERWRITE. There is no undo, and a mistaken
+      press with the crosshair a few degrees off would otherwise be silent and
+      permanent - the wrong companion quietly rerolled, discovered weeks later
+      as "she has not felt like herself". The old values in the log will not
+      restore her, but they name what was lost and they can be typed back in by
+      hand, which is the difference between a bad afternoon and a lost
+      character. }
+    If !_ready
+        Say("Not ready - Romantasy did not resolve this session.")
+        Return
+    EndIf
+    Actor who = Game.GetCurrentCrosshairRef() as Actor
+    If who == None
+        Say("Point at someone first.")
+        Return
+    EndIf
+    If who == Game.GetPlayer()
+        Say("That is you.")
+        Return
+    EndIf
+    If who.IsDead()
+        Say(who.GetDisplayName() + " is dead.")
+        Return
+    EndIf
+    ; ACCEPTS OURS-THIS-SESSION, unlike the re-read above, and the asymmetry is
+    ; the same one as the IsFollowing difference: this writes THIS MOD's fields
+    ; and preference factions, none of which route through Romantasy's scoring,
+    ; so an enrollment Romantasy cannot see yet is no obstacle at all. Refusing
+    ; here would block re-authoring a companion for a whole session over a
+    ; limitation that has nothing to do with authoring.
+    If !IsEnrolled(who) && StorageUtil.GetIntValue(who, "SNRom_Enrolled", 0) != 1
+        Say(EnrollmentPendingReason(who))
+        Return
+    EndIf
+    ; ALREADY IN FLIGHT OR ALREADY QUEUED, and this refusal is about waste
+    ; rather than safety. AuthorDisposition queues rather than drops, so a
+    ; second press would not be lost - it would be honoured, spending a second
+    ; LLM call to overwrite the answer the first one is still fetching. The
+    ; player pressing twice means "did that work?", not "do it twice".
+    If _pendingActor == who
+        Say("Already re-authoring " + who.GetDisplayName() + " - the answer takes a few seconds.")
+        Return
+    EndIf
+    If StorageUtil.FormListFind(None, "SNRom_AuthorQueue", who) >= 0
+        Say(who.GetDisplayName() + " is already queued for re-authoring.")
+        Return
+    EndIf
+    ; LLM AUTHORING TURNED OFF MAKES THIS KEY MEANINGLESS, and caught here
+    ; rather than downstream for a specific reason: AuthorDisposition answers
+    ; that setting by calling ApplyArchetype, which is also the failure funnel -
+    ; so letting it through would announce "the read failed" for a read nobody
+    ; ever attempted, and send the player looking for a network problem they do
+    ; not have. Refusing up front names the actual cause, which is a setting
+    ; they can change.
+    If SkyrimNetApi.GetConfigBool(CFG(), "enrollmentLlmPreferences", True) == False
+        Say("LLM-authored personalities are switched off in the settings - there is nothing to re-author with.")
+        Return
+    EndIf
+    ; THE RECORD OF WHAT IS BEING DISCARDED, written before the dispatch so it
+    ; is in the log even if the call fails or the game ends in the next second.
+    Int minTier = StorageUtil.GetIntValue(who, "SNRom_PhysMinTier", 4)
+    String orient = SNRom_Decorators.OrientationWord(who)
+    If orient == ""
+        orient = "unknown"
+    EndIf
+    ; FILE ONLY, both of these. The player already gets a short Say below; this
+    ; is the record for afterwards, and pushing it through the notification
+    ; mirror would clip it into uselessness and bury the Say behind it.
+    Diag(LOG_WARN(), "Re-authoring " + who.GetDisplayName() + " BY HOTKEY. Overwriting" + \
+        " orientation=" + orient + \
+        ", intimacy=" + SNRom_Decorators.IntimacyWordFromTier(minTier) + \
+        ", ardor=" + StorageUtil.GetIntValue(who, "SNRom_Ardor", 2) + \
+        " (" + SNRom_Decorators.ArdorWord(StorageUtil.GetIntValue(who, "SNRom_Ardor", 2)) + ")" + \
+        ", exclusivity=" + StorageUtil.GetIntValue(who, "SNRom_Exclusivity", 50) + \
+        ". Preferences are NOT touched. There is no undo.", True)
+    ; The WHY on its own line - it is prose, it is the part with no numeric
+    ; equivalent to type back in, and it is what identifies the character that
+    ; was here if the press was a mistake.
+    String oldWhy = StoreGetText(who, "Why")
+    If oldWhy != ""
+        Diag(LOG_WARN(), "Discarded WHY for " + who.GetDisplayName() + ": " + oldWhy, True)
+    EndIf
+    ; NEVER AUTHORED IS NOT A RE-AUTHOR, and saying so matters: nothing is being
+    ; lost, so the player can press this freely on a companion the automatic
+    ; pass never reached. The two cases are indistinguishable from the outside
+    ; otherwise, and the destructive-sounding one is the one people hesitate on.
+    If oldWhy == "" && StorageUtil.GetIntValue(who, "SNRom_DispositionAuthored", 0) != 1
+        Say("Authoring " + who.GetDisplayName() + " for the first time...")
+    Else
+        Say("Re-authoring " + who.GetDisplayName() + " - old character discarded...")
+    EndIf
+    ; PER-ACTOR, NOT A SCRIPT VARIABLE, for the reason ReauthorCharacter states
+    ; about its own flag: authoring QUEUES, so a single Bool would be read by
+    ; whichever response happened to come back next and announce the wrong
+    ; person's answer. Consumed by AnnounceAuthored, on both the success and the
+    ; failure path.
+    StorageUtil.SetIntValue(who, "SNRom_AuthorByHand", 1)
+    ReauthorCharacter(who)
+EndFunction
+
+Function AnnounceAuthored(Actor akActor, String asText)
+    { Tells the player how a HAND-REQUESTED authoring turned out, once, and only
+      if they asked for it.
+
+      WITHOUT THIS THE KEY IS HALF A TOOL. The press says "re-authoring..." and
+      then nothing ever says whether it landed - so the only way to find out is
+      to open the log, which is the exact thing the hotkey exists to avoid. The
+      re-read has had this from the start via _seedByHand; this is the same
+      contract for the other key.
+
+      CHECK-AND-CLEAR IN ONE PLACE, because OnDispositionAuthored has six early
+      exits and anything that has to be remembered at each of them will be
+      missed when a seventh is added. There are only two places a request can
+      actually settle - ApplyCharacter when a character was written, and
+      ApplyArchetype which every failure path already funnels through - so the
+      announcement lives at those two and nowhere else.
+
+      Clearing on ANY settle, success or fallback, is what stops a stale marker
+      announcing an automatic authoring weeks later as though the player had
+      just asked for it. }
+    If akActor == None || StorageUtil.GetIntValue(akActor, "SNRom_AuthorByHand", 0) != 1
+        Return
+    EndIf
+    StorageUtil.UnsetIntValue(akActor, "SNRom_AuthorByHand")
+    Say(asText)
 EndFunction
 
 Function SeedNextActor()
@@ -5155,7 +5702,7 @@ Event OnUpdateGameTime()
     ; THE HOTKEY SETTING, MADE LIVE. One config read; re-registers only when the
     ; player has actually changed the key. Without this the setting appears to
     ; take effect and does nothing at all until the next load.
-    If HotkeyCode() != _hotkeyArmed
+    If HotkeyCode() != _hotkeyArmed || ReauthorHotkeyCode() != _reauthorArmed
         RegisterHotkey()
     EndIf
     Float now = Utility.GetCurrentGameTime()
@@ -5186,6 +5733,14 @@ Event OnUpdateGameTime()
         ; for an idle follower at all. One HasKeyword read per roster entry once
         ; everyone is settled.
         SweepProposalGates()
+        ; BEFORE the migration and the partner count, because this one is racing
+        ; Romantasy's next award rather than tidying stored data.
+        SweepLoverCeiling()
+        ; AFTER SweepFollowers above, so the roster is settled, and BEFORE
+        ; RefreshPartnerCount so the partner count is taken from post-migration
+        ; values on the very first tick rather than one cycle later.
+        MigrateLegacyExclusivity()
+        RefreshPartnerCount()
     EndIf
 
     ; The outstanding question goes BEFORE the assessors. It is cheap, local and
@@ -6879,6 +7434,16 @@ Function ApplyCharacter(Actor akActor, String asResponse)
         ": " + orientPart + \
         " intimacy='" + intimWord + "'->minTier" + minTier + "/bypass" + bypass + \
         " ardor=" + ardor + " exclusivity=" + excl)
+    ; READS BACK WHAT WAS STORED rather than reporting the parsed values above.
+    ; A field the response omitted is deliberately not written - see the note on
+    ; absent fields - and an orientation can be REJECTED outright for a married
+    ; actor, so announcing the parse would tell the player something was changed
+    ; when it was not. This is a repair tool; the number it reports has to be the
+    ; number that is now on file.
+    AnnounceAuthored(akActor, akActor.GetDisplayName() + " re-authored: exclusivity " + \
+        StorageUtil.GetIntValue(akActor, "SNRom_Exclusivity", 50) + ", ardor " + \
+        StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2) + ", " + \
+        SNRom_Decorators.IntimacyWordFromTier(StorageUtil.GetIntValue(akActor, "SNRom_PhysMinTier", 4)) + ".")
 EndFunction
 
 Int Function CountHighFrequencyHeld(Actor akActor)
@@ -7058,6 +7623,12 @@ Function ApplyArchetype(Actor akActor)
     { Deterministic fallback. Silent failure here is the worst outcome - an
       enrolled NPC with no opinions never moves, and looks like nothing is
       broken - so something is always applied. }
+    ; SAY SO IF A PERSON IS STANDING THERE WAITING. Reaching the fallback means
+    ; the LLM call failed, echoed the wrong actor, or came back truncated - all
+    ; of which are invisible from inside the game, and all of which leave the
+    ; player believing a repair happened. Their old character is still intact in
+    ; that case, which is the part worth telling them.
+    AnnounceAuthored(akActor, akActor.GetDisplayName() + " could not be re-authored - the read failed. Their character is unchanged; try again.")
     Faction f = Game.GetFormFromFile(0x802, "CS_Romantasy.esp") as Faction   ; Dungeons Cleared
     If f != None && akActor.GetFactionRank(f) < 0
         akActor.AddToFaction(f)
