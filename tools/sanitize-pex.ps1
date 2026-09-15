@@ -22,8 +22,8 @@
     different length - the rest of the file is copied through untouched.
 
     Usage:
-        powershell -File "tools\sanitize-pex.ps1" -Path "Scripts\Foo.pex"
-        powershell -File "tools\sanitize-pex.ps1" -Path "some\dir" -Recurse
+        pwsh -File "tools\sanitize-pex.ps1" -Path "Scripts\Foo.pex"
+        pwsh -File "tools\sanitize-pex.ps1" -Path "some\dir" -Recurse
 #>
 [CmdletBinding()]
 param(

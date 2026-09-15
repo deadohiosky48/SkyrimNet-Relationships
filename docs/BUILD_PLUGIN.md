@@ -36,8 +36,16 @@ script it touches.
 Step 0 below needs them, so run the build first:
 
 ```
-powershell -ExecutionPolicy Bypass -File "tools\build.ps1"
+pwsh -ExecutionPolicy Bypass -File "tools\build.ps1"
 ```
+
+`pwsh`, not `powershell`. PowerShell 7 is a
+[separate install](https://aka.ms/powershell) from the Windows PowerShell 5.1
+that ships with the OS, and the two differ in defaults that have produced real
+bugs here — `Set-Content -Encoding UTF8` writes a byte-order mark on 5.1 and
+not on 7, which is enough to have a JSON manifest rejected whole. The scripts
+are written to work under either and assert the parts that matter, but 7 is
+the one they are documented and tested against.
 
 That also wants `tools\local.settings.ps1` — copy `local.settings.ps1.example`
 and set your Skyrim path. It is the only file permitted to contain absolute paths

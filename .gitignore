@@ -64,6 +64,10 @@
 # decision is still open.
 /docs/STANDALONE_*.md
 
+# Upstream-release impact analysis. Same reason again: docs/ is served by GitHub
+# Pages, and notes on an unreleased alpha build are not ours to publish.
+/docs/BETA25_*.md
+
 # Local scratch, editors, OS
 *.bak
 *.vortex_backup

@@ -17,7 +17,7 @@
     the cap produces "Daily conversation budget spent - award dropped".
 
     Run (Windows PowerShell 5.1 - `pwsh` is PS7 and is NOT installed here):
-        powershell -ExecutionPolicy Bypass -File "tools\smoke.ps1"
+        pwsh -ExecutionPolicy Bypass -File "tools\smoke.ps1"
 
     Exit 0 = all assertions passed, 1 = at least one failed.
 #>
