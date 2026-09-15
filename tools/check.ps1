@@ -421,7 +421,16 @@ if (Test-Path $snTree) {
             # therefore never ship; a generated one ships by construction, and
             # package.ps1 already asserts the two layouts carry the same files.
             # Without this the check reports our own build output as missing.
-            $p -notlike '*\external\*'
+            $p -notlike '*\external\*' -and
+            # overlay\ is the PLAYER'S layer in Beta 25 - their dashboard edits,
+            # and whatever "Plugins > Import Old Content" copied in. Our files can
+            # legitimately appear there without being missing from the repo, so
+            # this check has nothing to say about them. It is not harmless,
+            # though: overlay outranks external, so an imported copy shadows every
+            # later update we ship. Observed 2026-09-15 - six of our files landed
+            # there from one import. That belongs in the mod description, not in a
+            # build-time assertion about the repo.
+            $p -notlike '*\overlay\*'
         } |
         ForEach-Object {
             $isOurs = $_.Name -match '^snrom' -or $_.Name -match '^cat_romance'

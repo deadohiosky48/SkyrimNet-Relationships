@@ -2125,7 +2125,35 @@ Function CheckRomanceQuestion(Actor akActor)
     If !SNRom_Decorators.RomanceOk(akActor)
         Return
     EndIf
-    If Romantasy.GetPoints(akActor) < LOVER_MIN()
+    ; EARNED, NOT STORED - points plus whatever the ceiling is holding back.
+    ;
+    ; THIS WAS A DEADLOCK, and it defeated the mod's central feature. The
+    ; sequence: a sparked, unanswered romance reaches Lover, EnforceLoverCeiling
+    ; claws the overflow into SNRom_BankedPoints to stop an unasked promotion,
+    ; and then this test - reading the STORED points it just reduced - never sees
+    ; tier 4 and never marks the question owed. Points are withheld because the
+    ; question is unanswered; the question is never asked because the points were
+    ; withheld. Nothing breaks the loop.
+    ;
+    ; It was survivable by accident until 1.6.0. The rest point was 1999, one
+    ; under Lover, so any award at all from ROMANTASY'S own economy - the path
+    ; this mod cannot intercept - pushed the stored value over 2000 for the
+    ; instant before the clawback, and this test happened to run first. Every
+    ; "Question owed" line in the log reads 2003-2084 for exactly that reason:
+    ; not one of them was triggered by an award we wrote. Adding the 250-point
+    ; buffer raised the escape to a single 251+ award and shut the door.
+    ;
+    ; Sybille Stentor, 2026-09-15. Sparked since gd 133, made a companion
+    ; deliberately so she would cross and be asked, re-authored, re-seeded to
+    ; DEVOTED. Held at 1749 with 483 banked - 2232 earned, comfortably past Lover
+    ; - and the question was never once owed to her. Awards of 30, 25 and 35
+    ; could not clear a 251-point gap.
+    ;
+    ; SAME BUG SHAPE AS PhysicalOk, FIXED 2026-09-07 AND NOT GENERALISED: compare
+    ; what she has EARNED, never the value the ceiling suppressed. Both gates
+    ; read a number that another subsystem deliberately holds down. Any future
+    ; test against a points threshold belongs on this side of that line too.
+    If (Romantasy.GetPoints(akActor) + StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)) < LOVER_MIN()
         Return
     EndIf
 
@@ -2133,8 +2161,14 @@ Function CheckRomanceQuestion(Actor akActor)
     ; Zero rather than now, so the sweep raises it at the first opportunity
     ; instead of serving a retry interval before anyone has been asked once.
     StorageUtil.SetFloatValue(akActor, "SNRom_LastAskAttempt", 0.0)
+    ; REPORTS BOTH NUMBERS. The stored value is what the player sees on
+    ; Romantasy's panel and the earned one is why the question is being asked;
+    ; a line carrying only one of them reads as a contradiction of the other.
     Diag(LOG_INFO(), "Question owed to " + akActor.GetDisplayName() + " at " + \
-        Romantasy.GetPoints(akActor) + " pts (tier " + (Romantasy.GetLevel(akActor) - 1) + \
+        (Romantasy.GetPoints(akActor) + StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)) + \
+        " pts earned (" + Romantasy.GetPoints(akActor) + " held + " + \
+        StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0) + " banked, tier " + \
+        (Romantasy.GetLevel(akActor) - 1) + \
         ") - sparked, orientation permits, and the player has never answered.")
 
     ; RAISE IT NOW, not on the next tick. Waiting for the game-time sweep put up
@@ -4704,8 +4738,8 @@ Function CheckContentLoaded(Bool abSettled = False)
 EndFunction
 
 Function SweepLoverCeiling()
-    { Establish the unanswered ceiling across the whole roster, not just on
-      whoever earned something recently.
+    { Establish the unanswered ceiling AND the consent question across the whole
+      roster, not just on whoever earned something recently.
 
       THE SAME LAZY-GATE BUG SweepProposalGates WAS WRITTEN TO FIX, and the
       argument is identical: EnforceLoverCeiling is called from Ledger, Ledger
@@ -4740,6 +4774,27 @@ Function SweepLoverCeiling()
             ; like one standing next to the player. Both reported cases were out
             ; of range.
             EnforceLoverCeiling(a)
+            ; AND THE QUESTION, IN THE SAME WALK AND IN THIS ORDER. The ceiling
+            ; may have just banked something, and CheckRomanceQuestion reads
+            ; points PLUS the bank, so asking first would test a stale total.
+            ;
+            ; THIRD TIME THIS EXACT GAP HAS APPEARED IN THIS FILE, which is what
+            ; makes it worth stating rather than just fixing. CheckRomanceQuestion
+            ; is called only from Ledger, Ledger fires only on a POINT CHANGE, and
+            ; a romance held at the rest point earns nothing while it waits - so
+            ; the one state the question exists to resolve is the one state that
+            ; never re-evaluates it. MaintainProposalGate had it and got
+            ; SweepProposalGates; EnforceLoverCeiling had it and got this sweep
+            ; last week; its neighbour had it all along and I did not look.
+            ;
+            ; Sybille Stentor, 2026-09-15: 1749 held, 483 banked, 2232 earned,
+            ; idle. The corrected test was installed and could not run for her.
+            ;
+            ; THE RULE, for anything added here later: a gate reached only from
+            ; Ledger is a gate that only fires for whoever recently earned
+            ; something. If the state it judges can be REACHED BY STANDING STILL,
+            ; it needs a place in this walk too.
+            CheckRomanceQuestion(a)
         EndIf
         i += 1
     EndWhile
