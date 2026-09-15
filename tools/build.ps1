@@ -16,8 +16,8 @@
          Data/Scripts.zip. That extraction is cached under .build/.
 
     Usage (Windows PowerShell 5.1 - `pwsh` is PS7 and is NOT installed here):
-        powershell -ExecutionPolicy Bypass -File "tools\build.ps1"
-        powershell -ExecutionPolicy Bypass -File "tools\build.ps1" -Clean
+        pwsh -ExecutionPolicy Bypass -File "tools\build.ps1"
+        pwsh -ExecutionPolicy Bypass -File "tools\build.ps1" -Clean
 #>
 [CmdletBinding()]
 param(

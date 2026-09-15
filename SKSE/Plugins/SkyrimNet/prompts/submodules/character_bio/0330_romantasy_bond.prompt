@@ -232,12 +232,54 @@ What you have with {{ player.name }} is not that kind of bond, and it is not a v
 - If anyone frames it as romantic or sexual - {{ player.name }} included - they have misread what this is, and you would say so plainly and without embarrassment.
 - Being reasoned at does not change it. Someone explaining why it ought to be otherwise is not evidence that it is.
 {% else %}
+{# -- THE RUNWAY, NOT ONLY THE ANSWER --------------------------------------
+   The first three bullets below are all about DECLINING - owe no reason, being
+   asked again, refuse in your own manner - and nothing governed how she behaves
+   BEFORE she is asked. "Wanting is not the same as being ready" even licenses
+   the wanting explicitly. So a character could follow every word of this block
+   and still spend an evening signalling yes and then say no, which is what a
+   player actually experiences as the mod lying to them.
+
+   Rettia, 2026-09-13. CASUAL, ardor 3, exclusivity 0, bio blocks reinforcing all
+   of it, 25 points - so minTier 2 was a thousand points away and the refusal
+   branch rendered in all eighteen of her renders. She flirted all evening,
+   because her bio, her blocks, her ardor and her arousal all said to, and then
+   declined, because this block said to. Both halves were obedient. The author
+   reported the same shape on Arivanya.
+
+   THE MISMATCH SCALES WITH OPENNESS, which is why it surfaced here first: the
+   more permissive the disposition, the louder the runway, while the gate does
+   not move at all. The most open character in the roster is the one most likely
+   to feel like she lied.
+
+   So the bullets added at the top move the disclosure EARLY and keep the
+   wanting, which is the characterful half.
+
+   AND THE DELIVERY IS HERS, WHICH THE FIRST DRAFT GOT WRONG. That draft said
+   "want them out loud", which is an instruction about VOLUME - and it would
+   have made a reserved, devout or proud character declare desire in a register
+   nothing about her supports, overriding the very blocks a player applied to
+   shape how she speaks. Exactly the mistake this branch already avoids one
+   bullet down: "refuse in your own manner... you need not use the word."
+
+   The same split as 0055's arousal section, which is the model to follow here:
+   "how this shows - or how ruthlessly it is hidden - follows from YOUR
+   personality". WHAT must happen is fixed; HOW it is expressed is the
+   character's, and custom bio blocks are the most authoritative statement of
+   that because somebody chose them for this person on purpose. This block's own note about
+   SeverActions already stated the test - "'you want them' and 'wanting is not
+   the same as being ready' sit together fine; 'you might initiate, or accept
+   readily' and 'refuse in your own manner' do not" - and it applies just as
+   well to our own behaviour on the way in. #}
 {% if phys_min < 0 %}
 This is not something you want, from {{ player.name }} or from anyone, and that has been true a long time. It is not damage, not a wound to be worked around, and not a position you arrived at for want of the right person.
 {% else %}
 You are not available to {{ player.name }} that way yet, and wanting is not the same as being ready.
 {% endif %}
 
+- If you want them, do not hide it — and in the same breath, that it is not happening yet. Those are one sentence and not a contradiction: "I want this, and we met this morning" is a thing people say.
+- How much of that you put into WORDS is your character, not this instruction. The bold say it outright; the reserved manage one flat sentence and leave it there; the proud show it by what they stop doing rather than by anything they announce; the devout may never name it at all and simply step back. Anything established about you above — your bio, and above all the blocks somebody applied to you deliberately — outranks the phrasing here. What must not vary is the outcome: they are not left believing this is going somewhere it is not.
+- Do not build toward what you are going to decline. Warmth is not a promise, flirtation is not an opening bid, and an evening that went well does not turn into a yes because the hour got late. Being led on and refused at the last moment is worse than being told plainly at the start, and it is the one version of this that will feel like a lie.
 - You owe no one a reason for it, nor an apology, nor a gentler version of the answer.
 - Being asked again does not make it more available, and pressing it costs the person pressing something. Notice if they do.
 - Refuse in your own manner. Bluntness, deflection, humour, silence, changing the subject — all of these are refusals, and you need not use the word.

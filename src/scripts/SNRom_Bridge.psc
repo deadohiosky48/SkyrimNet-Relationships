@@ -31,6 +31,10 @@ Faction  _romanceLevel
 Int      _hotkeyArmed
 Int      _reauthorArmed
 Int      _seq
+; HAS OUR CONTENT LAYER LOADED? 0 not looked yet, 1 present, 2 missing. Reset to
+; 0 by Bootstrap so the answer is reported once per session and again every load
+; until it is fixed. See CheckContentLoaded.
+Int      _contentSeen
 Float    _lastBootstrap
 String[] _ledgerBuf
 Int      _ledgerCount
@@ -222,6 +226,22 @@ Function Bootstrap(Bool abForce = False)
     ; the preference writer are Global and cannot see script state.
     StorageUtil.SetIntValue(None, "SNRom_RomApi", Romantasy.GetApiVersion())
     Diag(LOG_INFO(), "Romantasy API level " + RomApi() + " (3+ enables live enrollment and preference removal; Romantasy 1.1.0 reports 4)")
+    ; WHICH SKYRIMNET WE ARE RUNNING AGAINST, logged every session.
+    ;
+    ; Beta 25 moved content into a plugin library and stopped reading the old
+    ; folders, so from here on there are two possible layouts and only one of
+    ; them is live on any given install. This line plus the one from
+    ; CheckContentLoaded is what turns "my companions have gone blank" into a
+    ; readable bug report - without it, the two failures are indistinguishable.
+    Diag(LOG_INFO(), "SkyrimNet build " + SkyrimNetApi.GetBuildVersion() + \
+        " (" + SkyrimNetApi.GetBuildType() + ")")
+    ; ASKED AGAIN THIS SESSION. Not a latch that outlives the problem: Bootstrap
+    ; runs on every load, so a player who fixes their install is told it is fixed,
+    ; and one who does not is reminded.
+    _contentSeen = 0
+    ; AND ASKED RIGHT NOW, not only on the tick. See CheckContentLoaded for why
+    ; a "no" here is not yet an answer.
+    CheckContentLoaded()
     ; ONE-TIME WARNING: SEVERACTIONS' INTIMACY & CONSENT SECTION.
     ;
     ; SeverActions 3.9.10 renders its own receptivity stance into every NPC bio
@@ -4608,6 +4628,81 @@ Function MigrateLegacyExclusivity()
     EndIf
 EndFunction
 
+Function CheckContentLoaded(Bool abSettled = False)
+    { Did SkyrimNet actually load this mod's prompts, triggers and actions?
+
+      THE FAILURE THIS EXISTS FOR IS COMPLETELY SILENT. SkyrimNet Beta 25 stopped
+      reading `prompts/`, `config/triggers/` and `config/actions/` and reads a
+      plugin library instead - old files are "ignored, not deleted". Install it
+      over a mod that only ships the old layout and every line of Papyrus here
+      still runs: decorators register, the tick fires, the roster sweeps, the
+      hotkeys arm. What is gone is every prompt, so SendCustomPromptToLLM returns
+      rc=1 - ACCEPTED, never executed - the callbacks never land, the assessors
+      hold their slots until the 90-second timeout, and the bond submodule renders
+      nothing at all. Nothing throws. The log looks healthy.
+
+      IsActionRegistered TESTS THE OUTCOME, NOT A PROXY FOR IT, which is why this
+      does not sniff the build version. A version test only catches the one cause
+      we predicted. Asking whether the action is actually registered catches all
+      of them: the wrong layout, a plugin folder rejected because its name does
+      not match the manifest id, a single file skipped for a bad extension, a
+      manifest that failed validation, a player who deleted something. If the
+      answer is no, nothing this mod does will work, whatever the reason.
+
+      ONE ACTION STANDS FOR THE LAYER. RomanceMarkMoment is the workhorse and
+      ships in the same folder as the rest; if the layer loaded at all it is
+      registered. This is deliberately a coarse test - it answers "is our content
+      there", not "is every file there", and the log warns about the latter.
+
+      ASKED AT BOOTSTRAP AND AGAIN ON THE TICK, and only YES latches. The first
+      two attempts at this got the cadence wrong in the same direction:
+      housekeeping is gated on two GAME HOURS, and even the fast tick needs the
+      game unpaused for half a game hour. Both left a player who had just
+      installed staring at a log that said nothing at all - which is the silence
+      this check exists to end, reproduced faithfully. Measured twice on
+      2026-09-11.
+
+      So Bootstrap asks immediately, because the answer is almost always
+      available: SKSE plugins load their content long before a quest script
+      bootstraps on a game load. The remaining worry was a race against
+      SkyrimNet still building its action registry - and the fix for that is not
+      to delay the question, it is to not believe a NO. A yes is conclusive and
+      latches. A no leaves the state unknown so the next tick asks again, and
+      only the tick announces a failure to the player.
+
+      That way the common case reports instantly and the rare race costs one
+      extra call, instead of every player paying for a hazard almost none of
+      them have.
+
+      PLAYER-FACING, NOT JUST LOGGED. Every other diagnostic here can wait for
+      someone to open a file. This one means the mod they installed is doing
+      nothing, and they would otherwise play for hours before suspecting it. }
+    If _contentSeen != 0
+        Return
+    EndIf
+    If SkyrimNetApi.IsActionRegistered("RomanceMarkMoment")
+        _contentSeen = 1
+        Diag(LOG_INFO(), "Content layer loaded - RomanceMarkMoment is registered. " + \
+            "SkyrimNet build " + SkyrimNetApi.GetBuildVersion() + ".")
+        Return
+    EndIf
+    If !abSettled
+        ; NOT AN ANSWER YET. Bootstrap may simply have asked before SkyrimNet
+        ; finished registering. Say nothing, change nothing, let the tick decide.
+        Return
+    EndIf
+    _contentSeen = 2
+    Diag(LOG_ERROR(), "CONTENT NOT LOADED. SkyrimNet has not registered " + \
+        "RomanceMarkMoment, so this mod's prompts, triggers and actions are not " + \
+        "reaching it. Everything else will appear to run and nothing will work: " + \
+        "LLM calls are accepted and never answered, and companion bios lose their " + \
+        "relationship section entirely. SkyrimNet build " + \
+        SkyrimNetApi.GetBuildVersion() + ". On 0.25.0 and later the content must " + \
+        "be installed under SkyrimNet's external plugin folder; before that, under " + \
+        "prompts/ and config/. Reinstalling this mod is the usual fix.")
+    Say("Relationships is installed but SkyrimNet is not loading its content - see the log.")
+EndFunction
+
 Function SweepLoverCeiling()
     { Establish the unanswered ceiling across the whole roster, not just on
       whoever earned something recently.
@@ -5705,6 +5800,21 @@ Event OnUpdateGameTime()
     If HotkeyCode() != _hotkeyArmed || ReauthorHotkeyCode() != _reauthorArmed
         RegisterHotkey()
     EndIf
+    ; ON THE FAST TICK, NOT INSIDE HOUSEKEEPING. It was in the housekeeping block
+    ; first, which is gated on two GAME HOURS - so a player whose content had not
+    ; loaded would play most of an in-game morning before the mod admitted it,
+    ; which is most of the silence this check exists to end. Measured 2026-09-11:
+    ; bootstrap logged the build version and nothing else for the rest of the
+    ; session, because housekeeping had not come round yet.
+    ;
+    ; Still not in Bootstrap, for the original reason - SkyrimNet builds its
+    ; action registry while it loads content, and asking at quest-start would
+    ; report a missing layer that arrives a second later. The first tick is late
+    ; enough to be true and early enough to be useful.
+    ;
+    ; Costs one Int compare per tick once it has answered. True = by now the
+    ; registry has certainly finished loading, so a NO is a real no.
+    CheckContentLoaded(True)
     Float now = Utility.GetCurrentGameTime()
     Float sinceKeep = now - StorageUtil.GetFloatValue(None, "SNRom_LastHousekeep", 0.0)
     ; A negative delta means the clock moved backwards - a load of an older save.
