@@ -1597,13 +1597,34 @@ Function EnforceLoverCeiling(Actor akActor)
     ; question that has not been asked yet; it is not news, and it is certainly
     ; not a loss. The release at AcceptRomance still announces, because that one
     ; is real.
-    If Romantasy.ModifyPoints(akActor, -over, "Held short of Lover pending an answer", False)
+    ; THE LABEL HAS TO BE TRUE AT EVERY POINT IN THE BAND. Romantasy shows this
+    ; reason beside a negative entry in its history. The hold starts at the rest
+    ; point, unansweredHeadroom BELOW Lover, so for most of the band she has not
+    ; earned Lover and nothing is pending - yet the one label said "Held short of
+    ; Lover pending an answer", which reads as "she got there and is waiting on
+    ; you". Tormir and Orla, 2026-09-22: 210 and 131 short, no question owed, no
+    ; box, and the player reasonably asked where the box was.
+    ;
+    ; Earned is points plus bank BEFORE this clawback moves anything, the same
+    ; quantity CheckRomanceQuestion tests, so the label flips exactly when the
+    ; question becomes owed. The entries themselves cannot be avoided while
+    ; Romantasy scores on its own: its API has no silent adjustment, only
+    ; ModifyPoints with a reason. They go away with Romantasy, in 2.0.
+    Int earnedNow = Romantasy.GetPoints(akActor) + StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)
+    String holdLabel = "Banked toward Lover - you'll be asked once it's earned"
+    If earnedNow >= LOVER_MIN()
+        holdLabel = "Held short of Lover pending your answer"
+    EndIf
+    If Romantasy.ModifyPoints(akActor, -over, holdLabel, False)
         Int banked = StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0) + over
         StorageUtil.SetIntValue(akActor, "SNRom_BankedPoints", banked)
+        String stage = " - earned " + earnedNow + " of " + LOVER_MIN() + ", so the question comes when she gets there."
+        If earnedNow >= LOVER_MIN()
+            stage = " - earned " + earnedNow + ", so the question is owed and waits for her to be near you."
+        EndIf
         Diag(LOG_INFO(), "Held " + akActor.GetDisplayName() + " at " + UnansweredRest() + \
-            " - " + over + " pts banked (" + banked + \
-            " total) until the question is answered. She keeps what she earned, and the " + \
-            "buffer is what stops Romantasy's own scoring re-crossing Lover next tick.")
+            " - " + over + " pts banked (" + banked + " total)" + stage + \
+            " The buffer is what stops Romantasy's own scoring re-crossing Lover first.")
     Else
         Diag(LOG_ERROR(), "ModifyPoints refused the Lover ceiling for " + akActor.GetDisplayName() + \
             " - she is past " + UNANSWERED_MAX() + " with the question still unanswered")
@@ -4961,6 +4982,58 @@ Int Function StandingToPoints(String asWord) Global
     EndIf
     Return 0                                    ; unreadable - contributes nothing
 EndFunction
+
+Int Function KnownCap(String asKnown) Global
+    { The most a seed may credit for how long two people have known each other.
+
+      THE SEED HAD NO CLOCK. Live play does: talk moves a bond at most
+      talkDailyCap (200) a game day, one landmark per talkLandmarkDays. The seed
+      read what had happened and never when, so an eventful first day scored as
+      a deep bond - Sosia Tremellia, 2026-09-21, seeded 1250 (mid Friend) about
+      five game hours after she first followed the player, and Daighre 750 a day
+      in. The author's rule: someone met less than a day ago is a stranger
+      however much happened, and time known has to be a factor at every stage.
+
+      The prompt computes the span from the oldest OWN memory on record and has
+      the judge copy it back; this caps only the READ. The rank/rapport floor is
+      never capped (it is the game's own record of history), nor is a marriage.
+      Each cap is the top of its tier, so a stronger read still lands higher in
+      the band than a weaker one instead of both collapsing to the same floor.
+
+      0 means no time limit: MONTHS_OR_MORE, UNKNOWN, or anything unreadable.
+      Unreadable must not mean strict - that would under-seed long-known
+      characters whenever a response is malformed. The caller logs it. }
+    String k = SNRom_Decorators.Upper(SNRom_Decorators.Trim(asKnown))
+    If k == "NO_RECORD"
+        ; NOTHING RECORDED BETWEEN THEM AT ALL - not even a first meeting. The
+        ; author's call, 2026-09-22: take the smallest value rather than the top
+        ; of the band, because there is no evidence to place them anywhere
+        ; inside it, and the re-read hotkey can lift them later once there is.
+        Return 200                              ; the Stranger seed value itself
+    ElseIf k == "TODAY_OR_YESTERDAY"
+        Return 499                              ; top of Stranger
+    ElseIf k == "DAYS"
+        Return 999                              ; top of Acquaintance
+    ElseIf k == "WEEKS"
+        Return 1499                             ; top of Friend
+    EndIf
+    Return 0
+EndFunction
+
+String Function KnownPhrase(String asKnown) Global
+    { Why the read was held back, as a clause a player reads in a toast. }
+    String k = SNRom_Decorators.Upper(SNRom_Decorators.Trim(asKnown))
+    If k == "NO_RECORD"
+        Return "nothing is recorded between you yet"
+    ElseIf k == "TODAY_OR_YESTERDAY"
+        Return "you met today or yesterday"
+    ElseIf k == "DAYS"
+        Return "you have known each other a few days"
+    ElseIf k == "WEEKS"
+        Return "you have known each other a few weeks"
+    EndIf
+    Return "you have not known each other long"
+EndFunction
 Function AssessSeed(Actor akActor)
     { Read the record and say where this relationship already stands.
 
@@ -5104,21 +5177,49 @@ Event OnSeedAssessed(String asResponse, Int aiSuccess)
         Diag(LOG_WARN(), "Seed read for " + asked + " returned an unreadable standing: '" + \
             standing + "'. Falling back to rank and rapport alone.")
     EndIf
+    ; TIME KNOWN CAPS THE READ - see KnownCap. Before the floor comparison on
+    ; purpose: the rank/rapport floor records history the game itself kept and
+    ; must stay able to lift someone past a cautious or time-limited read.
+    Int readRaw = byRead
+    String known = SNRom_Decorators.Upper(SNRom_Decorators.Trim(SNRom_Decorators.FieldValue(asResponse, "KNOWN:")))
+    Bool married = IsMarriedToPlayer(who)
+    Int timeCap = 0
+    If !married && SkyrimNetApi.GetConfigBool(CFG(), "seedTimeLimit", True)
+        timeCap = KnownCap(known)
+        If timeCap == 0 && known != "MONTHS_OR_MORE"
+            Diag(LOG_WARN(), "Seed read for " + asked + " carried no usable time known (KNOWN: '" + \
+                known + "') - no time limit applied.")
+        EndIf
+    EndIf
+    If timeCap > 0 && byRead > timeCap
+        byRead = timeCap
+    EndIf
+    ; What a toast calls the standing. A limited read still names the judge's
+    ; word, so "reads as FRIEND" arriving with a Stranger's points is explained
+    ; rather than looking like the read was ignored.
+    String shown = standing
+    If byRead < readRaw
+        shown = standing + ", held back - " + KnownPhrase(known)
+    EndIf
     Int byOld  = SeedTarget(who)
     Int target = byRead
     If byOld > target
         target = byOld
     EndIf
     Int cap = UNANSWERED_MAX()
-    If IsMarriedToPlayer(who)
+    If married
         cap = 2500
     EndIf
     If target > cap
         target = cap
     EndIf
     Int held = Romantasy.GetPoints(who)
+    String timeNote = ", known " + known
+    If byRead < readRaw
+        timeNote = timeNote + " - read " + readRaw + " held to " + byRead + " by time known"
+    EndIf
     Diag(LOG_INFO(), "Seed read for " + asked + ": " + standing + " -> " + byRead + \
-        " pts (rank/rapport floor " + byOld + ", cap " + cap + ", holds " + held + \
+        " pts" + timeNote + " (rank/rapport floor " + byOld + ", cap " + cap + ", holds " + held + \
         "). Because: " + because)
     If target <= held
         Diag(LOG_INFO(), "Seed read for " + asked + " is at or below what they hold - nothing " + \
@@ -5127,7 +5228,7 @@ Event OnSeedAssessed(String asResponse, Int aiSuccess)
         ; failed keypress; "read as CONFIDANT, already at or above that" is the
         ; same outcome and is obviously an answer.
         If announce
-            Say(asked + " reads as " + standing + " - already at or above that, so nothing added.")
+            Say(asked + " reads as " + shown + " - already at or above that, so nothing added.")
         EndIf
         StorageUtil.SetIntValue(who, "SNRom_Seeded", 1)
         SeedRomanticFlag(who)
@@ -5143,7 +5244,7 @@ Event OnSeedAssessed(String asResponse, Int aiSuccess)
         Diag(LOG_INFO(), "Seeded " + asked + " from the record: " + held + " -> " + \
             Romantasy.GetPoints(who) + " pts." + MarasStateLine(who))
         If announce
-            Say(asked + " reads as " + standing + ".")
+            Say(asked + " reads as " + shown + ".")
         EndIf
         ; SEEDING DEEP AND SAYING NOTHING ABOUT THE SPARK IS THE HOLE LAILA FELL
         ; THROUGH. A seed of CONFIDANT or above puts someone within one ordinary

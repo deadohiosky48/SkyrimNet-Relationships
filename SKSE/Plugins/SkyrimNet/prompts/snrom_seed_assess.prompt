@@ -19,13 +19,59 @@
    not be able to lower someone a high rapport already justifies. They were only
    ever meant to be one of many inputs rather than the primary one. #}
 {% set npc_uuid = formid_to_uuid(npc_formid) %}
+{# ── HOW LONG THEY HAVE KNOWN EACH OTHER, FROM THE OLDEST OWN MEMORY ─────────
+   The judge used to be told only WHAT happened, never WHEN, and the header below
+   framed every record as long history ("before anyone was watching"). So an
+   eventful first day read as a deep bond: Sosia Tremellia was seeded mid-Friend
+   (1250) about five game hours after she first followed the player, on "agreed
+   to travel together... secured a formal investment contract", and Daighre at
+   750 a day in. Live play cannot move anyone that fast - talk is capped at
+   talkDailyCap (200) a game day - so the seed was the one path with no clock.
+
+   WHY 200 AND NOT THE 8 SHOWN BELOW. get_relevant_memories returns the most
+   relevant, not the oldest, and nothing a template or Papyrus can call returns
+   the oldest directly (only SkyrimNet's C++ API can, which is the 2.0 plan).
+   Asking for far more than anyone new has makes the oldest one returned the
+   oldest on record for every new acquaintance - exactly the case this exists
+   for. For a long-known character with more than 200 memories it is a lower
+   bound, and one that will already span weeks, which lifts the limit anyway.
+
+   OWN MEMORIES ONLY. Entries with isOwn false are someone else's ("experienced
+   as ..." in SkyrimNet's own memory module) and can be far older than the
+   day these two met.
+
+   The oldest own memory is the first time SkyrimNet recorded this person near
+   the player. For someone passed in town for weeks before they actually spoke,
+   that is earlier than the real first meeting - so the limit errs LOOSE for
+   them, never tighter. default() guards both inputs: an undefined value falls
+   to UNKNOWN, which applies no limit and is logged by Papyrus, instead of
+   breaking the render. The buckets are SkyrimNet's own memory age thresholds. #}
+{% set snrom_now = default(gameTimeNumeric, 0) %}
+{% set snrom_oldest = 0 %}
+{% if npc_uuid and npc_uuid != 0 %}
+{% set snrom_allmem = get_relevant_memories(npc_uuid, 200) %}
+{% for am in snrom_allmem %}{% set snrom_own = default(am.isOwn, true) %}{% set snrom_gt = default(am.memory.game_time, 0) %}{% if snrom_own and snrom_gt > 0 %}{% if snrom_oldest == 0 or snrom_gt < snrom_oldest %}{% set snrom_oldest = snrom_gt %}{% endif %}{% endif %}{% endfor %}
+{% endif %}
+{% set known = "UNKNOWN" %}
+{% if snrom_now > 0 and snrom_oldest > 0 %}
+{% set snrom_span = snrom_now - snrom_oldest %}
+{% if snrom_span <= 172800 %}{% set known = "TODAY_OR_YESTERDAY" %}{% else if snrom_span <= 604800 %}{% set known = "DAYS" %}{% else if snrom_span <= 2592000 %}{% set known = "WEEKS" %}{% else %}{% set known = "MONTHS_OR_MORE" %}{% endif %}
+{% else if snrom_now > 0 %}
+{# NOTHING DATED, AND THE CLOCK IS FINE - so the record is empty, which is the
+   strongest evidence there is that no history exists. Rhiada, 2026-09-22: no
+   memories and no diary on the day they met, UNKNOWN, no limit applied, and a
+   judge reading only her bio answered ACQUAINTANCE -> 750. UNKNOWN has to keep
+   meaning "do not limit" (a dead clock must not under-seed someone long known),
+   so the empty record needs its own answer. #}
+{% set known = "NO_RECORD" %}
+{% endif %}
 You are judging how far along a relationship ALREADY IS, from the record of what has happened. You are not deciding what should happen next and you are not scoring a conversation.
 
-{{ npc_name }} has just come under observation. Everything below already happened, before anyone was watching. Your one job is to say where they actually stand with {{ player.name }} today, so the record starts from the truth instead of from zero.
+{{ npc_name }} has just come under observation. Your one job is to say where they actually stand with {{ player.name }} today, so the record starts from the truth instead of from zero.
 
 WHAT YOU ARE CHOOSING BETWEEN
 
-- `STRANGER` - they have met. Nothing has passed between them that either would remember.
+- `STRANGER` - they have met, but a relationship has not formed yet: too little has passed between them, or too little time.
 - `ACQUAINTANCE` - known to each other, on ordinary terms. Shared errands, shared road, no weight.
 - `FRIEND` - they matter to each other. Trust, easy company, and something either would defend.
 - `CONFIDANT` - deep and mutual, the person you would call first. Real weight, and more than friendship, but you could still describe it without using the word love.
@@ -41,11 +87,24 @@ AND HEDGED LANGUAGE DISQUALIFIES IT. "Perhaps", "in time", "one day", "if he eve
 
 THERE IS NOTHING ABOVE `DEVOTED` HERE, and that is deliberate rather than a judgement about them. Whether two people become lovers is a question {{ player.name }} has to answer out loud, and it is not yours to answer on their behalf by handing it over as a starting position. `DEVOTED` places them one conversation away from being asked, which is exactly where overwhelming evidence should leave them.
 
+HOW LONG THEY HAVE KNOWN EACH OTHER LIMITS HOW FAR IT CAN HAVE COME. Closeness takes time as well as events. A first day or two is still a first meeting, however much happened in it: saving someone, saving their child, fighting side by side or striking a deal makes a person memorable and earns gratitude, and it does not make them a friend yet. In the first day or two the honest answer is `STRANGER`; within the first week, `ACQUAINTANCE` at most; within the first month, `FRIEND` at most. Past that, the record alone decides.
+
 READ THE RECORD, NOT THE ROLE. A housecarl sworn to protect {{ player.name }} is doing her job; that is not intimacy. A follower who has travelled a thousand miles has logged distance, not closeness. What counts is what the two of them have actually said and done to each other.
 
 AND BELIEVE THE RECORD WHEN IT STATES A FACT. If a diary entry or a memory says in plain words that they are lovers, that they share a bed or a home or a child, that they married - believe it, and do not discount it for being plainly worded. This mod's usual caution runs the other way and guards against inventing feeling that is not there; here the opposite failure has also happened, with recorded, mutual devotion read as ordinary companionship. But a FACT about the relationship is what earns this. An intensity of feeling, however vividly written, is not the same thing and must not be read as one.
 
 WHAT THE WORLD ACTUALLY RECORDS
+{% if known == "TODAY_OR_YESTERDAY" %}
+{{ npc_name }} and {{ player.name }} met today or yesterday - their oldest shared history is less than two days old. This is recorded, not claimed.
+{% else if known == "DAYS" %}
+{{ npc_name }} and {{ player.name }} have known each other a few days - less than a week. This is recorded, not claimed.
+{% else if known == "WEEKS" %}
+{{ npc_name }} and {{ player.name }} have known each other a few weeks - less than a month. This is recorded, not claimed.
+{% else if known == "MONTHS_OR_MORE" %}
+{{ npc_name }} and {{ player.name }} have known each other for more than a month.
+{% else if known == "NO_RECORD" %}
+Nothing whatsoever is recorded between {{ npc_name }} and {{ player.name }}: no memories, no diary. Anything below describes {{ npc_name }}'s own life and standing, not a history with {{ player.name }}. With no shared history on record, the answer is `STRANGER`.
+{% endif %}
 {% if npc_married == 1 %}
 {{ npc_name }} and {{ player.name }} ARE married. This is recorded, not claimed.
 {% else if npc_engaged == 1 %}
@@ -107,7 +166,8 @@ Their own private account, and the most reliable thing here. Read it before anyt
 {% if length(mem) > 0 %}
 WHAT {{ npc_name }} REMEMBERS
 {% for m in mem %}
-- {{ m.memory.content }}{% if m.memory.emotion %} ({{ m.memory.emotion }}){% endif %}
+{% set mage = snrom_now - default(m.memory.game_time, 0) %}
+- {% if snrom_now > 0 and default(m.memory.game_time, 0) > 0 %}{% if mage > 31536000 %}[Over a year ago] {% else if mage > 5184000 %}[Several months ago] {% else if mage > 2592000 %}[Last month] {% else if mage > 1209600 %}[Several weeks ago] {% else if mage > 604800 %}[Last week] {% else if mage > 172800 %}[Several days ago] {% else if mage > 86400 %}[Yesterday] {% else %}[Today] {% endif %}{% endif %}{{ m.memory.content }}{% if m.memory.emotion %} ({{ m.memory.emotion }}){% endif %}
 {% endfor %}
 {% endif %}
 
@@ -116,8 +176,9 @@ WHAT OTHER SYSTEMS ALREADY RECORD
 {{ npc_prior }}
 {% endif %}
 
-Answer in exactly this form and nothing else:
+Answer in exactly this form and nothing else. Copy the NAME and KNOWN lines exactly as written:
 
 NAME: {{ npc_name }}
+KNOWN: {{ known }}
 STANDING: <STRANGER|ACQUAINTANCE|FRIEND|CONFIDANT|DEVOTED>
 BECAUSE: <one sentence naming the specific thing in the record that decided it - a diary line, a remembered moment. Not a summary of their personalities.>
