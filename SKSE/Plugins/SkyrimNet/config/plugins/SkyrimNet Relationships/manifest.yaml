@@ -1,6 +1,6 @@
 plugin:
   name: "SkyrimNet Relationships"
-  version: "1.6.0"
+  version: "1.7.0"
   description: "Lets SkyrimNet drive romance through ColdSun's Romantasy framework — organic enrollment, LLM-authored preferences, and bond-aware dialogue."
   icon: "🥀"
 
@@ -154,6 +154,13 @@ schema:
       path: "seedEnabled"
       type: "bool"
       description: "Start followers you already have a history with partway up the ladder instead of at Stranger, based on how they actually feel about you, your relationship rank, and whether the game records you as married or engaged. Applies once per follower, including everyone already traveling with you when this was installed. Turn it off before loading if you would rather every bond start from nothing."
+      defaultValue: true
+      category: "Seeding"
+
+    - name: "Limit Seeds by Time Known"
+      path: "seedTimeLimit"
+      type: "bool"
+      description: "Cap a follower's head start by how long you have actually known each other, read from their oldest memory. Nothing recorded between you at all: Stranger, and only part way. Met today or yesterday: Stranger at most, however much happened. Within a week: Acquaintance. Within a month: Friend. Longer, or married: no limit. Everything that happens after they start following still counts at the normal pace; this only limits how much history a new acquaintance can be credited with."
       defaultValue: true
       category: "Seeding"
 

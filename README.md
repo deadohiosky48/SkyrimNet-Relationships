@@ -253,6 +253,15 @@ rather than how far you have come, and ships **unbound**, because unlike the
 re-read it discards the character currently there. See Troubleshooting for what
 each is for.
 
+Also under *Seeding*, **Limit Seeds by Time Known** caps that head start by how
+long you have actually known each other, read from the oldest thing they
+remember about you. Met today or yesterday and they start as a stranger, however
+eventful the day was; a week in, an acquaintance; a month, a friend. Longer than
+that, or married, and the record alone decides. Nothing else is affected: what
+happens once they are travelling with you is earned at the usual pace, and the
+Re-Read Hotkey will lift someone later once there is more history to read. Turn
+it off if you would rather a single memorable day count for everything.
+
 Under *Spark* there is **Unanswered Headroom**. If a companion's points sit a
 couple of hundred short of where you expect, this is why: someone who has
 reached the point of asking is parked below the threshold until you answer, so
