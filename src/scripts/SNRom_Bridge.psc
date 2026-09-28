@@ -1453,6 +1453,10 @@ Bool Function HoldShortOfLover(Actor akActor, Int aiDelta)
     If akActor == None || !_ready || aiDelta <= 0
         Return False
     EndIf
+    ; Before the stance test: a declined companion whose award would carry
+    ; them back over the line becomes unanswered HERE, so this award is held
+    ; and banked like the first time's rather than written and clawed back.
+    ReopenIfClimbedBack(akActor, aiDelta)
     If StorageUtil.GetIntValue(akActor, "SNRom_PlayerStance", 0) != STANCE_UNANSWERED()
         Return False
     EndIf
@@ -1564,6 +1568,10 @@ Function EnforceLoverCeiling(Actor akActor)
     If akActor == None || !_ready
         Return
     EndIf
+    ; The backstop's backstop: Romantasy's own economy can carry a declined
+    ; companion over Lover without ever passing HoldShortOfLover, and an old
+    ; save can already hold one there. Reopen first, then clamp as usual.
+    ReopenIfClimbedBack(akActor, 0)
     If StorageUtil.GetIntValue(akActor, "SNRom_PlayerStance", 0) != STANCE_UNANSWERED()
         Return
     EndIf
@@ -1676,7 +1684,9 @@ Function DeclineRomance(Actor akActor)
     { The player says no, kindly or otherwise.
 
       DOES NOT CLEAR HER FEELINGS. The spark stays, the disposition stays, and
-      ReopenRomance can make the question live again - people reconsider.
+      the question comes back by itself: ReopenIfClimbedBack makes it live
+      again when she climbs back to Lover, exactly as the first time (1.8.1).
+      A no is an answer for now, not forever - people reconsider.
 
       IT DOES LOWER THE BOND, and that is a deliberate reversal of the original
       design (2026-08-08). The first version left depth untouched on the
@@ -1728,6 +1738,52 @@ Function ReopenRomance(Actor akActor)
     ; Someone who is already deep and already sparked should have the question
     ; live again the moment it is reopened, not after the next award lands.
     CheckRomanceQuestion(akActor)
+EndFunction
+
+Bool Function ReopenIfClimbedBack(Actor akActor, Int aiIncoming)
+    { A declined companion who climbs back to Lover is asked again, exactly as
+      the first time. Returns True if it reopened them.
+
+      THE AUTHOR'S RULE, 2026-09-28: "After decline, the question should simply
+      be raised again once they progress back to the threshold of Lover. No
+      reason for it to be different than the first time." Until 1.8.1 nothing
+      did: CheckRomanceQuestion arms only an UNANSWERED stance, ReopenRomance
+      had no caller anywhere, and HoldShortOfLover and EnforceLoverCeiling both
+      stand down for DECLINED - so a declined companion climbed through Lover
+      and Spouse depth unasked while 0330 told them never to raise it.
+
+      SO THE STANCE GOES BACK TO UNANSWERED AT THE LINE, and every existing
+      mechanism then does what it does the first time: the hold withholds and
+      banks, the question is owed, the sweep raises it in their own words, and
+      a second no drops them to mid-Friend again. No second code path, and
+      nothing that can disagree with the first one.
+
+      THE LINE IS THE SAME ONE both gates already use. HoldShortOfLover fires
+      when held + incoming passes UNANSWERED_MAX; CheckRomanceQuestion when
+      earned reaches LOVER_MIN, one point higher. Banked is zero for a declined
+      companion (DeclineRomance discards it) and counted anyway, so this cannot
+      drift from CheckRomanceQuestion if that ever changes.
+
+      An old save already carrying a declined companion ABOVE Lover is reopened
+      on its next point change or sweep, clamped like any unanswered romance,
+      and asked. That is the first time's behaviour too, applied late. }
+    If akActor == None || !_ready
+        Return False
+    EndIf
+    If StorageUtil.GetIntValue(akActor, "SNRom_PlayerStance", 0) != STANCE_DECLINED()
+        Return False
+    EndIf
+    If !SNRom_Decorators.IsSparked(akActor)
+        Return False
+    EndIf
+    Int earned = Romantasy.GetPoints(akActor) + StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)
+    If earned + aiIncoming <= UNANSWERED_MAX()
+        Return False
+    EndIf
+    Diag(LOG_INFO(), akActor.GetDisplayName() + " climbed back to Lover after being turned down (" + \
+        earned + " + " + aiIncoming + " pts) - the question is live again, as the first time.")
+    SetStance(akActor, STANCE_UNANSWERED(), "reopened on climbing back")
+    Return True
 EndFunction
 
 Function SetStance(Actor akActor, Int aiStance, String asWord)
@@ -2138,6 +2194,10 @@ Function CheckRomanceQuestion(Actor akActor)
     If akActor == None || !_ready
         Return
     EndIf
+    ; Before the stance test below, which is what used to make a refusal
+    ; permanent. Reopening clears SNRom_AskPending (SetStance), so the check
+    ; that follows it cannot short-circuit a question that has just come back.
+    ReopenIfClimbedBack(akActor, 0)
     If StorageUtil.GetIntValue(akActor, "SNRom_AskPending", 0) == 1
         Return
     EndIf
@@ -2560,7 +2620,28 @@ Function EnsureSaveId()
     EndIf
 
     String owner = JsonUtil.GetStringValue(LegacyStoreFile(), "claimedById", "")
-    If owner == ""
+    ; A NEW GAME MUST NOT INHERIT AN UNCLAIMED STORE, 2026-09-28. "The first
+    ; playthrough to run this inherits" was right for the playthrough that WROTE
+    ; the file and wrong for a fresh game that merely got here first - a player
+    ; who played before 1.4.1 and then started over. The new game took the old
+    ; characters' WHY, LIMIT and ADDRESS, and AuthorDisposition, finding a WHY
+    ; already stored, skipped authoring them at all ("authored before a save
+    ; reload rolled the flag back"), so they kept the old prose over default
+    ; numbers forever. Reported by a player 2026-09-28 as relationships that
+    ; "carry over through different saves".
+    ;
+    ; The roster tells the two apart, because it lives in the co-save: the
+    ; playthrough that wrote the file has enrolled people in it; a new game has
+    ; enrolled nobody yet. An empty roster meeting an existing file takes a
+    ; store of its own and leaves the file unclaimed for its real owner, who
+    ; still claims it the next time that playthrough loads.
+    If owner == "" && StorageUtil.FormListCount(None, "SNRom_Roster") == 0 && \
+            JsonUtil.JsonExists(LegacyStoreFile())
+        StorageUtil.SetIntValue(None, "SNRom_SaveId", 2)
+        Diag(LOG_INFO(), "A new playthrough (" + id + ") found characters in the unclaimed " + \
+            "disposition store from an earlier one and left them there. This one uses " + \
+            LegacyStoreFile() + "_" + id + ".json and everyone begins as a stranger.")
+    ElseIf owner == ""
         JsonUtil.SetStringValue(LegacyStoreFile(), "claimedById", id)
         JsonUtil.Save(LegacyStoreFile())
         StorageUtil.SetIntValue(None, "SNRom_SaveId", 1)

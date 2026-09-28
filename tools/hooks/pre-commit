@@ -1,0 +1,10 @@
+#!/bin/sh
+# Refuses to commit added lines that carry the author's identity or an
+# absolute path from this machine. See _identity.sh for why.
+. "$(dirname "$0")/_identity.sh"
+
+added=$(git diff --cached -U0 --no-color --diff-filter=ACMR | grep '^+' | grep -v '^+++')
+if ! printf '%s\n' "$added" | check_text "staged changes"; then
+    echo "pre-commit: REFUSED. Fix the above; do not bypass with --no-verify." >&2
+    exit 1
+fi

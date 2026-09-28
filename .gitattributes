@@ -1,0 +1,2 @@
+# Git hooks are shell scripts; a CRLF shebang fails on every platform's sh.
+tools/hooks/* text eol=lf

@@ -297,8 +297,8 @@ try {
         Where-Object { $_.Extension -in '.md','.psc','.prompt','.yaml','.yml','.txt','.inc','.ps1','.json' } |
         ForEach-Object {
             $name = $_.Name
-            # TWO space-free segments are required. A real path is C:\dev\Skyrim;
-            # a YAML description containing "USE:\n- ..." is not. The naive
+            # TWO space-free segments are required. A real path has a drive and at
+            # least two folders; a YAML description containing "USE:\n- ..." is not. The naive
             # [A-Za-z]:\\ pattern flagged eight of those escape sequences on the
             # first run and refused to package over them.
             [regex]::Matches((Get-Content $_.FullName -Raw), '[A-Za-z]:\\[A-Za-z0-9_.-]+\\[A-Za-z0-9_.-]+') |

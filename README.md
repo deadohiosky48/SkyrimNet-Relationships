@@ -109,11 +109,13 @@ own words, and you answer plainly:
 | say nothing for now | the question stays open; they will raise it again later |
 
 **You can turn someone down.** Declining is a real answer with real weight. It
-does not erase what they feel, it does not end the friendship, and it does not
-make them cold toward you — but the bond does step back to the middle of Friend,
-because a refusal that left them one good conversation short of asking again
-would be no refusal at all. The friendship grows again from there, on its own
-terms, and they may raise it once more when there is real ground for it.
+does not erase what they feel and it does not end the friendship, but the bond
+does step back to the middle of Friend, because a refusal that left them one
+good conversation short of asking again would be no refusal at all. It may sting
+for a while, in whatever way that person shows hurt, and it eases as the
+friendship grows again. **A no is an answer for now, not forever.** When they
+climb back to where they were when they asked, they ask again, exactly as the
+first time, and you can answer differently or the same.
 
 **Nothing creeps past the question while it is unanswered.** The gate is on
 romance, not on depth: a companion who has sparked but whose question you have
@@ -235,6 +237,9 @@ whatever else is lying around - and what is lying around is the physical.
 Apply as many true blocks as you like; just make sure the emotional side is
 described too.
 
+SeverActions keeps block assignments for all of your saves at once, so a block
+applied in one playthrough is applied in every other.
+
 Blocks are read when a character is first authored, and again whenever their
 disposition is reviewed - so applying one later is not wasted. It pulls them
 toward it gradually instead of all at once. To have it land immediately,
@@ -343,6 +348,27 @@ game is running. Every call is a POST to
 
 **Find someone's FormID** — open `http://127.0.0.1:8080/game-data?api=nearby-actors`
 in a browser with the game running. It lists everyone loaded, with their IDs.
+
+**A new game remembers people from an old one.** Points, tiers, and everything
+this mod decides about someone belong to one playthrough, and SkyrimNet keeps
+its memories per playthrough too. Two things can still make a new game look
+familiar:
+
+- **SeverActions bio blocks are shared by every save.** Blocks you applied to
+  someone in one playthrough are applied in every other, and this mod reads
+  them. A Drawn To, Expression or Attachment block decides that trait outright.
+  Remove the block in SeverActions if it doesn't belong in this playthrough.
+- **A new game started before 1.8.1 could inherit an older playthrough's
+  characters**, if it was the first save to run 1.4.1 or later. Those people
+  keep their old descriptions and never get new ones. Give the playthrough a
+  store of its own (nothing is deleted, and `AdoptLegacyStore` undoes it):
+
+  ```json
+  {"questEditorId":"SNRom_Quest","scriptName":"SNRom_Bridge",
+   "functionName":"StartFreshStore","arguments":[]}
+  ```
+
+  Then re-author anyone who still looks wrong with the Re-Author Hotkey.
 
 **Someone was enrolled who should not have been.** Takes the display name exactly
 as it appears in game, and works even if they are nowhere near you:

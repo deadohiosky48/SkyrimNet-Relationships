@@ -80,3 +80,9 @@ desktop.ini
 # Release archives. Rebuildable by tools/package.ps1; GitHub Releases is the
 # right home for the ones that matter.
 /dist/
+
+# ---------------------------------------------------------------------------
+# Names the git hooks refuse to let into a commit (tools/hooks/_identity.sh).
+# The list is private by definition - publishing it would be the leak.
+# ---------------------------------------------------------------------------
+/tools/identity-denylist.txt

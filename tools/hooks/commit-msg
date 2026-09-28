@@ -1,0 +1,20 @@
+#!/bin/sh
+# Refuses a commit message that names the author or adds a co-author, and a
+# commit made under any identity but the pseudonym. See _identity.sh for why.
+. "$(dirname "$0")/_identity.sh"
+
+bad=0
+check_message "commit message" < "$1" || bad=1
+
+for who in AUTHOR COMMITTER; do
+    ident=$(git var GIT_${who}_IDENT | sed 's/>.*/>/')
+    if [ "$ident" != "$EXPECTED_IDENT" ]; then
+        echo "  $(echo $who | tr 'A-Z' 'a-z') is not the pseudonym - expected $EXPECTED_IDENT" >&2
+        bad=1
+    fi
+done
+
+if [ $bad -ne 0 ]; then
+    echo "commit-msg: REFUSED. Fix the above; do not bypass with --no-verify." >&2
+    exit 1
+fi

@@ -1,0 +1,35 @@
+#!/bin/sh
+# The last line of defence: re-checks every commit about to leave this machine -
+# identity, trailers and added lines - including cherry-picks and commits made
+# elsewhere (a cloud session, the GitHub web editor), which never ran
+# commit-msg or pre-commit here. See _identity.sh for why.
+. "$(dirname "$0")/_identity.sh"
+
+zero=0000000000000000000000000000000000000000
+bad=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+    [ "$local_sha" = "$zero" ] && continue                 # deleting a ref
+    if [ "$remote_sha" = "$zero" ]; then
+        range=$(git rev-list "$local_sha" --not --remotes="$1")   # new ref
+    else
+        range=$(git rev-list "$remote_sha..$local_sha")
+    fi
+    for c in $range; do
+        short=$(git rev-parse --short "$c")
+        a="$(git log -1 --format='%an <%ae>' "$c")"
+        m="$(git log -1 --format='%cn <%ce>' "$c")"
+        # GitHub's web editor commits as "GitHub <noreply@github.com>" on the
+        # author's behalf; the author field still has to be the pseudonym.
+        if [ "$a" != "$EXPECTED_IDENT" ] || { [ "$m" != "$EXPECTED_IDENT" ] && [ "$m" != "GitHub <noreply@github.com>" ]; }; then
+            echo "  $short: author/committer is not the pseudonym ($a | $m)" >&2
+            bad=1
+        fi
+        git log -1 --format=%B "$c" | check_message "$short message" || bad=1
+        git show --format= -U0 --no-color "$c" | grep '^+' | grep -v '^+++' | check_text "$short changes" || bad=1
+    done
+done
+
+if [ $bad -ne 0 ]; then
+    echo "pre-push: REFUSED - nothing was pushed. Fix the commits above; do not bypass with --no-verify." >&2
+    exit 1
+fi
