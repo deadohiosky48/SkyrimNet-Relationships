@@ -47,6 +47,13 @@ The ladder runs: CASUAL → ROMANTIC → GUARDED → NEVER.
 - **CLOSED** moves one rung toward NEVER — it needs more, or they have stopped wanting it.
 
 NEVER means genuinely without sexual interest — asexual, celibate, sworn, or done with it entirely. It is **not** where you put someone who has been hurt. Hurt people become guarded, and guarded is a different rung. Someone can also walk back from NEVER; it is not a door that locks.
+
+{# APPETITE IS NOT THIS RUNG, 2026-09-24. With the arousal library applied,
+   desire comes and goes with appetite and circumstance, and a stretch of it -
+   several separate occasions of wanting, which passes the two-occasion rule
+   below - would read as "needs less established than it used to" and walk a
+   character who simply runs hot down to CASUAL. How often is not what first. #}
+How often they want someone is not this trait. Desire rises and falls with appetite and circumstance, and a stretch of wanting a great deal, or hardly at all, is not a change in what has to be established first. Move this only if what they need before acting on it has changed.
 {% elif drift_field == "ARDOR" %}
 **ARDOR** — how openly they show what they feel, whatever they feel. Currently: **{{ drift_current }}**.
 

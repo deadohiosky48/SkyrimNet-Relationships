@@ -26,7 +26,7 @@ You judge whether something has changed between two people.
 {{ npc_name }} travels with {{ player.name }}. They are close enough to be observed, but nothing romantic has been established between them. Your question is whether that is still true.
 
 WHAT COUNTS
-A moment of real vulnerability between them. Closeness that has stopped feeling like duty. A risk taken that did not have to be taken. Something noticed that cannot now be un-noticed. Physical intimacy. Either of them naming feelings that go past friendship.
+A moment of real vulnerability between them. Closeness that has stopped feeling like duty. A risk taken that did not have to be taken. Something noticed that cannot now be un-noticed. Physical intimacy that meant more to them than desire. Either of them naming feelings that go past friendship.
 
 WHAT DOES NOT
 Ordinary friendliness. Gratitude. Loyalty. Good employment. Shared danger alone — soldiers survive things together without falling in love. Being generous, famous or powerful. Politeness that the other person is obliged to return.
@@ -43,7 +43,7 @@ So before weighing a feeling, ask what caused it and who it was actually about. 
 A stirring in the chest, a lump in the throat, a sudden certainty — these describe intensity, not direction. Intensity is the easiest thing in the world to mistake for romance, and it is the most common reason a wrong YES gets written. Name what passed between the two of them, or answer NO.
 
 WHEN THEIR PROFILE ALREADY ANSWERS THIS, BELIEVE IT
-Everything below is for deciding an OPEN question. If their profile already states what they are to {{ player.name }} — lover, spouse, devoted, a parent of their child, bound in some named way — then it is settled and the answer is YES. Say so and name the thing the profile records.
+Everything below is for deciding an OPEN question. If their profile already states what they are to {{ player.name }} — lover, spouse, devoted, a parent of their child, bound in some named way — then it is settled and the answer is YES. Say so and name the thing the profile records. A tally of nights together is not such a statement: a list of sexual partners or encounters records what they did, not what they are to each other.
 
 {% if maras_present == 1 %}{% if npc_married == 1 %}
 The world records {{ npc_name }} as married to {{ player.name }}. That is a fact, not an inference from anything written about her, and it settles this question: the answer is YES. Say so and name the marriage as the reason.
@@ -69,6 +69,41 @@ And some people never cross, however long they travel with {{ player.name }} and
 {% if npc_ardor %}
 For calibration: in general {{ npc_name }} is {{ npc_ardor }}. Read them against that. Warmth from someone reserved is significant; the same warmth from someone intense is their ordinary register and says nothing new.
 {% endif %}
+
+{# DESIRE IS READ AGAINST APPETITE, the way warmth is read against ardor above.
+   Physical intimacy was listed bare under WHAT COUNTS, and a CASUAL character
+   can be physically available long before anything crosses - 0330 tells them
+   "not love, and you have never confused the two". Once the arousal library
+   makes desire come and go, a bare reading would eventually cross every
+   casual partner on desire alone, 2026-09-24.
+
+   The profile renders in transform mode, which carries SeverActions' bio
+   blocks, so an applied Appetite block is already in front of the model.
+   This names the question rather than the block: SeverActions' own libido
+   blocks count too.
+
+   UNCONDITIONAL FROM 2026-09-25. The first version opened "If their profile
+   says how readily desire comes to them", so a character with no Appetite
+   block got no rule at all - and Gisli, seeded that day from a "transactional,
+   passionate liaison" (sex as leverage over her brother, a demand for 1500
+   gold), was crossed on "I let him overpower me on the furs, telling myself I
+   was the one quietly mapping the board". Authoring, moments later, called her
+   CASUAL. The rule now stands on its own and the Appetite reading calibrates
+   it; the MOMENT test below is where it actually bites.
+
+   WANTING ALONE NEVER CROSSES ANYONE, 2026-09-27 - the author's decision
+   after Hrist. She sparked on "his raw strength and chiseled physique sending
+   a flare of heat through my blood", which is her Stirred By: Strength block
+   firing exactly as written, and the dev2 test let it through because it
+   asked about "someone they were only sleeping with" and she was not. The
+   author's line: arousal from a matching block is welcome, and for a CASUAL
+   character can lead to intimacy with no romance at all (PhysicalOk gives
+   CASUAL that path without a spark) - but nobody should want a romance with
+   the player because they saw a muscular physique. So desire is excluded as
+   evidence for every disposition, and the calibration by Appetite is gone:
+   under this rule even a seldom-stirred character's wanting is not a
+   crossing on its own. #}
+Desire is never this by itself. Finding {{ player.name }} attractive, wanting them, sleeping with them - however strongly, however often - all happen without anything having crossed, and a bedmate, a patron or a bargain is not a crossing either. If their profile says what stirs them, a moment that matches it is that desire doing exactly what the profile describes, not evidence of anything more. What crosses someone is whatever is left when the wanting is set aside.
 
 WHERE THE TRUTH USUALLY IS
 Weigh their diary above everything else. It is the one place they have no reason to perform — dialogue is what they were willing to say aloud to someone standing in front of them, and people are guarded there precisely when it matters most. A private entry naming a feeling outranks an hour of careful conversation. Their profile is the next best source, since it is where established facts about their life are recorded.
@@ -171,6 +206,16 @@ Do not compose a scene. Do not describe anything you did not read. Above all, do
 **{{ player.name }} must be a participant in the MOMENT, not a bystander in it.** Rewriting a third party's scene from {{ npc_name }}'s point of view satisfies the letter of the rule above and breaks it entirely — "I watched them and felt something shift in me" is an account of watching, and what it evidences is that she was present. If the sentence would still make sense with {{ player.name }} replaced by any other person she was standing near, it is not about them and the answer was NO.
 
 Test it before you write it: does the MOMENT describe something {{ player.name }} and {{ npc_name }} did to or with each other? If the honest answer is that one of them was observing, or that the event was really about somebody else, or about a possession, a place, or a piece of news — there is no moment here to name.
+
+{# THE DESIRE TEST, placed here because the nearest instruction to the answer
+   is the one that wins. Same shape as the participation test above, which
+   is the form that has held: a substitution the model can run on its own
+   sentence. Gisli, 2026-09-25 - see the note on the desire paragraph.
+   REWRITTEN AS A SUBTRACTION 2026-09-27 (Hrist): "only sleeping with" missed
+   pure attraction. Taking the wanting out and looking at the remainder
+   catches both, and still passes a moment where the body was present but the
+   point was trust or tenderness. #}
+**The MOMENT must be more than desire.** Take out of it everything about wanting {{ player.name }} — their body, their looks, heat, a flare of desire, touch, a night together. If nothing is left that would change what the two of them are to each other, it describes desire, not a crossing, and the answer was NO. A bargain fails the same way: if the sentence would be just as true of someone {{ npc_name }} was using, or being used by, the answer was NO.
 
 {# Same two counter-instructions as snrom_talk_assess.prompt - identical
    exposure, since this prompt also renders the "transform" profile with its

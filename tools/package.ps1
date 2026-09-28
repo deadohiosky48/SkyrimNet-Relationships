@@ -283,6 +283,9 @@ try {
     # Documents, is shared by every save, and carries their nextId and version.
     # Writing another mod's store is the thing we asked Kinship not to do to us.
     Copy-Item (Join-Path $repo 'library\relationships_bio_blocks.json') $docOut
+    # Its own file, not three more tabs in the one above: it describes desire,
+    # not disposition, and a player who wants one should not have to take both.
+    Copy-Item (Join-Path $repo 'library\arousal_bio_blocks.json') $docOut
 
     # --- 7. REFUSE TO SHIP A BUILD MACHINE'S DIRECTORY LAYOUT ---------------
     # Every text file about to be shipped is scanned for absolute paths. The repo

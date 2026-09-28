@@ -103,6 +103,41 @@ String Function PhysicalOk(Actor akActor) Global
     If minTier < 0
         Return "false"
     EndIf
+    ; ONLY CASUAL CAN WANT WITHOUT ROMANCE. The author, 2026-09-27: intimacy
+    ; without love is something CASUAL characters do - friends with benefits, a
+    ; first night - and nobody else. Before this, a ROMANTIC or GUARDED
+    ; character judged PLATONIC still became available once the friendship
+    ; alone climbed past her threshold, which a friendship does freely by
+    ; design; she was then told "what you feel is not love... that has nothing
+    ; to do with whether you want them", the CASUAL text, contradicting the
+    ; very disposition that set the threshold.
+    ;
+    ; So ROMANTIC and GUARDED need the romance itself - the spark - and a
+    ; recorded engagement or marriage counts as one, because the game already
+    ; records the commitment the spark would only be inferring.
+    ;
+    ; ROMANTIC MOVES DOWN TO CONFIDANT, same day, same decision. Feelings that
+    ; have begun but not been declared: intimacy after a few evenings, before
+    ; anyone has said "in love" or promised anything. It also unhooks ROMANTIC
+    ; intimacy from the Lover question entirely - a sparked, unanswered romance
+    ; is held at UnansweredRest (1749), which is Confidant - so the player's
+    ; answer about a COMMITMENT stops deciding whether she may want him, which
+    ; is the Nilsine coupling (2026-09-07) removed at the root rather than
+    ; worked around with banked points.
+    ;
+    ; DECIDED BY RANK, NOT BY THE STORED NUMBER. Every ROMANTIC character has
+    ; SNRom_PhysMinTier 4 in her save, and the drift, re-author and repair paths
+    ; all read that number as the word "ROMANTIC". Reinterpreting it here means
+    ; no migration and no second place that can disagree. GUARDED keeps Spouse.
+    Int rank = SNRom_Decorators.IntimacyRank(minTier)       ; 0 casual 1 romantic 2 guarded
+    If rank >= 1
+        If StorageUtil.GetIntValue(akActor, "SNRom_Sparked", 0) != 1 && SNRom_Bridge.CommitmentState(akActor) < 2
+            Return "false"
+        EndIf
+        If rank == 1
+            minTier = 3                                     ; Confidant
+        EndIf
+    EndIf
     Int tier = Romantasy.GetLevel(akActor) - 1   ; GetLevel is 1-6; tiers 0-5
     If tier >= minTier
         Return "true"

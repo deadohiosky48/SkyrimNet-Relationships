@@ -250,16 +250,36 @@ Do NOT invent an orientation to seem decisive. Answering `UNKNOWN` leaves the qu
 INTIMACY - what physical closeness requires of them:
 - `NEVER` - not interested in sex with anyone, at any point
 - `GUARDED` - only within a committed, settled bond
-- `ROMANTIC` - only once genuinely in love
+- `ROMANTIC` - once real feelings have begun, even before anything is declared or promised
 - `CASUAL` - strong attraction is reason enough; it need not be love
 
-THIS AXIS OWNS EVERY PHYSICAL SIGNAL. Appetite, adventurousness, performance, what someone enjoys in bed, how often they want it - all of it is evidence HERE and nowhere else. It answers one question and only one: how much emotional ground has to exist first.
+{# HOW OFTEN WAS TAKEN OUT OF THIS AXIS, 2026-09-24. It used to own "appetite
+   ... how often they want it" along with every other physical signal, which
+   was right while the only such signals were what someone enjoys in bed. The
+   arousal library adds blocks that answer exactly "how often" - Appetite,
+   Stirred By, Cooled By - and read here they would turn every character who
+   runs hot into CASUAL and every one seldom stirred into GUARDED: the same
+   archetype collapse the Attachment blocks exist to prevent. How often and
+   what first are separate facts about a person. #}
+THIS AXIS OWNS THE PHYSICAL SIGNALS ABOUT READINESS. Adventurousness, performance, what someone enjoys in bed - all of it is evidence HERE and not for `ARDOR`. It answers one question and only one: how much emotional ground has to exist first.
 
-`GUARDED` AND `ROMANTIC` ARE DIFFERENT ANSWERS, and the difference is not degree. `GUARDED` waits for a settled, committed bond - the arrangement has to be safe before the person can be. `ROMANTIC` waits for love, which routinely arrives long before any arrangement does. Someone who would go to bed with a person they had fallen for but promised nothing to is `ROMANTIC`. That is the ordinary human answer and it is chosen far too rarely; if you are reaching for `GUARDED`, check that it is the commitment they need and not the feeling.
+{# THE EXAMPLE PAIR WAS REMOVED, 2026-09-28. This paragraph used to go on
+   "Someone who runs hot may still wait to be in love; someone seldom stirred
+   may need nothing more than attraction" - a plausible answer placed beside
+   the question, the failure prompt-lessons records three times over. Vivienne
+   Onis carries Appetite: Runs Hot, and was re-authored ROMANTIC with Swinging,
+   Threesome and Addictions: Sex among her blocks; her previous authoring,
+   without that sentence, said CASUAL. The rule stays; the illustration goes,
+   and the paragraph now also says what DOES bear on this axis. #}
+HOW OFTEN THEY WANT IT IS A DIFFERENT QUESTION. A block beginning `Appetite:`, `Stirred By:` or `Cooled By:` describes how readily desire comes and what wakes or quiets it, not what must be true before they act on it. Those blocks are not the answer to `INTIMACY`, nor to `ARDOR`.
+
+WHO THEY SLEEP WITH, AND ON WHAT TERMS, IS THIS QUESTION. Many partners, swinging, threesomes, sex with no strings, sex sought as a need in itself, flirtation that expects to be taken up by near-strangers - that is someone for whom attraction is reason enough, and it points to `CASUAL`. Signals that the person must come first - sex only inside a bond, fidelity as a condition, desire that waits on trust - point the other way.
+
+`GUARDED` AND `ROMANTIC` ARE DIFFERENT ANSWERS, and the difference is not degree. `GUARDED` waits for a settled, committed bond - the arrangement has to be safe before the person can be. `ROMANTIC` waits for feelings, which routinely arrive long before any arrangement does. Someone who would go to bed with a person they had begun to fall for but promised nothing to is `ROMANTIC`. Between those two, `ROMANTIC` is the ordinary human answer and `GUARDED` is chosen too often; if you are reaching for `GUARDED`, check that it is the commitment they need and not the feeling. This compares those two only - it is not a reason to prefer `ROMANTIC` over `CASUAL`.
 
 ARDOR - how much of what they feel actually shows: `RESERVED` (gives almost nothing away), `MEASURED` (shows little, and rarely first), `WARM` (openly fond, without display), `OPEN` (says what they feel plainly), or `INTENSE` (unmistakable, and they do not try to hide it).
 
-PHYSICAL APPETITE IS NOT ARDOR. Someone can be adventurous, uninhibited and utterly demonstrative in bed and still be measured about saying what they feel. Someone who gives almost nothing away physically can be unmistakable about love. Those signals are `INTIMACY`'s evidence, not this axis's. This one asks a single question: how legible are their FEELINGS to the person they are aimed at.
+PHYSICAL APPETITE IS NOT ARDOR. Someone can be adventurous, uninhibited and utterly demonstrative in bed and still be measured about saying what they feel. Someone who gives almost nothing away physically can be unmistakable about love. None of those signals is this axis's evidence. This one asks a single question: how legible are their FEELINGS to the person they are aimed at.
 
 THESE TWO AXES VARY INDEPENDENTLY, AND THE COMBINATION IS WHAT MAKES SOMEONE SPECIFIC RATHER THAN A TYPE. Physically open and emotionally guarded is a real person. So is physically reserved and emotionally unmistakable. Do not let one answer decide the other - if both landed at the same end of their scales, go back and check the evidence said so twice, rather than once in two places.
 
@@ -383,9 +403,9 @@ Before writing each name, find it in the catalogue and copy it. If what you want
 Answer in exactly this form and nothing else:
 
 NAME: {{ npc_name }}
-SEXUAL_ORIENTATION: <ATTRACTED_TO_MEN|ATTRACTED_TO_WOMEN|ATTRACTED_TO_BOTH|ATTRACTED_TO_NEITHER>
-SEXUAL_ORIENTATION_BASIS: <STATED|IMPLIED|UNKNOWN>
-INTIMACY: <NEVER|GUARDED|ROMANTIC|CASUAL>   <- if a `Drawn To:` block named an orientation this is not that question; this one is how much feeling must come first. Every physical signal in the blocks is evidence HERE.
+SEXUAL_ORIENTATION: <ATTRACTED_TO_MEN|ATTRACTED_TO_WOMEN|ATTRACTED_TO_BOTH|ATTRACTED_TO_NEITHER>   <- if a `Drawn To:` block was applied, COPY ITS ANSWER. `Men`=ATTRACTED_TO_MEN, `Women`=ATTRACTED_TO_WOMEN, `Both`=ATTRACTED_TO_BOTH, `No One`=ATTRACTED_TO_NEITHER. The block is the answer; do not read past it to their history.
+SEXUAL_ORIENTATION_BASIS: <STATED|IMPLIED|UNKNOWN>   <- `STATED` whenever a `Drawn To:` block was applied - someone established it on purpose.
+INTIMACY: <NEVER|GUARDED|ROMANTIC|CASUAL>   <- if a `Drawn To:` block named an orientation this is not that question; this one is how much feeling must come first. Every physical signal in the blocks is evidence HERE, except how often desire comes: `Appetite:`, `Stirred By:` and `Cooled By:` blocks are not this answer. Who they sleep with and on what terms IS this answer: many partners, swinging, threesomes, no-strings sex or sex sought as a need point to CASUAL.
 ARDOR: <RESERVED|MEASURED|WARM|OPEN|INTENSE>   <- if an `Expression:` block was applied, COPY ITS ANSWER. `Measured, Shows Little`=MEASURED, `Warm but Not Effusive`=WARM, `Open About What They Feel`=OPEN, `Intense and Unmistakable`=INTENSE, `Reserved and Undemonstrative`=RESERVED. Twenty blocks about what they enjoy in bed do not change this number.
 EXCLUSIVITY: <UNTROUBLED|ACCEPTING|CONVENTIONAL|POSSESSIVE|CONSUMING>   <- if an `Attachment:` block was applied, COPY ITS ANSWER. `Untroubled by Others`=UNTROUBLED, `Accepts Others Easily`=ACCEPTING, `Expects the Usual Arrangement`=CONVENTIONAL, `Needs to Be the Only One`=POSSESSIVE, `Cannot Share at All`=CONSUMING. The block is the answer; do not read past it to the bio. With NO block applied, CONVENTIONAL is the ordinary answer and the one most people deserve - it is the societal norm, not a weak reading. CONSUMING is the rarest answer here and describes someone for whom a rival ends the relationship outright, not someone who would merely mind very much; do not reach for it because the bio is passionate.
 WHY: <one short sentence, in third person, on what these say about them>

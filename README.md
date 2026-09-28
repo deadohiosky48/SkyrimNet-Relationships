@@ -123,6 +123,15 @@ than paid and taken back, so you never see a tier arrive and vanish. Say yes and
 it is granted in full. A purely platonic companion has no question to answer and
 climbs to the top of the ladder freely.
 
+**Wanting someone is not falling for them.** Desire never counts as a crossing:
+not attraction, not a night together, however often. Intimacy itself follows each
+companion's disposition. A casual one can be your bedmate as a friend, with no
+romance involved. A romantic one needs to have begun falling for you, though
+nothing has to be declared yet. A guarded one waits for the deepest bond there
+is. A recorded engagement or marriage counts as having fallen. And being free to
+is not the same as wanting to: whether they want you tonight is its own question
+each time, and yes one evening promises nothing about the next.
+
 **Spouse is the rung that makes marriage possible, and it is enforced.** Until a
 companion has earned it, a formal proposal is off the table — MARAS will not
 offer one, and an engagement that slips through some other route is put back. The
@@ -214,8 +223,10 @@ Four tabs, one per axis this mod reads:
 | Relationships: Limits | the line they will not cross |
 
 Apply **one** block from Attachment, Expression and Drawn To. Each is a single
-value, so two at once is a contradiction the judge then has to resolve rather
-than a preference stated twice. Limits can take several.
+value, and when a character is authored a single block from one of these tabs is
+not weighed as evidence: it is the answer. Two from the same tab is a
+contradiction, so neither wins and the judge goes back to reading the bio. A
+recorded marriage still outranks a Drawn To block. Limits can take several.
 
 **Balance matters more than restraint.** Blocks describing physical taste say
 nothing about how someone expresses feeling, so a character carrying twenty of
@@ -228,6 +239,34 @@ Blocks are read when a character is first authored, and again whenever their
 disposition is reviewed - so applying one later is not wasted. It pulls them
 toward it gradually instead of all at once. To have it land immediately,
 re-author the character; see Troubleshooting.
+
+### Optional: the arousal block library
+
+A second library, [arousal_bio_blocks.json](https://raw.githubusercontent.com/deadohiosky48/SkyrimNet-Relationships/main/library/arousal_bio_blocks.json),
+describes desire rather than disposition. It imports the same way and ships
+beside the first one.
+
+| tab | what it describes |
+|---|---|
+| Arousal: Appetite | how readily desire comes to them - apply one |
+| Arousal: Stirred By | what wakes it - a few is normal |
+| Arousal: Cooled By | what puts it out for a while - a few is normal |
+
+**It unlocks nothing.** Whether someone is free to be intimate with you is still
+settled by their disposition and your bond. These blocks shape whether they want
+to *right now*, so the same companion can say yes one evening and no the next,
+and mean both. Without them a companion still has good and bad nights, read from
+the moment; with them, the reasons are theirs. Someone cooled by danger is not
+in the mood in a crypt, and someone stirred by kindness might be after watching
+you give your coin away.
+
+**Wanting is never read as falling.** A companion stirred by exactly what you
+just did has been stirred, and that is all. It can lead a casual character to
+bed; it never makes anyone fall in love with you.
+
+Keep them consistent with the rest of a character's blocks. Someone carrying
+SeverActions' *Shy* or *Reserved* is more likely *Slow to Kindle* than *Easily
+Stirred*.
 
 ## Configuration
 

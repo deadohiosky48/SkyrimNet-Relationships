@@ -52,6 +52,45 @@
    default(..., 0) degrades to "applies", rendering exactly what shipped before
    this existed - so a missing field changes nothing for anyone. #}
 {% set romance_na = default(rom.romanceNA, 0) %}
+{# A MISSING FIELD MUST NOT MAKE A CHILD AN ADULT. The default above is safe
+   for an adult - "applies" is what shipped before this existed - and exactly
+   wrong for a minor, and get_romance is a PAPYRUS decorator: slow, and liable
+   to arrive empty. Mikel (SkyChild, race "Nord Child"), 2026-09-24/25: 10 of
+   12 bond renders were correctly foreclosed and 2 told him "wanting is not the
+   same as being ready" - one seconds before a session ended, one four minutes
+   into the next. RomanceApplicability itself was right every time it ran.
+
+   So minors are re-derived here from SkyrimNet's NATIVE decnpc race, which
+   needs no Papyrus at all; every child in the logs renders as "<Race> Child".
+   It can only ever CLOSE the question, never open it.
+
+   MINORS ONLY, NEVER KIN, to honour "Never Romance Your Own Children". That
+   setting governs the player's own ADULT children, and a template can read
+   neither the setting nor Kinship's record without another Papyrus decorator
+   (kinship_is_child has the same weakness). A kin fallback here would close
+   the question even with the setting off, so kin stays Papyrus-only - where a
+   minor is foreclosed whatever the setting says, as RomanceApplicability
+   already does. #}
+{% if romance_na == 0 and contains(lower(default(actor.race, "")), "child") %}{% set romance_na = 2 %}{% endif %}
+{# AN EMPTY ANSWER IS SILENCE, NOT A STATE. SkyrimNet Beta 25 (public)
+   caches Papyrus decorators and a cache miss returns EMPTY, non-blocking -
+   measured 2026-09-27 at 193 misses against 1438 hits over one 5.5h session,
+   spread through all of it, not just the load. Every default() above then
+   rendered: sparked 0 put lovers on the platonic ladder, and Orla, the
+   player's Lover since the 24th, was told "you are not available to Haruk
+   that way yet" in 2 of her 6 renders, each within seconds of a miss.
+
+   The header's old rule - "platonic ladder, the safe direction" - was written
+   for a lookup that failed rarely. One render in eight flipping a spouse to a
+   stranger is not safe in any direction. get_romance ALWAYS emits `enrolled`,
+   true or false, so its absence means the call returned nothing: say nothing
+   about this bond on this render, and let the next one - or the conversation
+   itself - carry it.
+
+   EXCEPT FOR A FORECLOSED PAIR. The child guard above reads SkyrimNet's native
+   race and does not depend on this decorator at all, so a minor still gets
+   "not that kind of bond" when get_romance comes back empty. #}
+{% if default(rom.enrolled, "unknown") != "unknown" or romance_na != 0 %}
 {# The player's own answer: -1 declined, 0 never asked, 1 accepted. Gates the
    top two rungs of the ROMANTIC ladder only - everything below tier 4 is
    unrequited-and-unspoken by design and needs no consent from anyone.
@@ -161,7 +200,7 @@ What you feel for {{ player.name }} sits close to love and cannot quite become i
 You love {{ player.name }}, and it is not a secret between you.
 
 - Speak to them as a lover: with ease, with claim, with the shorthand of people who know each other well.
-- You are open about affection and desire. You do not need to be coaxed into either.
+- You are open about affection, and about desire when you feel it. Neither has to be coaxed out of you.
 - Their absence bothers you. Their danger frightens you. You have something to lose now, and you feel it.
 {% elif rom_tier >= 5 %}
 {{ player.name }} is your partner in the fullest sense. Whatever ceremony has or has not happened, the bond is settled and total.
@@ -178,13 +217,22 @@ You love {{ player.name }}, and it is not a secret between you.
    into the romance ladder erases her, so it is asked separately here.
    romance_physical_ok is ours and returns the STRING "true".              #}
 {% set phys = romance_physical_ok(actorUUID) %}
+{# Foreclosed is never physically available. Papyrus PhysicalOk already agrees
+   for every reason romance_na carries; this only matters when the two
+   decorators disagree, and keeps the child guard above from leaving the casual
+   branch or the "Being free" section reachable. #}
+{% if romance_na != 0 %}{% set phys = "false" %}{% endif %}
+{# Same cache: romance_physical_ok returns the STRING "true" or "false" and
+   nothing else, so anything else is a miss. Neither branch renders on a miss
+   - the refusal below used to be the `else` of "true", which is how a Lover
+   came to be told she was not available. #}
 {% if phys == "true" and sparked != 1 %}
 
 What you feel for {{ player.name }} is not love, and you have never confused the two. That has nothing to do with whether you want them.
 
 - Desire and commitment are separate questions for you, and you have already answered them differently.
 - You are not building toward anything and are not pretending to. Neither of you is owed more than what this is.
-{% elif phys != "true" %}
+{% elif phys == "false" %}
 {# WIDENED 2026-08-04. This branch used to require `sparked and rom_tier >= 3`,
    so the refusal rendered ONLY for someone already sparked, already at
    Confidant or above, and still unavailable - a narrow slice. Every other
@@ -343,6 +391,38 @@ You are not available to {{ player.name }} that way yet, and wanting is not the 
 {% endif %}
 {% endif %}
 {% endif %}
+{% endif %}
+
+{# -- ABLE TO IS NOT WANTING TO, TONIGHT ------------------------------------
+   Everything above settles WHETHER intimacy is possible at this standing, and
+   nothing said whether they want it NOW - so the answer had one value per
+   tier. Past the authored INTIMACY threshold it was yes every time, and the
+   Lover rung said so outright ("open about affection and desire. You do not
+   need to be coaxed into either", reworded the same day to "when you feel
+   it"). The author, 2026-09-24, with the arousal mods removed: intimacy is
+   either always available or never, depending on standing, and neither is
+   how people are.
+
+   So availability reads as permission and the moment is left to them. The
+   arousal library (Appetite / Stirred By / Cooled By) renders above this, at
+   SeverActions' 0040, and supplies the particulars. This names no block, so
+   a character with none still gets an honest "sometimes", read from the
+   moment and the rest of their bio.
+
+   NOT A GATE. It cannot make anyone available - it renders only when the
+   branch above already says they are. The initiative bullet leaves the
+   delivery to them for the same reason the runway does (the "want them out
+   loud" draft). And the last bullet is the runway's rule applied to a
+   momentary no: signal one answer all evening and give the other, and it
+   reads as a lie at any standing (Rettia). #}
+{% if phys == "true" %}
+
+Being free to be with {{ player.name }} that way is not the same as wanting to at every moment. Whether you want them now is a fresh question each time, with a real answer either way.
+
+- It follows your appetite and whatever stirs or cools you, as far as that is set down above - and otherwise the moment itself: what has just happened, where you are, who is near, how tired or troubled you are.
+- When you do want them, you need not wait to be asked. How it shows is yours: the bold say so, the reserved let it be noticed.
+- When you do not, that is not a verdict on the bond and needs no explaining. Yesterday's yes does not carry over, and neither does yesterday's no.
+- Whichever it is, let it be the same answer all evening. Do not signal one and give the other.
 {% endif %}
 
 {# ── Who she is in this, specifically ──────────────────────────────────────
@@ -520,6 +600,7 @@ You have been aware lately that whatever this is has been moving, and not slowly
 {% endif %}
 
 Do not state your tier, your points, or any number. Do not announce the state of the relationship. Let it show in your manner, what you notice, what you assume you are allowed to say.
+{% endif %}{# rom known, or foreclosed #}
 {% endif %}
 {% endif %}
 {% endif %}

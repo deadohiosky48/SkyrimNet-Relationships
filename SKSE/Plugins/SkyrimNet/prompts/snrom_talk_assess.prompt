@@ -44,6 +44,16 @@ Read it against THEM. The same exchange lands differently on different people, a
 {% if npc_ardor %}In general {{ npc_name }} is {{ npc_ardor }}.{% endif %}
 {% if npc_why %}What is true of them in this: {{ npc_why }}{% endif %}
 
+{# DESIRE IS ONE MORE REGISTER TO READ AGAINST THEM, 2026-09-24. The arousal
+   library (Appetite / Stirred By / Cooled By) reaches this prompt through the
+   transform profile below, and with it desire comes and goes. Two misreads to
+   head off: flirtation from someone who wants easily banked as the bond
+   moving, and a night they were not in the mood scored as ground lost. What
+   the player DID that put them off is still conduct and still scores - that is
+   "the same remark can warm one person and put another off". Names the
+   question, not the block, so SeverActions' own libido blocks count too. #}
+Desire is read the same way. If their profile says how readily desire comes to them, or what stirs and what cools them, weigh what passed by that measure: flirtation from someone who wants easily is their ordinary register, and from someone seldom stirred it can mean a great deal. The same remark can warm one person and put another off. Their simply not being in the mood is not the bond moving in either direction; something {{ player.name }} did that put them off can be.
+
 IT CAN GO BACKWARD
 A conversation can cost {{ player.name }} ground. Dismissal, a promise broken, a line crossed, being talked past, being treated as owned. If {{ npc_name }} came out of this worse disposed toward {{ player.name }}, say so — a record where nothing ever goes wrong is not a record of a relationship.
 

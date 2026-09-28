@@ -44,10 +44,10 @@ parameterMapping:
     description: you, the one whose feelings moved
   - type: dynamic
     name: aiMagnitude
-    description: "how much this moved you, signed. A BARE INTEGER and nothing else - 35 or -20, never \"35 points\", never a range, never braces or quotes around it. 5-15 for a warm or cool exchange; 20-40 for real vulnerability, a shared risk, or a genuine slight; 50-75 only for something that changed things between you. Negative for betrayal, cruelty, or a promise broken."
+    description: "how much this moved you, signed, written as digits only - 35 or -20, never a word, a range or a unit. 5-15 for a warm or cool exchange; 20-40 for real vulnerability, a shared risk, or a genuine slight; 50-75 only for something that changed things between you. Negative for betrayal, cruelty, or a promise broken."
   - type: dynamic
     name: asReason
-    description: "one specific sentence naming what actually happened, in your own voice. This is read by the player."
+    description: "REQUIRED - never leave this out. One specific sentence naming what actually happened, in your own voice. This is read by the player."
   # optional/default IS THE FIX, NOT THE WORD "optional" IN THE DESCRIPTION.
   # The description is advice to the model; this is the contract with the
   # dispatcher. Without these two lines a response that omits the key entirely
@@ -83,7 +83,7 @@ parameterMapping:
   # exactly as before. Nothing regresses if it is never sent.
   - type: dynamic
     name: asMagnitude
-    description: "the same number as aiMagnitude, written as text - \"35\", \"-20\". Always include it. It is a safety copy: if the numeric field is damaged in transit this one is used instead, and the moment is kept rather than lost."
+    description: "the same number as aiMagnitude again, digits only - 35 or -20. Always include it. It is a safety copy: if the numeric field is damaged in transit this one is used instead, and the moment is kept rather than lost."
     optional: true
     default: ""
 

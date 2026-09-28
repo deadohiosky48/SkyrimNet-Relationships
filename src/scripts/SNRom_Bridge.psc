@@ -338,12 +338,16 @@ EndFunction
 Function RegisterDecorators()
     { RegisterDecorator returns a status int. Ignoring it was how four silent
       registration failures went unnoticed - log every one. }
-    Int a = SkyrimNetApi.RegisterDecorator("romance_is_enrolled", "SNRom_Decorators", "IsEnrolled")
-    Int b = SkyrimNetApi.RegisterDecorator("romance_can_begin",   "SNRom_Decorators", "CanBegin")
+    ; ONLY WHAT A TEMPLATE READS. romance_is_enrolled and romance_can_begin
+    ; were registered for the old RomanceBeginSpark gate, which moved to a
+    ; background call and native eligibility rules long ago - nothing has read
+    ; either since, yet SkyrimNet evaluated each ~327 times a session. Under
+    ; Beta 25 every registered Papyrus decorator is also something the cache
+    ; must warm, so dead ones compete with the two that matter. Unregistered
+    ; 2026-09-27; IsEnrolled and CanBegin themselves stay, as plain functions.
     Int c = SkyrimNetApi.RegisterDecorator("romance_physical_ok", "SNRom_Decorators", "PhysicalOk")
     Int e = SkyrimNetApi.RegisterDecorator("get_romance",         "SNRom_Decorators", "GetRomance")
-    Diag(LOG_INFO(), "RegisterDecorator rc: is_enrolled=" + a + " can_begin=" + b + \
-        " physical_ok=" + c + " get_romance=" + e)
+    Diag(LOG_INFO(), "RegisterDecorator rc: physical_ok=" + c + " get_romance=" + e)
 EndFunction
 
 ; ===========================================================================
@@ -6810,9 +6814,28 @@ Function ApplySpark(Actor akActor, String asMoment)
     MarkSelfAward(akActor)
     Romantasy.ModifyPoints(akActor, ScaleAward(25), asMoment, False)
 
-    SkyrimNetApi.RegisterPersistentEvent( \
-        akActor.GetDisplayName() + " and " + Game.GetPlayer().GetDisplayName() + \
-        " have reached an understanding neither has named. " + asMoment, akActor, Game.GetPlayer())
+    ; A SPARK IS HERS ALONE, SO IT IS A THOUGHT, NOT AN EVENT. This used to be
+    ; RegisterPersistentEvent("<her> and <player> have reached an understanding
+    ; neither has named. <moment>"), which is wrong twice over. It claims a
+    ; MUTUAL understanding for a verdict judged "from her side - unrequited is a
+    ; real answer" (the spark prompt's own words). And a persistent event is
+    ; shared history: Gisli's, 2026-09-24, reached Jordis's dialogue prompts 7
+    ; times as `Gisli (to Haruk): *...I let him overpower me on the furs...*`,
+    ; spoken aloud as far as every bystander could tell, and fed SkyrimNet's
+    ; agency engine and memory builder besides.
+    ;
+    ; GenerateNPCThought (Beta 25) stores a thought whose audience is the
+    ; thinking NPC only and surfaces it in HER later prompts - the private
+    ; shift the romantic ladder's first rung already describes ("you have not
+    ; named it, even to yourself"). It can skip on SkyrimNet's thought cooldown
+    ; or while she sleeps; that loses only colour, because the spark itself is
+    ; the StorageUtil flag above and the Romantasy entry, not this line.
+    Int thoughtRc = SkyrimNetApi.GenerateNPCThought(akActor, "Something has shifted in how you regard " + \
+        Game.GetPlayer().GetDisplayName() + ", though you have said nothing of it and do not know whether it is returned. What did it: " + asMoment)
+    If thoughtRc != 0
+        Diag(LOG_WARN(), "Spark thought for " + akActor.GetDisplayName() + " was not generated (rc=" + thoughtRc + \
+            ") - the spark stands; only the private thought is missing.", True)
+    EndIf
 
     Ledger(akActor, "spark", "", 25, 1, asMoment)
     Diag(LOG_INFO(), "SPARK: " + akActor.GetDisplayName() + " crossed into romance - " + asMoment)
@@ -7700,6 +7723,10 @@ Function ApplyCharacter(Actor akActor, String asResponse)
         ": " + orientPart + \
         " intimacy='" + intimWord + "'->minTier" + minTier + "/bypass" + bypass + \
         " ardor=" + ardor + " exclusivity=" + excl)
+    ; Applied blocks overrule the model on the three fields they answer - after
+    ; the authored write, so the log above keeps what the model said and the
+    ; override lines below say what was corrected.
+    EnforceBlockAnswers(akActor)
     ; READS BACK WHAT WAS STORED rather than reporting the parsed values above.
     ; A field the response omitted is deliberately not written - see the note on
     ; absent fields - and an orientation can be REJECTED outright for a married
@@ -7710,6 +7737,151 @@ Function ApplyCharacter(Actor akActor, String asResponse)
         StorageUtil.GetIntValue(akActor, "SNRom_Exclusivity", 50) + ", ardor " + \
         StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2) + ", " + \
         SNRom_Decorators.IntimacyWordFromTier(StorageUtil.GetIntValue(akActor, "SNRom_PhysMinTier", 4)) + ".")
+EndFunction
+
+Function EnforceBlockAnswers(Actor akActor)
+    { THE BLOCKS WIN, ENFORCED RATHER THAN ASKED FOR.
+
+      A `Drawn To:`, `Expression:` or `Attachment:` block is a direct answer the
+      player applied on purpose, and the authoring prompt has always said so -
+      "on its own field it outranks everything". Vivienne Onis, 2026-09-28:
+      Drawn To: Both applied, re-authored ATTRACTED_TO_MEN / IMPLIED anyway. The
+      two fields whose answer line carried a block-to-word mapping (ardor,
+      exclusivity) came out right; the one that did not, did not. The mapping is
+      now on that line too - and this makes the rule hold even when the model
+      reads past it, the same reasoning as the marriage clamp in ApplyCharacter:
+      once persuasion is spent, write the fact where the value enters.
+
+      READ FROM SEVERACTIONS, NEVER FROM PROSE. Native_BioBlock_AssignedTitles
+      (3.9.14+, still present in the Beta 25 build) returns the titles exactly as
+      the library shows them. An older SeverActions lacks the native: the call
+      logs one Papyrus error and returns None, and nothing is overridden.
+
+      ONLY THE THREE FIELDS A BLOCK ANSWERS. Intimacy has no block and stays the
+      model's reading. A block we cannot parse - a custom answer, or two
+      different blocks of one kind - is reported and left alone; guessing
+      would be the same mistake in the other direction.
+
+      A RECORDED MARRIAGE STILL OUTRANKS A BLOCK on orientation, exactly as it
+      outranks the model. The block is then wrong, and the log says so. }
+    If akActor == None || !SeverActionsPresent()
+        Return
+    EndIf
+    String[] titles = SeverActionsNativeExt2.Native_BioBlock_AssignedTitles(akActor)
+    If !titles || titles.Length == 0
+        Return
+    EndIf
+    String who = akActor.GetDisplayName()
+
+    ; ---- Drawn To -> orientation, and the basis becomes STATED ----------------
+    String drawn = BlockAnswer(titles, "Drawn To:")
+    String oWord = ""
+    If drawn == "Men"
+        oWord = "ATTRACTED_TO_MEN"
+    ElseIf drawn == "Women"
+        oWord = "ATTRACTED_TO_WOMEN"
+    ElseIf drawn == "Both"
+        oWord = "ATTRACTED_TO_BOTH"
+    ElseIf drawn == "No One"
+        oWord = "ATTRACTED_TO_NEITHER"
+    EndIf
+    If oWord != ""
+        Int o = SNRom_Decorators.OrientationToInt(oWord)
+        If IsMarriedToPlayer(akActor) && OrientationExcludesPlayer(o)
+            Diag(LOG_WARN(), "Block 'Drawn To: " + drawn + "' NOT applied to " + who + \
+                " - the game records a marriage to the player, which the block contradicts. Fix the block.")
+        ElseIf StorageUtil.GetIntValue(akActor, "SNRom_Orientation", 3) != o || \
+            StorageUtil.GetIntValue(akActor, "SNRom_OrientationKnown", 0) != 2
+            StorageUtil.SetIntValue(akActor, "SNRom_Orientation", o)
+            StorageUtil.SetIntValue(akActor, "SNRom_OrientationKnown", 2)
+            Diag(LOG_INFO(), "BLOCK OVERRIDE for " + who + ": orientation -> " + oWord + \
+                " / STATED, from the applied block 'Drawn To: " + drawn + "'.")
+        EndIf
+    ElseIf drawn != ""
+        Diag(LOG_WARN(), "Block 'Drawn To: " + drawn + "' on " + who + \
+            " is not one of the library's answers (or two disagree) - orientation left as authored.")
+    EndIf
+
+    ; ---- Expression -> ardor ------------------------------------------------
+    String expr = BlockAnswer(titles, "Expression:")
+    String rWord = ""
+    If expr == "Reserved and Undemonstrative"
+        rWord = "RESERVED"
+    ElseIf expr == "Measured, Shows Little"
+        rWord = "MEASURED"
+    ElseIf expr == "Warm but Not Effusive"
+        rWord = "WARM"
+    ElseIf expr == "Open About What They Feel"
+        rWord = "OPEN"
+    ElseIf expr == "Intense and Unmistakable"
+        rWord = "INTENSE"
+    EndIf
+    If rWord != ""
+        Int r = SNRom_Decorators.ArdorToInt(rWord)
+        If StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2) != r
+            StorageUtil.SetIntValue(akActor, "SNRom_Ardor", r)
+            Diag(LOG_INFO(), "BLOCK OVERRIDE for " + who + ": ardor -> " + rWord + \
+                ", from the applied block 'Expression: " + expr + "'.")
+        EndIf
+    ElseIf expr != ""
+        Diag(LOG_WARN(), "Block 'Expression: " + expr + "' on " + who + \
+            " is not one of the library's answers (or two disagree) - ardor left as authored.")
+    EndIf
+
+    ; ---- Attachment -> exclusivity (the seed value for that band) -------------
+    String attach = BlockAnswer(titles, "Attachment:")
+    String xWord = ""
+    If attach == "Untroubled by Others"
+        xWord = "UNTROUBLED"
+    ElseIf attach == "Accepts Others Easily"
+        xWord = "ACCEPTING"
+    ElseIf attach == "Expects the Usual Arrangement"
+        xWord = "CONVENTIONAL"
+    ElseIf attach == "Needs to Be the Only One"
+        xWord = "POSSESSIVE"
+    ElseIf attach == "Cannot Share at All"
+        xWord = "CONSUMING"
+    EndIf
+    If xWord != ""
+        Int x = SNRom_Decorators.ExclusivityToInt(xWord)
+        If StorageUtil.GetIntValue(akActor, "SNRom_Exclusivity", 50) != x
+            StorageUtil.SetIntValue(akActor, "SNRom_Exclusivity", x)
+            Diag(LOG_INFO(), "BLOCK OVERRIDE for " + who + ": exclusivity -> " + xWord + " (" + x + \
+                "), from the applied block 'Attachment: " + attach + "'.")
+        EndIf
+    ElseIf attach != ""
+        Diag(LOG_WARN(), "Block 'Attachment: " + attach + "' on " + who + \
+            " is not one of the library's answers (or two disagree) - exclusivity left as authored.")
+    EndIf
+EndFunction
+
+String Function BlockAnswer(String[] akTitles, String asPrefix)
+    { The answer half of the applied block whose title starts with asPrefix -
+      "Both" from "Drawn To: Both". "" when none is applied; "?" when two
+      DIFFERENT ones are, a contradiction to report rather than resolve by
+      picking one. Strips the " (2)" suffix SeverActions' import adds when a
+      title already existed. Papyrus == ignores case, so callers match the
+      library's wording as written. }
+    String found = ""
+    Int plen = StringUtil.GetLength(asPrefix)
+    Int i = 0
+    While i < akTitles.Length
+        String t = SNRom_Decorators.Trim(akTitles[i])
+        If StringUtil.Find(t, asPrefix) == 0
+            String v = SNRom_Decorators.Trim(StringUtil.Substring(t, plen))
+            Int cut = StringUtil.Find(v, " (")
+            If cut > 0 && StringUtil.GetNthChar(v, StringUtil.GetLength(v) - 1) == ")"
+                v = SNRom_Decorators.Trim(StringUtil.Substring(v, 0, cut))
+            EndIf
+            If found == ""
+                found = v
+            ElseIf found != v
+                Return "?"
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    Return found
 EndFunction
 
 Int Function CountHighFrequencyHeld(Actor akActor)
