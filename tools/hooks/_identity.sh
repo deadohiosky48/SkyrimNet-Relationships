@@ -39,21 +39,43 @@ PATH_RE='(^|[^A-Za-z0-9])[A-Za-z]:[\\/][A-Za-z0-9_.-]+[\\/][A-Za-z0-9_.-]+|/(Use
 # paths. Paths need two folders after the drive, as in package.ps1, so that
 # "USE:\n- ..." in a YAML string is not mistaken for one. Never quote a real
 # path as the example - the first version of package.ps1's comment did.
+# FAIL CLOSED, AND NEVER `grep -i -F`. Git for Windows ships GNU grep 3.0, and
+# `grep -i -F` ABORTS in some environments (measured 2026-09-28: SIGABRT, exit
+# 134, on plain ASCII, in one shell and not in git's own hook environment).
+# An `if grep ...` reads an abort exactly like "no match", so the identity check
+# passed silently wherever grep crashed. So case is folded with tr instead of
+# -i, and every grep's exit status is checked: 0 found, 1 clean, anything else
+# refuses rather than guesses.
+lower() { tr 'A-Z' 'a-z'; }
+
+# found RC LABEL WHAT - turns a grep exit status into a verdict.
+found() {
+    case "$1" in
+        0) return 0 ;;
+        1) return 1 ;;
+        *) echo "  $2: could not check for $3 (grep exited $1) - refusing rather than guessing" >&2
+           return 0 ;;
+    esac
+}
+
 check_text() {
     label="$1"
     text=$(cat)
     bad=0
-    tokens=$(identity_tokens)
+    tokens=$(identity_tokens | lower)
+    folded=$(printf '%s\n' "$text" | lower)
     if [ -n "$tokens" ]; then
         printf '%s\n' "$tokens" | while IFS= read -r t; do
             [ -z "$t" ] && continue
-            if printf '%s\n' "$text" | grep -i -q -w -F -- "$t"; then
+            printf '%s\n' "$folded" | grep -q -w -F -- "$t"
+            if found $? "$label" "identity"; then
                 echo "  $label: contains an identity token (see tools/hooks/_identity.sh)" >&2
                 exit 1
             fi
         done || bad=1
     fi
-    if printf '%s\n' "$text" | grep -q -E "$PATH_RE"; then
+    printf '%s\n' "$text" | grep -q -E "$PATH_RE"
+    if found $? "$label" "absolute paths"; then
         echo "  $label: contains an absolute path:" >&2
         printf '%s\n' "$text" | grep -o -E "$PATH_RE" | head -3 | sed 's/^/      /' >&2
         bad=1
@@ -66,7 +88,8 @@ check_message() {
     label="$1"
     msg=$(grep -v '^#')
     bad=0
-    if printf '%s\n' "$msg" | grep -i -q -E '^[[:space:]]*co-authored-by:'; then
+    printf '%s\n' "$msg" | lower | grep -q -E '^[[:space:]]*co-authored-by:'
+    if found $? "$label" "co-author trailers"; then
         echo "  $label: has a Co-Authored-By trailer. Remove it - every co-author is listed as a contributor on GitHub." >&2
         bad=1
     fi
