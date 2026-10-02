@@ -20,6 +20,7 @@
 
 #include "MeridianHost.h"
 #include "Model.h"
+#include "PrismaHost.h"
 #include "ViewHost.h"
 
 #include <format>
@@ -522,7 +523,7 @@ namespace SNRom::Dashboard {
 
         void OpenUnguarded() {
             if (!g_host || !g_created) {
-                Notify("[Relationships] The dashboard needs Meridian UI.");
+                Notify("[Relationships] The dashboard needs Meridian UI or Prisma UI.");
                 return;
             }
 
@@ -595,13 +596,22 @@ namespace SNRom::Dashboard {
     }
 
     void OnInputLoaded() {
-        g_host = AcquireMeridian();
+        // MERIDIAN FIRST, PRISMA OTHERWISE - and Prisma first in Skyrim VR,
+        // where the Meridian runtime does not run (its author guide) and Prisma
+        // has a VR build. Both are asked at kInputLoaded: Meridian refuses a
+        // first query from later worker-thread messages, and Prisma only needs
+        // it at or after kPostLoad.
+        const bool vr = REL::Module::IsVR();
+        g_host = vr ? AcquirePrisma() : AcquireMeridian();
+        if (!g_host) {
+            g_host = vr ? AcquireMeridian() : AcquirePrisma();
+        }
         if (g_host) {
-            SKSE::log::info("{} found (Meridian.View/1)", g_host->Name());
+            SKSE::log::info("{} found{}", g_host->Name(), vr ? " (Skyrim VR)" : "");
         } else {
             // ONCE, and not an error. No dashboard is a supported configuration
             // (design 7.5), and nothing else in the mod depends on it.
-            SKSE::log::info("Meridian UI not found, or too old for Meridian.View/1: no dashboard. "
+            SKSE::log::info("Neither Meridian UI (Meridian.View/1) nor Prisma UI found: no dashboard. "
                             "Everything else in SkyrimNet Relationships works without it.");
         }
     }
@@ -619,7 +629,7 @@ namespace SNRom::Dashboard {
         if (!listening) {
             SKSE::log::error("Could not register snromRequest/snromClose: the page cannot reach the game");
         }
-        SKSE::log::info("Dashboard view created (mod://snrelationships/index.html), hidden until the hotkey");
+        SKSE::log::info("Dashboard view created in {}, hidden until the hotkey", g_host->Name());
     }
 
     void Toggle() {

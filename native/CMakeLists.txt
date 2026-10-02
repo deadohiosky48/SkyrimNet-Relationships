@@ -86,6 +86,7 @@ set(SOURCES
     src/Model.cpp
     src/Natives.cpp
     src/Notices.cpp
+    src/PrismaHost.cpp
     src/Settings.cpp
 )
 

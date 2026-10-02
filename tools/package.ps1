@@ -275,8 +275,10 @@ try {
     # --- 3c. the dashboard: SkyrimNetRelationships.dll and its page ---------
     # OUTSIDE SkyrimNet's content layers: the DLL goes to SKSE\Plugins and the
     # page to MeridianUI\snrelationships, which is where Meridian serves
-    # mod://snrelationships/ from. Neither belongs in external\, so both
-    # layouts above are untouched.
+    # mod://snrelationships/ from, and again to PrismaUI\views\snrelationships,
+    # Prisma's base directory (native\src\PrismaHost.cpp). The same files in
+    # both: the page never knows which host it runs under. Neither belongs in
+    # external\, so both layouts above are untouched.
     #
     # Both or neither. The page does nothing without the DLL, and the DLL is
     # optional: a build machine without it still packages the rest of the mod,
@@ -303,7 +305,13 @@ try {
             throw "The mock host or its developer strip is staged: $($mockLeaks.Name -join ', ')"
         }
         $pageCount = (Get-ChildItem $page -Recurse -File).Count
-        $dashNote = "SkyrimNetRelationships.dll ($([math]::Round((Get-Item $dll).Length / 1KB)) KB), MeridianUI\snrelationships ($pageCount files)"
+        $prismaPage = Join-Path $stage 'PrismaUI\views\snrelationships'
+        New-Item -ItemType Directory -Force -Path (Split-Path $prismaPage) | Out-Null
+        Copy-Item $page $prismaPage -Recurse
+        if ((Get-ChildItem $prismaPage -Recurse -File).Count -ne $pageCount) {
+            throw "The Prisma copy of the page differs from the Meridian copy"
+        }
+        $dashNote = "SkyrimNetRelationships.dll ($([math]::Round((Get-Item $dll).Length / 1KB)) KB), MeridianUI\snrelationships and PrismaUI\views\snrelationships ($pageCount files each)"
     } else {
         $dashNote = 'NOT INCLUDED - no DLL built (tools\build-dll.ps1); this package has no dashboard'
         Write-Host "  Dashboard not included: native\build\Release\SkyrimNetRelationships.dll is not built." -ForegroundColor Yellow

@@ -164,8 +164,9 @@ said aloud — feelings they have not spoken, a question they are waiting to ask
 points held back until you answer — and adds a few developer tools. The
 dashboard is written to be played without it.
 
-Press Escape to close it. The dashboard needs Meridian UI; without it everything
-else works and only the dashboard is missing.
+Press Escape to close it. The dashboard needs Meridian UI or Prisma UI; with
+both installed it uses Meridian, except in Skyrim VR, where Meridian does not
+run. Without either, everything else works and only the dashboard is missing.
 
 ## Hotkeys
 
@@ -211,7 +212,7 @@ inert; nothing errors and no prompt breaks.
 
 | | adds |
 |---|---|
-| Meridian UI 1.5.0 or newer | the dashboard |
+| Meridian UI 1.5.0 or newer, or Prisma UI 1.5.1 or newer | the dashboard. In Skyrim VR, Prisma UI |
 | SeverActions | follower detection, including for companions you already know. From **3.9.11** it detects this mod and steps its own Intimacy & Consent section aside, so nobody is handed two ideas of how receptive they are. Its custom bio blocks are read as direct evidence when a character is authored - see below |
 | OStim Community Resource | physical attraction as an input, for characters whose disposition allows it to matter |
 | OStim NG or SexLab | tier notices wait until a scene is over |
@@ -512,7 +513,7 @@ familiar:
 
 Built on [SkyrimNet](https://www.nexusmods.com/skyrimspecialedition/mods/151960)
 by MinLL. The dashboard is hosted in Meridian UI by ColdSun, whose Romantasy
-carried 1.x. Neither is vendored here.
+carried 1.x, or in Prisma UI. None of them is vendored here.
 
 ## License and permissions
 

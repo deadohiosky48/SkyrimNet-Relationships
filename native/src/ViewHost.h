@@ -5,12 +5,11 @@
 // The UI framework that shows the dashboard page, behind the six operations the
 // dashboard needs: create, listen, show, focus, hide, send.
 //
-// MERIDIAN ONLY (MeridianHost.cpp). PrismaUI is not supported for now - the
-// author's decision, 2026-09-29, over its license: its API header is not MIT,
-// and vendoring it would bring the first non-MIT third-party file into the
-// repository. The interface stays anyway, because it costs nothing: a second
-// host would be a new file and the one place that picks a host, with nothing in
-// Dashboard.cpp changing.
+// TWO HOSTS: Meridian UI (MeridianHost.cpp) and Prisma UI (PrismaHost.cpp),
+// picked once in Dashboard::OnInputLoaded. Prisma was left out of 2.0 over its
+// non-MIT licence; the author brought it back on 2026-10-02, because Meridian
+// does not run in Skyrim VR. Its header is vendored unmodified with its licence
+// (include/PrismaUI/README.md). Nothing in Dashboard.cpp knows which it has.
 namespace SNRom {
 
     // Called with ONE string, on the framework's own thread. Copy the payload
