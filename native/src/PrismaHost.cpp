@@ -2,7 +2,15 @@
 
 #include "PCH.h"
 
+// The header calls GetModuleHandle with a wide string, which assumes a UNICODE
+// build; this project is not one, so the macro names the ANSI function. The
+// header may not be edited (include/PrismaUI/README.md), so the macro is
+// pointed at the wide function around it instead, and put back after.
+#pragma push_macro("GetModuleHandle")
+#undef GetModuleHandle
+#define GetModuleHandle GetModuleHandleW
 #include "PrismaUI/PrismaUI_API.h"
+#pragma pop_macro("GetModuleHandle")
 
 // Written from the vendored header and Prisma UI's public API documentation
 // only (include/PrismaUI/README.md). Prisma renders with Ultralight, not
