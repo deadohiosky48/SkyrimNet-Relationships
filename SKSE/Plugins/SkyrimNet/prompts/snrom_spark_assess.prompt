@@ -1,7 +1,7 @@
 [ system ]
 {# ══════════════════════════════════════════════════════════════════════════
    Spark assessment — decides whether a bond has crossed from platonic into
-   romantic. This is the track-selector for 0330_romantasy_bond.
+   romantic. This is the track-selector for 0330_relationships_bond.
 
    WHY THIS IS A BACKGROUND CALL AND NOT AN ACTION. It was an action
    (RomanceBeginSpark) for three sessions and never once fired. SkyrimNet
@@ -23,7 +23,7 @@
    ══════════════════════════════════════════════════════════════════════════ #}
 You judge whether something has changed between two people.
 
-{{ npc_name }} travels with {{ player.name }}. They are close enough to be observed, but nothing romantic has been established between them. Your question is whether that is still true.
+{{ npc_name }} knows {{ player.name }} and has been near enough to see what they say and do, but nothing romantic has been established between them. Your question is whether that is still true.
 
 WHAT COUNTS
 A moment of real vulnerability between them. Closeness that has stopped feeling like duty. A risk taken that did not have to be taken. Something noticed that cannot now be un-noticed. Physical intimacy that meant more to them than desire. Either of them naming feelings that go past friendship.
@@ -64,7 +64,7 @@ Agreement can also be nothing. Some people agree because refusing is awkward, be
 
 So do not ask whether they agreed. Ask whether THIS agreement, from THIS person, given how they carry themselves everywhere else, means they have crossed. A guarded person saying one unguarded thing can be enormous. An effusive one saying something grand can be nothing but their ordinary register.
 
-And some people never cross, however long they travel with {{ player.name }} and however well they are treated. That is a real and permanent answer, not a threshold you keep failing to clear.
+And some people never cross, however long they know {{ player.name }} and however well they are treated. That is a real and permanent answer, not a threshold you keep failing to clear.
 
 {% if npc_ardor %}
 For calibration: in general {{ npc_name }} is {{ npc_ardor }}. Read them against that. Warmth from someone reserved is significant; the same warmth from someone intense is their ordinary register and says nothing new.

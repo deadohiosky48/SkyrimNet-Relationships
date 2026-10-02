@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 3,
+  "generatedAt": 214.37,
+  "roster": {
+    "status": "current",
+    "message": null
+  },
+  "playthrough": {
+    "id": "7f3a91c2",
+    "store": "SNRom_Dispositions",
+    "storeDecision": "legacy"
+  },
+  "ladder": {
+    "thresholds": [
+      0,
+      500,
+      1000,
+      1500,
+      2000,
+      2500
+    ]
+  },
+  "player": {
+    "formId": 20,
+    "name": "Tamsin Vey",
+    "isPlayer": true
+  },
+  "settings": {
+    "developer": false,
+    "scale": "auto",
+    "textSize": "normal"
+  },
+  "crosshairTarget": null,
+  "bonds": [
+    {
+      "subject": {
+        "formId": 453558,
+        "name": "Marit Hollowell",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.33,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 10.28
+      },
+      "depth": {
+        "points": 2240,
+        "tier": 4,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "declined",
+      "foreclosure": null,
+      "stance": "declined",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 16.46,
+        "lastCheckedAt": 14.07
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 3,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Marit keeps a small circle and guards it fiercely.",
+        "limit": "Marit will not bow to a Thalmor justiciar, whatever it costs.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 933269,
+        "name": "Osric Tallow",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.37,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 46
+      },
+      "depth": {
+        "points": 1250,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "declined",
+      "foreclosure": null,
+      "stance": "declined",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 51.19,
+        "lastCheckedAt": 65.66
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 2,
+        "exclusivity": 25,
+        "orientation": "women",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Osric treats loyalty as a debt paid in deeds, never in words.",
+        "limit": "Osric will not bow to a Thalmor justiciar, whatever it costs.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 296749,
+        "name": "Gisla Emberlee",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.34,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 71.61
+      },
+      "depth": {
+        "points": 2140,
+        "tier": 4,
+        "banked": 0
+      },
+      "track": "romantic",
+      "state": "courting",
+      "foreclosure": null,
+      "stance": "accepted",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 90.36,
+        "lastCheckedAt": 165.75
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Gisla wants to be needed more than admired, and notices the difference at once.",
+        "limit": "Gisla will not take part in cruelty for sport.",
+        "address": "'Dearest', half teasing."
+      }
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 3,
+  "generatedAt": 214.37,
+  "roster": {
+    "status": "reading",
+    "message": null
+  },
+  "playthrough": {
+    "id": null,
+    "store": null,
+    "storeDecision": null
+  },
+  "ladder": {
+    "thresholds": [
+      0,
+      500,
+      1000,
+      1500,
+      2000,
+      2500
+    ]
+  },
+  "player": {
+    "formId": 20,
+    "name": "Tamsin Vey",
+    "isPlayer": true
+  },
+  "settings": {
+    "developer": false,
+    "scale": "auto",
+    "textSize": "normal"
+  },
+  "crosshairTarget": {
+    "formId": 334930,
+    "name": "Brenna Stonewhistle",
+    "enrolled": null
+  },
+  "bonds": []
+}

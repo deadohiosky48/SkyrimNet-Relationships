@@ -1,0 +1,41 @@
+{
+  "default": "dev-save",
+  "mocks": [
+    {
+      "id": "empty",
+      "title": "Empty roster"
+    },
+    {
+      "id": "dev-save",
+      "title": "Dev save shape (~120 enrolled, ~15 following)"
+    },
+    {
+      "id": "states",
+      "title": "One of each state (design 5.2)"
+    },
+    {
+      "id": "declined-at-depth",
+      "title": "Declined companion at depth"
+    },
+    {
+      "id": "foreclosed-child",
+      "title": "Foreclosed child"
+    },
+    {
+      "id": "reading",
+      "title": "First open after a load: reading"
+    },
+    {
+      "id": "refreshing",
+      "title": "Reading, with the last roster"
+    },
+    {
+      "id": "no-answer",
+      "title": "No answer from Papyrus yet"
+    },
+    {
+      "id": "not-ready",
+      "title": "Papyrus says not ready"
+    }
+  ]
+}

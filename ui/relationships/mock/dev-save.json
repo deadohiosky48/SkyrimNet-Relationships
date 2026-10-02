@@ -1,0 +1,6040 @@
+{
+  "schemaVersion": 3,
+  "generatedAt": 214.37,
+  "roster": {
+    "status": "current",
+    "message": null
+  },
+  "playthrough": {
+    "id": "7f3a91c2",
+    "store": "SNRom_Dispositions",
+    "storeDecision": "legacy"
+  },
+  "ladder": {
+    "thresholds": [
+      0,
+      500,
+      1000,
+      1500,
+      2000,
+      2500
+    ]
+  },
+  "player": {
+    "formId": 20,
+    "name": "Tamsin Vey",
+    "isPlayer": true
+  },
+  "settings": {
+    "developer": false,
+    "scale": "auto",
+    "textSize": "normal"
+  },
+  "crosshairTarget": {
+    "formId": 1013476,
+    "name": "Dunstan Harrowgate",
+    "enrolled": false
+  },
+  "bonds": [
+    {
+      "subject": {
+        "formId": 930475,
+        "name": "Zell Coldwater",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 113.92,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1712,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "foreclosed",
+      "foreclosure": "kin",
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 181.4
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 0,
+        "exclusivity": 0,
+        "orientation": "none",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Zell prizes plain speech and distrusts anyone who talks around a thing.",
+        "limit": "Zell will not follow someone who kills for coin.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 481877,
+        "name": "Berrin Frost-Veil",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 134.88,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1631,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "foreclosed",
+      "foreclosure": "kin",
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 189.95
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 2,
+        "exclusivity": 0,
+        "orientation": "none",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Berrin is restless under routine and comes alive on the road.",
+        "limit": "Berrin will not leave a companion behind in a fight.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 959524,
+        "name": "Osric Redfern",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 49.28,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1592,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "foreclosed",
+      "foreclosure": "minor",
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 95.38
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 1,
+        "exclusivity": 0,
+        "orientation": "none",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Osric trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
+        "limit": "Osric will not share a secret that was given in trust.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 952159,
+        "name": "Teldri Morvayn",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 65.65,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 882,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "foreclosed",
+      "foreclosure": "minor",
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 193.66
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 2,
+        "exclusivity": 0,
+        "orientation": "none",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Teldri treats loyalty as a debt paid in deeds, never in words.",
+        "limit": "Teldri will not be lied to twice.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 167080,
+        "name": "Wenna Thornbury",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 214.33,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 192.45
+      },
+      "depth": {
+        "points": 2368,
+        "tier": 4,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "foreclosed",
+      "foreclosure": "orientation",
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 196.27
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 4,
+        "exclusivity": 25,
+        "orientation": "men",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Wenna wants to be needed more than admired, and notices the difference at once.",
+        "limit": "Wenna will not stand beside anyone who harms a child.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 261972,
+        "name": "Kestrel Ashkettle",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 134.46,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 2034,
+        "tier": 4,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "foreclosed",
+      "foreclosure": "orientation",
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 87.02
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 0,
+        "exclusivity": 50,
+        "orientation": "men",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Kestrel is drawn to steadiness, and wary of anyone who needs an audience.",
+        "limit": "Kestrel will not be kept as someone's second choice.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 146152,
+        "name": "Gerdis Stonewhistle",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 214.15,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 214.02
+      },
+      "depth": {
+        "points": 21,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 214.27
+      },
+      "commitment": "none",
+      "seeded": false,
+      "traits": {
+        "authored": false,
+        "intimacy": "romantic",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "",
+        "limit": "",
+        "address": ""
+      }
+    },
+    {
+      "subject": {
+        "formId": 593294,
+        "name": "Jorunn Marrowind",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.37,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 212.72
+      },
+      "depth": {
+        "points": 518,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": false,
+      "traits": {
+        "authored": false,
+        "intimacy": "romantic",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "",
+        "limit": "",
+        "address": ""
+      }
+    },
+    {
+      "subject": {
+        "formId": 204655,
+        "name": "Nerys Duskmere",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 214.05,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 213.93
+      },
+      "depth": {
+        "points": 132,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": false,
+      "traits": {
+        "authored": false,
+        "intimacy": "romantic",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "",
+        "limit": "",
+        "address": ""
+      }
+    },
+    {
+      "subject": {
+        "formId": 91185,
+        "name": "Dunstan Silverbirch",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 214.37,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 214.28
+      },
+      "depth": {
+        "points": 473,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": false,
+      "traits": {
+        "authored": false,
+        "intimacy": "romantic",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "",
+        "limit": "",
+        "address": ""
+      }
+    },
+    {
+      "subject": {
+        "formId": 857758,
+        "name": "Sings-Under-Rain",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 171.95,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 171.53
+      },
+      "depth": {
+        "points": 588,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 2,
+        "exclusivity": 80,
+        "orientation": "men",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Sings-Under-Rain laughs easily and forgives quickly, but remembers exactly who was there when it mattered.",
+        "limit": "Sings-Under-Rain will not be kept as someone's second choice.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 527079,
+        "name": "Sabeth Brackenridge",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 171.25,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 153.01
+      },
+      "depth": {
+        "points": 433,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 4,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Sabeth keeps a small circle and guards it fiercely.",
+        "limit": "Sabeth will not be kept as someone's second choice.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 750174,
+        "name": "Jessamy Cinderholt",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 208.5,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 178.18
+      },
+      "depth": {
+        "points": 301,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 179.49
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Jessamy keeps a small circle and guards it fiercely.",
+        "limit": "Jessamy will not be kept as someone's second choice.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 1014532,
+        "name": "Kjeld Kettleburn",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.32,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 947,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 0,
+        "exclusivity": 100,
+        "orientation": "women",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Kjeld reads kindness to strangers as the truest measure of a person.",
+        "limit": "Kjeld will not be lied to twice.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 97995,
+        "name": "Yrsa Harrowgate",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 206.16,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 168.17
+      },
+      "depth": {
+        "points": 178,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 2,
+        "exclusivity": 0,
+        "orientation": "women",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Yrsa keeps a small circle and guards it fiercely.",
+        "limit": "Yrsa will not bow to a Thalmor justiciar, whatever it costs.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 541543,
+        "name": "Petra Ironbrook",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 206.1,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 173.02
+      },
+      "depth": {
+        "points": 1703,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 190.66
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 0,
+        "exclusivity": 0,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Petra treats loyalty as a debt paid in deeds, never in words.",
+        "limit": "Petra will not be lied to twice.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 898613,
+        "name": "Ragnith Ironbrook",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 199.26,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 304,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 1,
+        "exclusivity": 100,
+        "orientation": "women",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Ragnith trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
+        "limit": "Ragnith will not be lied to twice.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 764753,
+        "name": "Lorn Mossfell",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 155.53,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1793,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 1,
+        "exclusivity": 100,
+        "orientation": "none",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Lorn reads kindness to strangers as the truest measure of a person.",
+        "limit": "Lorn will not follow someone who kills for coin.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 342301,
+        "name": "Torvald Greywick",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 168.87,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 167,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 181.51
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Torvald has buried enough friends to be careful about making new ones.",
+        "limit": "Torvald will not share a secret that was given in trust.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 231342,
+        "name": "Varric Ironbrook",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 209.96,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 195.46
+      },
+      "depth": {
+        "points": 1475,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 210.43
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 3,
+        "exclusivity": 100,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Varric trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
+        "limit": "Varric will not be lied to twice.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 85135,
+        "name": "Jo'rassi",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 186.5,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 84,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 1,
+        "exclusivity": 100,
+        "orientation": "women",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Jo'rassi has buried enough friends to be careful about making new ones.",
+        "limit": "Jo'rassi will not take part in cruelty for sport.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 503146,
+        "name": "Corvane Cinderholt",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 187.2,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 277,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 165.36
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 0,
+        "exclusivity": 30,
+        "orientation": "none",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Corvane treats loyalty as a debt paid in deeds, never in words.",
+        "limit": "Corvane will not leave a companion behind in a fight.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 234541,
+        "name": "Halvard Wyndgate",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 130.21,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 170,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 166.89
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 1,
+        "exclusivity": 0,
+        "orientation": "men",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Halvard is restless under routine and comes alive on the road.",
+        "limit": "Halvard will not follow someone who kills for coin.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 949786,
+        "name": "Nerys Hollowell",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 181.76,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 49,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 4,
+        "exclusivity": 0,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Nerys is restless under routine and comes alive on the road.",
+        "limit": "Nerys will not be lied to twice.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 513584,
+        "name": "Marit Hollowell",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 161.41,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 623,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 2,
+        "exclusivity": 20,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Marit trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
+        "limit": "Marit will not take part in cruelty for sport.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 535954,
+        "name": "Wenna Ashkettle",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 194.01,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 466,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 118.65
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 0,
+        "exclusivity": 75,
+        "orientation": "women",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Wenna trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
+        "limit": "Wenna will not stand beside anyone who harms a child.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 452138,
+        "name": "Jessamy Marrowind",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.36,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 169.28
+      },
+      "depth": {
+        "points": 106,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 2,
+        "exclusivity": 0,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Jessamy has buried enough friends to be careful about making new ones.",
+        "limit": "Jessamy will not share a secret that was given in trust.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 964715,
+        "name": "Maelis Thornbury",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 163.33,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 159
+      },
+      "depth": {
+        "points": 306,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 170.87
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 3,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Maelis is drawn to steadiness, and wary of anyone who needs an audience.",
+        "limit": "Maelis will not share a secret that was given in trust.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 641831,
+        "name": "Veyla Redfern",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 143.42,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1003,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 4,
+        "exclusivity": 75,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Veyla has buried enough friends to be careful about making new ones.",
+        "limit": "Veyla will not take part in cruelty for sport.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 295245,
+        "name": "Liesl Brightwater",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.36,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 191.75
+      },
+      "depth": {
+        "points": 788,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 213.52
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 1,
+        "exclusivity": 45,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Liesl wants to be needed more than admired, and notices the difference at once.",
+        "limit": "Liesl will not be kept as someone's second choice.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 319396,
+        "name": "Ullis Mossfell",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 93.96,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 360,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 131.48
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 2,
+        "exclusivity": 100,
+        "orientation": "men",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Ullis keeps a small circle and guards it fiercely.",
+        "limit": "Ullis will not share a secret that was given in trust.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 819136,
+        "name": "Berrin Cinderholt",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.36,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 204.94
+      },
+      "depth": {
+        "points": 510,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 0,
+        "exclusivity": 100,
+        "orientation": "none",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Berrin was raised to be useful rather than loved, and still finds the second harder to accept.",
+        "limit": "Berrin will not leave a companion behind in a fight.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 1039688,
+        "name": "Kestrel Ironbrook",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 205.66,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 485,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 193.1
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 2,
+        "exclusivity": 75,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Kestrel reads kindness to strangers as the truest measure of a person.",
+        "limit": "Kestrel will not stand beside anyone who harms a child.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 903397,
+        "name": "Zell Kettleburn",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 139.59,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 51,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 0,
+        "exclusivity": 70,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Zell is drawn to steadiness, and wary of anyone who needs an audience.",
+        "limit": "Zell will not stand beside anyone who harms a child.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 201766,
+        "name": "Ysolde Duskmere",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 137.52,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 326,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": null
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 1,
+        "exclusivity": 75,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Ysolde prizes plain speech and distrusts anyone who talks around a thing.",
+        "limit": "Ysolde will not stand beside anyone who harms a child.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 1034756,
+        "name": "Osric Duskmere",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 181.68,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 161.69
+      },
+      "depth": {
+        "points": 126,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 167.78
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "women",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Osric has buried enough friends to be careful about making new ones.",
+        "limit": "Osric will not stand beside anyone who harms a child.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 708858,
+        "name": "Maelis Brackenridge",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 184.8,
+      "enrollment": {
+        "by": "dialogue",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1802,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 11.36
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 0,
+        "exclusivity": 0,
+        "orientation": "women",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Maelis was raised to be useful rather than loved, and still finds the second harder to accept.",
+        "limit": "Maelis will not follow someone who kills for coin.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 839034,
+        "name": "Undry Cinderholt",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 209.02,
+      "enrollment": {
+        "by": "dialogue",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1283,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 161.55
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 4,
+        "exclusivity": 25,
+        "orientation": "both",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Undry treats loyalty as a debt paid in deeds, never in words.",
+        "limit": "Undry will not be lied to twice.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 220938,
+        "name": "Dravyn Selothi",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 152.81,
+      "enrollment": {
+        "by": "dialogue",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 99,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 93.74
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 0,
+        "exclusivity": 30,
+        "orientation": "women",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Dravyn trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
+        "limit": "Dravyn will not take part in cruelty for sport.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 604381,
+        "name": "Ysolde Cinderholt",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 213.62,
+      "enrollment": {
+        "by": "dialogue",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1031,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 209
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 4,
+        "exclusivity": 0,
+        "orientation": "men",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Ysolde was raised to be useful rather than loved, and still finds the second harder to accept.",
+        "limit": "Ysolde will not share a secret that was given in trust.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 97562,
+        "name": "Eddra Marrowind",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 144.96,
+      "enrollment": {
+        "by": "dialogue",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 195,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 127.76
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 2,
+        "exclusivity": 75,
+        "orientation": "none",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Eddra keeps a small circle and guards it fiercely.",
+        "limit": "Eddra will not stand beside anyone who harms a child.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": -16775969,
+        "name": "Liesl Frost-Veil",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 174.91,
+      "enrollment": {
+        "by": "dialogue",
+        "joinedAt": 158.28
+      },
+      "depth": {
+        "points": 793,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 184.41
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 0,
+        "exclusivity": 0,
+        "orientation": "men",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Liesl wants to be needed more than admired, and notices the difference at once.",
+        "limit": "Liesl will not stand beside anyone who harms a child.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 945843,
+        "name": "Yrsa Ironbrook",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 86.5,
+      "enrollment": {
+        "by": "unknown",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 343,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 185.46
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 3,
+        "exclusivity": 25,
+        "orientation": "none",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Yrsa keeps a small circle and guards it fiercely.",
+        "limit": "Yrsa will not bow to a Thalmor justiciar, whatever it costs.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 619598,
+        "name": "Rook Oakhallow",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 174.97,
+      "enrollment": {
+        "by": "unknown",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 2868,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 213.5
+      },
+      "commitment": "none",
+      "seeded": false,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 0,
+        "exclusivity": 25,
+        "orientation": "men",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Rook measures people by what they do when it costs them, and has little patience for charm.",
+        "limit": "Rook will not follow someone who kills for coin.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 875496,
+        "name": "Aurelian Vesk",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 164.34,
+      "enrollment": {
+        "by": "unknown",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 558,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 171.19
+      },
+      "commitment": "none",
+      "seeded": false,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 3,
+        "exclusivity": 100,
+        "orientation": "men",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Aurelian has buried enough friends to be careful about making new ones.",
+        "limit": "Aurelian will not follow someone who kills for coin.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 868120,
+        "name": "Idrien Tallow",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 200.92,
+      "enrollment": {
+        "by": "unknown",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 661,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 208.55
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Idrien prizes plain speech and distrusts anyone who talks around a thing.",
+        "limit": "Idrien will not take part in cruelty for sport.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 290291,
+        "name": "Tovah Hollowell",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 119.44,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1018,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 147.72
+      },
+      "commitment": "none",
+      "seeded": false,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 0,
+        "exclusivity": 25,
+        "orientation": "none",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Tovah reads kindness to strangers as the truest measure of a person.",
+        "limit": "Tovah will not follow someone who kills for coin.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 999360,
+        "name": "Marit Rimeholt",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 129.85,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1040,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 103.24
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 0,
+        "exclusivity": 80,
+        "orientation": "none",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Marit treats loyalty as a debt paid in deeds, never in words.",
+        "limit": "Marit will not be kept as someone's second choice.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 147770,
+        "name": "Petra Kettleburn",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 43.75,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1881,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 60.08
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 1,
+        "exclusivity": 0,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Petra is drawn to steadiness, and wary of anyone who needs an audience.",
+        "limit": "Petra will not leave a companion behind in a fight.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 1045320,
+        "name": "Tulvyn Oran",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 179.87,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 156.2
+      },
+      "depth": {
+        "points": 1516,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 193.13
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "none",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Tulvyn wants to be needed more than admired, and notices the difference at once.",
+        "limit": "Tulvyn will not bow to a Thalmor justiciar, whatever it costs.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 928699,
+        "name": "Lorn Brightwater",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.36,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1127,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 77.82
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 0,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Lorn wants to be needed more than admired, and notices the difference at once.",
+        "limit": "Lorn will not share a secret that was given in trust.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 494844,
+        "name": "Petra Tallow",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 174.35,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 2548,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 192.62
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 2,
+        "exclusivity": 75,
+        "orientation": "women",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Petra prizes plain speech and distrusts anyone who talks around a thing.",
+        "limit": "Petra will not be lied to twice.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 107033,
+        "name": "Hesketh Redfern",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 106.29,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1417,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 139.17
+      },
+      "commitment": "none",
+      "seeded": false,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 0,
+        "exclusivity": 95,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Hesketh wants to be needed more than admired, and notices the difference at once.",
+        "limit": "Hesketh will not share a secret that was given in trust.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 310405,
+        "name": "Brenna Brackenridge",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 175.41,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 2678,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 135.12
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 3,
+        "exclusivity": 50,
+        "orientation": "none",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Brenna keeps a small circle and guards it fiercely.",
+        "limit": "Brenna will not be kept as someone's second choice.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 884364,
+        "name": "Liesl Oakhallow",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 144.21,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1421,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 118.97
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 0,
+        "exclusivity": 45,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Liesl has buried enough friends to be careful about making new ones.",
+        "limit": "Liesl will not bow to a Thalmor justiciar, whatever it costs.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 337734,
+        "name": "Faelis Tallow",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.35,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 675,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 94.77
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 2,
+        "exclusivity": 75,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Faelis trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
+        "limit": "Faelis will not be kept as someone's second choice.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 302264,
+        "name": "Keeps-The-Tides",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 213.93,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1386,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 72.98
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "men",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Keeps-The-Tides has buried enough friends to be careful about making new ones.",
+        "limit": "Keeps-The-Tides will not follow someone who kills for coin.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 328033,
+        "name": "Asvild Ashkettle",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 124.95,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 666,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 101.84
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 3,
+        "exclusivity": 70,
+        "orientation": "none",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Asvild has buried enough friends to be careful about making new ones.",
+        "limit": "Asvild will not bow to a Thalmor justiciar, whatever it costs.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 883154,
+        "name": "Ri'zhala",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 96.99,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 2733,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 105.43
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 4,
+        "exclusivity": 0,
+        "orientation": "men",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Ri'zhala was raised to be useful rather than loved, and still finds the second harder to accept.",
+        "limit": "Ri'zhala will not be lied to twice.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 870774,
+        "name": "Wystan Brackenridge",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 173.91,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 2895,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 212.54
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 1,
+        "exclusivity": 80,
+        "orientation": "both",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Wystan keeps a small circle and guards it fiercely.",
+        "limit": "Wystan will not be lied to twice.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 183013,
+        "name": "Halvard Duskmere",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.36,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 857,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 166.06
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 0,
+        "exclusivity": 50,
+        "orientation": "men",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Halvard treats loyalty as a debt paid in deeds, never in words.",
+        "limit": "Halvard will not be kept as someone's second choice.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 157298,
+        "name": "Dunstan Ironbrook",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 77.15,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1146,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 164.31
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 3,
+        "exclusivity": 100,
+        "orientation": "women",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Dunstan was raised to be useful rather than loved, and still finds the second harder to accept.",
+        "limit": "Dunstan will not stand beside anyone who harms a child.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 626007,
+        "name": "Lorn Duskmere",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 110.62,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 177,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 174.24
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Lorn is restless under routine and comes alive on the road.",
+        "limit": "Lorn will not leave a companion behind in a fight.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 492621,
+        "name": "Idrien Ashkettle",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.33,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 957,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 133.73
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 0,
+        "exclusivity": 25,
+        "orientation": "none",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Idrien is drawn to steadiness, and wary of anyone who needs an audience.",
+        "limit": "Idrien will not take part in cruelty for sport.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 392279,
+        "name": "Nerys Marrowind",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 179.5,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 176.15
+      },
+      "depth": {
+        "points": 653,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 189.16
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 0,
+        "exclusivity": 50,
+        "orientation": "women",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Nerys prizes plain speech and distrusts anyone who talks around a thing.",
+        "limit": "Nerys will not be kept as someone's second choice.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 431040,
+        "name": "Nesta Stonewhistle",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 204.41,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 379,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 112
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 0,
+        "exclusivity": 25,
+        "orientation": "none",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Nesta is restless under routine and comes alive on the road.",
+        "limit": "Nesta will not stand beside anyone who harms a child.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 1037596,
+        "name": "Brenna Redfern",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 71.58,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1541,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 100.26
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 0,
+        "exclusivity": 0,
+        "orientation": "women",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Brenna reads kindness to strangers as the truest measure of a person.",
+        "limit": "Brenna will not follow someone who kills for coin.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 568469,
+        "name": "Calla Tallow",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 201.93,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 158.99
+      },
+      "depth": {
+        "points": 83,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 160.79
+      },
+      "commitment": "none",
+      "seeded": false,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 0,
+        "exclusivity": 20,
+        "orientation": "women",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Calla measures people by what they do when it costs them, and has little patience for charm.",
+        "limit": "Calla will not bow to a Thalmor justiciar, whatever it costs.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 680858,
+        "name": "Berrin Thornbury",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 148.41,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 145,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 195.66
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 0,
+        "exclusivity": 0,
+        "orientation": "none",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Berrin has buried enough friends to be careful about making new ones.",
+        "limit": "Berrin will not leave a companion behind in a fight.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 144551,
+        "name": "Ysolde Rimeholt",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 174.41,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 159.28
+      },
+      "depth": {
+        "points": 822,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 161.85
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 3,
+        "exclusivity": 25,
+        "orientation": "none",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Ysolde reads kindness to strangers as the truest measure of a person.",
+        "limit": "Ysolde will not share a secret that was given in trust.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 522803,
+        "name": "Yrsa Cinderholt",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 173.98,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 151.8
+      },
+      "depth": {
+        "points": 720,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 156.84
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 2,
+        "exclusivity": 0,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Yrsa prizes plain speech and distrusts anyone who talks around a thing.",
+        "limit": "Yrsa will not be kept as someone's second choice.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 489555,
+        "name": "Eluned Ironbrook",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 205.05,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 2697,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 202.16
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 1,
+        "exclusivity": 0,
+        "orientation": "men",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Eluned measures people by what they do when it costs them, and has little patience for charm.",
+        "limit": "Eluned will not share a secret that was given in trust.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 505599,
+        "name": "Sigrun Brightwater",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 145.53,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1344,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 103.58
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 0,
+        "exclusivity": 0,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Sigrun is drawn to steadiness, and wary of anyone who needs an audience.",
+        "limit": "Sigrun will not leave a companion behind in a fight.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 238310,
+        "name": "Gisla Tallow",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 201.89,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 196.94
+      },
+      "depth": {
+        "points": 1421,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 213.29
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 4,
+        "exclusivity": 80,
+        "orientation": "men",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Gisla reads kindness to strangers as the truest measure of a person.",
+        "limit": "Gisla will not stand beside anyone who harms a child.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 603481,
+        "name": "Brenna Oakhallow",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 162.57,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 160.83
+      },
+      "depth": {
+        "points": 1257,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 176.26
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 4,
+        "exclusivity": 100,
+        "orientation": "none",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Brenna trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
+        "limit": "Brenna will not be lied to twice.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 628803,
+        "name": "Veyla Saltmarch",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 169.37,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1150,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 175.35
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 1,
+        "exclusivity": 20,
+        "orientation": "women",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Veyla laughs easily and forgives quickly, but remembers exactly who was there when it mattered.",
+        "limit": "Veyla will not bow to a Thalmor justiciar, whatever it costs.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 910013,
+        "name": "Faelis Duskmere",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 157.84,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1384,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 200.48
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 0,
+        "exclusivity": 80,
+        "orientation": "none",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Faelis wants to be needed more than admired, and notices the difference at once.",
+        "limit": "Faelis will not stand beside anyone who harms a child.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 880262,
+        "name": "Hesketh Coldwater",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 59.11,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 372,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 97.16
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Hesketh keeps a small circle and guards it fiercely.",
+        "limit": "Hesketh will not bow to a Thalmor justiciar, whatever it costs.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 951585,
+        "name": "Tovah Marrowind",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 190.11,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 503,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 116.17
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 2,
+        "exclusivity": 20,
+        "orientation": "none",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Tovah was raised to be useful rather than loved, and still finds the second harder to accept.",
+        "limit": "Tovah will not follow someone who kills for coin.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 888822,
+        "name": "Eddra Stonewhistle",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 77.31,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 980,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 114.44
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 1,
+        "exclusivity": 75,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Eddra measures people by what they do when it costs them, and has little patience for charm.",
+        "limit": "Eddra will not be kept as someone's second choice.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 672522,
+        "name": "Dunstan Marrowind",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.34,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 176.06
+      },
+      "depth": {
+        "points": 1446,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 184.79
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 0,
+        "exclusivity": 25,
+        "orientation": "women",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Dunstan is drawn to steadiness, and wary of anyone who needs an audience.",
+        "limit": "Dunstan will not follow someone who kills for coin.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 540903,
+        "name": "Sigrun Hollowell",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 197.84,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 188.77
+      },
+      "depth": {
+        "points": 1233,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 212.64
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 2,
+        "exclusivity": 75,
+        "orientation": "men",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Sigrun laughs easily and forgives quickly, but remembers exactly who was there when it mattered.",
+        "limit": "Sigrun will not take part in cruelty for sport.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 442972,
+        "name": "Sigrun Mossfell",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 196.04,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 190.93
+      },
+      "depth": {
+        "points": 1222,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 192.92
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 3,
+        "exclusivity": 0,
+        "orientation": "men",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Sigrun was raised to be useful rather than loved, and still finds the second harder to accept.",
+        "limit": "Sigrun will not take part in cruelty for sport.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 523619,
+        "name": "Sigrun Emberlee",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 136.58,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 705,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 159.42
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 0,
+        "exclusivity": 45,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Sigrun laughs easily and forgives quickly, but remembers exactly who was there when it mattered.",
+        "limit": "Sigrun will not share a secret that was given in trust.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 199216,
+        "name": "Nesta Duskmere",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 130.11,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 979,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 133.85
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 0,
+        "exclusivity": 75,
+        "orientation": "none",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Nesta was raised to be useful rather than loved, and still finds the second harder to accept.",
+        "limit": "Nesta will not stand beside anyone who harms a child.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 644176,
+        "name": "Corvane Greywick",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 152.47,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1385,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 100.07
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 3,
+        "exclusivity": 0,
+        "orientation": "women",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Corvane prizes plain speech and distrusts anyone who talks around a thing.",
+        "limit": "Corvane will not leave a companion behind in a fight.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 376737,
+        "name": "Halvard Coldwater",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 202.44,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1300,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 210.26
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "women",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Halvard treats loyalty as a debt paid in deeds, never in words.",
+        "limit": "Halvard will not be lied to twice.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 678113,
+        "name": "Wenna Greywick",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 214.19,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 160.25
+      },
+      "depth": {
+        "points": 1791,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 165.28
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 4,
+        "exclusivity": 100,
+        "orientation": "none",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Wenna was raised to be useful rather than loved, and still finds the second harder to accept.",
+        "limit": "Wenna will not stand beside anyone who harms a child.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 168817,
+        "name": "Quilla Cinderholt",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.37,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 151.57
+      },
+      "depth": {
+        "points": 357,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 186.95
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 0,
+        "exclusivity": 50,
+        "orientation": "none",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Quilla trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
+        "limit": "Quilla will not be kept as someone's second choice.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 630743,
+        "name": "Wenna Emberlee",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 29.97,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1339,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 146.54
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 1,
+        "exclusivity": 0,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Wenna prizes plain speech and distrusts anyone who talks around a thing.",
+        "limit": "Wenna will not be lied to twice.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 979131,
+        "name": "Zell Duskmere",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 70.61,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1810,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 146.1
+      },
+      "commitment": "none",
+      "seeded": false,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 0,
+        "exclusivity": 25,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Zell keeps a small circle and guards it fiercely.",
+        "limit": "Zell will not stand beside anyone who harms a child.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 184794,
+        "name": "Petra Saltmarch",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 117.96,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1023,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 108.43
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 1,
+        "exclusivity": 30,
+        "orientation": "none",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Petra wants to be needed more than admired, and notices the difference at once.",
+        "limit": "Petra will not take part in cruelty for sport.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 677403,
+        "name": "Orwen Ironbrook",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 158.36,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 672,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 164.82
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 4,
+        "exclusivity": 25,
+        "orientation": "men",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Orwen wants to be needed more than admired, and notices the difference at once.",
+        "limit": "Orwen will not bow to a Thalmor justiciar, whatever it costs.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 431949,
+        "name": "Ragnith Emberlee",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": false,
+      "lastFollowingAt": 214.32,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 192.02
+      },
+      "depth": {
+        "points": 2510,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 210.17
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 1,
+        "exclusivity": 0,
+        "orientation": "men",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Ragnith wants to be needed more than admired, and notices the difference at once.",
+        "limit": "Ragnith will not follow someone who kills for coin.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 178038,
+        "name": "Brenna Brightwater",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 82.36,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 632,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 170.2
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 2,
+        "exclusivity": 25,
+        "orientation": "both",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Brenna measures people by what they do when it costs them, and has little patience for charm.",
+        "limit": "Brenna will not take part in cruelty for sport.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 639043,
+        "name": "Maelis Kettleburn",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 203.85,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 203.14
+      },
+      "depth": {
+        "points": 1942,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 208.3
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 3,
+        "exclusivity": 30,
+        "orientation": "men",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Maelis wants to be needed more than admired, and notices the difference at once.",
+        "limit": "Maelis will not bow to a Thalmor justiciar, whatever it costs.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 530149,
+        "name": "Marit Duskmere",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 167.94,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1127,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 184.11
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 1,
+        "exclusivity": 100,
+        "orientation": "men",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Marit prizes plain speech and distrusts anyone who talks around a thing.",
+        "limit": "Marit will not be kept as someone's second choice.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 345215,
+        "name": "Jessamy Harrowgate",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 142,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1180,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 156.27
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 3,
+        "exclusivity": 0,
+        "orientation": "men",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Jessamy has buried enough friends to be careful about making new ones.",
+        "limit": "Jessamy will not follow someone who kills for coin.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 647803,
+        "name": "Kestrel Mossfell",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 193.82,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1999,
+        "tier": 3,
+        "banked": 161
+      },
+      "track": "platonic",
+      "state": "interested",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": true,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 123.32,
+        "lastCheckedAt": 140.27
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 0,
+        "exclusivity": 25,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Kestrel reads kindness to strangers as the truest measure of a person.",
+        "limit": "Kestrel will not follow someone who kills for coin.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 761995,
+        "name": "Maelis Cinderholt",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 205.73,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1999,
+        "tier": 3,
+        "banked": 326
+      },
+      "track": "platonic",
+      "state": "interested",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": true,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 174.17,
+        "lastCheckedAt": 164.25
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 1,
+        "exclusivity": 45,
+        "orientation": "men",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Maelis is restless under routine and comes alive on the road.",
+        "limit": "Maelis will not be kept as someone's second choice.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 342807,
+        "name": "Wenna Rimeholt",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 101.16,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 970,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "interested",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 33.4,
+        "lastCheckedAt": 160.62
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 2,
+        "exclusivity": 20,
+        "orientation": "both",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Wenna is restless under routine and comes alive on the road.",
+        "limit": "Wenna will not be lied to twice.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 587186,
+        "name": "Gisla Greywick",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.33,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1942,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "interested",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 116.27,
+        "lastCheckedAt": 175.01
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 3,
+        "exclusivity": 100,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Gisla treats loyalty as a debt paid in deeds, never in words.",
+        "limit": "Gisla will not be kept as someone's second choice.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 131130,
+        "name": "Jessamy Greywick",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.36,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1241,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "interested",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 63.63,
+        "lastCheckedAt": 181.21
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 1,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Jessamy was raised to be useful rather than loved, and still finds the second harder to accept.",
+        "limit": "Jessamy will not be lied to twice.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 240707,
+        "name": "Torvald Emberlee",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 195.08,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 165.84
+      },
+      "depth": {
+        "points": 1446,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "interested",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 193.96,
+        "lastCheckedAt": 186.21
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 3,
+        "exclusivity": 100,
+        "orientation": "men",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Torvald is restless under routine and comes alive on the road.",
+        "limit": "Torvald will not be lied to twice.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 975972,
+        "name": "Wenna Hollowell",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 183.26,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 166.64
+      },
+      "depth": {
+        "points": 1890,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "interested",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 203.87,
+        "lastCheckedAt": 189.62
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 2,
+        "exclusivity": 0,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Wenna has buried enough friends to be careful about making new ones.",
+        "limit": "Wenna will not be lied to twice.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 355381,
+        "name": "Veyla Rimeholt",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 166.62,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 152.87
+      },
+      "depth": {
+        "points": 2525,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "romantic",
+      "state": "courting",
+      "foreclosure": null,
+      "stance": "accepted",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 170.46,
+        "lastCheckedAt": 187.66
+      },
+      "commitment": "married",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 3,
+        "exclusivity": 0,
+        "orientation": "none",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Veyla trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
+        "limit": "Veyla will not be kept as someone's second choice.",
+        "address": "'Dearest', half teasing."
+      }
+    },
+    {
+      "subject": {
+        "formId": 397611,
+        "name": "Maelis Coldwater",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 198.48,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 2699,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "romantic",
+      "state": "courting",
+      "foreclosure": null,
+      "stance": "accepted",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 17.49,
+        "lastCheckedAt": 196.29
+      },
+      "commitment": "married",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 3,
+        "exclusivity": 25,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Maelis is restless under routine and comes alive on the road.",
+        "limit": "Maelis will not leave a companion behind in a fight.",
+        "address": "'Love', easily."
+      }
+    },
+    {
+      "subject": {
+        "formId": 671677,
+        "name": "Fenwick Hollowell",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.37,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 181.92
+      },
+      "depth": {
+        "points": 2633,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "romantic",
+      "state": "courting",
+      "foreclosure": null,
+      "stance": "accepted",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 198.05,
+        "lastCheckedAt": 196.1
+      },
+      "commitment": "married",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 3,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Fenwick treats loyalty as a debt paid in deeds, never in words.",
+        "limit": "Fenwick will not be kept as someone's second choice.",
+        "address": "Your name, softly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 89874,
+        "name": "Veyla Brackenridge",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 184.92,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 2836,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "romantic",
+      "state": "courting",
+      "foreclosure": null,
+      "stance": "accepted",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 132.58,
+        "lastCheckedAt": 126.21
+      },
+      "commitment": "engaged",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 1,
+        "exclusivity": 50,
+        "orientation": "men",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Veyla prizes plain speech and distrusts anyone who talks around a thing.",
+        "limit": "Veyla will not be kept as someone's second choice.",
+        "address": "'Love', easily."
+      }
+    },
+    {
+      "subject": {
+        "formId": 254218,
+        "name": "Eluned Harrowgate",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 202.35,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 165.09
+      },
+      "depth": {
+        "points": 2436,
+        "tier": 4,
+        "banked": 0
+      },
+      "track": "romantic",
+      "state": "courting",
+      "foreclosure": null,
+      "stance": "accepted",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 194.14,
+        "lastCheckedAt": 210.36
+      },
+      "commitment": "engaged",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 4,
+        "exclusivity": 25,
+        "orientation": "both",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Eluned prizes plain speech and distrusts anyone who talks around a thing.",
+        "limit": "Eluned will not be kept as someone's second choice.",
+        "address": "'Love', easily."
+      }
+    },
+    {
+      "subject": {
+        "formId": 667029,
+        "name": "Marit Saltmarch",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 175.57,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 2647,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "romantic",
+      "state": "courting",
+      "foreclosure": null,
+      "stance": "accepted",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 156.27,
+        "lastCheckedAt": 213.03
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 1,
+        "exclusivity": 50,
+        "orientation": "men",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Marit is restless under routine and comes alive on the road.",
+        "limit": "Marit will not follow someone who kills for coin.",
+        "address": "Your name, softly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 495794,
+        "name": "Brenna Wyndgate",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 165.68,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 2188,
+        "tier": 4,
+        "banked": 0
+      },
+      "track": "romantic",
+      "state": "courting",
+      "foreclosure": null,
+      "stance": "accepted",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 118.03,
+        "lastCheckedAt": 124.88
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 2,
+        "exclusivity": 25,
+        "orientation": "men",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Brenna was raised to be useful rather than loved, and still finds the second harder to accept.",
+        "limit": "Brenna will not be kept as someone's second choice.",
+        "address": "'My heart', when no one is listening."
+      }
+    },
+    {
+      "subject": {
+        "formId": 328918,
+        "name": "Idrien Brackenridge",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 210.4,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 203.77
+      },
+      "depth": {
+        "points": 2441,
+        "tier": 4,
+        "banked": 0
+      },
+      "track": "romantic",
+      "state": "courting",
+      "foreclosure": null,
+      "stance": "accepted",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 213.87,
+        "lastCheckedAt": 209.68
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 0,
+        "exclusivity": 20,
+        "orientation": "women",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Idrien keeps a small circle and guards it fiercely.",
+        "limit": "Idrien will not stand beside anyone who harms a child.",
+        "address": "'Love', easily."
+      }
+    },
+    {
+      "subject": {
+        "formId": 95668,
+        "name": "Gerdis Marrowind",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 125.23,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 2767,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "romantic",
+      "state": "courting",
+      "foreclosure": null,
+      "stance": "accepted",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 80.08,
+        "lastCheckedAt": 154.33
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 1,
+        "exclusivity": 75,
+        "orientation": "men",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Gerdis is restless under routine and comes alive on the road.",
+        "limit": "Gerdis will not leave a companion behind in a fight.",
+        "address": "'My heart', when no one is listening."
+      }
+    },
+    {
+      "subject": {
+        "formId": 807769,
+        "name": "Veyla Tallow",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 182.92,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1288,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "declined",
+      "foreclosure": null,
+      "stance": "declined",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 85.52,
+        "lastCheckedAt": 63.34
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 4,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Veyla is drawn to steadiness, and wary of anyone who needs an audience.",
+        "limit": "Veyla will not share a secret that was given in trust.",
+        "address": "'Friend', and means it."
+      }
+    },
+    {
+      "subject": {
+        "formId": 423777,
+        "name": "Ingrith Brackenridge",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 46.36,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1676,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "declined",
+      "foreclosure": null,
+      "stance": "declined",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 62.43,
+        "lastCheckedAt": 150.15
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 4,
+        "exclusivity": 80,
+        "orientation": "both",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Ingrith is restless under routine and comes alive on the road.",
+        "limit": "Ingrith will not share a secret that was given in trust.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 846847,
+        "name": "Hesketh Emberlee",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 107.97,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1491,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "declined",
+      "foreclosure": null,
+      "stance": "declined",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 131.63,
+        "lastCheckedAt": 155.51
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 4,
+        "exclusivity": 25,
+        "orientation": "men",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Hesketh was raised to be useful rather than loved, and still finds the second harder to accept.",
+        "limit": "Hesketh will not be lied to twice.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 496786,
+        "name": "Ingrith Coldwater",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 202.68,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": null
+      },
+      "depth": {
+        "points": 1366,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "ended",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 61.08
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 3,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Ingrith is restless under routine and comes alive on the road.",
+        "limit": "Ingrith will not be lied to twice.",
+        "address": "'My Thane' in company; your name alone."
+      }
+    },
+    {
+      "subject": {
+        "formId": 828456,
+        "name": "Marit Mossfell",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 196.6,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 161.84
+      },
+      "depth": {
+        "points": 1137,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "ended",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 197.85
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 3,
+        "exclusivity": 50,
+        "orientation": "none",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Marit measures people by what they do when it costs them, and has little patience for charm.",
+        "limit": "Marit will not be lied to twice.",
+        "address": "'Boss', dryly."
+      }
+    },
+    {
+      "subject": {
+        "formId": 650946,
+        "name": "Zell Silverbirch",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 201.13,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 198.5
+      },
+      "depth": {
+        "points": 637,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "ended",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 202.23
+      },
+      "commitment": "none",
+      "seeded": false,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Zell laughs easily and forgives quickly, but remembers exactly who was there when it mattered.",
+        "limit": "Zell will not leave a companion behind in a fight.",
+        "address": "'Friend', and means it."
+      }
+    }
+  ]
+}

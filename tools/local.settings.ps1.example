@@ -12,8 +12,10 @@
     # Where Skyrim is installed - the folder CONTAINING Data\.
     SkyrimRoot    = 'C:\SteamLibrary\steamapps\common\Skyrim Special Edition'
 
-    # This mod's Vortex staging folder. Used only by the deploy check, which
-    # verifies project, staging and Data all hold the same artifacts.
+    # This mod's Vortex staging folder. Used by the deploy check, which verifies
+    # project, staging and Data all hold the same artifacts, and by
+    # tools\build-dll.ps1 -Deploy, which copies the DLL and the dashboard page
+    # into it.
     StagingRoot   = 'C:\Vortex Mods\skyrimse\SkyrimNet Relationships'
 
     # OPTIONAL. SkyrimNet-Kinship's Papyrus source, used by check.ps1 to prove

@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 3,
+  "generatedAt": 214.37,
+  "roster": {
+    "status": "no answer",
+    "message": null
+  },
+  "playthrough": {
+    "id": "7f3a91c2",
+    "store": "SNRom_Dispositions",
+    "storeDecision": "legacy"
+  },
+  "ladder": {
+    "thresholds": [
+      0,
+      500,
+      1000,
+      1500,
+      2000,
+      2500
+    ]
+  },
+  "player": {
+    "formId": 20,
+    "name": "Tamsin Vey",
+    "isPlayer": true
+  },
+  "settings": {
+    "developer": false,
+    "scale": "auto",
+    "textSize": "normal"
+  },
+  "crosshairTarget": null,
+  "bonds": [
+    {
+      "subject": {
+        "formId": 523269,
+        "name": "Hrodwen Coldharbor",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.35,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 88.81
+      },
+      "depth": {
+        "points": 940,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 172.89
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 4,
+        "exclusivity": 100,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Hrodwen is restless under routine and comes alive on the road.",
+        "limit": "Hrodwen will not be kept as someone's second choice.",
+        "address": "'Traveler', still."
+      }
+    },
+    {
+      "subject": {
+        "formId": 233861,
+        "name": "Ansel Vireo",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.37,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 172.47
+      },
+      "depth": {
+        "points": 2210,
+        "tier": 4,
+        "banked": 0
+      },
+      "track": "romantic",
+      "state": "courting",
+      "foreclosure": null,
+      "stance": "accepted",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 200.26,
+        "lastCheckedAt": 197.97
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 3,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Ansel prizes plain speech and distrusts anyone who talks around a thing.",
+        "limit": "Ansel will not be lied to twice.",
+        "address": "'Dearest', half teasing."
+      }
+    },
+    {
+      "subject": {
+        "formId": 66322,
+        "name": "Tova Reedmere",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 158.53,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 77.46
+      },
+      "depth": {
+        "points": 310,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 150.12
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 4,
+        "exclusivity": 0,
+        "orientation": "men",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Tova measures people by what they do when it costs them, and has little patience for charm.",
+        "limit": "Tova will not be lied to twice.",
+        "address": "'Boss', dryly."
+      }
+    }
+  ]
+}

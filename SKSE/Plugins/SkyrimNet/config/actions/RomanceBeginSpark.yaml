@@ -15,10 +15,9 @@
 # model cannot reason its way past them. The description below only has to
 # convey the THRESHOLD, not enforce it.
 #
-# Note the honest limitation: Romantasy reads its follower roster at load, so
-# the dashboard and passive activity scoring for this NPC begin on the next
-# load. Authored moments score immediately, and the bridge seeds an opening
-# award, so the bond is never sitting at zero after a real moment.
+# The bond exists from this moment: the dashboard shows them at once, and the
+# bridge seeds an opening award, so it is never sitting at zero after a real
+# moment.
 
 # DELIBERATELY TOP-LEVEL, NOT UNDER THE `romance` CATEGORY.
 #
@@ -85,8 +84,10 @@ parameterMapping:
     description: "one specific sentence naming the moment that did it, in your own voice. Recorded in the player's romance journal, so name the actual thing that happened."
 
 eligibilityRules:
-  # Must be travelling with the player - Romantasy only scores active followers,
-  # so enrolling a settled NPC produces a bond that cannot move.
+  # Must be travelling with the player. This is the enrollment policy (design
+  # 3.2): this action ENROLLS, and only followers are enrolled without the
+  # player asking. Anyone else is enrolled by hand. Once enrolled, following
+  # stops mattering - the assessors judge whoever can observe the player.
   - conditions:
       - decoratorName: "is_follower"
         arguments: ["currentActor"]
@@ -99,7 +100,7 @@ eligibilityRules:
   # attraction floor - is folded into this one call.
   - conditions:
       - decoratorName: "get_faction_rank"
-        arguments: ["currentActor", "ROM_RomanceLevel"]
+        arguments: ["currentActor", "SNRom_Bond"]
         comparisonOperator: "<"
         expectedValue: 0
     logicalOperator: "AND"

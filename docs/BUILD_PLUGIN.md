@@ -2,10 +2,14 @@
 
 One quest, one alias, no masters beyond vanilla. About ten minutes.
 
-The plugin is deliberately tiny: the bridge resolves `ROM_RomanceLevel` at
-runtime with `Game.GetFormFromFile(0x800, "CS_Romantasy.esp")`, so **Romantasy
-is not a master** and the plugin loads (inert) without it. Nothing else
-references a foreign form.
+The plugin is deliberately tiny: one quest, one alias, and the faction
+`SNRom_Bond`, whose membership means enrolled and whose rank is the bond's tier.
+Nothing in it references a foreign form.
+
+**The faction must keep local FormID `0xD63`.** The scripts find it with
+`Game.GetFormFromFile(0xD63, "SNRom_Integration.esl")`, and other mods read its
+ranks. The Creation Kit does not let you choose a FormID, so a rebuilt plugin
+should start from the shipped one rather than from nothing.
 
 ---
 
@@ -88,7 +92,7 @@ These are temporary — the real install is packaged as a Vortex mod later.
 2. **File → Data…**
 3. Tick **Skyrim.esm ONLY.**
 
-   Not the DLC, not `CS_Romantasy.esp`, not `SkyrimNet.esp`. This plugin
+   Not the DLC, not `SkyrimNet.esp`, not any other mod. This plugin
    references exactly two things — a new quest and `PlayerRef` — and
    `PlayerRef` lives in Skyrim.esm. Loading anything else only adds load time
    and risks putting an unwanted master on the plugin.
@@ -136,8 +140,8 @@ These are temporary — the real install is packaged as a Vortex mod later.
 3. **Add** → choose the existing `SNRom_Bridge` from the list (not
    *[New Script]*).
 4. **There are no properties to fill.** The script deliberately declares none —
-   `_romanceLevel` is a script variable resolved at runtime from
-   `CS_Romantasy.esp`, and the rest are constants. If CK is prompting you for
+   `_bond` is a script variable resolved at runtime from this plugin's own
+   `SNRom_Bond`, and the rest are constants. If CK is prompting you for
    a property value, you have attached the wrong script.
 5. Click **OK** to save the quest.
 
@@ -213,11 +217,11 @@ Expect the quest **Running** with the alias filled by the player.
 Finally, check `Data\SKSE\Plugins\SkyrimNet Relationships\logs\snrom.log` for:
 
 ```
-Bridge ready. Romantasy build check passed.
+Bridge ready. SNRom_Bond resolved.
 ```
 
-If instead you see *"CS_Romantasy.esp not loaded or ROM_RomanceLevel missing"*,
-the plugin is running correctly but cannot see Romantasy — check load order.
+If instead you see *"SNRom_Bond unresolved"*, the faction is
+missing or has a different FormID — see the note at the top.
 
 If the log file does not exist at all, the quest is not running: re-check
 **Start Game Enabled** and that **Run Once** is unchecked.
@@ -231,4 +235,4 @@ If the log file does not exist at all, the quest is not running: re-check
 | `SNRom_Bridge` missing from the script list | Step 0 skipped — `.pex` not in `Data\Scripts` |
 | Quest never starts | **Start Game Enabled** unticked, or **Run Once** ticked |
 | Works once, dead after reload | Alias missing, wrong fill type, or script not attached to it — that alias is the only thing re-registering decorators and ModEvents |
-| CK refuses to save, complains about masters | A form from `CS_Romantasy.esp` got referenced somewhere; nothing in this plugin should reference it |
+| CK refuses to save, complains about masters | A form from another mod got referenced somewhere; nothing in this plugin should reference one |

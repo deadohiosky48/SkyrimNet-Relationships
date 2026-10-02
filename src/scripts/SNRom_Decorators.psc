@@ -31,7 +31,9 @@ Scriptname SNRom_Decorators Hidden
   not quest-vs-standalone - was the actual cause. }
 
 String Function IsEnrolled(Actor akActor) Global
-    If akActor != None && Romantasy.GetLevel(akActor) > 0
+    { Enrollment is SNRom_Enrolled from 2.0 (SNRom_Bridge.IsEnrolled), not
+      "Romantasy has a level for them". }
+    If SNRom_Bridge.IsEnrolled(akActor)
         Return "true"
     EndIf
     Return "false"
@@ -40,31 +42,22 @@ EndFunction
 String Function CanBegin(Actor akActor) Global
     { Hard gates live here, not in an action description, so the model cannot
       talk its way past receptivity or the attraction floor. }
-    If akActor == None || Romantasy.GetLevel(akActor) > 0
+    If akActor == None || SNRom_Bridge.IsEnrolled(akActor)
         Return "false"
     EndIf
-    If StorageUtil.GetIntValue(akActor, "SNRom_Enrolled", 0) == 1
-        Return "false"
-    EndIf
-    ; enrollmentRequireFollower was advertised in the manifest and read by
-    ; nothing - the only follower gate lived in RomanceBeginSpark.yaml's
-    ; eligibility, where no config value can reach it. Honored here so the
-    ; setting is real rather than decorative.
-    ;
-    ; NOTE: the YAML rule still applies as a cheap pre-filter, so setting this
-    ; False is necessary but NOT sufficient - the `is_follower` eligibility
-    ; rule must also be removed for non-followers to be offered the action at
-    ; all. Deliberately left in place: without it the Romance category is
-    ; offered to every NPC in Skyrim, and action slots compete for attention.
+    ; FOLLOWERS ONLY, ALWAYS: this enrolls, and the policy is that only
+    ; followers enroll without the player asking (design 3.2) - anyone else is
+    ; enrolled by hand. RomanceBeginSpark.yaml's is_follower rule says the same
+    ; as a cheap pre-filter. The setting enrollmentRequireFollower that once
+    ; switched this could never open it - the YAML rule held regardless - and
+    ; went in 2.0.
     ; SNRom_Bridge.IsFollowing, NOT the bare vanilla flag. SeverActions
     ; companions set CurrentFollowerFaction without IsPlayerTeammate, and asking
     ; the narrow question here excluded them from ever beginning a romance -
     ; the same bug that stopped TalkCandidate/SparkCandidate ever picking them.
     ; Found by tools\check.ps1, which asserts this shape everywhere.
-    If SkyrimNetApi.GetConfigBool(SNRom_Bridge.CFG(), "enrollmentRequireFollower", True)
-        If !SNRom_Bridge.IsFollowing(akActor)
-            Return "false"
-        EndIf
+    If !SNRom_Bridge.IsFollowing(akActor)
+        Return "false"
     EndIf
     ; Orientation lives in RomanceOk, shared with the bond prompt's Lover gate.
     ; It was duplicated here and there is no version of this where the two
@@ -138,7 +131,13 @@ String Function PhysicalOk(Actor akActor) Global
             minTier = 3                                     ; Confidant
         EndIf
     EndIf
-    Int tier = Romantasy.GetLevel(akActor) - 1   ; GetLevel is 1-6; tiers 0-5
+    ; THE TIER IS OURS. Someone not enrolled keeps "no tier" (-1), as
+    ; Romantasy's level 0 used to give - never tier 0, which a low minimum
+    ; would pass.
+    Int tier = -1
+    If SNRom_Bridge.IsEnrolled(akActor)
+        tier = SNRom_Bridge.TierOf(akActor)
+    EndIf
     If tier >= minTier
         Return "true"
     EndIf
@@ -174,7 +173,7 @@ String Function PhysicalOk(Actor akActor) Global
     ; it, and the constant is the thing to grep for.
     Int banked = StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)
     If banked > 0
-        Int earned = (Romantasy.GetPoints(akActor) + banked) / 500
+        Int earned = (SNRom_Bridge.PointsOf(akActor) + banked) / 500
         If earned >= minTier
             Return "true"
         EndIf
@@ -209,7 +208,7 @@ String Function JsonBool(Bool abValue) Global
 EndFunction
 
 Bool Function IsSparked(Actor akActor) Global
-    { Selects which ladder 0330_romantasy_bond renders: platonic or romantic.
+    { Selects which ladder 0330_relationships_bond renders: platonic or romantic.
 
       ONE explicit flag, no inference. SNRom_Sparked is set by BeginSpark and
       deliberately NOT by AutoEnroll, so the romantic ladder requires that
@@ -312,7 +311,7 @@ Bool Function KinGuardOn() Global
     Return SkyrimNetApi.GetConfigBool(SNRom_Bridge.CFG(), "kinshipBlockRomance", True)
 EndFunction
 
-Int Function RomanceApplicability(Actor akActor) Global
+Int Function RomanceApplicability(Actor akActor, Int aiKinGuard = -1) Global
     { Is the romantic question FORECLOSED for this pair by something outside the
       character's own disposition? 0 applies, 1 kin, 2 minor, 3 orientation.
 
@@ -342,7 +341,10 @@ Int Function RomanceApplicability(Actor akActor) Global
 
       ONE PLACE TO ADD A REASON. Callers ask "is it foreclosed", never "is this a
       child" - the prompt tests the field against 0 and nothing else - so a fourth
-      reason is one branch here and zero edits anywhere else.
+      reason is one branch here and zero edits anywhere else. And one in the
+      dashboard's copy of this function: Display::Applicability in
+      native/src/Display.cpp, line for line, which draws the page. Change one,
+      change both.
 
       AN INT, NOT A REASON STRING. Papyrus interns strings case-insensitively, so
       a "kin" literal can ship as "Kin" depending on what else holds the slot in
@@ -355,7 +357,15 @@ Int Function RomanceApplicability(Actor akActor) Global
     ; the setting would be decoration: turning it off would still leave the
     ; player's children foreclosed here, and the bio would still say so.
     ; Same gate, same function, as RomanceOk and PhysicalOk already use.
-    If KinGuardOn() && SNRom_Decorators.IsPlayerKin(akActor)
+    ;
+    ; aiKinGuard is that setting already read, 1 or 0, for the one caller that
+    ; must not ask SkyrimNet: the dashboard's refresh, which runs while the game
+    ; is paused (SNRom_Bridge.OnDashboardRefresh). -1, the default every other
+    ; caller takes, reads it here as always.
+    If aiKinGuard < 0
+        aiKinGuard = KinGuardOn() as Int
+    EndIf
+    If aiKinGuard > 0 && SNRom_Decorators.IsPlayerKin(akActor)
         Return 1
     EndIf
     ; MINORS ARE NOT GATED ON A SETTING, deliberately. IsChild is vanilla and
@@ -501,12 +511,12 @@ String Function GetRomance(Actor akActor) Global
     If akActor == None
         Return "{\"enrolled\":false}"
     EndIf
-    Int level = Romantasy.GetLevel(akActor)
-    If level <= 0
+    If !SNRom_Bridge.IsEnrolled(akActor)
         Return "{\"enrolled\":false}"
     EndIf
-    Int pts = Romantasy.GetPoints(akActor)
-    Int tier = level - 1
+    ; OURS: enrollment, the points, and the tier and its name from them.
+    Int pts = SNRom_Bridge.PointsOf(akActor)
+    Int tier = SNRom_Bridge.TierForPoints(pts)
     Int toNext = ((tier + 1) * 500) - pts
     ; Explicit booleans, never inlined JsonBool. An inlined call produced the
     ; Papyrus literal "False" in the authoring context on 2026-08-06, which is
@@ -542,7 +552,7 @@ String Function GetRomance(Actor akActor) Global
         toNext = 0
     EndIf
     Return "{\"enrolled\":true,\"points\":" + pts + ",\"level\":" + tier + \
-        ",\"levelName\":\"" + Romantasy.GetLevelName(akActor) + "\",\"toNext\":" + toNext + \
+        ",\"levelName\":\"" + SNRom_Bridge.TierName(tier) + "\",\"toNext\":" + toNext + \
         ",\"ardor\":" + StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2) + \
         ",\"exclusivity\":" + StorageUtil.GetIntValue(akActor, "SNRom_Exclusivity", 50) + \
         ",\"sparked\":" + sparkedFlag + \
@@ -695,248 +705,6 @@ String Function Trim(String asText) Global
     Return t
 EndFunction
 
-String Function Canon(String asLabel) Global
-    { Folds only what CANNOT change meaning: case, separator punctuation and
-      repeated spaces. Anything that could alter which activity is named is
-      left to FlipPlural, which probes the table rather than trusting itself. }
-    String s = SNRom_Decorators.Upper(asLabel)
-    s = ReplaceAll(s, "-", " ")
-    s = ReplaceAll(s, "_", " ")
-    s = ReplaceAll(s, ".", "")
-    s = ReplaceAll(s, ",", "")
-    s = ReplaceAll(s, "'", "")
-    ; One pass is not enough - collapsing "   " leaves "  ".
-    While StringUtil.Find(s, "  ") >= 0
-        s = ReplaceAll(s, "  ", " ")
-    EndWhile
-    Return Trim(s)
-EndFunction
-
-String Function FlipPlural(String asLabel, Bool abFirstWord, Bool abAdd) Global
-    { Adds or removes a trailing S on either the first or the last word.
-      Used ONLY to probe the exact-match table - never to construct a name we
-      then trust. Returns the input unchanged when there is nothing to strip,
-      which makes that probe a harmless repeat of the exact lookup. }
-    String[] w = StringUtil.Split(asLabel, " ")
-    If w.Length == 0
-        Return asLabel
-    EndIf
-    Int idx = w.Length - 1
-    If abFirstWord
-        idx = 0
-    EndIf
-    String word = w[idx]
-    Int n = StringUtil.GetLength(word)
-    If n == 0
-        Return asLabel
-    EndIf
-    If abAdd
-        word = word + "S"
-    ElseIf StringUtil.GetNthChar(word, n - 1) != "S"
-        Return asLabel
-    Else
-        word = StringUtil.Substring(word, 0, n - 1)
-    EndIf
-    w[idx] = word
-    String out = ""
-    Int i = 0
-    While i < w.Length
-        If i > 0
-            out += " "
-        EndIf
-        out += w[i]
-        i += 1
-    EndWhile
-    Return out
-EndFunction
-
-Int Function LabelToOffsetFuzzy(String asLabel) Global
-    { Tolerant front door to the whitelist. LabelToOffset itself stays a strict
-      exact-match table so it can still be eyeballed against CS_Romantasy.esp.
-
-      This does NOT relax the never-guess rule. It only folds INFLECTIONS of
-      names already in the table - a model writing "Soul Trapped" for
-      "Souls Trapped" loses a pick to one character. An invented or genuinely
-      wrong activity still returns 0 and is rejected exactly as before.
-
-      The asymmetry that governs this: a dropped pick is invisible noise, but a
-      MISmapped pick is a wrong personality that persists forever. So every
-      probe below was checked to be collision-free - stripping a trailing S
-      from every word of all 58 entries yields 58 distinct strings, so no fold
-      can ever land on a different activity than the one written. }
-    String l = Canon(asLabel)
-    Int hit = LabelToOffset(l)
-    If hit != 0
-        Return hit
-    EndIf
-    hit = LabelToOffset(FlipPlural(l, True, True))     ; singular first word: "Soul Trapped"
-    If hit != 0
-        Return hit
-    EndIf
-    hit = LabelToOffset(FlipPlural(l, False, True))    ; singular last word:  "Critical Strike"
-    If hit != 0
-        Return hit
-    EndIf
-    hit = LabelToOffset(FlipPlural(l, True, False))    ; over-pluralised first: "Armors Made"
-    If hit != 0
-        Return hit
-    EndIf
-    Return LabelToOffset(FlipPlural(l, False, False))  ; over-pluralised last
-EndFunction
-
-Bool Function IsHighFrequency(Int aiOffset) Global
-    { The eleven statistics that fire constantly in ordinary play.
-
-      Romantasy's point weights are FIXED and cannot be changed, so frequency
-      - not weight - decides the economy. Critical Strikes fires hundreds of
-      times an hour; Questlines Completed fires about five times in a
-      playthrough. An NPC who likes three of these is paced by grind rate
-      rather than by character, and reaches Spouse while a thoughtfully
-      authored one is still at Confidant.
-
-      The prompt asks for at most two. It asked for 4-7 likes and got 34, so
-      the count is enforced in Papyrus and so is this. Applies to DISLIKES
-      too: a disliked high-frequency stat drains a bond just as fast as a
-      liked one builds it. }
-    Return aiOffset == 0x826 \
-        || aiOffset == 0x820 \
-        || aiOffset == 0x822 \
-        || aiOffset == 0x805 \
-        || aiOffset == 0x808 \
-        || aiOffset == 0x806 \
-        || aiOffset == 0x827 \
-        || aiOffset == 0x828 \
-        || aiOffset == 0x834 \
-        || aiOffset == 0x836 \
-        || aiOffset == 0x821
-EndFunction
-
-Int Function LabelToOffset(String asLabel) Global
-    { Maps a human activity name (as written in snrom_author_disposition.prompt)
-      to its ROM_ faction's plugin-local FormID. Generated from CS_Romantasy.esp
-      so it cannot drift from the actual records.
-      Returns 0 for anything unrecognized - that IS the whitelist: a model that
-      invents or misspells an activity gets rejected rather than interpreted. }
-    String l = SNRom_Decorators.Upper(asLabel)
-    If l == "ANIMALS KILLED"
-        Return 0x821
-    ElseIf l == "ARMOR MADE"
-        Return 0x831
-    ElseIf l == "ASSAULTS"
-        Return 0x837
-    ElseIf l == "AUTOMATONS KILLED"
-        Return 0x825
-    ElseIf l == "BACKSTABS"
-        Return 0x828
-    ElseIf l == "BARTERS"
-        Return 0x808
-    ElseIf l == "BRIBES"
-        Return 0x80A
-    ElseIf l == "BUNNIES SLAUGHTERED"
-        Return 0x82A
-    ElseIf l == "CHESTS LOOTED"
-        Return 0x805
-    ElseIf l == "CIVIL WAR COMPLETED"
-        Return 0x81B
-    ElseIf l == "COLLEGE COMPLETED"
-        Return 0x818
-    ElseIf l == "COMPANIONS COMPLETED"
-        Return 0x817
-    ElseIf l == "CREATURES KILLED"
-        Return 0x822
-    ElseIf l == "CRITICAL STRIKES"
-        Return 0x826
-    ElseIf l == "DAEDRA KILLED"
-        Return 0x824
-    ElseIf l == "DAEDRIC COMPLETED"
-        Return 0x81C
-    ElseIf l == "DARK BROTHERHOOD COMPLETED"
-        Return 0x81A
-    ElseIf l == "DAWNGUARD COMPLETED"
-        Return 0x81D
-    ElseIf l == "DAYS PASSED"
-        Return 0x803
-    ElseIf l == "DAYS VAMPIRE"
-        Return 0x80D
-    ElseIf l == "DAYS WEREWOLF"
-        Return 0x80E
-    ElseIf l == "DISEASES CONTRACTED"
-        Return 0x80C
-    ElseIf l == "DRAGON SOULS COLLECTED"
-        Return 0x82C
-    ElseIf l == "DRAGONBORN COMPLETED"
-        Return 0x81E
-    ElseIf l == "DUNGEONS CLEARED"
-        Return 0x802
-    ElseIf l == "HORSES STOLEN"
-        Return 0x839
-    ElseIf l == "INTIMIDATIONS"
-        Return 0x80B
-    ElseIf l == "ITEMS STOLEN"
-        Return 0x836
-    ElseIf l == "LOCATIONS DISCOVERED"
-        Return 0x801
-    ElseIf l == "LOCKS PICKED"
-        Return 0x834
-    ElseIf l == "MAGIC ITEMS MADE"
-        Return 0x82F
-    ElseIf l == "MAIN QUESTS COMPLETED"
-        Return 0x815
-    ElseIf l == "MAULS"
-        Return 0x812
-    ElseIf l == "MISC OBJECTIVES COMPLETED"
-        Return 0x814
-    ElseIf l == "MURDERS"
-        Return 0x838
-    ElseIf l == "NECKS BITTEN"
-        Return 0x80F
-    ElseIf l == "PEOPLE KILLED"
-        Return 0x820
-    ElseIf l == "PERSUASIONS"
-        Return 0x809
-    ElseIf l == "POCKETS PICKED"
-        Return 0x835
-    ElseIf l == "POISONS MIXED"
-        Return 0x833
-    ElseIf l == "POTIONS MIXED"
-        Return 0x832
-    ElseIf l == "QUESTLINES COMPLETED"
-        Return 0x81F
-    ElseIf l == "QUESTS COMPLETED"
-        Return 0x813
-    ElseIf l == "SHOUTS LEARNED"
-        Return 0x82D
-    ElseIf l == "SIDE QUESTS COMPLETED"
-        Return 0x816
-    ElseIf l == "SKILL BOOKS READ"
-        Return 0x807
-    ElseIf l == "SKILL INCREASES"
-        Return 0x806
-    ElseIf l == "SNEAK ATTACKS"
-        Return 0x827
-    ElseIf l == "SOULS TRAPPED"
-        Return 0x82E
-    ElseIf l == "SPELLS LEARNED"
-        Return 0x82B
-    ElseIf l == "STANDING STONES FOUND"
-        Return 0x804
-    ElseIf l == "THIEVES COMPLETED"
-        Return 0x819
-    ElseIf l == "TRESPASSES"
-        Return 0x83A
-    ElseIf l == "UNDEAD KILLED"
-        Return 0x823
-    ElseIf l == "VAMPIRISM CURES"
-        Return 0x810
-    ElseIf l == "WEAPONS DISARMED"
-        Return 0x829
-    ElseIf l == "WEAPONS MADE"
-        Return 0x830
-    ElseIf l == "WEREWOLF TRANSFORMATIONS"
-        Return 0x811
-    EndIf
-    Return 0
-EndFunction
 ; ===========================================================================
 ; Authored-disposition mappers
 ;
@@ -1395,39 +1163,6 @@ String Function Unquote(String asValue) Global
         EndIf
     EndIf
     Return v
-EndFunction
-
-String Function NormalizeSeparators(String asCsv) Global
-    { The catalogue in snrom_author_disposition.prompt is DISPLAYED with middle-dot
-      separators, and a model copied that separator into its ANSWER - so
-      "Dungeons Cleared - Standing Stones Found - Barters ..." arrived as ONE
-      name and all seven likes were rejected as a single unrecognized activity.
-      Svana Far-Shield lost a whole authoring run to it and fell back to a
-      generic archetype.
-
-      Same failure family as the group headings that became answers: whatever
-      sits next to the answer gets copied. Rather than guess which separator a
-      model will pick, fold ANY character that cannot appear in an activity name
-      into a comma. The 58 catalogue entries are letters, digits and spaces only
-      - verified against LabelToOffset - so this cannot corrupt a valid name.
-
-      Deliberately character-code based rather than a literal-character replace:
-      a middle dot may arrive as one char or two depending on how the response
-      was decoded, and this does not care either way. }
-    Int n = StringUtil.GetLength(asCsv)
-    String out = ""
-    Int i = 0
-    While i < n
-        String ch = StringUtil.GetNthChar(asCsv, i)
-        Int o = StringUtil.AsOrd(ch)
-        If (o >= 48 && o <= 57) || (o >= 65 && o <= 90) || (o >= 97 && o <= 122) || o == 32 || o == 44
-            out += ch
-        Else
-            out += ","                          ; anything else IS a separator
-        EndIf
-        i += 1
-    EndWhile
-    Return out
 EndFunction
 
 String Function JsonEscape(String asText) Global

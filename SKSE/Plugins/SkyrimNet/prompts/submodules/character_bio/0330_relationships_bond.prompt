@@ -4,11 +4,12 @@
    every mode, which it flags as a response-delay risk. Commentary
    below, never above. #}
 {# ══════════════════════════════════════════════════════════════════════════ #}
-{# Romantasy — Bond                                                           #}
+{# Relationships — Bond                                                           #}
 {#                                                                            #}
 {# TWO LADDERS, NOT ONE. Bond DEPTH and bond KIND are independent:            #}
 {#                                                                            #}
-{#   depth  = ROM_RomanceLevel faction rank 0-5, earned by shared experience,  #}
+{#   depth  = SNRom_Bond faction rank 0-5 (our plugin; ROM_RomanceLevel in    #}
+{#            1.x), earned by shared experience,                            #}
 {#            open to everyone who travels with the player                     #}
 {#   kind   = platonic or romantic, selected by rom.sparked                    #}
 {#                                                                            #}
@@ -31,8 +32,8 @@
 {# an error.                                                                   #}
 {# ══════════════════════════════════════════════════════════════════════════ #}
 {% if not is_player(actorUUID) %}
-{% if is_plugin_loaded("CS_Romantasy.esp") %}
-{% set rom_tier = get_faction_rank(actorUUID, "ROM_RomanceLevel") %}
+{% if is_plugin_loaded("SNRom_Integration.esl") %}
+{% set rom_tier = get_faction_rank(actorUUID, "SNRom_Bond") %}
 {% if rom_tier >= 0 %}
 {% set actor = decnpc(actorUUID) %}
 {% set rom = get_romance(actorUUID) %}
@@ -103,12 +104,12 @@
 {% if sparked != 1 %}
 {# ── PLATONIC LADDER ───────────────────────────────────────────────────── #}
 {% if rom_tier == 0 %}
-{{ player.name }} is someone you have taken up with recently. Whether it becomes anything is an open question you have not thought much about.
+{{ player.name }} is someone you have only recently come to know. Whether it becomes anything is an open question you have not thought much about.
 
-- Treat them as what they are so far: a capable person you are traveling alongside, and not yet more than that.
+- Treat them as what they are so far: a capable person you are getting to know, and not yet more than that.
 - You are still working out what they are like when it is difficult. Reserve judgment; do not perform warmth you have not earned or been given.
 {% elif rom_tier == 1 %}
-You have come to like {{ player.name }}. The road is easier with them on it.
+You have come to like {{ player.name }}. Time spent with them is easy.
 
 - You are glad of their company and mildly put out by their absence, and you would probably not say either aloud.
 - You have started to trust their judgment in small things, which for you is not a small thing.
@@ -173,8 +174,7 @@ You trust {{ player.name }} with things you have told almost no one. The line be
    does not need having again", and nothing in Papyrus ever re-asked. Now
    ReopenIfClimbedBack turns a declined companion back into an unanswered one
    the moment they climb back to Lover, exactly like the first time, so this
-   renders only in the short gap before that runs (an award from Romantasy's
-   own economy lands before our ceiling sees it). It must not contradict the
+   renders only in the short gap before that runs. It must not contradict the
    question that is about to be raised. #}
 You told {{ player.name }} once what you wanted, and they said no. That was a while ago, and what you feel has not gone anywhere.
 

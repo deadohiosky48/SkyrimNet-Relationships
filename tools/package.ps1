@@ -69,8 +69,32 @@ try {
     $eslNote = if ([BitConverter]::ToUInt32($b, 8) -band 0x200) { 'ESL-flagged' } else { 'NOT ESL-flagged' }
 
     # --- 2. compiled scripts ----------------------------------------------
+    # FIVE since SNRom_Native, the DLL's native declarations. It ships even in a
+    # package without the DLL: nothing calls it unless the DLL is present.
     $pex = Get-ChildItem (Join-Path $repo 'Scripts') -Filter 'SNRom_*.pex' -File
-    if ($pex.Count -lt 4) { throw "Expected 4 SNRom_*.pex, found $($pex.Count). Run tools\build.ps1 first." }
+    if ($pex.Count -lt 5) { throw "Expected 5 SNRom_*.pex, found $($pex.Count). Run tools\build.ps1 first." }
+
+    # NEVER A STALE BUILD. A failed compile leaves the previous build's .pex in
+    # Scripts\ untouched, and this used to package them without a word: an
+    # archive whose scripts are not its source. So every SNRom_*.psc in
+    # src\scripts must have its .pex, written no earlier than the .psc was last
+    # changed; a checkout that changes a script counts as a change. The other
+    # .psc files there (Romantasy.psc, MARAS.psc and the rest) are vendored
+    # headers that build.ps1 compiles against and never compiles, so they have
+    # no .pex of their own.
+    $stale = @()
+    foreach ($psc in Get-ChildItem (Join-Path $repo 'src\scripts') -Filter 'SNRom_*.psc' -File) {
+        $built = Join-Path (Join-Path $repo 'Scripts') ($psc.BaseName + '.pex')
+        if (-not (Test-Path $built)) {
+            $stale += "$($psc.Name): no $($psc.BaseName).pex"
+        } elseif ($psc.LastWriteTimeUtc -gt (Get-Item $built).LastWriteTimeUtc) {
+            $stale += "$($psc.Name): changed after $($psc.BaseName).pex was built"
+        }
+    }
+    if ($stale) {
+        throw ("Scripts\ does not match src\scripts. Run tools\build.ps1 and fix any failure first:`n  " +
+               ($stale -join "`n  "))
+    }
     New-Item -ItemType Directory -Force -Path (Join-Path $stage 'Scripts') | Out-Null
     $pex | Copy-Item -Destination (Join-Path $stage 'Scripts')
 
@@ -234,8 +258,57 @@ try {
     }
     Write-Host ("  verified  both layouts carry the same {0} content files" -f $legacy.Count)
 
+    # 2.0 NEEDS BETA 25, so the classic layer goes, now that the check above
+    # has proved the plugin library holds every file in it. Beta 25 ignores it
+    # anyway; on Beta 24 it would half-work. The plugin settings manifest in
+    # config\plugins stays: Beta 25 reads that one where it is.
+    Remove-Item (Join-Path $snRoot 'prompts') -Recurse -Force
+    foreach ($kind in 'triggers', 'actions') {
+        $d = Join-Path $snRoot "config\$kind"
+        if (Test-Path $d) { Remove-Item $d -Recurse -Force }
+    }
+    Write-Host "  dropped   the classic layout (prompts\, config\triggers, config\actions) - 2.0 needs Beta 25"
+
     $extCount = (Get-ChildItem $ext -Recurse -File).Count
     Write-Host ("  Beta 25   external\{0}  ({1} files)" -f $PluginId, $extCount)
+
+    # --- 3c. the dashboard: SkyrimNetRelationships.dll and its page ---------
+    # OUTSIDE SkyrimNet's content layers: the DLL goes to SKSE\Plugins and the
+    # page to MeridianUI\snrelationships, which is where Meridian serves
+    # mod://snrelationships/ from. Neither belongs in external\, so both
+    # layouts above are untouched.
+    #
+    # Both or neither. The page does nothing without the DLL, and the DLL is
+    # optional: a build machine without it still packages the rest of the mod,
+    # and says so below rather than failing.
+    $dll = Join-Path $repo 'native\build\Release\SkyrimNetRelationships.dll'
+    if (Test-Path $dll) {
+        # The .dll ONLY - never a .pdb. A debug database carries every source
+        # path of the build machine and is of no use to a player.
+        Copy-Item $dll (Join-Path $stage 'SKSE\Plugins')
+        $page = Join-Path $stage 'MeridianUI\snrelationships'
+        New-Item -ItemType Directory -Force -Path $page | Out-Null
+        # WITHOUT mock\: the invented snapshots, and mock\host.js, which is the
+        # mock host and its MOCK HOST strip. bridge.js loads it only when the page
+        # is served over http, which no game host does - but it does not ship.
+        Get-ChildItem (Join-Path $repo 'ui\relationships') |
+            Where-Object { $_.Name -ne 'mock' } |
+            Copy-Item -Destination $page -Recurse
+        # Proven, not assumed: nothing of the mock host or its strip anywhere.
+        $mockLeaks = Get-ChildItem $page -Recurse -File | Where-Object {
+            $_.Directory.Name -eq 'mock' -or
+            (Select-String -LiteralPath $_.FullName -Pattern 'snrom-mock-bar|__snromMock' -Quiet)
+        }
+        if ($mockLeaks) {
+            throw "The mock host or its developer strip is staged: $($mockLeaks.Name -join ', ')"
+        }
+        $pageCount = (Get-ChildItem $page -Recurse -File).Count
+        $dashNote = "SkyrimNetRelationships.dll ($([math]::Round((Get-Item $dll).Length / 1KB)) KB), MeridianUI\snrelationships ($pageCount files)"
+    } else {
+        $dashNote = 'NOT INCLUDED - no DLL built (tools\build-dll.ps1); this package has no dashboard'
+        Write-Host "  Dashboard not included: native\build\Release\SkyrimNetRelationships.dll is not built." -ForegroundColor Yellow
+    }
+    if (Get-ChildItem $stage -Recurse -Filter '*.pdb' -File) { throw "A .pdb is staged. Never ship one." }
 
     # --- 4. optional extras: DELIBERATELY NOT SHIPPED -----------------------
     # optional\baka-tier-gates\ holds modified copies of Baka's own action files.
@@ -294,7 +367,7 @@ try {
     # leak is permanent and public.
     $leaks = @()
     Get-ChildItem $stage -Recurse -File |
-        Where-Object { $_.Extension -in '.md','.psc','.prompt','.yaml','.yml','.txt','.inc','.ps1','.json' } |
+        Where-Object { $_.Extension -in '.md','.psc','.prompt','.yaml','.yml','.txt','.inc','.ps1','.json','.js','.css','.html' } |
         ForEach-Object {
             $name = $_.Name
             # TWO space-free segments are required. A real path has a drive and at
@@ -305,6 +378,30 @@ try {
                 ForEach-Object { $_.Value } | Sort-Object -Unique |
                 ForEach-Object { $leaks += "$name : $_" }
         }
+    # BINARIES TOO, and the DLL above all. __FILE__ and std::source_location bake
+    # absolute source paths into it; /d1trimfile: in native\CMakeLists.txt strips
+    # them, but that flag is undocumented, so if a future MSVC stops honouring it
+    # the build will NOT fail - it will quietly leak, the way Kinship's first two
+    # releases did. Kinship's packager warns; this one refuses.
+    #
+    # Scanned as Latin-1 AND as UTF-16 at both byte alignments, because a DLL
+    # stores wide strings too and a one-byte scan cannot see them. Either
+    # separator, because CMake hands MSVC forward-slash paths.
+    foreach ($bin in (Get-ChildItem $stage -Recurse -File | Where-Object { $_.Extension -in '.dll', '.exe' })) {
+        $bytes = [System.IO.File]::ReadAllBytes($bin.FullName)
+        $views = @(
+            [System.Text.Encoding]::GetEncoding(28591).GetString($bytes),
+            [System.Text.Encoding]::Unicode.GetString($bytes),
+            [System.Text.Encoding]::Unicode.GetString($bytes, 1, $bytes.Length - 1)
+        )
+        foreach ($view in $views) {
+            # The lookbehind keeps URL schemes out: mod://snrelationships/ is in
+            # this DLL on purpose, and "d:/" alone would read as a drive.
+            [regex]::Matches($view, '(?<![A-Za-z0-9])[A-Za-z]:[\\/][ A-Za-z0-9_.\\/-]{6,150}') |
+                ForEach-Object { $_.Value } | Sort-Object -Unique |
+                ForEach-Object { $leaks += "$($bin.Name) : $_" }
+        }
+    }
     if ($leaks) {
         Write-Host ""
         Write-Host "  REFUSING TO PACKAGE - absolute paths found in files about to ship:" -ForegroundColor Red
@@ -334,11 +431,20 @@ try {
         # GetEncoding(28591) rather than ::Latin1 - the named property exists only
         # in PowerShell 7, and this must run under Windows PowerShell 5.1 too,
         # where it silently evaluates to null and takes the guard offline.
-        $text = [System.Text.Encoding]::GetEncoding(28591).GetString(
-                    [System.IO.File]::ReadAllBytes($file.FullName))
-        foreach ($token in $identity) {
-            if ($text.IndexOf($token, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
-                $found += "$($file.Name) contains the build machine's identity"
+        $bytes = [System.IO.File]::ReadAllBytes($file.FullName)
+        $views = @([System.Text.Encoding]::GetEncoding(28591).GetString($bytes))
+        # A DLL also stores UTF-16 strings, which the one-byte scan above reads as
+        # letters separated by zeros and never matches. Both alignments, because
+        # a wide string can start on an odd byte.
+        if ($file.Extension -in '.dll', '.exe') {
+            $views += [System.Text.Encoding]::Unicode.GetString($bytes)
+            $views += [System.Text.Encoding]::Unicode.GetString($bytes, 1, $bytes.Length - 1)
+        }
+        foreach ($text in $views) {
+            foreach ($token in $identity) {
+                if ($text.IndexOf($token, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                    $found += "$($file.Name) contains the build machine's identity"
+                }
             }
         }
     }
@@ -366,9 +472,10 @@ try {
     Write-Host "  Version   $Version"
     Write-Host "  Plugin    SNRom_Integration.esl ($eslNote)"
     Write-Host "  Scripts   $($pex.Count) compiled"
+    Write-Host "  Dashboard $dashNote"
     Write-Host "  Size      $size KB"
-    Write-Host "  Paths     clean - no absolute paths in any shipped file"
-    Write-Host "  Identity  clean - no build machine username or hostname, .pex headers included"
+    Write-Host "  Paths     clean - no absolute paths in any shipped file, the DLL included"
+    Write-Host "  Identity  clean - no build machine username or hostname, .pex headers and the DLL included"
 }
 finally {
     Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue

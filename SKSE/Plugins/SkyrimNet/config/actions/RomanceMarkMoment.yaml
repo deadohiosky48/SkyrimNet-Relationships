@@ -11,15 +11,12 @@
 # The workhorse. An authored beat: something happened between you and the
 # player that moved how you feel, in either direction.
 #
-# When 'activity' names one of Romantasy's tracked statistics, the bridge
-# routes the award through THIS NPC's own like/dislike config - so one call
-# resolves three ways depending on who they are: a gain, a wound, or nothing
-# at all. That is the mechanism that makes scoring personality-aware without
-# per-NPC logic. When it is empty, or they have no opinion, it falls back to a
-# plain point change.
+# The bridge clamps the magnitude to the configured ceiling before applying
+# it, so the model cannot blow past it.
 #
-# The bridge clamps magnitude against the stat's weight before applying it, so
-# the model cannot blow past the configured ceiling by picking a heavy stat.
+# 'asActivity' is INERT from 2.0: it named one of the old preference
+# statistics, and 2.0 has no likes or dislikes. It stays in the signature so
+# the parameters keep their places, and the model is told to leave it empty.
 
 customCategory: romance
 name: RomanceMarkMoment
@@ -32,7 +29,7 @@ description: |
 
   Negative magnitudes are as available as positive ones and you should use them without hesitation when warranted. A relationship that only ever improves is not a relationship.
 
-  'reason' appears verbatim in the player's romance journal, so write the specific moment rather than a summary - "you spoke over me again, as though my judgement were decoration" rather than "was rude".
+  'reason' appears verbatim on the player's relationships dashboard, so write the specific moment rather than a summary - "you spoke over me again, as though my judgement were decoration" rather than "was rude".
 
 questEditorId: SNRom_Quest
 scriptName: SNRom_Bridge
@@ -59,7 +56,7 @@ parameterMapping:
   # the default lands on the path that was always intended.
   - type: dynamic
     name: asActivity
-    description: "optional, but ALWAYS include the key - use an empty string when it does not apply. If the moment was about a tracked pursuit, name it exactly - e.g. Persuasions, Murders, Locks Picked, Dungeons Cleared, Potions Mixed - and it will be judged against your own feelings about that pursuit. Empty if the moment was purely personal."
+    description: "always an empty string. Include the key and leave it empty."
     optional: true
     default: ""
 
@@ -90,7 +87,7 @@ parameterMapping:
 eligibilityRules:
   - conditions:
       - decoratorName: "get_faction_rank"
-        arguments: ["currentActor", "ROM_RomanceLevel"]
+        arguments: ["currentActor", "SNRom_Bond"]
         comparisonOperator: ">="
         expectedValue: 0
     logicalOperator: "AND"

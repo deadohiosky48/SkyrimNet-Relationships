@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 3,
+  "generatedAt": 214.37,
+  "roster": {
+    "status": "current",
+    "message": null
+  },
+  "playthrough": {
+    "id": "7f3a91c2",
+    "store": "SNRom_Dispositions",
+    "storeDecision": "legacy"
+  },
+  "ladder": {
+    "thresholds": [
+      0,
+      500,
+      1000,
+      1500,
+      2000,
+      2500
+    ]
+  },
+  "player": {
+    "formId": 20,
+    "name": "Tamsin Vey",
+    "isPlayer": true
+  },
+  "settings": {
+    "developer": false,
+    "scale": "auto",
+    "textSize": "normal"
+  },
+  "crosshairTarget": {
+    "formId": 499503,
+    "name": "Pim Ashkettle",
+    "enrolled": false
+  },
+  "bonds": [
+    {
+      "subject": {
+        "formId": 500704,
+        "name": "Lissa Ashkettle",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 169.1,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 74.91
+      },
+      "depth": {
+        "points": 2640,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "foreclosed",
+      "foreclosure": "kin",
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 187.93
+      },
+      "commitment": "none",
+      "seeded": false,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 4,
+        "exclusivity": 0,
+        "orientation": "none",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Lissa prizes plain speech and distrusts anyone who talks around a thing.",
+        "limit": "Lissa will not be kept as someone's second choice.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 977375,
+        "name": "Tomsin Greywick",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 208.37,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 205.66
+      },
+      "depth": {
+        "points": 1080,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "foreclosed",
+      "foreclosure": "minor",
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 212.9
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "never",
+        "ardor": 3,
+        "exclusivity": 0,
+        "orientation": "none",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Tomsin trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
+        "limit": "Tomsin will not stand beside anyone who harms a child.",
+        "address": "Your surname, like a soldier."
+      }
+    },
+    {
+      "subject": {
+        "formId": 747248,
+        "name": "Aldric Ashkettle",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": 165.75,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 147.65
+      },
+      "depth": {
+        "points": 2780,
+        "tier": 5,
+        "banked": 0
+      },
+      "track": "romantic",
+      "state": "courting",
+      "foreclosure": null,
+      "stance": "accepted",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 152.77,
+        "lastCheckedAt": 186.22
+      },
+      "commitment": "married",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 2,
+        "exclusivity": 100,
+        "orientation": "women",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Aldric is drawn to steadiness, and wary of anyone who needs an audience.",
+        "limit": "Aldric will not bow to a Thalmor justiciar, whatever it costs.",
+        "address": "'My heart', when no one is listening."
+      }
+    }
+  ]
+}

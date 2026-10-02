@@ -1,0 +1,529 @@
+/* Relationships dashboard. Our own design: a dark, parchment-warm panel over
+   the paused game. System fonts only - nothing is fetched at runtime.
+
+   SIZES (display.js). Every length is in rem, and the root font size is the
+   scale (dashboardScale), so the scale sizes everything. --t is the text size
+   (dashboardTextSize): every font size, and every box sized to hold text
+   (columns, rows, fields, panels), is multiplied by it; spacing is not. So a
+   new font size is written calc(Nrem * var(--t)), and so is a new box that
+   holds text. The roster's columns are measured from what they can show
+   (roster.js, fit), and whether the detail sits beside the roster or slides
+   over it is decided by app.js (layout), not by a media query: a media query
+   cannot see the scale.
+
+   Kept to CSS both hosts render the same way: flexbox, custom properties,
+   gradients. No backdrop-filter, no container queries, no :has(). PrismaUI
+   renders with Ultralight and scrolls slowly, so the roster is virtualized
+   and each row is a handful of plain boxes. */
+
+:root {
+  --bg: rgba(7, 9, 13, 0.94);
+  --panel-top: #161b24;
+  --panel-bottom: #10141b;
+  --surface: #1a202b;
+  --surface-2: #212836;
+  --surface-hi: #2a3243;
+  --line: #2b3444;
+  --line-soft: #222a37;
+  --text: #ece5d6;
+  --muted: #a3a9b5;
+  --faint: #6f7684;
+  --accent: #d6ad57;
+  --accent-ink: #1b1509;
+  --focus: #f1cf7e;
+  --danger: #e07a6c;
+
+  --platonic: #72b6cb;
+  --romantic: #e68da2;
+
+  --s-foreclosed: #9097a1;
+  --s-unexamined: #b9b09c;
+  --s-platonic: #8fc3a8;
+  --s-interested: #e5b65e;
+  --s-courting: #e68da2;
+  --s-declined: #ad93d6;
+  --s-ended: #8190aa;
+
+  --t: 1;         /* the text size; display.js sets it */
+  --row-h: 56px;  /* display.js sets it, in px, for roster.js to read */
+  --serif: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Times New Roman", serif;
+  --sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --mono: Consolas, "Courier New", monospace;
+  font-size: 16px; /* the scale; display.js sets it */
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: calc(1rem * var(--t));
+  line-height: 1.35;
+}
+
+button, input, select { font: inherit; color: inherit; }
+
+:focus { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.panel {
+  position: absolute;
+  top: 3vh; bottom: 3vh; left: 2vw; right: 2vw;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(214, 173, 87, 0.32);
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--panel-top), var(--panel-bottom));
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------- header */
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem 0.7rem;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(90deg, rgba(214, 173, 87, 0.09), rgba(214, 173, 87, 0) 55%);
+}
+.head h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: normal;
+  font-size: calc(1.75rem * var(--t));
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  font-variant: small-caps;
+}
+.head-sub { margin: 0.15rem 0 0; color: var(--muted); font-size: calc(0.9rem * var(--t)); }
+.dev-badge {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.1rem 0.55rem;
+  border: 1px dashed var(--danger);
+  border-radius: 4px;
+  color: #f2b3aa;
+  font-size: calc(0.78rem * var(--t));
+  letter-spacing: 0.04em;
+}
+
+.icon-btn {
+  width: calc(2.25rem * var(--t)); height: calc(2.25rem * var(--t));
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: calc(1.4rem * var(--t));
+  line-height: 1;
+  cursor: pointer;
+  color: var(--muted);
+}
+.icon-btn:hover { color: var(--text); border-color: var(--accent); }
+
+.roster-status {
+  margin: 0;
+  padding: 0.4rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: calc(0.88rem * var(--t));
+}
+.roster-status.is-warn { color: var(--s-interested); background: rgba(229, 182, 94, 0.07); }
+
+.crosshair {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.55rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(214, 173, 87, 0.08);
+}
+.crosshair-text { margin: 0; flex: 1 1 auto; }
+.crosshair-text strong { color: var(--accent); font-weight: 600; }
+
+/* ---------------------------------------------------------------- toolbar */
+
+.toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+.field { display: flex; flex-direction: column; gap: 0.2rem; }
+.field-grow { flex: 0 1 calc(16rem * var(--t)); }
+.field-label { font-size: calc(0.72rem * var(--t)); text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint); }
+.field input, .field select {
+  height: calc(2rem * var(--t));
+  padding: 0 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+}
+.field select { padding-right: 0.3rem; }
+.field input::placeholder { color: var(--faint); }
+.toolbar-count { margin: 0 0 0.35rem auto; color: var(--muted); font-size: calc(0.9rem * var(--t)); white-space: nowrap; }
+
+/* ---------------------------------------------------------------- body */
+
+.body {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+.roster {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Column widths live here and only here: header and rows share them. Each is
+   as wide as the widest thing its column can show, measured by roster.js
+   (fit) and set as --w-*; the fallbacks are for before it has. The gap and
+   the padding are mirrored in roster.js (COL_GAP_REM, COL_PAD_REM). */
+.cols { display: flex; align-items: center; gap: 0.75rem; padding: 0 1.25rem; }
+.c-name { flex: 0 0 var(--w-name, calc(11rem * var(--t))); width: var(--w-name, calc(11rem * var(--t))); min-width: 0; }
+.c-depth { flex: 0 0 var(--w-depth, calc(14rem * var(--t))); width: var(--w-depth, calc(14rem * var(--t))); }
+.c-track { flex: 0 0 var(--w-track, calc(5.75rem * var(--t))); width: var(--w-track, calc(5.75rem * var(--t))); }
+.c-state { flex: 0 0 var(--w-state, calc(7rem * var(--t))); width: var(--w-state, calc(7rem * var(--t))); }
+.c-com { flex: 0 0 var(--w-com, calc(6.5rem * var(--t))); width: var(--w-com, calc(6.5rem * var(--t))); }
+.c-int { flex: 0 0 var(--w-int, calc(6rem * var(--t))); width: var(--w-int, calc(6rem * var(--t))); }
+.c-ard { flex: 0 0 var(--w-ard, calc(5.75rem * var(--t))); width: var(--w-ard, calc(5.75rem * var(--t))); }
+.c-exc { flex: 0 0 var(--w-exc, calc(7.75rem * var(--t))); width: var(--w-exc, calc(7.75rem * var(--t))); }
+.c-ori { flex: 0 0 var(--w-ori, calc(6rem * var(--t))); width: var(--w-ori, calc(6rem * var(--t))); }
+
+/* WIDE: the roster is exactly as wide as its columns, and never stretches.
+   The detail takes the width left over, between its minimum and its maximum;
+   past that the panel stops growing and sits centred (app.js, layout). */
+:root:not(.is-narrow) .roster { flex: 0 0 var(--roster-w, auto); }
+:root:not(.is-narrow) .panel { max-width: var(--panel-max, none); margin: 0 auto; }
+
+/* NARROW: the roster has the panel to itself, and the detail slides over it.
+   The columns still keep to their content: spare width stays to the right,
+   where the detail opens. Short of room, the name gives way first, down to a
+   floor. */
+.is-narrow .c-name { flex: 0 1 var(--w-name, calc(11rem * var(--t))); min-width: calc(7rem * var(--t)); }
+
+/* What roster.js measures the columns with: never seen. */
+.fit-probe { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
+.fit-col { position: absolute; left: 0; top: 0; white-space: nowrap; }
+.fit-col .roster-head { height: auto; border: 0; }
+
+.roster-head {
+  height: calc(2rem * var(--t));
+  border-bottom: 1px solid var(--line);
+  color: var(--faint);
+  font-size: calc(0.72rem * var(--t));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.roster-head .c-traits-note { color: var(--faint); }
+
+.viewport {
+  position: relative;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  outline-offset: -2px;
+}
+.spacer { position: relative; width: 100%; }
+
+.row {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: var(--row-h);
+  /* The foot of the row is the last change's (.row-last): the columns centre
+     in what is left above it. display.js's ROW_REM includes this line. */
+  padding-bottom: calc(1.1rem * var(--t));
+  border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
+}
+.row:hover { background: rgba(255, 255, 255, 0.025); }
+.row.is-open { background: rgba(214, 173, 87, 0.09); }
+/* The list is one tab stop; its focus shows on the active row, not as a box
+   round the whole list. */
+.viewport:focus { outline: none; }
+.viewport:focus .row.is-active {
+  box-shadow: inset 4px 0 0 var(--focus), inset 0 0 0 1px rgba(241, 207, 126, 0.55);
+  background: rgba(241, 207, 126, 0.08);
+}
+
+.name {
+  display: block;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The last change, under the record: from the Depth column to the row's end,
+   one line, cut with an ellipsis (the full text is the title, and the
+   detail's list). */
+.row-last {
+  position: absolute;
+  left: calc(1.25rem + var(--w-name, calc(11rem * var(--t))) + 0.75rem);
+  right: 1.25rem;
+  bottom: calc(0.3rem * var(--t));
+  height: calc(1.1rem * var(--t));
+  line-height: calc(1.1rem * var(--t));
+  font-size: calc(0.78rem * var(--t));
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row-last .delta { font-weight: 600; font-variant-numeric: tabular-nums; margin-right: 0.45em; }
+.row-last .when { color: var(--faint); margin-right: 0.45em; }
+.row-last .when:not(:empty)::after { content: " \00b7"; }
+.delta.up { color: var(--s-platonic); }
+.delta.down { color: var(--danger); }
+.delta.held { color: var(--s-interested); }
+.delta.base { color: var(--muted); }
+
+.name-sub { display: block; font-size: calc(0.78rem * var(--t)); color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tag-follow { color: var(--accent); }
+
+.depth-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.tier { font-family: var(--serif); font-size: calc(1.02rem * var(--t)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tier.t-platonic { color: var(--platonic); }
+.tier.t-romantic { color: var(--romantic); }
+.pts { font-size: calc(0.78rem * var(--t)); color: var(--muted); white-space: nowrap; }
+.bar { height: 0.3rem; margin-top: 0.3rem; border-radius: 3px; background: #262e3b; overflow: hidden; }
+.fill { height: 100%; width: 0; border-radius: 3px; }
+.fill.t-platonic { background: var(--platonic); }
+.fill.t-romantic { background: var(--romantic); }
+.fill.is-held {
+  background-image: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.35) 0, rgba(0, 0, 0, 0.35) 4px, transparent 4px, transparent 8px);
+}
+
+.chip {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0.08rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: calc(0.8rem * var(--t));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+.chip.t-platonic { color: var(--platonic); border-color: rgba(114, 182, 203, 0.45); }
+.chip.t-romantic { color: var(--romantic); border-color: rgba(230, 141, 162, 0.5); }
+.chip.s-foreclosed { color: var(--s-foreclosed); border-color: rgba(144, 151, 161, 0.45); }
+.chip.s-unexamined { color: var(--s-unexamined); border-style: dashed; border-color: rgba(185, 176, 156, 0.5); }
+.chip.s-platonic { color: var(--s-platonic); border-color: rgba(143, 195, 168, 0.45); }
+.chip.s-interested { color: var(--s-interested); border-color: rgba(229, 182, 94, 0.5); }
+.chip.s-courting { color: var(--s-courting); border-color: rgba(230, 141, 162, 0.5); background: rgba(230, 141, 162, 0.08); }
+.chip.s-declined { color: var(--s-declined); border-color: rgba(173, 147, 214, 0.5); }
+.chip.s-ended { color: var(--s-ended); border-color: rgba(129, 144, 170, 0.5); }
+/* Commitment: gold, filled for a marriage, outlined for an engagement, and
+   quieter for a candidate - a possibility, not a fact between them yet. */
+.chip.k-married { color: var(--accent); border-color: rgba(214, 173, 87, 0.65); background: rgba(214, 173, 87, 0.12); }
+.chip.k-engaged { color: var(--accent); border-color: rgba(214, 173, 87, 0.55); }
+.chip.k-candidate { color: #c9b48a; border-color: rgba(214, 173, 87, 0.28); }
+.chip.trait { color: var(--text); background: var(--surface); }
+.chip.is-default { color: var(--faint); border-style: dashed; background: transparent; }
+.chip.is-na { color: var(--faint); border-color: transparent; background: transparent; }
+
+.empty {
+  margin: 3rem auto;
+  max-width: calc(34rem * var(--t));
+  padding: 0 1.25rem;
+  color: var(--muted);
+  text-align: center;
+}
+.empty h2 { font-family: var(--serif); font-weight: normal; color: var(--text); }
+
+/* ---------------------------------------------------------------- detail */
+
+.detail {
+  flex: 1 1 auto;
+  min-width: var(--detail-min, calc(30rem * var(--t)));
+  max-width: var(--detail-max, calc(44rem * var(--t)));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+}
+/* Narrow: the detail slides over the roster instead of beside it. */
+.is-narrow .detail {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: calc(34rem * var(--t));
+  min-width: 0;
+  max-width: 70%;
+  box-shadow: -18px 0 40px rgba(0, 0, 0, 0.5);
+  z-index: 5;
+}
+.is-narrow .detail.is-summary { display: none !important; }
+
+.detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+.detail-head h2 { margin: 0; font-family: var(--serif); font-weight: normal; font-size: calc(1.55rem * var(--t)); }
+.detail-meta { margin: 0.2rem 0 0; color: var(--muted); font-size: calc(0.85rem * var(--t)); }
+.detail-meta code { font-family: var(--mono); font-size: calc(0.8rem * var(--t)); color: var(--faint); }
+.detail-scroll { flex: 1 1 auto; overflow-y: auto; padding: 0.25rem 1.25rem 1.25rem; }
+
+.sec { padding: 0.85rem 0; border-bottom: 1px solid var(--line-soft); }
+.sec:last-child { border-bottom: none; }
+.sec h3 {
+  margin: 0 0 0.55rem;
+  font-size: calc(0.72rem * var(--t));
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.depth-big { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.depth-big .tier { font-size: calc(1.6rem * var(--t)); }
+.depth-big .pts { font-size: calc(0.95rem * var(--t)); }
+.depth-note { margin: 0.45rem 0 0; color: var(--muted); font-size: calc(0.88rem * var(--t)); }
+.sub-head { margin: 0.9rem 0 0.35rem; color: var(--faint); font-size: calc(0.72rem * var(--t)); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.change-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
+.change { display: grid; grid-template-columns: 3.6em 1fr; column-gap: 0.6rem; align-items: baseline; }
+.change .delta { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.change .when { color: var(--faint); font-size: calc(0.78rem * var(--t)); }
+.change .why { margin: 0.1rem 0 0; color: var(--text); font-size: calc(0.9rem * var(--t)); line-height: 1.4; }
+
+.kv { display: flex; gap: 0.75rem; margin: 0.3rem 0; font-size: calc(0.92rem * var(--t)); }
+.kv dt { flex: 0 0 calc(8.5rem * var(--t)); color: var(--muted); }
+.kv dd { margin: 0; flex: 1 1 auto; }
+.blurb { margin: 0.4rem 0 0.2rem; color: var(--muted); font-size: calc(0.9rem * var(--t)); }
+
+.traits { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-bottom: 0.8rem; }
+.trait-box { flex: 1 1 40%; min-width: calc(9rem * var(--t)); }
+.trait-box .k { display: block; font-size: calc(0.75rem * var(--t)); color: var(--faint); }
+.trait-box .v { display: block; font-size: calc(1rem * var(--t)); }
+.trait-note { margin: 0.5rem 0 0; font-size: calc(0.82rem * var(--t)); color: var(--faint); }
+
+.prose { margin: 0.2rem 0 0.7rem; }
+.prose .k { display: block; font-size: calc(0.72rem * var(--t)); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+.prose p { margin: 0.2rem 0 0; font-family: var(--serif); font-size: calc(1.05rem * var(--t)); line-height: 1.45; }
+.prose-hint { display: block; margin-top: 0.1rem; font-size: calc(0.8rem * var(--t)); color: var(--faint); }
+.prose p.is-missing { font-family: var(--sans); font-size: calc(0.9rem * var(--t)); color: var(--faint); font-style: italic; }
+
+.act { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.55rem 0; border-top: 1px dashed var(--line-soft); }
+.act:first-of-type { border-top: none; }
+.act-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.act-help { margin: 0; font-size: calc(0.85rem * var(--t)); color: var(--muted); }
+.act-calls { margin: 0; font-family: var(--mono); font-size: calc(0.74rem * var(--t)); color: var(--faint); }
+.act-needs { margin: 0; font-size: calc(0.8rem * var(--t)); color: var(--faint); }
+.act-needs.is-blocking { color: var(--danger); }
+.act-form { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.act-form select, .act-form input {
+  height: calc(2rem * var(--t)); padding: 0 0.45rem; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-2);
+}
+.act-form input { width: calc(5rem * var(--t)); }
+
+.legend-row { display: flex; gap: 0.75rem; align-items: baseline; margin: 0.45rem 0; }
+.legend-row .chip { flex: 0 0 auto; }
+.legend-row .n { flex: 0 0 calc(2.5rem * var(--t)); text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+.legend-row p { margin: 0; color: var(--muted); font-size: calc(0.86rem * var(--t)); }
+
+/* ---------------------------------------------------------------- buttons */
+
+.btn {
+  display: inline-block;
+  min-height: calc(2rem * var(--t));
+  padding: 0.25rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface-2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--accent); }
+.btn[disabled] { opacity: 0.45; cursor: default; border-color: var(--line); }
+.btn.is-busy { opacity: 0.7; cursor: progress; }
+.btn-accent { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.btn-accent:hover { background: var(--focus); }
+.btn-danger { border-color: rgba(224, 122, 108, 0.6); color: #f2b3aa; }
+.btn-quiet { background: transparent; }
+/* Developer tools say so at a glance, as the developer badge does. */
+.btn-dev { border-style: dashed; border-color: rgba(224, 122, 108, 0.6); color: #f2b3aa; }
+.sec-dev h3 { color: #f2b3aa; }
+
+/* ---------------------------------------------------------------- footer */
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1.25rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: calc(0.85rem * var(--t));
+}
+.foot p { margin: 0; }
+.foot-store { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.foot-store code { font-family: var(--mono); color: var(--faint); }
+.foot-hint { margin-left: auto !important; color: var(--faint); white-space: nowrap; }
+kbd {
+  display: inline-block;
+  padding: 0 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-family: var(--sans);
+  font-size: calc(0.75rem * var(--t));
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------------- dialog */
+
+.scrim { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.55); z-index: 20; }
+.dialog {
+  position: fixed;
+  top: 50%; left: 50%;
+  width: calc(34rem * var(--t)); max-width: 92vw;
+  transform: translate(-50%, -50%);
+  padding: 1.25rem 1.4rem 1.1rem;
+  border: 1px solid rgba(214, 173, 87, 0.45);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  z-index: 21;
+}
+.dialog h2 { margin: 0 0 0.6rem; font-family: var(--serif); font-weight: normal; font-size: calc(1.35rem * var(--t)); }
+.dialog p { margin: 0.4rem 0; color: var(--muted); }
+.dialog .act-calls { margin-top: 0.6rem; }
+.dialog-buttons { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1rem; }
+
+/* ---------------------------------------------------------------- toasts */
+
+.toasts {
+  position: fixed;
+  right: 3vw; bottom: 5vh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  z-index: 30;
+  pointer-events: none;
+}
+.toast {
+  max-width: calc(30rem * var(--t));
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--platonic);
+  border-radius: 5px;
+  background: var(--surface-2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  font-size: calc(0.9rem * var(--t));
+}
+.toast.is-error { border-left-color: var(--danger); }
+.toast.is-warn { border-left-color: var(--s-interested); }

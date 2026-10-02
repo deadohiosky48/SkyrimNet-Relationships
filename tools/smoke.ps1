@@ -1,5 +1,5 @@
 <#
-    Live in-game smoke test for SkyrimNet-Romantasy.
+    Live in-game smoke test for SkyrimNet Relationships.
 
     Covers what check.ps1 CANNOT: Papyrus logic, prompt rendering, and the
     end-to-end award path. Run it after any .pex change; prompt-only edits are
@@ -84,7 +84,7 @@ function Wait-ForLine($path, $pattern, $fromLen, $timeoutSec) {
 
 $restore = @{}
 try {
-    Write-Host "`nSkyrimNet-Romantasy live smoke test" -ForegroundColor Cyan
+    Write-Host "`nSkyrimNet Relationships live smoke test" -ForegroundColor Cyan
     Write-Host "STAY IN-GAME AND UNPAUSED until this finishes.`n" -ForegroundColor Yellow
 
     # -- A1 --------------------------------------------------------------

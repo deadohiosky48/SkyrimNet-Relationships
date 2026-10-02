@@ -47,19 +47,19 @@ eligibilityRules:
           - OStimActorCountFaction
         comparisonOperator: <
         expectedValue: 0
-  # ── Romantasy gate ─────────────────────────────────────────────────────────
-  # Untracked by Romantasy (rank < 0) OR bonded to at least Friend (>= 2).
+  # ── Relationships gate (SNRom_Bond, 2.0; ROM_RomanceLevel in 1.x) ─────────
+  # Not enrolled (rank < 0) OR bonded to at least Friend (>= 2).
   - conditions:
       - decoratorName: get_faction_rank
         arguments:
           - currentActor
-          - ROM_RomanceLevel
+          - SNRom_Bond
         comparisonOperator: <
         expectedValue: 0
       - decoratorName: get_faction_rank
         arguments:
           - currentActor
-          - ROM_RomanceLevel
+          - SNRom_Bond
         comparisonOperator: ">="
         expectedValue: 2
     logicalOperator: OR

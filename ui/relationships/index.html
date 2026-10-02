@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relationships</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- Everything here is local: the page is served from mod:// in game, with no
+     network. No CDN, no web font, no remote image. -->
+<div class="panel" id="panel">
+  <header class="head">
+    <div class="head-title">
+      <h1>Relationships</h1>
+      <p class="head-sub" id="summary" aria-live="polite">Waiting for the game&hellip;</p>
+    </div>
+    <button type="button" class="icon-btn" id="close-btn" title="Close (Esc)" aria-label="Close the dashboard">&times;</button>
+  </header>
+
+  <!-- How current the roster is (snapshot.roster, WP2). Hidden when it is. -->
+  <p class="roster-status" id="roster-status" role="status" hidden></p>
+
+  <div class="crosshair" id="crosshair" hidden>
+    <p class="crosshair-text" id="crosshair-text"></p>
+    <button type="button" class="btn btn-accent" id="crosshair-btn"></button>
+  </div>
+
+  <div class="toolbar" role="search">
+    <label class="field field-grow">
+      <span class="field-label">Find</span>
+      <input type="text" id="f-text" placeholder="Name" autocomplete="off" spellcheck="false">
+    </label>
+    <label class="field">
+      <span class="field-label">Following</span>
+      <select id="f-following">
+        <option value="all">Anyone</option>
+        <option value="yes">Following</option>
+        <option value="no">Not following</option>
+      </select>
+    </label>
+    <label class="field">
+      <span class="field-label">Track</span>
+      <select id="f-track">
+        <option value="all">Both</option>
+        <option value="platonic">Platonic</option>
+        <option value="romantic">Romantic</option>
+      </select>
+    </label>
+    <label class="field">
+      <span class="field-label">State</span>
+      <select id="f-state"><option value="all">Any</option></select>
+    </label>
+    <label class="field">
+      <span class="field-label">Commitment</span>
+      <select id="f-commitment">
+        <option value="all">Any</option>
+        <option value="married">Married</option>
+        <option value="engaged">Engaged</option>
+        <option value="candidate">Marriage candidate</option>
+        <option value="none">None recorded</option>
+      </select>
+    </label>
+    <label class="field">
+      <span class="field-label">Sort</span>
+      <select id="f-sort">
+        <option value="depth-desc">Deepest first</option>
+        <option value="depth-asc">Shallowest first</option>
+        <option value="name-asc">Name, A to Z</option>
+        <option value="name-desc">Name, Z to A</option>
+      </select>
+    </label>
+    <p class="toolbar-count" id="count" aria-live="polite"></p>
+  </div>
+
+  <main class="body" id="body">
+    <section class="roster" id="roster" aria-label="Roster"></section>
+    <aside class="detail" id="detail" aria-label="Details" hidden></aside>
+  </main>
+
+  <footer class="foot">
+    <p class="foot-store" id="store"></p>
+    <button type="button" class="btn btn-quiet" id="repairs-btn">Playthrough repairs&hellip;</button>
+    <!-- Only in the developer view (app.js, renderBadge). -->
+    <button type="button" class="btn btn-quiet btn-dev" id="devtools-btn" hidden>Developer tools&hellip;</button>
+    <p class="foot-hint"><kbd>&uarr;</kbd><kbd>&darr;</kbd> move &middot; <kbd>Enter</kbd> open &middot; <kbd>Esc</kbd> back or close</p>
+  </footer>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="dialog" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" hidden>
+  <h2 id="dialog-title"></h2>
+  <div id="dialog-body"></div>
+  <div class="dialog-buttons" id="dialog-buttons"></div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="bridge.js"></script>
+<script src="mode.js"></script>
+<script src="display.js"></script>
+<script src="labels.js"></script>
+<script src="actions.js"></script>
+<script src="model.js"></script>
+<script src="roster.js"></script>
+<script src="detail.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

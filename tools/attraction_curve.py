@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Attraction model - calibration for the Romantasy romance gate.
+Attraction model - calibration for the romance gate.
 
 Design intent:
     Physical and social appeal are SEPARATE axes. 5/5, 5/1, 1/5 and 3/3 are

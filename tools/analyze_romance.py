@@ -28,7 +28,7 @@ from collections import defaultdict
 
 TIERS = ["Stranger", "Acquaintance", "Friend", "Confidant", "Lover", "Spouse"]
 CHANNELS = {
-    "passive": "Adventuring (Romantasy's own ledger)",
+    "passive": "Adventuring (1.x ledger rows)",
     "moment":  "Authored moments (LLM)",
     "sever":   "Conversation (SeverActions rapport)",
     "enroll":  "Enrollment (authored spark)",

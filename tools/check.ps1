@@ -1,5 +1,5 @@
 <#
-    Pre-deploy invariant checks for SkyrimNet-Romantasy.
+    Pre-deploy invariant checks for SkyrimNet Relationships.
 
     WHY THIS EXISTS. Nearly every bug this project has shipped was two places
     that must agree, disagreeing - and every one of them was greppable:
@@ -250,8 +250,23 @@ foreach ($k in $cfgReads) {
         Fail 'config' "$k declared in manifest but MISSING from settings.yaml - not tunable; settings.yaml never regenerates"
     }
 }
+# THE DLL READS SOME ITSELF, from settings.yaml (native/src/Settings.cpp): the
+# crosshair keys from 2.0 are read nowhere else. Its names are string literals
+# there, so any manifest key quoted in that file counts as read - and must be
+# in settings.yaml like any other.
+$dllSettings = Join-Path $repo 'native\src\Settings.cpp'
+$dllReads = @()
+if (Test-Path $dllSettings) {
+    $dllSrc = [IO.File]::ReadAllText($dllSettings)
+    $dllReads = $manifestKeys | Where-Object { $dllSrc -match ('"' + [regex]::Escape($_) + '"') }
+}
+foreach ($k in $dllReads) {
+    if ($cfgReads -notcontains $k -and $settingsKeys.Count -and $settingsKeys -notcontains $k) {
+        Fail 'config' "$k read by the DLL but MISSING from settings.yaml - not tunable; settings.yaml never regenerates"
+    }
+}
 foreach ($k in $manifestKeys) {
-    if ($cfgReads -notcontains $k) { Warn 'config' "$k advertised in manifest but never read - a setting that does nothing" }
+    if ($cfgReads -notcontains $k -and $dllReads -notcontains $k) { Warn 'config' "$k advertised in manifest but never read - a setting that does nothing" }
 }
 Ok 'config' "$($cfgReads.Count) keys read, $($manifestKeys.Count) declared, $($settingsKeys.Count) in settings.yaml"
 
@@ -635,7 +650,7 @@ if (Test-Path $authorPrompt) {
     }
 
     if (-not $names.Count) {
-        Fail 'catalogue' "no activity catalogue found in snrom_author_disposition.prompt, in either the CAT array or the interpunct-joined form"
+        Ok 'catalogue' "no activity catalogue - from 2.0 authoring asks for no likes or dislikes"
     }
     else {
         $dec   = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Join-Path $src 'SNRom_Decorators.psc')))

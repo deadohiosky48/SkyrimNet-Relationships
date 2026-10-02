@@ -93,6 +93,17 @@ check_message() {
         echo "  $label: has a Co-Authored-By trailer. Remove it - every co-author is listed as a contributor on GitHub." >&2
         bad=1
     fi
+    # Cloud sessions add `Claude-Session: <claude.ai URL>` to every commit by
+    # default. It ties the commit to the author's claude.ai account, and it
+    # would reach the public repository with any cherry-pick.
+    # .claude/settings.json turns it off (attribution.sessionUrl), but a session
+    # opened with several repositories doesn't read that file, so refuse it here
+    # too.
+    printf '%s\n' "$msg" | lower | grep -q -E '^[[:space:]]*claude-session:'
+    if found $? "$label" "session-link trailers"; then
+        echo "  $label: has a Claude-Session trailer. Remove it - it links the commit to a claude.ai account." >&2
+        bad=1
+    fi
     printf '%s\n' "$msg" | check_text "$label" || bad=1
     return $bad
 }

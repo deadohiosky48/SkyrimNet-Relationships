@@ -1,0 +1,11 @@
+{
+    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+    "name": "skyrimnet-relationships-plugin",
+    "version-string": "2.0.0",
+    "dependencies": [
+        "nlohmann-json",
+        "spdlog",
+        "directxtk",
+        "rapidcsv"
+    ]
+}

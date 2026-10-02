@@ -1,0 +1,484 @@
+{
+  "schemaVersion": 3,
+  "generatedAt": 214.37,
+  "roster": {
+    "status": "current",
+    "message": null
+  },
+  "playthrough": {
+    "id": "7f3a91c2",
+    "store": "SNRom_Dispositions",
+    "storeDecision": "legacy"
+  },
+  "ladder": {
+    "thresholds": [
+      0,
+      500,
+      1000,
+      1500,
+      2000,
+      2500
+    ]
+  },
+  "player": {
+    "formId": 20,
+    "name": "Tamsin Vey",
+    "isPlayer": true
+  },
+  "settings": {
+    "developer": false,
+    "scale": "auto",
+    "textSize": "normal"
+  },
+  "crosshairTarget": {
+    "formId": 147576,
+    "name": "Sabeth Rimeholt",
+    "enrolled": true
+  },
+  "bonds": [
+    {
+      "subject": {
+        "formId": 803493,
+        "name": "Corvane Greywick",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.36,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 115.93
+      },
+      "depth": {
+        "points": 1320,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "foreclosed",
+      "foreclosure": "orientation",
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 144.81
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 1,
+        "exclusivity": 50,
+        "orientation": "men",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Corvane trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
+        "limit": "Corvane will not leave a companion behind in a fight.",
+        "address": "By name, always."
+      }
+    },
+    {
+      "subject": {
+        "formId": 612690,
+        "name": "Eddra Kettleburn",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.32,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 213.77
+      },
+      "depth": {
+        "points": 420,
+        "tier": 0,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "unexamined",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": false,
+        "sparkedAt": null,
+        "lastCheckedAt": 214.2
+      },
+      "commitment": "none",
+      "seeded": false,
+      "traits": {
+        "authored": false,
+        "intimacy": "romantic",
+        "ardor": 2,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "",
+        "limit": "",
+        "address": ""
+      }
+    },
+    {
+      "subject": {
+        "formId": 193573,
+        "name": "Halvard Oakhallow",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": true,
+      "lastFollowingAt": null,
+      "enrollment": {
+        "by": "player",
+        "joinedAt": 205.07
+      },
+      "depth": {
+        "points": 870,
+        "tier": 1,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "platonic",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 212.75
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "casual",
+        "ardor": 1,
+        "exclusivity": 25,
+        "orientation": "both",
+        "orientationBasis": "unknown"
+      },
+      "prose": {
+        "why": "Halvard is drawn to steadiness, and wary of anyone who needs an audience.",
+        "limit": "Halvard will not share a secret that was given in trust.",
+        "address": "By name, always."
+      },
+      "history": [
+        {
+          "day": 214.2,
+          "delta": 20,
+          "total": 870,
+          "kind": "talk",
+          "reason": "He asked my advice about his daughter, and actually listened to it."
+        },
+        {
+          "day": 210.0,
+          "delta": 850,
+          "total": 850,
+          "kind": "seed",
+          "reason": "Prior history together"
+        }
+      ]
+    },
+    {
+      "subject": {
+        "formId": 147576,
+        "name": "Sabeth Rimeholt",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.32,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 194.13
+      },
+      "depth": {
+        "points": 1999,
+        "tier": 3,
+        "banked": 215
+      },
+      "track": "platonic",
+      "state": "interested",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": true,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 213.87,
+        "lastCheckedAt": 205.22
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 3,
+        "exclusivity": 50,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Sabeth prizes plain speech and distrusts anyone who talks around a thing.",
+        "limit": "Sabeth will not be kept as someone's second choice.",
+        "address": "By name, always."
+      },
+      "history": [
+        {
+          "day": 213.8,
+          "delta": 40,
+          "total": 1999,
+          "kind": "withheld",
+          "reason": "You defended me in front of the jarl's whole court."
+        },
+        {
+          "day": 211.5,
+          "delta": 30,
+          "total": 1999,
+          "kind": "talk",
+          "reason": "We laughed until the fire burned down to coals."
+        },
+        {
+          "day": 205.0,
+          "delta": 1500,
+          "total": 1500,
+          "kind": "seed",
+          "reason": "Prior history together"
+        }
+      ]
+    },
+    {
+      "subject": {
+        "formId": 325800,
+        "name": "Ysolde Brightwater",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": true,
+      "nearby": true,
+      "lastFollowingAt": 214.37,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 47.79
+      },
+      "depth": {
+        "points": 2310,
+        "tier": 4,
+        "banked": 0
+      },
+      "track": "romantic",
+      "state": "courting",
+      "foreclosure": null,
+      "stance": "accepted",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 57.95,
+        "lastCheckedAt": 61.93
+      },
+      "commitment": "engaged",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "romantic",
+        "ardor": 4,
+        "exclusivity": 75,
+        "orientation": "women",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Ysolde treats loyalty as a debt paid in deeds, never in words.",
+        "limit": "Ysolde will not be kept as someone's second choice.",
+        "address": "'Dearest', half teasing."
+      },
+      "history": [
+        {
+          "day": 214.1,
+          "delta": 40,
+          "total": 2310,
+          "kind": "moment",
+          "reason": "You stayed with me at the shrine until the fever broke, and never once let go of my hand."
+        },
+        {
+          "day": 212.6,
+          "delta": 35,
+          "total": 2270,
+          "kind": "talk",
+          "reason": "We talked about the house we would build, and you meant every word of it."
+        },
+        {
+          "day": 209.2,
+          "delta": 215,
+          "total": 2235,
+          "kind": "accepted",
+          "reason": "What was held while the question waited"
+        },
+        {
+          "day": 203.9,
+          "delta": 25,
+          "total": 2020,
+          "kind": "spark",
+          "reason": "Her heart caught when he laughed at the river crossing, and she stopped pretending it had not."
+        }
+      ]
+    },
+    {
+      "subject": {
+        "formId": 662433,
+        "name": "Kjeld Frost-Veil",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 184.75,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 46.6
+      },
+      "depth": {
+        "points": 1250,
+        "tier": 2,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "declined",
+      "foreclosure": null,
+      "stance": "declined",
+      "askPending": false,
+      "spark": {
+        "sparked": true,
+        "decided": true,
+        "sparkedAt": 76.43,
+        "lastCheckedAt": 86.26
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 1,
+        "exclusivity": 100,
+        "orientation": "both",
+        "orientationBasis": "known"
+      },
+      "prose": {
+        "why": "Kjeld is drawn to steadiness, and wary of anyone who needs an audience.",
+        "limit": "Kjeld will not take part in cruelty for sport.",
+        "address": "'Traveler', still."
+      },
+      "history": [
+        {
+          "day": 207.3,
+          "delta": -500,
+          "total": 1250,
+          "kind": "declined",
+          "reason": "Turned down"
+        },
+        {
+          "day": 200.1,
+          "delta": 45,
+          "total": 1750,
+          "kind": "moment",
+          "reason": "You carried me out of the barrow on your back."
+        }
+      ]
+    },
+    {
+      "subject": {
+        "formId": 818706,
+        "name": "Liesl Saltmarch",
+        "isPlayer": false
+      },
+      "object": {
+        "formId": 20,
+        "name": "Tamsin Vey",
+        "isPlayer": true
+      },
+      "following": false,
+      "nearby": false,
+      "lastFollowingAt": 211.08,
+      "enrollment": {
+        "by": "following",
+        "joinedAt": 76.15
+      },
+      "depth": {
+        "points": 1500,
+        "tier": 3,
+        "banked": 0
+      },
+      "track": "platonic",
+      "state": "ended",
+      "foreclosure": null,
+      "stance": "unanswered",
+      "askPending": false,
+      "spark": {
+        "sparked": false,
+        "decided": true,
+        "sparkedAt": null,
+        "lastCheckedAt": 107.88
+      },
+      "commitment": "none",
+      "seeded": true,
+      "traits": {
+        "authored": true,
+        "intimacy": "guarded",
+        "ardor": 2,
+        "exclusivity": 5,
+        "orientation": "both",
+        "orientationBasis": "inferred"
+      },
+      "prose": {
+        "why": "Liesl laughs easily and forgives quickly, but remembers exactly who was there when it mattered.",
+        "limit": "Liesl will not take part in cruelty for sport.",
+        "address": "By name, always."
+      },
+      "history": [
+        {
+          "day": 199.0,
+          "delta": -400,
+          "total": 1500,
+          "kind": "ended",
+          "reason": "I can't keep waiting for you to choose me."
+        }
+      ]
+    }
+  ]
+}

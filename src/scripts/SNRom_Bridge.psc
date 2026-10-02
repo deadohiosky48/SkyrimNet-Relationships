@@ -1,35 +1,55 @@
 Scriptname SNRom_Bridge extends Quest
-{ SkyrimNet <-> Romantasy bridge.
+{ Relationships: SkyrimNet bonds, owned end to end.
 
-  Romantasy owns points, tiers, persistence and UI. This script owns
-  everything SkyrimNet needs to read or move that state, plus the disposition
+  This script owns the bonds - points, tiers, enrollment, the consent gate -
+  and everything SkyrimNet needs to read or move them, plus the disposition
   store the LLM authors into.
 
-  Design notes worth keeping in view:
-   - Romantasy snapshots its follower roster AND every follower's preference
-     config at load. Points remain live. See CommitConfig() below.
-   - Romantasy fires exactly one ModEvent per point change, so the handlers
-     here see EVERY movement including Romantasy's own passive awards. That
-     is the only way to build a complete ledger.
-   - OnLevelChanged carries the new level but NOT the delta, so both handlers
-     diff GetPoints() against a cached value rather than trusting numArg. }
+  ROMANTASY IS NOT A DEPENDENCY FROM 2.0 (design 8.1, 10). It is read once
+  per save, if installed, by the points import (StartPointsImport), and never
+  called otherwise: every Romantasy.* call in this file sits behind
+  SNRom_RomantasyReadable, which is only ever set from Game.IsPluginInstalled.
+  Papyrus cannot tell a missing native from a refusal, so an unguarded call
+  would fail silently - grep for "Romantasy\." before adding one. }
 
 ; ---------------------------------------------------------------------------
 ; State
 ;
 ; DELIBERATELY ZERO PROPERTIES. Nothing here is ever set in the Creation Kit -
-; ROM_RomanceLevel is resolved at runtime from CS_Romantasy.esp, and the rest
-; are constants. Declaring them as properties gave CK a property list to
+; SNRom_Bond is resolved at runtime from our own plugin, and the rest are
+; constants. Declaring them as properties gave CK a property list to
 ; enumerate when saving the quest, for no benefit. A script with no properties
 ; is the least CK has to chew on, and there is nothing for a user to leave
 ; unfilled.
 ; ---------------------------------------------------------------------------
-Faction  _romanceLevel
-; WHICH SCAN CODES ARE ACTUALLY REGISTERED, as opposed to which ones the
-; settings ask for. Each pair diverges the moment the player edits that setting,
-; and the tick reconciles both. See RegisterHotkey.
-Int      _hotkeyArmed
-Int      _reauthorArmed
+; SNRom_Bond, SNRom_Integration.esl 0xD63: membership is enrollment, the rank
+; is the tier (0-5). The successor to ROM_RomanceLevel, for everything that
+; reads bond state without Papyrus: action eligibility, the optional Baka
+; tier gates, vanilla conditions and native plugins (design 6.6 a, 8.1).
+Faction  _bond
+; THE DASHBOARD'S VIEW OF THIS SESSION (SkyrimNetRelationships.dll, natives v3).
+; Cached by ArmDashboard at every bootstrap, and the store pair again by the two
+; store repairs, because the refresh handler must not call SkyrimNet's API: the
+; dashboard pauses the game, and SkyrimNet has been seen refusing VM calls while
+; it is paused. See OnDashboardRefresh.
+Int      _dashNatives       ; SNRom_Native.Version(); 0 without the DLL, or one too old
+String   _dashStore         ; StoreFile()
+String   _dashPlaythrough   ; PlaythroughId()
+Int      _dashKinGuard      ; SNRom_Decorators.KinGuardOn(), as 1 or 0
+Bool     _dashMaras         ; MarasPresent(), for the refresh's batch fetch
+Bool     _dashSever         ; SeverActionsPresent(), the same
+; A FULL REFRESH HAS ANSWERED THIS SESSION, so the DLL holds everyone's text and
+; the functions that write it push the change. Bootstrap clears it: the DLL
+; clears its model whenever a save loads.
+Bool     _dashText
+; THE ONE-TIME POINTS IMPORT IS RUNNING (OnImportPoints). Not saved as True in
+; any way that matters: a save made mid-import resumes it, and the per-actor
+; stamps skip whoever is already done.
+Bool     _importing
+; WHO CAN OBSERVE THE PLAYER THIS TICK (Observers): the enrolled characters
+; near them, taken once at the top of OnUpdateGameTime. The assessors and the
+; per-actor housekeeping pick from these, not from the whole roster.
+Actor[]  _observers
 Int      _seq
 ; HAS OUR CONTENT LAYER LOADED? 0 not looked yet, 1 present, 2 missing. Reset to
 ; 0 by Bootstrap so the answer is reported once per session and again every load
@@ -84,8 +104,8 @@ Int Function ScaleAward(Int aiPoints) Global
       and was rejected: it would need telling which kind it was anyway, and two
       near-identical wrappers hide the distinction that actually matters.
 
-      NEVER CALL THIS ON A TRANSFER. EnforceLoverCeiling claws back the overflow
-      above 2499 and banks it; AcceptRomance returns the banked amount in full.
+      NEVER CALL THIS ON A TRANSFER. HoldShortOfLover banks an award short of
+      Lover; AcceptRomance returns the banked amount in full.
       Scale either and points evaporate - claw back 200, hand back 50 - and the
       player watched those points accrue and was promised them back. Seeding is
       excluded too: "Prior history together" describes a relationship that
@@ -191,7 +211,7 @@ Function Bootstrap(Bool abForce = False)
     _ledgerBuf = new String[32]
     _ledgerCount = 0
 
-    ; Register FIRST, unconditionally. If Romantasy is missing the decorators
+    ; Register FIRST, unconditionally. If our plugin is missing the decorators
     ; must still exist, or every prompt referencing them errors out instead of
     ; rendering "not enrolled". Degrade quietly, never disappear.
     ; BEFORE ANYTHING TOUCHES THE STORE. StoreFile() reads the save id, so a
@@ -202,30 +222,36 @@ Function Bootstrap(Bool abForce = False)
 
     RegisterDecorators()
     RegisterEvents()
-    ; ARMED BEFORE THE READINESS GATE BELOW RETURNS. If Romantasy is missing the
-    ; key must still answer - "not ready" is a useful thing to be told, and a
-    ; dead key is not.
-    RegisterHotkey()
+    ; Same place, same reason: the dashboard needs nothing from the gate. Once
+    ; per bootstrap; the DLL watches the saved settings itself after that.
+    ; The DLL cleared its read model when this save began loading, so it holds
+    ; no text until the next full refresh answers, and the writers stop pushing.
+    _dashText = False
+    ArmDashboard()
 
-    _romanceLevel = ResolveRomanceFaction()
-    If _romanceLevel == None
+    ; OUR OWN PLUGIN'S BOND FACTION is the one thing the mod cannot run
+    ; without; Romantasy is no longer required (design 8.1: "_ready must stop
+    ; meaning 'Romantasy resolved'").
+    _bond = ResolveBondFaction()
+    If _bond == None
         _ready = False
-        Diag(LOG_ERROR(), "ROM_RomanceLevel unresolved - CS_Romantasy.esp missing, or GetFormFromFile failed on an ESL. Integration inert.")
+        Diag(LOG_ERROR(), "SNRom_Bond unresolved - SNRom_Integration.esl is missing or older than " + \
+            "these scripts. Integration inert.")
         Return
     EndIf
 
     _ready = True
-    ; ROMANTASY API LEVEL, read ONCE per session and cached.
+    ; THE POINTS ARE OURS. A save that has not been brought over yet is, once,
+    ; on its own stack: from Romantasy if it is installed, from nothing if it
+    ; is not. Until someone is reached, PointsOf reads Romantasy's number for
+    ; them where it can. Before anything below reads a point.
     ;
-    ; Papyrus cannot test whether a native exists. Against Romantasy 1.01 this
-    ; call is unregistered, logs a Papyrus error and returns 0 - and 0 < 3 is
-    ; exactly the answer we want, so the gate bootstraps itself. But every call
-    ; to a missing native writes to Papyrus.0.log, so it must not be per-award.
-    ;
-    ; Held in StorageUtil rather than a script variable because CommitConfig and
-    ; the preference writer are Global and cannot see script state.
-    StorageUtil.SetIntValue(None, "SNRom_RomApi", Romantasy.GetApiVersion())
-    Diag(LOG_INFO(), "Romantasy API level " + RomApi() + " (3+ enables live enrollment and preference removal; Romantasy 1.1.0 reports 4)")
+    ; _importing is cleared first: a save made mid-import carries it as True,
+    ; and if that stack is not resumed the import would never run again. Two
+    ; running at once is harmless - each actor's stamp is checked before it is
+    ; written.
+    _importing = False
+    StartPointsImport()
     ; WHICH SKYRIMNET WE ARE RUNNING AGAINST, logged every session.
     ;
     ; Beta 25 moved content into a plugin library and stopped reading the old
@@ -288,28 +314,42 @@ Function Bootstrap(Bool abForce = False)
     ; was when it ended. SweepFollowers runs at the end of this function and
     ; refreshes it before the tick after that.
     RegisterForSingleUpdateGameTime(AssessIntervalHours())
-    Diag(LOG_INFO(), "Bridge ready. ROM_RomanceLevel resolved. Assessing every " + \
+    Diag(LOG_INFO(), "Bridge ready. SNRom_Bond resolved. Assessing every " + \
         AssessIntervalHours() + "h, housekeeping every " + SparkIntervalHours() + "h.")
     ; Catch up immediately rather than waiting a game hour or two. This is the
     ; path that finds followers SeverActions never announces.
     SweepFollowers()
 EndFunction
 
-Faction Function ResolveRomanceFaction() Global
-    { CS_Romantasy.esp is ESL-flagged. GetFormFromFile takes the plugin-local
-      FormID (0x800) and SKSE is expected to handle the ESL indirection.
+Faction Function ResolveBondFaction() Global
+    { SNRom_Bond, from our own ESL by its plugin-local FormID; SKSE handles
+      the ESL indirection, as it did for ROM_RomanceLevel for a year. }
+    Return Game.GetFormFromFile(0x00000D63, "SNRom_Integration.esl") as Faction
+EndFunction
 
-      If this proves unreliable in practice, the fallback is a Faction
-      PROPERTY filled in the Creation Kit - which costs us CS_Romantasy.esp
-      as a hard master, but is completely deterministic. Do not replace this
-      with a scan over the FE range; that is 4096 GetForm calls on every load
-      to avoid one master. }
+Faction Function RomantasyFaction() Global
+    { ROM_RomanceLevel, or None when Romantasy is not installed or only a stub
+      of its plugin is. Read by the release in MoveToBondFaction, and by
+      StartPointsImport as the test that Romantasy is really there; nothing is
+      put into it any more. }
+    If !Game.IsPluginInstalled("CS_Romantasy.esp")
+        Return None
+    EndIf
     Return Game.GetFormFromFile(0x00000800, "CS_Romantasy.esp") as Faction
 EndFunction
 
 Function RegisterEvents()
-    RegisterForModEvent("Romantasy_OnLevelChanged", "OnRomLevelChanged")
-    RegisterForModEvent("Romantasy_OnPreference", "OnRomPreference")
+    ; ROMANTASY'S EVENTS ARE NO LONGER HEARD (design 10, phase 3: "Stop
+    ; subscribing to passive deeds. Stop listening to Romantasy_OnLevelChanged").
+    ; Registrations are saved with the script, so a save from 1.x still holds
+    ; them: unregistered explicitly, once per load, which is harmless when
+    ; there is nothing to remove.
+    UnregisterForModEvent("Romantasy_OnLevelChanged")
+    UnregisterForModEvent("Romantasy_OnPreference")
+    ; 1.x's re-read and re-author keys were RegisterForKey, saved with the
+    ; script the same way; the DLL has the keys from 2.0.
+    UnregisterForAllKeys()
+    RegisterForModEvent("SNRom_Hotkey", "OnHotkey")
     ; SeverActions' native watcher fires this ~1s after ANY mod or vanilla
     ; dialogue calls SetPlayerTeammate(true) on an untracked actor - which is
     ; the only reliable "became a follower" signal available. Vanilla Skyrim
@@ -327,6 +367,16 @@ Function RegisterEvents()
     ; Signature is the standard SKSE shape, documented in MARAS.psc:585:
     ;   (String eventName, String status, Float statusEnum, Form npc)
     RegisterForModEvent("maras_status_changed", "OnMarasStatusChanged")
+    ; SkyrimNetRelationships.dll asks for the roster every time the dashboard
+    ; opens (OnDashboardRefresh). Without the DLL it never fires, and this costs
+    ; nothing.
+    RegisterForModEvent("SNRom_DashboardRefresh", "OnDashboardRefresh")
+    ; And sends the page's actions here (OnDashboardAction), the same way.
+    RegisterForModEvent("SNRom_DashboardAction", "OnDashboardAction")
+    ; The one-time points import runs on its own stack (StartPointsImport).
+    RegisterForModEvent("SNRom_ImportPoints", "OnImportPoints")
+    ; A held tier notice the player can now see (AnnounceTier, Notices.h).
+    RegisterForModEvent("SNRom_ShowNotice", "OnShowNotice")
 EndFunction
 
 ; NOTE: there is deliberately no decorator self-test. Mod-added decorators
@@ -351,318 +401,6 @@ Function RegisterDecorators()
 EndFunction
 
 ; ===========================================================================
-; The one line that changes when Romantasy ships RefreshFollower
-; ===========================================================================
-
-; ===========================================================================
-; OffsetToStatName lives HERE, not beside LabelToOffset in SNRom_Decorators,
-; and the reason is not organisational.
-;
-; Papyrus interns strings CASE-INSENSITIVELY, first spelling wins. The label
-; whitelist in SNRom_Decorators stores "ANIMALS KILLED"; putting "Animals
-; Killed" in that same script folded it onto the uppercase form, and the
-; compiled pex returned "ANIMALS KILLED" for forty-eight of the fifty-eight
-; names. Only the ten shorthand-differing ones survived intact - proven by
-; grepping the pex, which is the only place this is visible at all.
-;
-; This script holds none of those uppercase literals, so the canonical names
-; survive compilation. Verify after ANY edit here: the pex must contain
-; "Animals Killed" in title case.
-; ===========================================================================
-
-String Function OffsetToStatName(Int aiOffset) Global
-    { Maps a ROM_ preference faction's plugin-local FormID to the statistic NAME
-      Romantasy.SetPreference expects. GENERATED from CS_Romantasy.esp, from each
-      FACT record's FULL field, so it cannot drift from the records themselves.
-
-      THIS IS NOT _labelmap.inc REVERSED, and that is the whole reason it exists.
-      Ten of our prompt-facing labels are shorthands that are NOT the statistic
-      name: CIVIL WAR COMPLETED is really "Civil War Quests Completed", COMPANIONS
-      COMPLETED is "The Companions Quests Completed". That never mattered while a
-      FormID was the identity and the label only had to be unique among labels.
-      SetPreference matches on the NAME, so reusing the label would fail for
-      exactly those ten and no others - ten silent rejections out of fifty-eight,
-      which would read like a model fault for weeks.
-
-      Returns "" for anything unmapped; callers must treat that as do-not-write. }
-    If aiOffset == 0x801
-        Return "Locations Discovered"
-    ElseIf aiOffset == 0x802
-        Return "Dungeons Cleared"
-    ElseIf aiOffset == 0x803
-        Return "Days Passed"
-    ElseIf aiOffset == 0x804
-        Return "Standing Stones Found"
-    ElseIf aiOffset == 0x805
-        Return "Chests Looted"
-    ElseIf aiOffset == 0x806
-        Return "Skill Increases"
-    ElseIf aiOffset == 0x807
-        Return "Skill Books Read"
-    ElseIf aiOffset == 0x808
-        Return "Barters"
-    ElseIf aiOffset == 0x809
-        Return "Persuasions"
-    ElseIf aiOffset == 0x80A
-        Return "Bribes"
-    ElseIf aiOffset == 0x80B
-        Return "Intimidations"
-    ElseIf aiOffset == 0x80C
-        Return "Diseases Contracted"
-    ElseIf aiOffset == 0x80D
-        Return "Days as a Vampire"
-    ElseIf aiOffset == 0x80E
-        Return "Days as a Werewolf"
-    ElseIf aiOffset == 0x80F
-        Return "Necks Bitten"
-    ElseIf aiOffset == 0x810
-        Return "Vampirism Cures"
-    ElseIf aiOffset == 0x811
-        Return "Werewolf Transformations"
-    ElseIf aiOffset == 0x812
-        Return "Mauls"
-    ElseIf aiOffset == 0x813
-        Return "Quests Completed"
-    ElseIf aiOffset == 0x814
-        Return "Misc Objectives Completed"
-    ElseIf aiOffset == 0x815
-        Return "Main Quests Completed"
-    ElseIf aiOffset == 0x816
-        Return "Side Quests Completed"
-    ElseIf aiOffset == 0x817
-        Return "The Companions Quests Completed"
-    ElseIf aiOffset == 0x818
-        Return "College of Winterhold Quests Completed"
-    ElseIf aiOffset == 0x819
-        Return "Thieves' Guild Quests Completed"
-    ElseIf aiOffset == 0x81A
-        Return "The Dark Brotherhood Quests Completed"
-    ElseIf aiOffset == 0x81B
-        Return "Civil War Quests Completed"
-    ElseIf aiOffset == 0x81C
-        Return "Daedric Quests Completed"
-    ElseIf aiOffset == 0x81D
-        Return "Dawnguard Quests Completed"
-    ElseIf aiOffset == 0x81E
-        Return "Dragonborn Quests Completed"
-    ElseIf aiOffset == 0x81F
-        Return "Questlines Completed"
-    ElseIf aiOffset == 0x820
-        Return "People Killed"
-    ElseIf aiOffset == 0x821
-        Return "Animals Killed"
-    ElseIf aiOffset == 0x822
-        Return "Creatures Killed"
-    ElseIf aiOffset == 0x823
-        Return "Undead Killed"
-    ElseIf aiOffset == 0x824
-        Return "Daedra Killed"
-    ElseIf aiOffset == 0x825
-        Return "Automatons Killed"
-    ElseIf aiOffset == 0x826
-        Return "Critical Strikes"
-    ElseIf aiOffset == 0x827
-        Return "Sneak Attacks"
-    ElseIf aiOffset == 0x828
-        Return "Backstabs"
-    ElseIf aiOffset == 0x829
-        Return "Weapons Disarmed"
-    ElseIf aiOffset == 0x82A
-        Return "Bunnies Slaughtered"
-    ElseIf aiOffset == 0x82B
-        Return "Spells Learned"
-    ElseIf aiOffset == 0x82C
-        Return "Dragon Souls Collected"
-    ElseIf aiOffset == 0x82D
-        Return "Shouts Learned"
-    ElseIf aiOffset == 0x82E
-        Return "Souls Trapped"
-    ElseIf aiOffset == 0x82F
-        Return "Magic Items Made"
-    ElseIf aiOffset == 0x830
-        Return "Weapons Made"
-    ElseIf aiOffset == 0x831
-        Return "Armor Made"
-    ElseIf aiOffset == 0x832
-        Return "Potions Mixed"
-    ElseIf aiOffset == 0x833
-        Return "Poisons Mixed"
-    ElseIf aiOffset == 0x834
-        Return "Locks Picked"
-    ElseIf aiOffset == 0x835
-        Return "Pockets Picked"
-    ElseIf aiOffset == 0x836
-        Return "Items Stolen"
-    ElseIf aiOffset == 0x837
-        Return "Assaults"
-    ElseIf aiOffset == 0x838
-        Return "Murders"
-    ElseIf aiOffset == 0x839
-        Return "Horses Stolen"
-    ElseIf aiOffset == 0x83A
-        Return "Trespasses"
-    EndIf
-    Return ""
-EndFunction
-
-Int Function HeldPreferenceCount(Actor akActor) Global
-    { How many preference factions this actor holds, of ANY kind. Walks the same
-      contiguous 0x801-0x83A range CountHighFrequencyHeld and ClearDisposition
-      use, so there is one enumeration of that range to be wrong about.
-
-      Faction reads rather than GetPreference on purpose: this has to answer on
-      Romantasy 1.01 too, where there is no read API and factions are all there
-      is. }
-    If akActor == None
-        Return 0
-    EndIf
-    Int held = 0
-    Int off = 0x801
-    While off <= 0x83A
-        Faction f = Game.GetFormFromFile(off, "CS_Romantasy.esp") as Faction
-        If f != None && akActor.GetFactionRank(f) >= 0
-            held += 1
-        EndIf
-        off += 1
-    EndWhile
-    Return held
-EndFunction
-
-Bool Function PreferencesAreForeign(Actor akActor) Global
-    { True when this actor already holds preferences THIS MOD did not write.
-
-      WE DO NOT OVERWRITE ANOTHER AUTHOR'S WORK. A custom-follower framework can
-      register its NPCs into Romantasy at runtime and give them the likes and
-      dislikes their author wrote by hand - Troth does exactly this. Those
-      preferences are part of the character somebody designed, and they arrive
-      through the same faction ranks ours do, so nothing distinguishes them at
-      the data level. Whoever writes last would win, and after API 3 that is us,
-      with ClearPreferences.
-
-      Neither existing guard covers this. IsPreferencesManual only catches a
-      player who sealed them in Romantasy's editor. Romantasy's own
-      author-defined rejection only covers followers slaved through plugin
-      records - a runtime AddToFaction produces an `external` follower, the same
-      class as ours, which is provably writable: every SetPreference we made for
-      Silana Petreia succeeded on 2026-08-21.
-
-      So the rule is FIRST WRITER KEEPS IT, decided by evidence rather than by
-      load order. Ours is anything we have authored; everything else is somebody
-      else's. }
-    If akActor == None
-        Return False
-    EndIf
-    ; STICKY, and it has to be. The detection site also sets
-    ; SNRom_DispositionAuthored so we stop pestering the LLM about someone we are
-    ; never going to write - but that flag is what the ours/theirs test below
-    ; reads, so without this line the guard would protect them exactly once and
-    ; then classify them as ours forever. Found before shipping, by asking what
-    ; the SECOND authoring attempt would do.
-    ; NO SNRom_ForceAuthor CHECK HERE, and it is worth saying why so nobody adds
-    ; one. AuthorDisposition CONSUMES that flag when it dispatches, long before
-    ; the LLM answers, and this function runs in the callback - so the flag is
-    ; always gone by the time we could read it. A check on it would look like an
-    ; ownership override and do nothing at all.
-    ;
-    ; Preserving SNRom_DispositionAuthored across a re-author is what actually
-    ; solves that, and ClearDisposition is the escape hatch for an actor marked
-    ; foreign by mistake.
-    If StorageUtil.GetIntValue(akActor, "SNRom_PrefsForeign", 0) == 1
-        Return True
-    EndIf
-    ; ANY non-zero means WE wrote them. 1 is LLM-authored, 2 is the archetype
-    ; fallback - ApplyArchetype writes preferences directly and marks them 2.
-    ; Testing == 1 would have classified every archetype follower as somebody
-    ; else's work, marked them sticky, and silently stopped us ever authoring
-    ; them. Caught by reading ApplyArchetype rather than assuming the flag was
-    ; a boolean.
-    If StorageUtil.GetIntValue(akActor, "SNRom_DispositionAuthored", 0) > 0
-        Return False
-    EndIf
-    Return HeldPreferenceCount(akActor) > 0
-EndFunction
-
-Int Function RomApi() Global
-    { Romantasy's API level, 0 if it predates GetApiVersion. Cached at bootstrap;
-      see the note there for why it is not read on demand.
-
-      THE API LEVEL AND THE NEXUS VERSION ARE DIFFERENT NUMBERS, and nothing in
-      either mod states the mapping. Romantasy 1.1.0 on Nexus reports level 4.
-      The private builds this was developed against reported 3, which is why an
-      earlier comment here said "3 = 1.1.0" - wrong, and it shipped that way in
-      1.0.0. The gate tests >= 3 because 3 is the level that introduced the
-      calls; 4 satisfies it. Anything below 3 is 1.01 or earlier, where
-      enrollment needs a reload and preferences cannot be removed. }
-    Return StorageUtil.GetIntValue(None, "SNRom_RomApi", 0)
-EndFunction
-
-Bool Function CommitConfig(Actor akActor) Global
-    { Makes faction-level configuration (roster membership, preference ranks)
-      visible to Romantasy WITHOUT a reload.
-
-      Romantasy 1.01 has no such call - it reads faction tags once at load,
-      because its documented integration path is static plugin records edited
-      in the Creation Kit. Confirmed empirically: AddToFaction at runtime is
-      written to the save but ignored until the next load, for both the
-      ROM_RomanceLevel marker and preference factions.
-
-      ColdSun has agreed to add a refresh entry point (expected <= 2026-07-29).
-      When it lands, this becomes a single delegating line:
-
-          Return Romantasy.RefreshFollower(akActor)
-
-      Everything downstream keys off the return value, so nothing else needs
-      to change:
-        True  - config is live now
-        False - config written, effective next load; caller should notify the
-                player and fall back to interim scoring.
-
-      API 3 GIVES US THE CALL, and it is not the RefreshFollower above. It is
-      ClearPreferences, which synchronously locates or discovers the actor,
-      mutates its factions, refreshes its cached preferences and returns. It
-      does not wait for RefreshLoadedFollowers, which only runs on dashboard
-      sync, a tracked-stat event or the debug point operation. AutoEnroll adds
-      them to ROM_RomanceLevel immediately before calling this, which satisfies
-      the documented precondition.
-
-      A new enrollee has no preferences, so the clear is a no-op on data and
-      exists only to force that discovery. }
-    If RomApi() < 3
-        Return False
-    EndIf
-    If PreferencesAreForeign(akActor)
-        ; SOMEBODY ELSE AUTHORED THESE. ClearPreferences is our discovery
-        ; mechanism, but an actor who already holds preferences is by definition
-        ; already known to Romantasy - somebody set them - so there is nothing to
-        ; discover and everything to lose. Report not-live; passive discovery
-        ; reaches them on its own schedule.
-        Return False
-    EndIf
-    If Romantasy.IsPreferencesManual(akActor)
-        ; THE PLAYER OWNS THIS ONE'S PREFERENCES, and ClearPreferences is the
-        ; only call we have that forces discovery. Destroying their editing to
-        ; make a log line read True is the wrong trade - report not-live and let
-        ; Romantasy's passive discovery reach them on its own schedule.
-        ; No Diag here - this function is Global and Diag is a member. The
-        ; caller logs the live/not-live outcome; this comment is the record of
-        ; WHY it came back false for a player-managed follower.
-        Return False
-    EndIf
-    If Romantasy.ClearPreferences(akActor)
-        Return True
-    EndIf
-    ; THE CLEAR CAN BE REFUSED WITHOUT ANYTHING BEING WRONG. Romantasy rejects it
-    ; for a follower it considers author-defined, and that says nothing about
-    ; whether the follower is live - Endarie was mirrored to ROM_RomanceLevel and
-    ; refused a clear 56ms later, on 2026-08-21. Reporting not-live there made the
-    ; log claim the reload caveat was back.
-    ;
-    ; So ask the question that actually matters: does Romantasy have a level for
-    ; them? That is the same test CanBegin uses for "already enrolled".
-    Return Romantasy.GetLevel(akActor) > 0
-EndFunction
-
-; ===========================================================================
 ; Actions (called by SkyrimNet YAML via questEditorId/scriptName/function)
 ; ===========================================================================
 
@@ -683,18 +421,11 @@ Function BeginSpark(Actor akActor, String asReason)
         Return
     EndIf
 
-    akActor.AddToFaction(_romanceLevel)
-    akActor.SetFactionRank(_romanceLevel, 0)
-
-    Bool live = CommitConfig(akActor)
-    If StorageUtil.GetIntValue(akActor, "SNRom_ClearRefused", 0) == 1
-        StorageUtil.UnsetIntValue(akActor, "SNRom_ClearRefused")
-        Diag(LOG_WARN(), "Romantasy refused the preference clear for " + akActor.GetDisplayName() + " - it considers them author-defined. Enrollment itself is live=" + live + "; their preferences belong to whoever authored them.")
-    EndIf
     StorageUtil.SetIntValue(akActor, "SNRom_Enrolled", 1)
+    JoinBondFaction(akActor)
     StorageUtil.SetFloatValue(akActor, "SNRom_EnrolledAt", Utility.GetCurrentGameTime())
     ; BeginSpark IS the spark - this is what puts her on the romantic ladder in
-    ; 0330_romantasy_bond rather than the platonic one. Once followers
+    ; 0330_relationships_bond rather than the platonic one. Once followers
     ; auto-enroll, enrollment alone will stop meaning anything about romance
     ; and this flag becomes the only thing that does.
     StorageUtil.SetIntValue(akActor, "SNRom_Sparked", 1)
@@ -705,8 +436,7 @@ Function BeginSpark(Actor akActor, String asReason)
 
     ; Authored beats land immediately regardless of the load-time constraint,
     ; so the bond is never sitting at a bare zero after a real moment.
-    MarkSelfAward(akActor)
-    Romantasy.ModifyPoints(akActor, ScaleAward(25), asReason, False)
+    ApplyDepth(akActor, ScaleAward(25), asReason, False, "began")
 
     SkyrimNetApi.RegisterPersistentEvent( \
         akActor.GetDisplayName() + " and " + Game.GetPlayer().GetDisplayName() + \
@@ -714,15 +444,10 @@ Function BeginSpark(Actor akActor, String asReason)
 
     Ledger(akActor, "enroll", "", 25, 1, asReason)
 
-    ; The distinctive Phase 3 beat: enrollment is what makes a person's likes
-    ; and dislikes matter, so enrollment is what authors them. Async - the
-    ; callback lands whenever the LLM answers; nothing here waits on it.
+    ; Enrollment is what makes a person's character matter, so enrollment is
+    ; what authors it. Async - the callback lands whenever the LLM answers;
+    ; nothing here waits on it.
     AuthorDisposition(akActor)
-
-    If !live
-        Diag(LOG_INFO(), "Enrolled " + akActor.GetDisplayName() + \
-            " - dashboard and passive scoring active after next load.")
-    EndIf
 EndFunction
 
 ; ===========================================================================
@@ -820,6 +545,7 @@ Function SweepFollowers()
                 ; reader moving that boundary should not silently reset people
                 ; who are long past this gate.
                 StorageUtil.UnsetFloatValue(a, "SNRom_FirstSeenFollowing")
+                StorageUtil.FormListRemove(None, PENDING_LIST(), a, True)
                 Diag(LOG_INFO(), a.GetDisplayName() + " is no longer following before enrollment - waiting period reset")
             EndIf
         EndIf
@@ -839,6 +565,43 @@ Function SweepFollowers()
     StorageUtil.SetIntValue(None, "SNRom_FollowerCount", followers)
     Diag(LOG_INFO(), "Follower sweep: " + scanned + " actors in range, " + followers + \
         " following, roster now " + StorageUtil.FormListCount(None, "SNRom_Roster"))
+EndFunction
+
+String Function PENDING_LIST() Global
+    { Everyone serving the enrollment waiting period: noticed following, not
+      yet enrolled. }
+    Return "SNRom_PendingEnroll"
+EndFunction
+
+Function CheckPendingEnrollments()
+    { FINISHES THE WAITING PERIOD WHEREVER THEY ARE. The sweep notices a
+      follower near the player; this asks each one waiting, directly, whether
+      they are still following - IsFollowing reads flags and factions, which an
+      unloaded character has too. So a new follower told to wait in a house
+      while the player clears a dungeon is enrolled when the period is up, as
+      the author asked (2026-10-01), not on the first sweep that finds them
+      nearby again. Not following any more resets the period: "two CONTINUOUS
+      hours", as the sweep's own reset has always meant.
+
+      A short list, so a handful of reads a tick. Backwards, because entries
+      are removed as it goes. }
+    Int i = StorageUtil.FormListCount(None, PENDING_LIST()) - 1
+    While i >= 0
+        Actor a = StorageUtil.FormListGet(None, PENDING_LIST(), i) as Actor
+        If a == None || a.IsDead() || IsEnrolled(a)
+            StorageUtil.FormListRemoveAt(None, PENDING_LIST(), i)
+        ElseIf IsFollowing(a)
+            StorageUtil.SetFloatValue(a, "SNRom_LastFollowingAt", Utility.GetCurrentGameTime())
+            AutoEnroll(a)
+        Else
+            StorageUtil.FormListRemoveAt(None, PENDING_LIST(), i)
+            If StorageUtil.GetFloatValue(a, "SNRom_FirstSeenFollowing", 0.0) > 0.0
+                StorageUtil.UnsetFloatValue(a, "SNRom_FirstSeenFollowing")
+                Diag(LOG_INFO(), a.GetDisplayName() + " is no longer following before enrollment - waiting period reset")
+            EndIf
+        EndIf
+        i -= 1
+    EndWhile
 EndFunction
 
 Function PurgeNonPersons()
@@ -944,7 +707,11 @@ Bool Function IsFollowing(Actor akActor) Global
       Written as OR deliberately: a false negative here means an NPC is never
       enrolled and never scored, silently, forever - which is exactly what
       happened to Hermir and then to Svana. A false positive costs one wasted
-      enrollment, and the enrollment debounce now absorbs even that. }
+      enrollment, and the enrollment debounce now absorbs even that.
+
+      THE DASHBOARD DRAWS A COPY OF THIS: Display::Following in
+      native/src/Display.cpp, line for line, from facts the DLL reads itself.
+      Change one, change both. The gates keep calling this function. }
     If akActor.IsPlayerTeammate()
         Return True
     EndIf
@@ -967,6 +734,45 @@ Bool Function IsFollowing(Actor akActor) Global
     EndIf
     Faction cff = Game.GetFormFromFile(0x0005C84E, "Skyrim.esm") as Faction
     Return cff != None && akActor.IsInFaction(cff)
+EndFunction
+
+Float Function OBSERVE_RANGE() Global
+    { How near the player an enrolled character must be to be observing them:
+      the follower sweep's own scan radius, so "near enough to notice
+      following" and "near enough to notice anything" are one distance. }
+    Return 6000.0
+EndFunction
+
+Actor[] Function Observers()
+    { FOLLOWING IS NOT A QUALIFIER (design 3.2): everyone enrolled who can
+      observe the player - loaded, alive and within OBSERVE_RANGE - follower
+      or not. The talk, spark and drift assessors, the attraction reading and
+      the marriage check pick from these. Following decides one thing,
+      automatic enrollment (SweepFollowers).
+
+      THE ASSESSORS READ EVERYTHING SINCE THEIR LAST LOOK, so a conversation
+      with someone you then walk away from is not lost: it is judged the next
+      time a tick finds you near them. A spouse at home lives again when you
+      visit; a shopkeeper you courted, when you go back.
+
+      ONE NATIVE CALL with the DLL (natives v6), one frame. Without it, or with
+      an older one, a roster walk that pays a frame per question per
+      character - correct, and slow. }
+    If _dashNatives >= 6
+        Return SNRom_Native.ObserversNear(OBSERVE_RANGE())
+    EndIf
+    Actor player = Game.GetPlayer()
+    Actor[] found = PapyrusUtil.ActorArray(0)
+    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int i = 0
+    While i < n
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None && a.Is3DLoaded() && !a.IsDead() && a.GetDistance(player) <= OBSERVE_RANGE()
+            found = PapyrusUtil.PushActor(found, a)
+        EndIf
+        i += 1
+    EndWhile
+    Return found
 EndFunction
 
 Event OnNewTeammate(String eventName, String strArg, Float numArg, Form sender)
@@ -1022,9 +828,8 @@ Function AutoEnroll(Actor akActor)
     EndIf
 
     ; ---- ENROLLMENT DEBOUNCE -----------------------------------------------
-    ; Enrollment is PERMANENT and there is no clean undo short of UnenrollActor,
-    ; which cannot reach Romantasy's own preference copy - that is restored from
-    ; its snapshot on the next load. So an accidental follower is close to a
+    ; Enrollment is PERMANENT and the only undo is UnenrollActor, which the
+    ; player has to know to reach for. So an accidental follower is close to a
     ; permanent passenger.
     ;
     ; And accidents are not rare, because SkyrimNet's LLM can make anyone a
@@ -1052,6 +857,7 @@ Function AutoEnroll(Actor akActor)
     Float firstSeen = StorageUtil.GetFloatValue(akActor, "SNRom_FirstSeenFollowing", 0.0)
     If firstSeen <= 0.0
         StorageUtil.SetFloatValue(akActor, "SNRom_FirstSeenFollowing", now)
+        StorageUtil.FormListAdd(None, PENDING_LIST(), akActor, False)
         Diag(LOG_INFO(), "Noticed " + akActor.GetDisplayName() + \
             " following - enrollment held until they are still here in " + \
             SkyrimNetApi.GetConfigFloat(CFG(), "enrollmentDelayHours", 2.0) + " game hours")
@@ -1061,20 +867,20 @@ Function AutoEnroll(Actor akActor)
         Return                                  ; still serving the waiting period
     EndIf
 
-    akActor.AddToFaction(_romanceLevel)
-    akActor.SetFactionRank(_romanceLevel, 0)
-    Bool live = CommitConfig(akActor)
-    If StorageUtil.GetIntValue(akActor, "SNRom_ClearRefused", 0) == 1
-        StorageUtil.UnsetIntValue(akActor, "SNRom_ClearRefused")
-        Diag(LOG_WARN(), "Romantasy refused the preference clear for " + akActor.GetDisplayName() + " - it considers them author-defined. Enrollment itself is live=" + live + "; their preferences belong to whoever authored them.")
-    EndIf
+    EnrollNow(akActor, "Auto-enrolled")
+EndFunction
 
+Function EnrollNow(Actor akActor, String asHow)
+    { THE ENROLLMENT ITSELF, for both ways in: AutoEnroll once a follower's
+      waiting period is up, and EnrollByHand. asHow opens the log line. }
     StorageUtil.SetIntValue(akActor, "SNRom_Enrolled", 1)
+    JoinBondFaction(akActor)
     ; THE flag that keeps IsSparked honest. Faction membership used to imply a
     ; deliberate act; once anyone who signs on is enrolled it implies nothing,
     ; and this is what tells the platonic/romantic split which is which.
     StorageUtil.SetIntValue(akActor, "SNRom_AutoEnrolled", 1)
     StorageUtil.SetFloatValue(akActor, "SNRom_EnrolledAt", Utility.GetCurrentGameTime())
+    StorageUtil.FormListRemove(None, PENDING_LIST(), akActor, True)
 
     ; ── STAMP BOTH ASSESSOR WATERMARKS AT ENROLLMENT ────────────────────────
     ; Without this a new enrollee has LastTalkCheck 0.0, which means TWO things
@@ -1118,10 +924,39 @@ Function AutoEnroll(Actor akActor)
     StorageUtil.FormListAdd(None, "SNRom_Roster", akActor, False)
 
     Ledger(akActor, "recruit", "", 0, 1, "")
-    Diag(LOG_INFO(), "Auto-enrolled " + akActor.GetDisplayName() + " at Stranger/0" + \
-        " (platonic until sparked)" + " - Romantasy scoring live: " + live)
+    Diag(LOG_INFO(), asHow + " " + akActor.GetDisplayName() + " at Stranger/0" + \
+        " (platonic until sparked)")
 
     AuthorDisposition(akActor)
+EndFunction
+
+String Function EnrollByHand(Actor akActor)
+    { WP7: THE PLAYER ENROLLS SOMEONE, following or not - the dashboard's
+      crosshair target or the enroll hotkey. The only way a non-follower joins
+      the roster: never automatic (design 3.2, the author 2026-09-28). No
+      waiting period, because the player asked. "" when enrolled; otherwise
+      why not, in words for the player. }
+    If !_ready
+        Return "Relationships has not started this session."
+    EndIf
+    If akActor == None
+        Return "Point at someone first."
+    EndIf
+    String who = akActor.GetDisplayName()
+    If akActor == Game.GetPlayer()
+        Return "That is you."
+    EndIf
+    If akActor.IsDead()
+        Return who + " is dead."
+    EndIf
+    If akActor.IsCommandedActor() || !IsPerson(akActor)
+        Return who + " cannot be enrolled - only people can."
+    EndIf
+    If IsEnrolled(akActor)
+        Return who + " is already enrolled."
+    EndIf
+    EnrollNow(akActor, "Enrolled by hand:")
+    Return ""
 EndFunction
 
 ; ---------------------------------------------------------------------------
@@ -1184,9 +1019,8 @@ Int Function DigitsToInt(String asText) Global
 EndFunction
 
 Function MarkMoment(Actor akActor, Int aiMagnitude, String asReason, String asActivity, String asMagnitude = "")
-    { RomanceMarkMoment. The workhorse: an authored beat, optionally routed
-      through her own like/dislike config so one event helps, hurts, or does
-      nothing depending on who she is. }
+    { RomanceMarkMoment. The workhorse: an authored beat, in either
+      direction, awarded flat through the consent gate. }
     If !_ready || akActor == None
         Return
     EndIf
@@ -1235,57 +1069,38 @@ Function MarkMoment(Actor akActor, Int aiMagnitude, String asReason, String asAc
         Return
     EndIf
 
+    ; FLAT, ALWAYS, from 2.0. Routing through Romantasy's likes and dislikes
+    ; ended with Romantasy (it fired once in 180 awards, design 4.0); phase 5
+    ; routes on our own vocabulary. asActivity is still accepted, and recorded
+    ; in the ledger, until the action stops offering it.
     Int cap = SkyrimNetApi.GetConfigInt(CFG(), "awardMaxPoints", 75)
-    Int clamped   = ClampAward(mag, asActivity, cap)
+    Int clamped = mag
+    If clamped > cap
+        clamped = cap
+    ElseIf clamped < -cap
+        clamped = -cap
+    EndIf
     Int magnitude = ScaleAward(clamped)
 
-    ; Armed once for the whole award. Whichever branch below fires - preference
-    ; routing or a flat award - it is still one point change and one echoed
-    ; event, and only one of them can happen.
-    MarkSelfAward(akActor)
-    Bool routed = False
-    If asActivity != ""
-        ; ApplyPreference multiplies by the stat's weight and returns False if
-        ; she has no LOADED opinion - which includes preferences we authored
-        ; this session that Romantasy cannot see yet.
-        routed = Romantasy.ApplyPreference(akActor, asActivity, magnitude, True)
-    EndIf
-
-    ; Same single exception as the talk path. Checked only on the flat award:
-    ; ApplyPreference multiplies by the stat weight internally, so the amount that
-    ; would actually land is not knowable here - and a routed award is rarer and
-    ; smaller. EnforceLoverCeiling remains the backstop for that case.
-    Bool landed = routed
-    If !routed
-        If HoldShortOfLover(akActor, magnitude)
-            Ledger(akActor, "withheld", asActivity, magnitude, 1, asReason)
-            Return
-        EndIf
-        landed = Romantasy.ModifyPoints(akActor, magnitude, asReason, True)
+    ; EARNED: the consent gate inside ApplyDepth may withhold it.
+    Int result = ApplyDepth(akActor, magnitude, asReason, True, "moment")
+    If result == DEPTH_WITHHELD()
+        Ledger(akActor, "withheld", asActivity, magnitude, 1, asReason)
+        Return
     EndIf
 
     ; -- A REFUSED AWARD MUST NOT LEAVE A LEDGER ROW -------------------------
     ; The return value used to be discarded and the row written unconditionally,
-    ; so when Romantasy declined, this function awarded nothing, said nothing, and
-    ; then wrote the points into the journal anyway. The player reads that journal.
-    ;
-    ; The talk path has always handled this - "Award LOST, no ledger row written" -
-    ; so this was an inconsistency between the two award routes rather than an
-    ; oversight in the design.
-    ;
-    ; THE COMMON TRIGGER IS DISMISSAL, not anything exotic. Romantasy only adjusts
-    ; points for someone actively following, so an authored beat for a companion
-    ; waiting at home is refused outright:
-    ;
-    ;   Romantasy skipped <reason> point adjustment for Jordis the Sword-Maiden;
-    ;   follower is not actively following
-    ;
-    ; Measured 2026-08-28. It is silent on our side and always was.
-    If !landed
-        Diag(LOG_ERROR(), "Romantasy refused " + magnitude + " pts for " + \
-            akActor.GetDisplayName() + " - it only adjusts points for someone " + \
-            "actively following, so a dismissed or waiting companion is declined. " + \
-            "Award LOST, no ledger row written.")
+    ; so when Romantasy declined (it moved points only for someone following),
+    ; this function awarded nothing, said nothing, and then wrote the points
+    ; into the journal anyway. The player reads that journal. The points are
+    ; ours now and land wherever the companion is; the one refusal left is an
+    ; actor whose Romantasy points could not be verified mid-copy
+    ; (ImportPoints logs why).
+    If result <= 0
+        Diag(LOG_ERROR(), "Could not write " + magnitude + " pts for " + \
+            akActor.GetDisplayName() + " - their points could not be brought over from Romantasy " + \
+            "(see the line above). Award LOST, no ledger row written.")
         Return
     EndIf
 
@@ -1304,12 +1119,8 @@ Function MarkMoment(Actor akActor, Int aiMagnitude, String asReason, String asAc
         moved = moved + " -> " + magnitude + " applied (Bond Pace: " + \
             SkyrimNetApi.GetConfigString(CFG(), "bondPace", "Normal") + ")"
     EndIf
-    String route = "flat"
-    If routed
-        route = "routed through " + asActivity
-    EndIf
     Diag(LOG_INFO(), "Moment for " + akActor.GetDisplayName() + ": " + \
-        clamped + " pts" + moved + " [" + route + "] - " + asReason)
+        clamped + " pts" + moved + " - " + asReason)
 
     Ledger(akActor, "moment", asActivity, magnitude, 1, asReason)
 EndFunction
@@ -1354,7 +1165,7 @@ Function UnsparkActor(Actor akActor)
     StorageUtil.SetFloatValue(akActor, "SNRom_EnrolledAt", Utility.GetCurrentGameTime())
     If was
         Diag(LOG_INFO(), "Un-sparked " + who + " - back on the platonic ladder at tier " + \
-            (Romantasy.GetLevel(akActor) - 1) + " with points intact. Spark window reset to now; " + \
+            TierOf(akActor) + " with points intact. Spark window reset to now; " + \
             "the tenure gate must be served again before romance can be judged.")
     Else
         Diag(LOG_INFO(), "Spark window reset for " + who + " (was not sparked)")
@@ -1392,6 +1203,660 @@ Int Function STANCE_ACCEPTED() Global
     Return 1
 EndFunction
 
+; ===========================================================================
+; Points - ours (design 6.4, 8.4, 9.1; WP4, and the cut in 2.0)
+;
+; A bond's depth lives in THIS mod's co-save: StorageUtil Int SNRom_Points
+; per actor, which rolls back with the save the way players expect. Romantasy
+; is read once per actor, by the import, and never written.
+;
+; THREE RULES, and a grep proves each:
+;   - PointsOf is how anything reads depth. Only RomantasyPoints reads
+;     Romantasy's number, and only the import and PointsOf's read-through
+;     for someone not yet imported call it.
+;   - ApplyDepth is how anything CHANGES depth, and the consent gate for
+;     earned awards lives inside it (9.1).
+;   - StorePoints is the only write to SNRom_Points; ApplyDepth and
+;     ImportPoints are its only callers, and each keeps SNRom_Bond's rank in
+;     step (SyncBondRank).
+; ===========================================================================
+
+Int Function DEPTH_WITHHELD() Global
+    { What ApplyDepth returns when the consent gate held an earned award
+      short of Lover instead of writing it. Written is 1, refused 0. }
+    Return -1
+EndFunction
+
+Int Function TierForPoints(Int aiPoints) Global
+    { The tier, 0 Stranger to 5 Spouse, from points. Romantasy's own level
+      is exactly this plus one (LevelNumberForPoints in its
+      RomanceManager.cpp: 500 points a rung), so every "GetLevel - 1" the
+      mod used to write is this function now. }
+    If aiPoints >= 2500
+        Return 5
+    ElseIf aiPoints >= 2000
+        Return 4
+    ElseIf aiPoints >= 1500
+        Return 3
+    ElseIf aiPoints >= 1000
+        Return 2
+    ElseIf aiPoints >= 500
+        Return 1
+    EndIf
+    Return 0
+EndFunction
+
+String Function TierName(Int aiTier) Global
+    { The rung's name, as Romantasy's GetLevelName spelled it for the same
+      points (LevelNameForPoints). The platonic track's own names are the
+      dashboard's; this is the ladder the prompts and the log have always
+      used. }
+    If aiTier >= 5
+        Return "Spouse"
+    ElseIf aiTier == 4
+        Return "Lover"
+    ElseIf aiTier == 3
+        Return "Confidant"
+    ElseIf aiTier == 2
+        Return "Friend"
+    ElseIf aiTier == 1
+        Return "Acquaintance"
+    EndIf
+    Return "Stranger"
+EndFunction
+
+Int Function TierOf(Actor akActor) Global
+    Return TierForPoints(PointsOf(akActor))
+EndFunction
+
+Bool Function RomantasyReadable() Global
+    { Whether Romantasy may be called at all this session: StartPointsImport
+      asked Game.IsPluginInstalled, which cannot fail the way a call to a
+      missing native does. EVERY Romantasy call in this mod is behind it. }
+    Return StorageUtil.GetIntValue(None, "SNRom_RomantasyReadable", 0) == 1
+EndFunction
+
+Int Function RomantasyPoints(Actor akActor) Global
+    { THE ONE READ OF ROMANTASY'S NUMBER, for the import and for PointsOf's
+      read-through before it. 0 when Romantasy is not installed, without
+      calling it. }
+    If !RomantasyReadable()
+        Return 0
+    EndIf
+    Return Romantasy.GetPoints(akActor)
+EndFunction
+
+Bool Function PointsImported(Actor akActor) Global
+    Return akActor != None && StorageUtil.GetIntValue(akActor, "SNRom_PointsImported", 0) == 1
+EndFunction
+
+Int Function PointsOf(Actor akActor) Global
+    { A bond's depth. Ours once the actor is imported.
+
+      BEFORE THE IMPORT, ROMANTASY'S NUMBER where it is installed, read
+      through and never written here: until then Romantasy holds the only
+      copy, and returning 0 would make every gate think a long bond had just
+      begun. The one-time import, or the first change (ApplyDepth), brings
+      them over. Without Romantasy, 0 - which the import then adopts. }
+    If akActor == None
+        Return 0
+    EndIf
+    If StorageUtil.GetIntValue(akActor, "SNRom_PointsImported", 0) == 1
+        Return StorageUtil.GetIntValue(akActor, "SNRom_Points", 0)
+    EndIf
+    Return RomantasyPoints(akActor)
+EndFunction
+
+Function StorePoints(Actor akActor, Int aiPoints)
+    { THE ONLY WRITE TO SNRom_Points. Callers: ApplyDepth and ImportPoints. }
+    StorageUtil.SetIntValue(akActor, "SNRom_Points", aiPoints)
+EndFunction
+
+Function SyncBondRank(Actor akActor)
+    { SNRom_Bond's rank IS the tier, for everything that reads bond state
+      without Papyrus. Called after every write of the points, never between
+      a write and its stamp (SetFactionRank waits a frame). Only for the
+      enrolled: membership is enrollment, and SetFactionRank would add them. }
+    If _bond != None && IsEnrolled(akActor)
+        akActor.SetFactionRank(_bond, TierOf(akActor))
+    EndIf
+EndFunction
+
+Function AnnounceTier(Actor akActor, Int aiFrom, Int aiTo, String asKind, String asReason)
+    { A bond crossed a tier, up or down. The author's rule (2026-10-01,
+      design question 4), in two halves:
+
+      ON SCREEN, FOR THE PLAYER, up and down - but never in combat, in an
+      OStim or SexLab scene, or while paused. Worded here and handed to the
+      DLL, which holds it until the player can see it (native/src/Notices.h)
+      and sends it back to OnShowNotice. Without the DLL, shown at once.
+
+      IN THEIR HEAD, FOR THE CHARACTER ALONE: a private thought
+      (SkyrimNetApi.GenerateNPCThought), which surfaces in their own later
+      prompts. Nobody nearby hears anything - Romantasy's narration trigger
+      is gone. ThoughtHint words it, and says nothing for the changes that
+      are not a change of heart.
+
+      The tier is named on the track the player is shown (ShownTierName), so
+      a feeling nobody has spoken is not announced as one. }
+    String name = akActor.GetDisplayName()
+    String tier = ShownTierName(akActor, aiTo)
+    String text = ""
+    If asKind == "seed"
+        text = "Your history with " + name + " reads as " + tier
+    ElseIf aiTo > aiFrom
+        text = "Your bond with " + name + " deepened: " + tier
+    Else
+        text = "Your bond with " + name + " cooled: " + tier
+    EndIf
+    If _dashNatives >= 5
+        SNRom_Native.Announce(text)
+    Else
+        Debug.Notification(text)
+    EndIf
+    String hint = ThoughtHint(asKind, aiTo > aiFrom, asReason)
+    If hint != ""
+        Int rc = SkyrimNetApi.GenerateNPCThought(akActor, hint)
+        If rc != 0
+            Diag(LOG_WARN(), "Tier thought for " + name + " was not generated (rc=" + rc + \
+                "); the change stands, only the private thought is missing.", True)
+        EndIf
+    EndIf
+    ; QUIET: with logNotifications on, a loud line would put the notice on
+    ; screen at once, through the mirror, and the hold would be for nothing.
+    Diag(LOG_INFO(), "Tier " + aiFrom + " -> " + aiTo + " for " + name + " (" + asKind + "): '" + text + "'", True)
+EndFunction
+
+String Function ShownTierName(Actor akActor, Int aiTier)
+    { The tier's name on the track the PLAYER is shown, by the dashboard's
+      rule (native/src/Model.cpp, Track): the romantic ladder only for a
+      mutual romance or a recorded engagement or marriage; the friendship
+      ladder otherwise - including for a feeling nobody has spoken. Reads
+      MARAS and the applicability, which wait for frames: only on a tier
+      change. }
+    Bool romantic = False
+    If SNRom_Decorators.RomanceApplicability(akActor) == 0
+        romantic = (SNRom_Decorators.IsSparked(akActor) && \
+            StorageUtil.GetIntValue(akActor, "SNRom_PlayerStance", 0) == STANCE_ACCEPTED()) || \
+            CommitmentState(akActor) >= 2
+    EndIf
+    If romantic
+        Return TierName(aiTier)
+    EndIf
+    If aiTier >= 5
+        Return "Best Friend"
+    ElseIf aiTier == 4
+        Return "Ally"
+    EndIf
+    Return TierName(aiTier)
+EndFunction
+
+String Function ThoughtHint(String asKind, Bool abUp, String asReason)
+    { What the character privately notices when their bond crosses a tier, or
+      "" for no thought: a seed or an import is a reading, not a change of
+      heart; a spark has its own thought (ApplySpark); a marriage is its own
+      event. No tier names - those are the player's bookkeeping, not how
+      anyone thinks of someone. }
+    If asKind == "seed" || asKind == "import" || asKind == "spark" || asKind == "married" || \
+       asKind == "ceiling"
+        Return ""
+    EndIf
+    String player = Game.GetPlayer().GetDisplayName()
+    If asKind == "accepted"
+        Return player + " has said yes to what is between you. Let it settle in: you are not only hoping now."
+    ElseIf asKind == "declined"
+        Return player + " has turned you down. It stings, and you hold yourself a little further off than you did."
+    ElseIf asKind == "ended"
+        Return "It is over between you and " + player + ". " + asReason
+    ElseIf asKind == "released"
+        If abUp
+            Return "You realise " + player + " has come to matter more to you than before."
+        EndIf
+        Return ""
+    EndIf
+    If abUp
+        Return "You realise " + player + " has come to matter more to you than before. What brought it home: " + asReason
+    EndIf
+    Return "Something has cooled between you and " + player + "; you hold them a little further off than you did. " + \
+        "What did it: " + asReason
+EndFunction
+
+Event OnShowNotice(String asEventName, String asText, Float afNumArg, Form akSender)
+    { The DLL's go-ahead for a held tier notice (AnnounceTier): the player is
+      out of combat, out of a scene and not paused. }
+    If asText != ""
+        Debug.Notification(asText)
+    EndIf
+EndEvent
+
+Function RecordHistory(Actor akActor, String asKind, Int aiDelta, Int aiTotal, String asReason)
+    { One change to a bond, for the dashboard's history: kept by the DLL in
+      the co-save, so it rolls back with the save (native/src/History.h).
+      Called by ApplyDepth and ImportPoints only. One native, callable from
+      tasklets, so it does not wait a frame. Without the DLL nothing is kept,
+      and nothing else depends on it. }
+    If _dashNatives >= 5 && akActor != None
+        SNRom_Native.RecordChange(akActor, asKind, aiDelta, aiTotal, asReason)
+    EndIf
+EndFunction
+
+Function JoinBondFaction(Actor akActor)
+    { Enrollment's mark on the actor itself: into SNRom_Bond, at their tier.
+      The caller sets SNRom_Enrolled, which is what the mod reads. }
+    If _bond == None || akActor == None
+        Return
+    EndIf
+    akActor.AddToFaction(_bond)
+    akActor.SetFactionRank(_bond, TierOf(akActor))
+EndFunction
+
+Bool Function ImportPoints(Actor akActor, String asWhen)
+    { Make one actor's points ours, and stamp them (design 8.4).
+
+      WITH ROMANTASY: copied exactly. Verified before the stamp: ours read
+      back, and Romantasy read again, must both equal what was copied. A
+      mismatch is an ERROR and leaves them unstamped, still reading
+      Romantasy's number, to be tried again.
+
+      WITHOUT IT: adopted at 0, and unseeded, so the next seed reads them
+      from their history instead (8.3: "the playthrough is simply un-migrated
+      and everyone is seeded from the record"). For someone enrolled in 2.0,
+      who never had Romantasy points, that is simply where a bond starts.
+
+      Returns True when they are ours, including already. }
+    If akActor == None
+        Return False
+    EndIf
+    If PointsImported(akActor)
+        Return True
+    EndIf
+    If !RomantasyReadable()
+        StorePoints(akActor, 0)
+        StorageUtil.SetIntValue(akActor, "SNRom_PointsImported", 1)
+        StorageUtil.UnsetIntValue(akActor, "SNRom_Seeded")
+        SyncBondRank(akActor)
+        ; Lines only for someone the one-time import started over, whose
+        ; history this explains. Anyone enrolled in 2.0 simply starts at 0, and
+        ; an "import" row naming Romantasy would be wrong for every one of them.
+        If asWhen == "in the one-time import"
+            RecordHistory(akActor, "import", 0, 0, "Started over: Romantasy was not installed")
+            Diag(LOG_INFO(), akActor.GetDisplayName() + "'s points start from 0 " + asWhen + \
+                " (no Romantasy to bring them from); the next seed reads them from their history.", True)
+            LedgerRow(akActor, "import", "", 0, 1, "Started from 0 without Romantasy")
+        Else
+            Diag(LOG_INFO(), akActor.GetDisplayName() + "'s bond starts at 0 pts.", True)
+        EndIf
+        Return True
+    EndIf
+    ; READ TWICE, THEN WRITE AND STAMP WITH NOTHING BETWEEN. Romantasy's read
+    ; waits a frame, and while it waits another stack can run - an award whose
+    ; ApplyDepth imports this same actor and writes. So the stamp is checked
+    ; again after each read: if someone else brought them over, their write
+    ; stands and this one does nothing. The write, the stamp and the
+    ; read-back are StorageUtil calls, which do not wait, so no other stack can
+    ; land between them.
+    Int theirs = RomantasyPoints(akActor)
+    Int again = RomantasyPoints(akActor)
+    If PointsImported(akActor)
+        Return True
+    EndIf
+    If again != theirs
+        Diag(LOG_ERROR(), "Import of " + akActor.GetDisplayName() + " did not verify: Romantasy read " + \
+            theirs + " then " + again + " while it was being copied. Left unstamped; tried again next time.")
+        Return False
+    EndIf
+    StorePoints(akActor, theirs)
+    StorageUtil.SetIntValue(akActor, "SNRom_PointsImported", 1)
+    Int ours = StorageUtil.GetIntValue(akActor, "SNRom_Points", -1)
+    If ours != theirs
+        StorageUtil.UnsetIntValue(akActor, "SNRom_PointsImported")
+        Diag(LOG_ERROR(), "Import of " + akActor.GetDisplayName() + " did not verify: wrote " + theirs + \
+            ", read back " + ours + ". Left unstamped; tried again next time.")
+        Return False
+    EndIf
+    SyncBondRank(akActor)
+    ; Only when there was something to bring: Romantasy answers 0 for a new
+    ; companion it never tracked, which is just where their bond starts.
+    If theirs > 0
+        RecordHistory(akActor, "import", theirs, theirs, "Brought over from Romantasy")
+    EndIf
+    ; Quiet: the one-time import writes this for every character, and the
+    ; notification mirror would queue one toast each (reported on the first
+    ; WP4 test). The pass's summary and its Say are what the player sees.
+    Diag(LOG_INFO(), "Brought " + akActor.GetDisplayName() + " over " + asWhen + ": Romantasy " + \
+        theirs + " -> ours " + ours + " pts.", True)
+    LedgerRow(akActor, "import", "", theirs, 1, "Brought over from Romantasy")
+    Return True
+EndFunction
+
+Int Function ApplyDepth(Actor akActor, Int aiDelta, String asReason, Bool abShowLevelUp, String asKind)
+    { THE ONE PLACE A BOND'S DEPTH CHANGES (design 9.1). Every award, seed,
+      release, setback and clamp comes through here, and nothing else
+      writes SNRom_Points.
+
+      THE CONSENT GATE LIVES HERE, FOR EVERY INCREASE (2.0, design 9.2):
+      HoldShortOfLover withholds and banks anything that would carry an
+      unanswered romance into Lover, and this returns DEPTH_WITHHELD instead
+      of writing. In 1.x it guarded earned awards only, with a reactive
+      ceiling behind it for the rest - Romantasy's own scoring among them -
+      and that ceiling's clawbacks were the splashes and refusals 2.0 set out
+      to end. With every write here, one preventive check covers them all.
+      The single exception is a marriage ("married"): the proposal and its
+      acceptance ARE the answer.
+
+      abShowLevelUp: whether a tier this change crosses is announced - on
+      screen when the player can see it, and to the character alone as a
+      private thought (AnnounceTier).
+
+      asKind: what happened, in one word ("moment", "talk", "seed"...), for
+      the bond's history (RecordHistory): every change that lands, and every
+      earned award the gate withholds, is recorded here, so the history can
+      never miss one the way the ledger missed seeds and marriages.
+
+      NEVER REFUSED FOR WHERE SOMEONE IS. The one refusal is an actor whose
+      Romantasy points could not be verified mid-copy (ImportPoints), because
+      writing 0 plus the change would lose what Romantasy holds.
+
+      Returns 1 written, DEPTH_WITHHELD, or 0 refused. }
+    If akActor == None
+        Return 0
+    EndIf
+    If !PointsImported(akActor) && !ImportPoints(akActor, "at its first change")
+        Return 0
+    EndIf
+    If asKind != "married" && HoldShortOfLover(akActor, aiDelta)
+        RecordHistory(akActor, "withheld", aiDelta, StorageUtil.GetIntValue(akActor, "SNRom_Points", 0), asReason)
+        Return DEPTH_WITHHELD()
+    EndIf
+    If aiDelta == 0
+        Return 1
+    EndIf
+    ; Never below zero, as Romantasy clamped (max(0, points + delta)).
+    Int was = StorageUtil.GetIntValue(akActor, "SNRom_Points", 0)
+    Int now = was + aiDelta
+    If now < 0
+        now = 0
+    EndIf
+    StorePoints(akActor, now)
+    SyncBondRank(akActor)
+    If now != was
+        RecordHistory(akActor, asKind, now - was, now, asReason)
+        Int fromTier = TierForPoints(was)
+        Int toTier = TierForPoints(now)
+        If abShowLevelUp && fromTier != toTier
+            AnnounceTier(akActor, fromTier, toTier, asKind, asReason)
+        EndIf
+    EndIf
+    Return 1
+EndFunction
+
+Function StartPointsImport()
+    { Bootstrap. The two one-time passes a save needs on its way to 2.0, on
+      their own stack via a ModEvent, so a large roster never holds up the
+      rest of the bootstrap (OnImportPoints). Also records whether Romantasy
+      can be read at all this session (RomantasyReadable).
+
+      POINTS ONLY. Romantasy's likes and dislikes are not brought over: they
+      name game statistics ("Dungeons Cleared"), routing on them fired once in
+      180 awards (design 4.0), and phase 5 re-authors everyone's preferences
+      against our own vocabulary. The author decided 2026-09-30 that nothing
+      of Romantasy's preferences carries into Relationships. }
+    ; The faction FIRST: && short-circuits, so GetApiVersion is never called
+    ; when Romantasy is absent - nor when a header-only stub of its plugin
+    ; stands in so a save that needed it still loads. The stub has no records,
+    ; and Romantasy's scripts are gone with the rest of it.
+    Bool readable = RomantasyFaction() != None && Romantasy.GetApiVersion() > 0
+    StorageUtil.SetIntValue(None, "SNRom_RomantasyReadable", readable as Int)
+    If StorageUtil.GetIntValue(None, "SNRom_Migrated", 0) == 1 && \
+       StorageUtil.GetIntValue(None, "SNRom_BondFactionPass", 0) == 1 && \
+       StorageUtil.GetIntValue(None, "SNRom_AuthoredFlagPass", 0) == 1 && \
+       StorageUtil.GetIntValue(None, "SNRom_LoverLinePass", 0) == 1
+        Return
+    EndIf
+    SendModEvent("SNRom_ImportPoints")
+EndFunction
+
+Event OnImportPoints(String asEventName, String asStrArg, Float afNumArg, Form akSender)
+    { The one-time passes, in order: the points import (ImportEveryone), the
+      move into SNRom_Bond (MoveToBondFaction), and the repair of the
+      authored flag (RepairAuthoredFlags). Each is stamped only when it
+      finished, so an interrupted one resumes on the next load. }
+    If _importing
+        Return
+    EndIf
+    _importing = True
+    If StorageUtil.GetIntValue(None, "SNRom_Migrated", 0) != 1
+        ImportEveryone()
+    EndIf
+    If StorageUtil.GetIntValue(None, "SNRom_BondFactionPass", 0) != 1
+        MoveToBondFaction()
+    EndIf
+    If StorageUtil.GetIntValue(None, "SNRom_AuthoredFlagPass", 0) != 1
+        RepairAuthoredFlags()
+    EndIf
+    ; After the import, so the points it reads are ours.
+    If StorageUtil.GetIntValue(None, "SNRom_LoverLinePass", 0) != 1 && \
+       StorageUtil.GetIntValue(None, "SNRom_Migrated", 0) == 1
+        RestoreLoverLine()
+    EndIf
+    _importing = False
+EndEvent
+
+Function ImportEveryone()
+    { The one-time import itself (design 8.4). Resumable, never repeated:
+      whoever is already stamped is skipped, and SNRom_Migrated - written
+      only once every roster member is stamped and verified - stops
+      it running on any save made afterwards.
+
+      A save made BEFORE the import has no stamp and genuinely has not been
+      brought over, so it is, once, from its own numbers. The playthrough's
+      store remembers an import happened, which is how its notification says
+      "an older save" rather than looking like a repeat.
+
+      WITHOUT ROMANTASY everyone is adopted at 0 and re-read from their
+      history as the seed reaches them (ImportPoints). Loud, because the only
+      way back is a save from before it, loaded with Romantasy installed. }
+    Bool readable = RomantasyReadable()
+    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int brought = 0
+    Int already = 0
+    Int failed = 0
+    Int skipped = 0
+    Int i = 0
+    While i < n
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        ; THE DEAD ARE BROUGHT OVER TOO. Their points are the history the
+        ; dashboard shows, and after the cut Romantasy's copy is gone. The
+        ; first WP4 test build skipped them.
+        If a == None
+            skipped += 1
+        ElseIf PointsImported(a)
+            already += 1
+        ElseIf ImportPoints(a, "in the one-time import")
+            brought += 1
+        Else
+            failed += 1
+        EndIf
+        i += 1
+    EndWhile
+    If failed > 0
+        Diag(LOG_ERROR(), "Import incomplete: " + failed + " did not verify and keep reading " + \
+            "Romantasy's number until the next load tries again. " + brought + " brought over.")
+        Return
+    EndIf
+    StorageUtil.SetIntValue(None, "SNRom_Migrated", 1)
+    String store = StoreFile()
+    Bool before = JsonUtil.GetIntValue(store, "SNRom_PointsImportedOnce", 0) == 1
+    JsonUtil.SetIntValue(store, "SNRom_PointsImportedOnce", 1)
+    JsonUtil.Save(store)
+    Int total = brought + already
+    If !readable
+        Diag(LOG_WARN(), "Import done WITHOUT Romantasy: " + brought + " start from 0 and are re-read " + \
+            "from their history as the seed reaches them; " + already + " were already ours, " + skipped + \
+            " skipped (no longer in the game). To bring Romantasy's points over instead, load a save " + \
+            "from before this one with Romantasy installed.")
+        If brought > 0
+            Say("Romantasy isn't installed, so " + brought + " companions start over and are re-read from their history.")
+        EndIf
+        Return
+    EndIf
+    Diag(LOG_INFO(), "Import done: " + brought + " brought over, " + already + " already ours, " + \
+        skipped + " skipped (no longer in the game). Nobody brought over is read from Romantasy again; " + \
+        "anyone enrolled later is brought over at their first change.")
+    If brought > 0
+        If before
+            Say("An older save: brought " + total + " companions over from Romantasy, from this save's own points.")
+        Else
+            Say("Brought " + total + " companions over from Romantasy.")
+        EndIf
+    EndIf
+EndFunction
+
+Function RestoreLoverLine()
+    { ONE-TIME (SNRom_LoverLinePass), for a save from 1.x: puts any
+      unanswered romance standing above the Lover line back on it, holding
+      the difference for the answer exactly as the gate does.
+
+      1.x pulled such a bond back with a reactive ceiling after Romantasy's own
+      scoring carried it over - and Romantasy refused the pull-back for anyone
+      not following, hundreds of times for Iddra and Irgnir. So a 1.x save can
+      arrive with an unanswered romance at Lover, the one crossing the
+      question exists to govern. From 2.0 nothing can carry one over
+      (ApplyDepth withholds), so once is enough.
+
+      A declined companion past the line is reopened first, as the gate does,
+      so the question comes back to them as it would have. }
+    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int restored = 0
+    Int i = 0
+    While i < n
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None && PointsOf(a) > UNANSWERED_MAX()
+            ReopenIfClimbedBack(a, 0)
+            Bool sparked = SNRom_Decorators.IsSparked(a)
+            If StorageUtil.GetIntValue(a, "SNRom_PlayerStance", 0) == STANCE_UNANSWERED() && \
+               (sparked || !SparkDecided(a))
+                Int over = PointsOf(a) - UNANSWERED_MAX()
+                ; A decrease, so the gate never holds it; recorded like any
+                ; change, for the developer view (labels.js CHANGE.ceiling).
+                If ApplyDepth(a, -over, "Held at the Lover line until you answer", False, "ceiling") > 0
+                    StorageUtil.SetIntValue(a, "SNRom_BankedPoints", \
+                        StorageUtil.GetIntValue(a, "SNRom_BankedPoints", 0) + over)
+                    If sparked
+                        StorageUtil.SetIntValue(a, "SNRom_AskPending", 1)
+                    EndIf
+                    restored += 1
+                    Diag(LOG_INFO(), a.GetDisplayName() + " stood " + over + " pts past the Lover line " + \
+                        "unanswered; put back at " + UNANSWERED_MAX() + " and the " + over + " held for the answer.", True)
+                EndIf
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    StorageUtil.SetIntValue(None, "SNRom_LoverLinePass", 1)
+    If restored > 0
+        Diag(LOG_INFO(), restored + " unanswered romances were past the Lover line from 1.x and are back " + \
+            "on it, their difference held for the answer.")
+    EndIf
+EndFunction
+
+Function RepairAuthoredFlags()
+    { ONE-TIME (SNRom_AuthoredFlagPass): marks as authored every companion
+      whose character was written but whose SNRom_DispositionAuthored says
+      otherwise. Found on the 2.0 dashboard, which drew 12 of 122 as
+      "not authored yet" while their characters were plainly there.
+
+      Two 1.x paths left it wrong:
+      - the character-only re-author never set the flag, so a companion
+        wiped with ClearDisposition during development (flag 0) and then
+        re-authored that way kept 0 - ten of the twelve;
+      - a failed re-author marked an intact character 2, "archetype" -
+        fixed at the source in ApplyArchetype.
+
+      THE FLAG IS NOT COSMETIC: the dashboard, BuildCircle and drift all read
+      it, so those companions showed as defaults, were left out of the circle
+      a new character is made distinct from, and never drifted.
+
+      Evidence of a written character: any character field stored -
+      ClearDisposition unsets every one of them, so one present means a
+      character was written after it - or a WHY in the store, the evidence
+      AuthorDisposition already trusts. StorageUtil and JsonUtil reads only,
+      so the walk does not wait on frames. }
+    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int repaired = 0
+    Int i = 0
+    While i < n
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None && StorageUtil.GetIntValue(a, "SNRom_DispositionAuthored", 0) != 1
+            Bool written = StorageUtil.HasIntValue(a, "SNRom_PhysMinTier") || \
+                StorageUtil.HasIntValue(a, "SNRom_Ardor") || \
+                StorageUtil.HasIntValue(a, "SNRom_Exclusivity") || \
+                StorageUtil.HasIntValue(a, "SNRom_Orientation")
+            If written || StoreGetText(a, "Why") != ""
+                Int was = StorageUtil.GetIntValue(a, "SNRom_DispositionAuthored", 0)
+                StorageUtil.SetIntValue(a, "SNRom_DispositionAuthored", 1)
+                repaired += 1
+                Diag(LOG_INFO(), a.GetDisplayName() + "'s character was written but marked " + was + \
+                    "; marked authored.", True)
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    StorageUtil.SetIntValue(None, "SNRom_AuthoredFlagPass", 1)
+    Diag(LOG_INFO(), "Authored flag repaired for " + repaired + " companions whose characters were " + \
+        "written but not marked: the dashboard shows them as authored, and they can drift and be " + \
+        "compared against again.")
+EndFunction
+
+Function MoveToBondFaction()
+    { THE CUT'S LAST ACT FOR EACH COMPANION (design 8.1): into SNRom_Bond at
+      their tier, and out of ROM_RomanceLevel, the faction 1.x put them in.
+      Otherwise a Romantasy left installed keeps scoring them from its own
+      economy and splashing its own tier names over a bond it no longer
+      holds. That undoes our own enrollment; it writes nothing of Romantasy's.
+
+      ONLY ONCE THEIR POINTS ARE OURS. Romantasy tracks by that faction, and
+      nothing says what it does with a record it stops tracking, so anyone
+      whose import has not verified keeps it, and the pass is not stamped
+      until the next load finishes them.
+
+      Also sets SNRom_Enrolled for the whole roster: that flag is what the
+      mod reads for enrollment from 2.0 (IsEnrolled), and companions enrolled
+      before it existed never had it. The roster is exactly the enrolled -
+      UnenrollActor takes them off it. }
+    Faction rom = RomantasyFaction()
+    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int moved = 0
+    Int released = 0
+    Int waiting = 0
+    Int i = 0
+    While i < n
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None
+            StorageUtil.SetIntValue(a, "SNRom_Enrolled", 1)
+            JoinBondFaction(a)
+            moved += 1
+            If rom != None && a.IsInFaction(rom)
+                If PointsImported(a)
+                    a.RemoveFromFaction(rom)
+                    released += 1
+                Else
+                    waiting += 1
+                EndIf
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    If waiting > 0
+        Diag(LOG_WARN(), "Moved " + moved + " into SNRom_Bond; " + waiting + " stay in Romantasy's faction " + \
+            "until their points are ours, and the pass runs again on the next load.")
+        Return
+    EndIf
+    StorageUtil.SetIntValue(None, "SNRom_BondFactionPass", 1)
+    Diag(LOG_INFO(), "Moved " + moved + " companions into SNRom_Bond at their tiers; " + released + \
+        " released from Romantasy's faction, which no longer tracks them.")
+EndFunction
+
 Int Function UNANSWERED_MAX() Global
     { The most an UNANSWERED romance may hold: one point below Lover.
 
@@ -1415,16 +1880,20 @@ Int Function UNANSWERED_MAX() Global
       possible at Spouse. Gating Spouse as well asked the same question twice and
       made the second asking ours rather than the marriage system.
 
-      THE ORDERING IS WHAT MAKES THIS WORK, and it was already right: Ledger
-      calls CheckRomanceQuestion BEFORE EnforceLoverCeiling. So an award to 2100
-      is seen at 2100, the question is flagged, and only then is the overflow
-      banked down to this ceiling. Reverse them and the question could never
-      fire, because she would never be observed above 1999. }
+      NOTHING CROSSES IT UNANSWERED from 2.0: ApplyDepth withholds any
+      increase that would (HoldShortOfLover), and CheckRomanceQuestion reads
+      points PLUS the bank, so the question is owed the moment a withheld
+      amount would have carried them over. }
     Return LOVER_MIN() - 1
 EndFunction
 Bool Function HoldShortOfLover(Actor akActor, Int aiDelta)
-    { Should this award be WITHHELD instead of written? Returns True when writing
-      it would carry an unanswered romance from Confidant into Lover.
+    { Should this increase be WITHHELD instead of written? Returns True when
+      writing it would carry an unanswered romance from Confidant into Lover.
+
+      FROM 2.0 IT GUARDS EVERY INCREASE, not only earned awards: ApplyDepth
+      asks it for each one but a marriage. The 1.x rule below was the
+      author's answer to Romantasy scoring on its own, and its reactive
+      backstop is gone with Romantasy.
 
       WITHHELD, NOT WRITTEN-THEN-CORRECTED, and that is the whole point of this
       function. EnforceLoverCeiling has always clawed back after the fact, which
@@ -1480,7 +1949,7 @@ Bool Function HoldShortOfLover(Actor akActor, Int aiDelta)
     If !sparked && SparkDecided(akActor)
         Return False                            ; judged platonic; depth is free
     EndIf
-    Int held = Romantasy.GetPoints(akActor)
+    Int held = PointsOf(akActor)
     If held + aiDelta <= UNANSWERED_MAX()
         Return False                            ; does not reach the crossing
     EndIf
@@ -1496,8 +1965,8 @@ Bool Function HoldShortOfLover(Actor akActor, Int aiDelta)
         StorageUtil.SetIntValue(akActor, "SNRom_AskPending", 1)
         Diag(LOG_INFO(), "Held " + aiDelta + " pts short of Lover for " + \
             akActor.GetDisplayName() + " - " + held + " + " + aiDelta + " would cross " + \
-            UNANSWERED_MAX() + " with the question unanswered. Nothing written to " + \
-            "Romantasy, so no tier splash. Granted in full on yes, discarded otherwise.")
+            UNANSWERED_MAX() + " with the question unanswered. Held, so no tier change - " + \
+            "granted in full on yes, discarded otherwise.")
     Else
         ; NO ASK PENDING HERE. The consent question presupposes a spark - asking
         ; "do you want this to become romantic" of a bond nobody has judged puts
@@ -1506,142 +1975,13 @@ Bool Function HoldShortOfLover(Actor akActor, Int aiDelta)
         Diag(LOG_INFO(), "Held " + aiDelta + " pts short of Lover for " + \
             akActor.GetDisplayName() + " - " + held + " + " + aiDelta + " would cross " + \
             UNANSWERED_MAX() + " and the spark has not been judged yet. Asking the " + \
-            "assessor first; nothing written to Romantasy, so no tier splash.")
+            "assessor first; held, so no tier change.")
         RequestSparkNow(akActor)
     EndIf
     Return True
 EndFunction
 
-Int Function UnansweredRest() Global
-    { Where the reactive ceiling PUTS someone, as opposed to the line it detects
-      them crossing. Deliberately below UNANSWERED_MAX rather than equal to it.
 
-      RETURNING HER TO 1999 LEAVES ZERO HEADROOM, and that is what made the gate
-      visible. Romantasy scores from its own economy - deeds credited to everyone
-      in the romance faction - and that path never passes through this mod at
-      all, so `HoldShortOfLover` cannot withhold it. Parked one point under Lover,
-      the very next internal award crosses, Romantasy announces LOVER with its own
-      PrismaUI splash and levelup.wav, and only then does this function claw the
-      overflow back. The consent question is raised correctly - and the player has
-      already been told the answer.
-
-      Reported 2026-09-08 on Silana Petreia, sandboxing out of range: 967 -> 2084
-      with exactly one 10-point award from us in the whole span. Everything else
-      arrived from Romantasy. Measured overflows on this save were 4, 4, 48, 58,
-      85, 88, 122, 122 - and one outlier of 501 on Camilla Valerius. A 250-point
-      buffer absorbs every one but the outlier.
-
-      COSTS NOTHING IN TIER, WHICH IS WHY IT IS AFFORDABLE. Tiers are 500 apart
-      and Confidant runs 1500-1999, so resting at 1749 and resting at 1999 are
-      the same rung - same ladder prose, same gates, same everything the player
-      is told. What changes is the raw number in Romantasy's panel, and the
-      difference is banked and returned in full on acceptance.
-
-      NOT UNANSWERED_MAX ITSELF, and that separation is the point. That constant
-      is also the SEED cap - the author's deliberate "seed to one under Lover" -
-      and three subsystems already reason about it. Moving it to buy headroom here
-      would silently lower every seed too. When a constant appears in more than
-      one subsystem's reasoning, give the second subsystem its own. }
-    Int rest = UNANSWERED_MAX() - SkyrimNetApi.GetConfigInt(CFG(), "unansweredHeadroom", 250)
-    ; NEVER BELOW THE TIER FLOOR. A headroom big enough to drop her out of
-    ; Confidant would trade a splash for a visible demotion, which is worse -
-    ; and it would be the player own setting doing it, silently.
-    If rest < CONFIDANT_MIN()
-        Return CONFIDANT_MIN()
-    EndIf
-    Return rest
-EndFunction
-
-Function EnforceLoverCeiling(Actor akActor)
-    { Hold an UNANSWERED romance just below Lover, banking the overflow.
-
-      BANKED, NOT DISCARDED. The points were earned and the player watched them
-      accrue; deleting them to enforce a gate would be the one direction that
-      is hard to justify. They come back in full the moment the answer is yes,
-      so saying yes to someone who has been waiting a long time lands where the
-      relationship actually is rather than making her climb again.
-
-      Only bites while SPARKED and UNANSWERED. A platonic bond has no gate to
-      pass and should reach Spouse-tier depth freely - two people can be that
-      close without romance, which is the two-track design. A married NPC is
-      seeded ACCEPTED from the ceremony and never reaches here. }
-    If akActor == None || !_ready
-        Return
-    EndIf
-    ; The backstop's backstop: Romantasy's own economy can carry a declined
-    ; companion over Lover without ever passing HoldShortOfLover, and an old
-    ; save can already hold one there. Reopen first, then clamp as usual.
-    ReopenIfClimbedBack(akActor, 0)
-    If StorageUtil.GetIntValue(akActor, "SNRom_PlayerStance", 0) != STANCE_UNANSWERED()
-        Return
-    EndIf
-    If !SNRom_Decorators.IsSparked(akActor)
-        Return
-    EndIf
-    ; DETECT AT THE REST POINT, NOT AT THE CEILING. The first version of this
-    ; detected at UNANSWERED_MAX and relocated to the rest point, reasoning that
-    ; trimming someone who had not crossed anything would be officious. That was
-    ; wrong, and it made the buffer WORTHLESS - one-shot rather than maintained.
-    ;
-    ; Measured 2026-09-08, on the build that introduced it: Silana was parked at
-    ; 1749 and climbed to 2003 over about a game day and a half in small
-    ; increments, none of which tripped a detector sitting at 1999. She crossed
-    ; Lover, Romantasy splashed, and only then was she pulled back - buffer spent,
-    ; nothing prevented. A buffer you drift through is not a buffer.
-    ;
-    ; Detecting here means every Romantasy award is trimmed as it lands and she
-    ; never accumulates toward the line at all. Only a SINGLE award larger than
-    ; the headroom can still cross, which is the case the setting is sized for.
-    ; Nothing is lost either way: the difference is banked, not deleted.
-    Int over = Romantasy.GetPoints(akActor) - UnansweredRest()
-    If over <= 0
-        Return
-    EndIf
-    ; No Ledger call on this path. Ledger is what CALLS us, and logging the
-    ; clawback through it would recurse. The Diag line is the record.
-    MarkSelfAward(akActor)
-    ; NOT ScaleAward: this is a TRANSFER. It banks the overflow for AcceptRomance
-    ; to hand back in full, and scaling one side of a round trip destroys points.
-    ; abShowLevelUp FALSE. Romantasy takes a flag on this native and we were
-    ; passing True, so the correction played loselevel.wav and splashed a
-    ; DEMOTION on top of the promotion it had just splashed - the player watched
-    ; a tier arrive and be taken away. The clawback is bookkeeping against a
-    ; question that has not been asked yet; it is not news, and it is certainly
-    ; not a loss. The release at AcceptRomance still announces, because that one
-    ; is real.
-    ; THE LABEL HAS TO BE TRUE AT EVERY POINT IN THE BAND. Romantasy shows this
-    ; reason beside a negative entry in its history. The hold starts at the rest
-    ; point, unansweredHeadroom BELOW Lover, so for most of the band she has not
-    ; earned Lover and nothing is pending - yet the one label said "Held short of
-    ; Lover pending an answer", which reads as "she got there and is waiting on
-    ; you". Tormir and Orla, 2026-09-22: 210 and 131 short, no question owed, no
-    ; box, and the player reasonably asked where the box was.
-    ;
-    ; Earned is points plus bank BEFORE this clawback moves anything, the same
-    ; quantity CheckRomanceQuestion tests, so the label flips exactly when the
-    ; question becomes owed. The entries themselves cannot be avoided while
-    ; Romantasy scores on its own: its API has no silent adjustment, only
-    ; ModifyPoints with a reason. They go away with Romantasy, in 2.0.
-    Int earnedNow = Romantasy.GetPoints(akActor) + StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)
-    String holdLabel = "Banked toward Lover - you'll be asked once it's earned"
-    If earnedNow >= LOVER_MIN()
-        holdLabel = "Held short of Lover pending your answer"
-    EndIf
-    If Romantasy.ModifyPoints(akActor, -over, holdLabel, False)
-        Int banked = StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0) + over
-        StorageUtil.SetIntValue(akActor, "SNRom_BankedPoints", banked)
-        String stage = " - earned " + earnedNow + " of " + LOVER_MIN() + ", so the question comes when she gets there."
-        If earnedNow >= LOVER_MIN()
-            stage = " - earned " + earnedNow + ", so the question is owed and waits for her to be near you."
-        EndIf
-        Diag(LOG_INFO(), "Held " + akActor.GetDisplayName() + " at " + UnansweredRest() + \
-            " - " + over + " pts banked (" + banked + " total)" + stage + \
-            " The buffer is what stops Romantasy's own scoring re-crossing Lover first.")
-    Else
-        Diag(LOG_ERROR(), "ModifyPoints refused the Lover ceiling for " + akActor.GetDisplayName() + \
-            " - she is past " + UNANSWERED_MAX() + " with the question still unanswered")
-    EndIf
-EndFunction
 
 Function AcceptRomance(Actor akActor)
     { The player says yes. Only this opens tier 4+ as a realized romance. }
@@ -1649,22 +1989,30 @@ Function AcceptRomance(Actor akActor)
     If akActor == None || !_ready
         Return
     EndIf
-    ; Release whatever the ceiling held back. Doing this AFTER the stance write
-    ; matters: EnforceLoverCeiling reads the stance, so releasing first would
-    ; be clawed straight back on the next point change.
+    ; Release whatever the gate held back. Doing this AFTER the stance write
+    ; matters: HoldShortOfLover reads the stance, and ApplyDepth asks it for
+    ; every increase, so releasing first would be held straight back again.
     Int banked = StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)
     If banked <= 0
         Return
     EndIf
-    StorageUtil.UnsetIntValue(akActor, "SNRom_BankedPoints")
-    MarkSelfAward(akActor)
     ; NOT ScaleAward: the other half of the ceiling round trip. The player watched
     ; these accrue and was promised them back, whole.
-    If Romantasy.ModifyPoints(akActor, banked, "What was held while the question waited", True)
+    ;
+    ; THE BANK IS CLEARED ONLY ONCE THE RELEASE HAS LANDED. It used to be
+    ; cleared first, so when Romantasy refused - anyone not following at the
+    ; moment of the yes - the banked points were simply gone. Ours does not
+    ; refuse for that; if the write fails at all, the bank stays for the next
+    ; acceptance path to try.
+    If ApplyDepth(akActor, banked, "What was held while the question waited", True, "accepted") > 0
+        StorageUtil.UnsetIntValue(akActor, "SNRom_BankedPoints")
         Ledger(akActor, "unbank", "", banked, 1, "Released on acceptance")
         Diag(LOG_INFO(), "Released " + banked + " banked pts to " + akActor.GetDisplayName() + \
-            " on acceptance -> " + Romantasy.GetPoints(akActor) + " pts, tier " + \
-            (Romantasy.GetLevel(akActor) - 1) + ". The waiting cost her nothing.")
+            " on acceptance -> " + PointsOf(akActor) + " pts, tier " + \
+            TierOf(akActor) + ". The waiting cost her nothing.")
+    Else
+        Diag(LOG_ERROR(), "Could not release " + banked + " banked pts to " + akActor.GetDisplayName() + \
+            " - their points are not ours yet. The bank is kept.")
     EndIf
 EndFunction
 
@@ -1711,21 +2059,20 @@ Function DeclineRomance(Actor akActor)
     ; which is the opposite of what a refusal should cost.
     StorageUtil.UnsetIntValue(akActor, "SNRom_BankedPoints")
     String who = akActor.GetDisplayName()
-    Int had = Romantasy.GetPoints(akActor)
+    Int had = PointsOf(akActor)
     Int drop = FRIEND_MID() - had
     If drop >= 0
         Diag(LOG_INFO(), who + " was turned down at " + had + " pts - already at or below " + \
             FRIEND_MID() + ", so depth is unchanged.")
         Return
     EndIf
-    MarkSelfAward(akActor)
-    If Romantasy.ModifyPoints(akActor, ScaleAward(drop), "Turned down", True)
+    If ApplyDepth(akActor, ScaleAward(drop), "Turned down", True, "declined") > 0
         Ledger(akActor, "declined", "", drop, 1, "Turned down")
-        Diag(LOG_INFO(), "Turned down " + who + ": " + had + " -> " + Romantasy.GetPoints(akActor) + \
-            " pts, tier " + (Romantasy.GetLevel(akActor) - 1) + ". She keeps the spark and everything " + \
+        Diag(LOG_INFO(), "Turned down " + who + ": " + had + " -> " + PointsOf(akActor) + \
+            " pts, tier " + TierOf(akActor) + ". She keeps the spark and everything " + \
             "she believes; what she loses is the closeness that got her to the question.")
     Else
-        Diag(LOG_ERROR(), "ModifyPoints refused the decline setback for " + who + " - stance is set but depth is unchanged")
+        Diag(LOG_ERROR(), "Could not apply the decline setback for " + who + " - stance is set but depth is unchanged")
     EndIf
 EndFunction
 
@@ -1776,7 +2123,7 @@ Bool Function ReopenIfClimbedBack(Actor akActor, Int aiIncoming)
     If !SNRom_Decorators.IsSparked(akActor)
         Return False
     EndIf
-    Int earned = Romantasy.GetPoints(akActor) + StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)
+    Int earned = PointsOf(akActor) + StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)
     If earned + aiIncoming <= UNANSWERED_MAX()
         Return False
     EndIf
@@ -1797,7 +2144,7 @@ Function SetStance(Actor akActor, Int aiStance, String asWord)
     ; have the sweep keep asking someone who has already answered.
     StorageUtil.UnsetIntValue(akActor, "SNRom_AskPending")
     Diag(LOG_INFO(), "Player stance toward " + akActor.GetDisplayName() + ": " + asWord + \
-        " (tier " + (Romantasy.GetLevel(akActor) - 1) + ", sparked=" + \
+        " (tier " + TierOf(akActor) + ", sparked=" + \
         SNRom_Decorators.IsSparked(akActor) + "). Bond depth unchanged.")
 EndFunction
 
@@ -1923,139 +2270,22 @@ Function EndRomance(Actor akActor, String asReason)
     StorageUtil.SetFloatValue(akActor, "SNRom_LastSparkCheck", Utility.GetCurrentGameTime())
     StorageUtil.SetFloatValue(akActor, "SNRom_EnrolledAt", Utility.GetCurrentGameTime())
 
-    Int had = Romantasy.GetPoints(akActor)
+    Int had = PointsOf(akActor)
     Int drop = ENDED_CAP() - had
     If drop < 0
-        MarkSelfAward(akActor)
-        If Romantasy.ModifyPoints(akActor, ScaleAward(drop), asReason, True)
+        If ApplyDepth(akActor, ScaleAward(drop), asReason, True, "ended") > 0
             Ledger(akActor, "end", "", drop, 1, asReason)
             Diag(LOG_INFO(), "Romance ended for " + who + ": " + had + " -> " + \
-                Romantasy.GetPoints(akActor) + " pts, tier " + (Romantasy.GetLevel(akActor) - 1) + \
-                " (" + Romantasy.GetLevelName(akActor) + "). Back on the platonic ladder; " + \
+                PointsOf(akActor) + " pts, tier " + TierOf(akActor) + \
+                " (" + TierName(TierOf(akActor)) + "). Back on the platonic ladder; " + \
                 "romance can be judged again after the tenure gate. " + asReason)
         Else
-            Diag(LOG_ERROR(), "Romance ended for " + who + " but Romantasy REJECTED the " + \
-                drop + " pt cap - the ladder reverted, the tier did not.")
+            Diag(LOG_ERROR(), "Romance ended for " + who + " but the " + drop + \
+                " pt cap could not be written - the ladder reverted, the tier did not.")
         EndIf
     Else
         Diag(LOG_INFO(), "Romance ended for " + who + " at " + had + " pts - already at or below " + \
             ENDED_CAP() + ", so depth is unchanged. Back on the platonic ladder. " + asReason)
-    EndIf
-EndFunction
-
-; ===========================================================================
-; Award clamping
-; ===========================================================================
-
-Int Function ClampAward(Int aiMagnitude, String asActivity, Int aiCap) Global
-    { ApplyPreference multiplies magnitude by the stat's weight, so a
-      magnitude of 5 on a weight-20 stat is 100 points - past any sane cap.
-      Clamp on the PRODUCT, not the raw magnitude. This lives in Papyrus and
-      not in an action description precisely because the model cannot ignore
-      it here. }
-    Int weight = StatWeight(asActivity)
-    Int maxMag = aiCap
-    If weight > 1
-        maxMag = aiCap / weight
-        If maxMag < 1
-            maxMag = 1
-        EndIf
-    EndIf
-    If aiMagnitude > maxMag
-        Return maxMag
-    ElseIf aiMagnitude < -maxMag
-        Return -maxMag
-    EndIf
-    Return aiMagnitude
-EndFunction
-
-Int Function StatWeight(String asActivity) Global
-    { Romantasy's fixed per-activity weights. Ours must match exactly, or a
-      cleared dungeon changes value across the reload handoff and pacing
-      visibly shifts. Default 1 covers the large weight-1 majority. }
-    If asActivity == ""
-        Return 1
-    EndIf
-    String a = asActivity
-    If a == "ROM_QuestlinesCompleted" || a == "Questlines Completed"
-        Return 20
-    ElseIf StringUtil.Find(a, "Completed") > -1 && StringUtil.Find(a, "Quests") < 0 && StringUtil.Find(a, "Objectives") < 0
-        Return 10   ; guild questlines: Companions, College, Thieves, DB, CivilWar, Daedric, Dawnguard, Dragonborn
-    ElseIf a == "ROM_Murders" || a == "Murders" || a == "ROM_WerewolfTransformations" || a == "Werewolf Transformations"
-        Return 5
-    ElseIf a == "ROM_MainQuestsCompleted" || a == "Main Quests Completed" || a == "ROM_SideQuestsCompleted" || a == "Side Quests Completed"
-        Return 5
-    ElseIf a == "ROM_QuestsCompleted" || a == "Quests Completed" || a == "ROM_MiscObjectivesCompleted" || a == "Misc Objectives Completed"
-        Return 3
-    ElseIf a == "ROM_LocationsDiscovered" || a == "ROM_DungeonsCleared" || a == "ROM_StandingStonesFound" \
-        || a == "ROM_DaysPassed" || a == "ROM_SkillIncreases" || a == "ROM_SpellsLearned" \
-        || a == "ROM_ShoutsLearned" || a == "ROM_DragonSoulsCollected" || a == "ROM_Assaults" \
-        || a == "ROM_HorsesStolen" || a == "ROM_Trespasses" || a == "ROM_DaysVampire" \
-        || a == "ROM_NecksBitten" || a == "ROM_VampirismCures" || a == "ROM_DaysWerewolf" || a == "ROM_Mauls"
-        Return 2
-    EndIf
-    Return 1
-EndFunction
-
-; ===========================================================================
-; ModEvent handlers - the complete-ledger path
-; ===========================================================================
-
-Event OnRomLevelChanged(String eventName, String strArg, Float numArg, Form sender)
-    HandleRomEvent(sender, "", numArg as Int, True)
-EndEvent
-
-Event OnRomPreference(String eventName, String strArg, Float numArg, Form sender)
-    HandleRomEvent(sender, strArg, numArg as Int, False)
-EndEvent
-
-Function HandleRomEvent(Form akSender, String asStat, Int aiNumArg, Bool abTierChange)
-    { sender is the base NPC (ActorBase), not a reference, so resolve by name.
-      OnLevelChanged gives the new level but no delta - hence the GetPoints
-      diff, which yields an exact figure whichever event fired. }
-    If !_ready || akSender == None
-        Return
-    EndIf
-    ActorBase base = akSender as ActorBase
-    If base == None
-        Return
-    EndIf
-    Actor who = ResolveFromBase(base)
-    If who != None
-        ; Second self-heal. If she resolved only via the name fallback she is
-        ; not on the roster yet; adding her now means the next event resolves
-        ; by form, which keeps working when she is unloaded and the name
-        ; lookup cannot.
-        StorageUtil.FormListAdd(None, "SNRom_Roster", who, False)
-    EndIf
-    If who == None
-        ; Was a silent Return. An unresolvable sender means every passive point
-        ; Romantasy awards that NPC vanishes, and the ledger simply shows a
-        ; follower who never adventures.
-        Diag(LOG_WARN(), "Unresolved Romantasy event for base '" + base.GetName() + \
-            "' - passive scoring for this NPC is being dropped")
-        Return
-    EndIf
-
-    Int now = Romantasy.GetPoints(who)
-    Int was = StorageUtil.GetIntValue(who, "SNRom_LastPoints", 0)
-    Int delta = now - was
-    StorageUtil.SetIntValue(who, "SNRom_LastPoints", now)
-
-    If delta == 0
-        Return
-    EndIf
-
-    ; Awards we originated are already logged by their own call sites.
-    If StorageUtil.GetIntValue(who, "SNRom_SelfAward", 0) == 1
-        StorageUtil.SetIntValue(who, "SNRom_SelfAward", 0)
-        Return
-    EndIf
-
-    Ledger(who, "passive", asStat, delta, 1, "")
-
-    If abTierChange
-        Diag(LOG_INFO(), who.GetDisplayName() + " crossed a tier (level " + aiNumArg + ", " + now + " pts)")
     EndIf
 EndFunction
 
@@ -2068,27 +2298,41 @@ EndFunction
 ; Helpers
 ; ===========================================================================
 
-Bool Function IsEnrolled(Actor akActor)
-    Return akActor != None && Romantasy.GetLevel(akActor) > 0
+Bool Function IsEnrolled(Actor akActor) Global
+    { ENROLLMENT, NOT DEPTH: SNRom_Enrolled, set by both ways in (BeginSpark,
+      AutoEnroll) and cleared by UnenrollActor, which also takes them off the
+      roster. From 2.0 it replaces "Romantasy has a level for them". Their
+      depth is PointsOf.
+
+      OR ON THE ROSTER, because the roster is exactly the enrolled and some
+      companions were enrolled before the flag existed. MoveToBondFaction sets
+      it for them, but on its own stack, while Bootstrap's SweepFollowers runs
+      at once - and a flag-only test there would re-enroll an old companion as
+      new, restarting their enrollment clock and assessor watermarks.
+
+      StorageUtil reads only, so it answers for someone unloaded and never
+      waits a frame; the roster search runs only when the flag is missing. }
+    If akActor == None
+        Return False
+    EndIf
+    Return StorageUtil.GetIntValue(akActor, "SNRom_Enrolled", 0) == 1 || \
+        StorageUtil.FormListFind(None, "SNRom_Roster", akActor) >= 0
 EndFunction
 
 Actor Function ResolveFromBase(ActorBase akBase)
-    { Romantasy's ModEvents carry the ActorBase, not a reference, and the
-      obvious resolution - FindActorByName(base.GetName()) - is WRONG for
-      anyone whose display name differs from their base name.
+    { The roster member built from this ActorBase. The obvious resolution -
+      FindActorByName(base.GetName()) - is WRONG for anyone whose display name
+      differs from their base name.
 
-      Nicollette is the case that exposed it. Born through Fertility Mode
-      Reloaded, her ActorBase is still named "Player's Nord Mage Daughter"
-      while the reference displays as "Nicollette" - which is also why
-      Romantasy's own UI shows her that way. The name lookup found nothing,
-      HandleRomEvent returned silently, and every passive point she earned
-      was discarded. She would have looked like a follower who simply never
-      adventures.
+      Nicollette is the case that exposed it (1.x, when Romantasy's events
+      carried only the base). Born through Fertility Mode Reloaded, her
+      ActorBase is still named "Player's Nord Mage Daughter" while the
+      reference displays as "Nicollette". The name lookup found nothing, and
+      every passive point she earned was discarded.
 
       Matching the roster by ActorBase is name-independent and exact, so it
       survives renames, titles, and any mod that builds an actor from a
-      generic base. The name lookup stays as a fallback for NPCs Romantasy
-      tracks that we never enrolled. }
+      generic base. The name lookup stays as a fallback. }
     If akBase == None
         Return None
     EndIf
@@ -2104,27 +2348,6 @@ Actor Function ResolveFromBase(ActorBase akBase)
     Return SkyrimNetApi.FindActorByName(akBase.GetName())
 EndFunction
 
-Function MarkSelfAward(Actor akActor)
-    { Call IMMEDIATELY before any Romantasy award we originate.
-
-      Romantasy echoes every point change back as a ModEvent, so an award we
-      made arrives at HandleRomEvent looking exactly like Romantasy's own
-      passive scoring. That handler checks this flag to tell them apart - but
-      until 2026-07-29 NOTHING ever set it to 1. The flag was read, and the
-      only write was the reset to 0, so every authored beat was logged TWICE:
-      once by its own call site and once as a "passive" row. analyze_romance.py
-      splits contribution by channel, so the balance analysis has been
-      reporting adventuring points that never happened.
-
-      A tier crossing can fire two events for one award. That is safe: the
-      first consumes the flag and updates SNRom_LastPoints, so the second sees
-      delta == 0 and returns before reaching this check.
-
-      Residual, accepted: if an award resolves to zero points no event fires
-      and the flag stays armed, swallowing the next genuine passive row. Far
-      smaller than the bug it replaces. }
-    StorageUtil.SetIntValue(akActor, "SNRom_SelfAward", 1)
-EndFunction
 
 Bool Function OrientationExcludesPlayer(Int aiOrient) Global
     { Would this orientation rule the player out as a partner?
@@ -2176,10 +2399,10 @@ Function CheckRomanceQuestion(Actor akActor)
       tests current state instead of watching for the instant of crossing,
       because an edge here is unreliable in three separate ways: an award can
       land while the NPC is unloaded, seeding can drop someone above the line in
-      a single step, and the obvious hook is already dead. HandleRomEvent
-      returns on the SelfAward flag BEFORE reaching its abTierChange branch, so
-      "crossed a tier" appears zero times in a log where Jordis sat at 2011
-      points. Anything built on that edge would silently never fire.
+      a single step, and the obvious hook was dead: 1.x's Romantasy event
+      handler returned on its self-award flag BEFORE its tier-change branch,
+      so "crossed a tier" appeared zero times in a log where Jordis sat at
+      2011 points. Anything built on an edge would silently never fire.
 
       Idempotent. The pending flag is what stops it re-asking, so clearing that
       flag is also what makes the question live again after a deferral.
@@ -2210,7 +2433,9 @@ Function CheckRomanceQuestion(Actor akActor)
     If !SNRom_Decorators.RomanceOk(akActor)
         Return
     EndIf
-    ; EARNED, NOT STORED - points plus whatever the ceiling is holding back.
+    ; EARNED, NOT STORED - points plus whatever the gate is holding back. (The
+    ; history below names 1.x's reactive ceiling; the gate in ApplyDepth holds
+    ; the same bank today, and the reasoning is unchanged.)
     ;
     ; THIS WAS A DEADLOCK, and it defeated the mod's central feature. The
     ; sequence: a sparked, unanswered romance reaches Lover, EnforceLoverCeiling
@@ -2238,7 +2463,7 @@ Function CheckRomanceQuestion(Actor akActor)
     ; what she has EARNED, never the value the ceiling suppressed. Both gates
     ; read a number that another subsystem deliberately holds down. Any future
     ; test against a points threshold belongs on this side of that line too.
-    If (Romantasy.GetPoints(akActor) + StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)) < LOVER_MIN()
+    If (PointsOf(akActor) + StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)) < LOVER_MIN()
         Return
     EndIf
 
@@ -2250,10 +2475,10 @@ Function CheckRomanceQuestion(Actor akActor)
     ; Romantasy's panel and the earned one is why the question is being asked;
     ; a line carrying only one of them reads as a contradiction of the other.
     Diag(LOG_INFO(), "Question owed to " + akActor.GetDisplayName() + " at " + \
-        (Romantasy.GetPoints(akActor) + StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)) + \
-        " pts earned (" + Romantasy.GetPoints(akActor) + " held + " + \
+        (PointsOf(akActor) + StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)) + \
+        " pts earned (" + PointsOf(akActor) + " held + " + \
         StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0) + " banked, tier " + \
-        (Romantasy.GetLevel(akActor) - 1) + \
+        TierOf(akActor) + \
         ") - sparked, orientation permits, and the player has never answered.")
 
     ; RAISE IT NOW, not on the next tick. Waiting for the game-time sweep put up
@@ -2286,10 +2511,6 @@ Function Ledger(Actor akActor, String asChannel, String asActivity, Int aiDelta,
     ; not silently disable romance questions. Running first is what keeps a
     ; logging preference from becoming a gameplay one.
     CheckRomanceQuestion(akActor)
-    ; Immediately after, and for the same reason: Ledger is the one place every
-    ; point change passes through, so it is the only hook that cannot be missed
-    ; when a new award path is added.
-    EnforceLoverCeiling(akActor)
     ; And the marriage gate, in the same place and for the same reason: this is
     ; the one hook every point change passes through, so it is the only place a
     ; crossing into Spouse cannot be missed. One HasKeyword read in the steady
@@ -2323,17 +2544,55 @@ Function Ledger(Actor akActor, String asChannel, String asActivity, Int aiDelta,
     EndIf
     StorageUtil.SetFloatValue(akActor, "SNRom_DriftLastDay", today)
 
+    LedgerRow(akActor, asChannel, asActivity, aiDelta, aiCount, asReason)
+EndFunction
+
+String Function LedgerChannelJson(String asChannel) Global
+    { The row's channel field, from literals no other string in the game can
+      share. Papyrus keeps one copy of each string whatever its case, so a
+      bare "talk" was written as "Talk" in play (2026-10-01). Comparison
+      ignores case, so each known channel is matched and written whole. }
+    If asChannel == "talk"
+        Return ",\"ch\":\"talk\""
+    ElseIf asChannel == "moment"
+        Return ",\"ch\":\"moment\""
+    ElseIf asChannel == "seed"
+        Return ",\"ch\":\"seed\""
+    ElseIf asChannel == "spark"
+        Return ",\"ch\":\"spark\""
+    ElseIf asChannel == "import"
+        Return ",\"ch\":\"import\""
+    ElseIf asChannel == "recruit"
+        Return ",\"ch\":\"recruit\""
+    ElseIf asChannel == "enroll"
+        Return ",\"ch\":\"enroll\""
+    ElseIf asChannel == "declined"
+        Return ",\"ch\":\"declined\""
+    ElseIf asChannel == "end"
+        Return ",\"ch\":\"end\""
+    ElseIf asChannel == "unbank"
+        Return ",\"ch\":\"unbank\""
+    ElseIf asChannel == "withheld"
+        Return ",\"ch\":\"withheld\""
+    EndIf
+    Return ",\"ch\":\"" + asChannel + "\""
+EndFunction
+
+Function LedgerRow(Actor akActor, String asChannel, String asActivity, Int aiDelta, Int aiCount, String asReason)
+    { The row alone, without Ledger's reactions (the question, the ceiling,
+      the proposal gate, drift's counters). For the one-time import, which
+      records where a bond already stood rather than a change to it. }
     If SkyrimNetApi.GetConfigBool(CFG(), "logLedgerEnabled", True) == False
         Return
     EndIf
-    Int tier = Romantasy.GetLevel(akActor) - 1
+    Int pts = PointsOf(akActor)
     String row = "{\"gd\":" + Utility.GetCurrentGameTime() + \
         ",\"npc\":\"" + Escape(akActor.GetDisplayName()) + "\"" + \
-        ",\"ch\":\"" + asChannel + "\"" + \
+        LedgerChannelJson(asChannel) + \
         ",\"act\":\"" + asActivity + "\"" + \
         ",\"d\":" + aiDelta + ",\"n\":" + aiCount + \
-        ",\"tot\":" + Romantasy.GetPoints(akActor) + \
-        ",\"ta\":" + tier + \
+        ",\"tot\":" + pts + \
+        ",\"ta\":" + TierForPoints(pts) + \
         ",\"why\":\"" + Escape(asReason) + "\"}"
 
     If _ledgerCount >= _ledgerBuf.Length
@@ -2368,7 +2627,7 @@ Function FlushLedger()
         blob += _ledgerBuf[i] + "\n"
         i += 1
     EndWhile
-    MiscUtil.WriteToFile(LedgerPath(), blob, True, False)
+    WriteLog("ledger.jsonl", LedgerPath(), blob)
     _ledgerCount = 0
 EndFunction
 
@@ -2386,6 +2645,16 @@ String Function Escape(String asText) Global
       escape in half and leave a trailing backslash, which is worse than the
       bug being fixed - the row stays invalid AND the reason is unreadable. }
     Return SNRom_Decorators.JsonEscape(StringUtil.Substring(asText, 0, 300))
+EndFunction
+
+Function WriteLog(String asName, String asPath, String asText)
+    { One write to one of the mod's log files: through the DLL (natives v7),
+      at once and in order, or through MiscUtil without it - which groups
+      lines by call site and delivers them late (see Diag). }
+    If _dashNatives >= 7 && SNRom_Native.AppendLog(asName, asText)
+        Return
+    EndIf
+    MiscUtil.WriteToFile(asPath, asText, True, False)
 EndFunction
 
 Function Diag(Int aiLevel, String asText, Bool abQuiet = False)
@@ -2408,6 +2677,10 @@ Function Diag(Int aiLevel, String asText, Bool abQuiet = False)
       2026-09-05 on the parse-failure notification: "the notification text is
       so long that it shrinks the font to where I can't read it."
 
+      The same goes for a line written once per character by a pass over the
+      whole roster (the WP4 import): a hundred toasts drain for minutes and
+      bury the one summary worth reading.
+
       This is the emission-point rule again: the constraint belongs on the line
       that emits, not on a caller who has to remember it. Anything the player
       should actually READ goes through Say, which is one short sentence by
@@ -2418,7 +2691,7 @@ Function Diag(Int aiLevel, String asText, Bool abQuiet = False)
     EndIf
     _seq += 1
     String line = "[" + _seq + "] gd=" + Utility.GetCurrentGameTime() + " L" + aiLevel + " " + asText
-    MiscUtil.WriteToFile(DiagPath(), line + NL(), True, False)
+    WriteLog("snrom.log", DiagPath(), line + NL())
     If !abQuiet && SkyrimNetApi.GetConfigBool(CFG(), "logNotifications", False)
         Debug.Notification("[SNRom] " + asText)
     EndIf
@@ -2438,7 +2711,6 @@ EndFunction
 
 Actor  _pendingActor
 String _pendingName
-Int    _lastApplied     ; newly-applied count from the most recent ApplyPreferenceList
 
 ; Spark assessment keeps its OWN pending slot. It shares nothing with
 ; disposition authoring: the two run on different callbacks and either may be
@@ -2670,6 +2942,10 @@ Function StartFreshStore()
     EndIf
     StorageUtil.SetIntValue(None, "SNRom_SaveId", 2)
     WriteStorePointer()
+    DashboardCacheStore()
+    If _dashText
+        PushAllBondText()
+    EndIf
     Diag(LOG_INFO(), "This playthrough now has its own disposition store: " + StoreFile() + \
         ".json. Nothing was deleted - the previous store is untouched, and " + \
         "AdoptLegacyStore returns to it.")
@@ -2691,6 +2967,10 @@ Function AdoptLegacyStore()
         JsonUtil.Save(LegacyStoreFile())
     EndIf
     WriteStorePointer()
+    DashboardCacheStore()
+    If _dashText
+        PushAllBondText()
+    EndIf
     Diag(LOG_INFO(), "Adopted the main disposition store, now claimed by playthrough '" + \
         id + "'. Reading " + StoreFile() + ".json - authored characters are visible again.")
 EndFunction
@@ -2736,15 +3016,37 @@ Function StoreSetText(Actor akActor, String asField, String asValue) Global
     JsonUtil.Save(StoreFile())
 EndFunction
 
-String Function StoreGetText(Actor akActor, String asField) Global
+String Function StoreGetText(Actor akActor, String asField, String asStoreName = "", Int aiFormId = 0) Global
     { Falls back to the old StorageUtil location so NPCs authored before this
       change keep working for the rest of the current session. Their value is
       still lost on the next load - nothing can recover a string the co-save
-      never kept - but they degrade to blank rather than breaking. }
+      never kept - but they degrade to blank rather than breaking.
+
+      asStoreName names the store to read, for the one caller that must not
+      ask SkyrimNet which store is live: the dashboard's refresh, which runs
+      while the game is paused (OnDashboardRefresh). Empty, as every other
+      caller leaves it, means StoreFile().
+
+      aiFormId is akActor's form id when the caller already has it: the
+      dashboard's text push, which gets it from SNRom_Native.FormIdOf once per
+      actor instead of three GetFormID calls, each of which may wait a frame.
+      0, as every other caller leaves it, means StoreKey() asks the actor. The
+      key is the same either way. }
     If akActor == None
         Return ""
     EndIf
-    String v = JsonUtil.GetStringValue(StoreFile(), StoreKey(akActor, asField), "")
+    String fromStore = asStoreName
+    If fromStore == ""
+        fromStore = StoreFile()
+    EndIf
+    ; jsonKey, NOT key: Key is a Papyrus type, and names ignore case.
+    String jsonKey
+    If aiFormId != 0
+        jsonKey = aiFormId + "." + asField   ; StoreKey's shape, without the GetFormID call
+    Else
+        jsonKey = StoreKey(akActor, asField)
+    EndIf
+    String v = JsonUtil.GetStringValue(fromStore, jsonKey, "")
     If v != ""
         Return v
     EndIf
@@ -2827,30 +3129,15 @@ String Function VariantName() Global
 EndFunction
 
 Function ClearDisposition(Actor akActor)
-    { Wipes every authored preference and character field back to unset.
+    { Wipes every authored character field back to unset, so the next
+      authoring starts from nothing.
 
-      Needed because preferences ACCUMULATE - ApplyPreferenceList never
-      overwrites, which is right for protecting an established opinion but
-      means a bad authoring run cannot be undone by re-running. Jordis ended
-      up holding 34 likes from one truncated response; no amount of
-      re-authoring removes them.
-
-      The ROM_ preference factions are contiguous 0x801-0x83A (58 records),
-      verified against LabelToOffset, so this walks the range rather than
-      duplicating the whitelist. }
+      1.x also removed the Romantasy preference factions here. From 2.0 this
+      mod writes no preferences, and leaves Romantasy's data alone (design 10,
+      phase 5: "Do not clear another mod's data on the way out"). }
     If akActor == None
         Return
     EndIf
-    Int off = 0x801
-    Int removed = 0
-    While off <= 0x83A
-        Faction f = Game.GetFormFromFile(off, "CS_Romantasy.esp") as Faction
-        If f != None && akActor.GetFactionRank(f) >= 0
-            akActor.RemoveFromFaction(f)
-            removed += 1
-        EndIf
-        off += 1
-    EndWhile
     StorageUtil.UnsetIntValue(akActor, "SNRom_Orientation")
     StorageUtil.UnsetIntValue(akActor, "SNRom_OrientationKnown")
     StorageUtil.UnsetIntValue(akActor, "SNRom_PhysMinTier")
@@ -2858,11 +3145,8 @@ Function ClearDisposition(Actor akActor)
     StorageUtil.UnsetIntValue(akActor, "SNRom_Ardor")
     StorageUtil.UnsetIntValue(akActor, "SNRom_Exclusivity")
     StorageUtil.SetIntValue(akActor, "SNRom_DispositionAuthored", 0)
-    ; A deliberate reset really resets - otherwise an actor mistakenly marked as
-    ; somebody else's could never be re-adopted without editing the co-save.
-    StorageUtil.UnsetIntValue(akActor, "SNRom_PrefsForeign")
     Diag(LOG_INFO(), "Cleared disposition for " + akActor.GetDisplayName() + \
-        " - removed " + removed + " preference factions, character fields unset")
+        " - character fields unset")
 EndFunction
 
 String Function BuildCircle(Actor akExclude)
@@ -2909,70 +3193,73 @@ String Function BuildCircle(Actor akExclude)
       player is not making, and the response cap punishes length. }
     Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
     Actor[] picked = new Actor[5]
+    Float[] ranks = new Float[5]
     Int shown = 0
-    String out = ""
-    Bool more = True
+    Float now = Utility.GetCurrentGameTime()
 
-    ; Selection sort, five passes over a roster of ~20. Papyrus has no sort and
-    ; no break, so each pass scans for the best remaining candidate and the loop
-    ; is guarded rather than exited. Cheap enough at this size, and it runs once
-    ; per authoring.
-    While shown < 5 && more
-        Actor best = None
-        Float bestRank = -1.0
-        Int i = 0
-        While i < n
-            Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
-            ; Only someone actually authored. An unauthored NPC carries nothing
-            ; but mapper defaults, and listing those differentiates against a
-            ; fiction.
-            If a != None && a != akExclude && \
-               StorageUtil.GetIntValue(a, "SNRom_DispositionAuthored", 0) == 1 && \
-               !AlreadyPicked(picked, shown, a)
-                ; Rank = when they last traveled with the player, with current
-                ; followers lifted above every former one. Game time is days
-                ; since game start and will not approach the offset in any
-                ; playthrough, so the two bands cannot overlap.
-                Float rank = StorageUtil.GetFloatValue(a, "SNRom_LastFollowingAt", 0.0)
-                If IsFollowing(a)
-                    rank += 1000000.0
-                EndIf
-                If rank > bestRank
-                    bestRank = rank
-                    best = a
-                EndIf
-            EndIf
-            i += 1
-        EndWhile
-        If best == None
-            more = False
-        Else
-            picked[shown] = best
-            If out != ""
-                out += "   "
-            EndIf
-            out += "- " + best.GetDisplayName() + ": " + \
-                SNRom_Decorators.IntimacyWordFromTier( \
-                    StorageUtil.GetIntValue(best, "SNRom_PhysMinTier", 4)) + \
-                ", " + SNRom_Decorators.ArdorWord( \
-                    StorageUtil.GetIntValue(best, "SNRom_Ardor", 2)) + \
-                ", exclusivity " + StorageUtil.GetIntValue(best, "SNRom_Exclusivity", 50)
-            shown += 1
-        EndIf
-    EndWhile
-    Return out
-EndFunction
-
-Bool Function AlreadyPicked(Actor[] akPicked, Int aiCount, Actor akActor)
-    { Selection-sort bookkeeping for BuildCircle. }
+    ; ONE PASS, keeping the best five in order as it goes. This was a selection
+    ; sort - five passes, each asking every companion IsFollowing - written for
+    ; a roster of about 20. At 122 that is some 600 follower checks, each
+    ; waiting for a frame, and a re-author from the dashboard took 39 seconds
+    ; to answer (2026-10-01).
     Int i = 0
-    While i < aiCount
-        If akPicked[i] == akActor
-            Return True
+    While i < n
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        ; Only someone actually authored. An unauthored NPC carries nothing
+        ; but mapper defaults, and listing those differentiates against a
+        ; fiction.
+        If a != None && a != akExclude && \
+           StorageUtil.GetIntValue(a, "SNRom_DispositionAuthored", 0) == 1
+            ; Rank = when they last traveled with the player, with current
+            ; followers lifted above every former one. Game time is days
+            ; since game start and will not approach the offset in any
+            ; playthrough, so the two bands cannot overlap.
+            ;
+            ; IsFollowing waits for a frame, so it is asked only of someone
+            ; stamped in the last day: the follower sweep stamps everyone
+            ; following on every pass, so nobody older can be following now.
+            Float rank = StorageUtil.GetFloatValue(a, "SNRom_LastFollowingAt", 0.0)
+            If rank > 0.0 && now - rank < 1.0 && IsFollowing(a)
+                rank += 1000000.0
+            EndIf
+            ; Into the five, highest first. A tie keeps the one met first, as
+            ; the old sort did.
+            Int slot = -1
+            If shown < 5
+                slot = shown
+                shown += 1
+            ElseIf rank > ranks[4]
+                slot = 4
+            EndIf
+            If slot >= 0
+                While slot > 0 && rank > ranks[slot - 1]
+                    picked[slot] = picked[slot - 1]
+                    ranks[slot] = ranks[slot - 1]
+                    slot -= 1
+                EndWhile
+                picked[slot] = a
+                ranks[slot] = rank
+            EndIf
         EndIf
         i += 1
     EndWhile
-    Return False
+
+    String out = ""
+    Int k = 0
+    While k < shown
+        Actor best = picked[k]
+        If out != ""
+            out += "   "
+        EndIf
+        out += "- " + best.GetDisplayName() + ": " + \
+            SNRom_Decorators.IntimacyWordFromTier( \
+                StorageUtil.GetIntValue(best, "SNRom_PhysMinTier", 4)) + \
+            ", " + SNRom_Decorators.ArdorWord( \
+                StorageUtil.GetIntValue(best, "SNRom_Ardor", 2)) + \
+            ", exclusivity " + StorageUtil.GetIntValue(best, "SNRom_Exclusivity", 50)
+        k += 1
+    EndWhile
+    Return out
 EndFunction
 
 Function UnenrollByName(String asName)
@@ -3029,19 +3316,13 @@ Function UnenrollActor(Actor akActor)
     { Undo an accidental enrollment. Dispatch via the web API:
         functionName UnenrollActor, arguments ["0x0001B136"]
 
-      HONEST ABOUT WHAT THIS CANNOT DO. Romantasy keeps its own persistent
-      per-follower preference set and restores it on load, so the ROM_ faction
-      memberships come back however thoroughly we remove them - proved by the
-      Jordis double-clear test. This does NOT return an NPC to pristine.
-
-      What it DOES do is stop us ever acting on them again: off the roster, so
-      neither assessor can enumerate them and BuildCircle cannot cite them;
-      SNRom_Enrolled cleared, so AutoEnroll treats them as new; and the debounce
-      stamp cleared, so re-adding them deliberately still serves the full
-      waiting period rather than enrolling instantly on the old stamp.
-
-      Their leftover Romantasy preferences are inert while they are not
-      following, because Romantasy only awards points to active followers. }
+      NOT A RESET. Their points, character and prose stay stored; what this
+      does is stop us ever acting on them again: off the roster, so neither
+      assessor can enumerate them and BuildCircle cannot cite them; out of
+      SNRom_Bond and SNRom_Enrolled cleared, so nothing reads them as enrolled
+      and AutoEnroll treats them as new; and the debounce stamp cleared, so
+      re-adding them deliberately still serves the full waiting period rather
+      than enrolling instantly on the old stamp. }
     If akActor == None
         Return
     EndIf
@@ -3049,7 +3330,11 @@ Function UnenrollActor(Actor akActor)
     StorageUtil.FormListRemove(None, "SNRom_Roster", akActor, True)
     StorageUtil.UnsetIntValue(akActor, "SNRom_Enrolled")
     StorageUtil.UnsetIntValue(akActor, "SNRom_AutoEnrolled")
+    If _bond != None
+        akActor.RemoveFromFaction(_bond)
+    EndIf
     StorageUtil.UnsetFloatValue(akActor, "SNRom_FirstSeenFollowing")
+    StorageUtil.FormListRemove(None, PENDING_LIST(), akActor, True)
     StorageUtil.UnsetFloatValue(akActor, "SNRom_LastTalkCheck")
     StorageUtil.UnsetFloatValue(akActor, "SNRom_LastSparkCheck")
     ; Drift state too, for the same reason as the two above: if they are ever
@@ -3060,92 +3345,28 @@ Function UnenrollActor(Actor akActor)
     StorageUtil.UnsetIntValue(akActor, "SNRom_EventsSinceDrift")
     StorageUtil.UnsetFloatValue(akActor, "SNRom_DriftFirstDay")
     StorageUtil.UnsetFloatValue(akActor, "SNRom_DriftLastDay")
-    Diag(LOG_INFO(), "Un-enrolled " + who + " - off the roster, no longer assessed. " + \
-        "Romantasy preference factions remain (it restores its own copy on load) " + \
-        "but are inert while they are not following. Roster now " + \
-        StorageUtil.FormListCount(None, "SNRom_Roster"))
+    Diag(LOG_INFO(), "Un-enrolled " + who + " - off the roster and out of SNRom_Bond, no longer " + \
+        "assessed. Roster now " + StorageUtil.FormListCount(None, "SNRom_Roster"))
 EndFunction
 
 Function ReauthorCharacter(Actor akActor)
-    { Re-author the CHARACTER BLOCK ONLY - orientation, intimacy, ardor,
-      exclusivity, WHY, LIMIT, ADDRESS - leaving preferences exactly as they are.
+    { Re-author the character block - orientation, intimacy, ardor,
+      exclusivity, WHY, LIMIT, ADDRESS - from the record.
 
       Dispatch by hand with execute-quest-script-function, questEditorId
       SNRom_Quest, scriptName SNRom_Bridge, functionName ReauthorCharacter, one
       hex FormID argument.
 
-      USE THIS, NOT ReauthorDisposition, for anyone who already has a preference
-      list you are happy with. ReauthorDisposition permanently ADDS preferences
-      on every run and they cannot be removed across a reload, so repeatedly
-      re-authoring an established NPC degrades her by inflating what she cares
-      about until nothing stands out.
-
-      The flag is per-actor rather than a script variable because authoring
-      QUEUES - PumpAuthoringQueue holds one pending slot and others wait, so a
-      single Bool would be read by whichever response came back next. }
+      THE SAME AS ReauthorDisposition FROM 2.0. In 1.x that one also added
+      Romantasy preferences, permanently, and this was the character-only
+      path; with no preferences there is only the character. Both names are
+      kept because the dashboard and every note on dispatching them use them. }
     If akActor == None
         Return
     EndIf
-    StorageUtil.SetIntValue(akActor, "SNRom_CharOnly", 1)
-    Diag(LOG_INFO(), "Re-authoring CHARACTER ONLY for " + akActor.GetDisplayName() + \
-        " - preferences will not be touched")
     ReauthorDisposition(akActor)
 EndFunction
 
-Function RepairPreferences(Actor akActor)
-    { THE REPAIR FOR ROMANTASY 1.1.0's AUTHOR-DEFINED BUG. One argument, so it
-      dispatches from the dashboard.
-
-      1.1.0 classified every runtime-enrolled follower as author-defined and
-      refused all preference writes. This mod handled that correctly - it stopped
-      writing rather than fighting - and latched SNRom_PrefsForeign so it would
-      never overwrite preferences it had decided belonged to someone else. That
-      latch is deliberately sticky: first writer keeps it.
-
-      The problem is that it OUTLIVES the bug. Updating to 1.1.1 fixes Romantasy,
-      but our own flag is still set, so ReauthorDisposition keeps declining and
-      the follower stays permanently preference-less. Reported by two users
-      2026-08-24, both enrolled under 1.1.0.
-
-      WHY NOT JUST TELL THEM TO RUN ClearDisposition FIRST. That works - it is
-      what every repair in development used - but it removes the 58 preference
-      factions AND unsets orientation, intimacy, ardor and exclusivity, so the
-      character is rerolled to fix the preferences. For these users the character
-      authored FINE; only the preferences were refused. Throwing away the half
-      that worked to repair the half that did not is the wrong trade, and asking
-      a user to make two calls in the right order invites making one.
-
-      So this clears only what actually blocks: the ownership latch and the
-      refusal marker. ApplyPreferenceList never overwrites an existing opinion,
-      so a follower who does hold real preferences keeps them.
-
-      IT DOES REWRITE THE CHARACTER, and the first version of this comment
-      claimed otherwise. ReauthorDisposition dispatches ONE authoring call whose
-      response carries the character block and the preference lists together and
-      the callback applies both - there is no preferences-only path. Measured on
-      Endarie 2026-08-25: orientation BOTH -> MEN, ardor 0 -> 1, exclusivity
-      100 -> 50.
-
-      That is the right outcome HERE, because her old values were authored under
-      the unanchored exclusivity scale and 100 was the bug. But it is not what
-      the name promises, so it gets said plainly: repairing preferences re-rolls
-      the person. ReauthorCharacter is the character-only tool.
-
-      If they are still on 1.1.0 this will simply be refused again, the latch
-      will be re-set, and the log will say so - which is the honest outcome and
-      tells them the update is the actual fix. }
-    If akActor == None || !_ready
-        Return
-    EndIf
-    Int held = HeldPreferenceCount(akActor)
-    Bool wasForeign = StorageUtil.GetIntValue(akActor, "SNRom_PrefsForeign", 0) == 1
-    StorageUtil.UnsetIntValue(akActor, "SNRom_PrefsForeign")
-    StorageUtil.UnsetIntValue(akActor, "SNRom_ClearRefused")
-    Diag(LOG_INFO(), "Repairing preferences for " + akActor.GetDisplayName() + \
-        " - held " + held + ", ownership latch was " + wasForeign + \
-        ". Re-authoring: preferences are added, character is rewritten.")
-    ReauthorDisposition(akActor)
-EndFunction
 
 Function ReauthorDisposition(Actor akActor)
     { Bypasses the once-only guard. Needed for two real cases:
@@ -3158,9 +3379,8 @@ Function ReauthorDisposition(Actor akActor)
       2. A player who has pre-seeded facts (a SeverActions custom bio block,
          say) and wants them picked up now rather than never.
 
-      Safe to repeat: ApplyPreferenceList never overwrites an existing
-      opinion, so re-authoring ADDS newly-named likes and refreshes the
-      character fields without erasing anything she already believes. }
+      NOT SAFE TO REPEAT CASUALLY: it rewrites the character fields from a
+      fresh response, discarding any drift they have accumulated. }
     If akActor == None
         Return
     EndIf
@@ -3192,8 +3412,7 @@ Function AuthorDisposition(Actor akActor)
     ; 1 = LLM-authored: never redo - her opinions are her personality now, and
     ; a re-enrollment after EndRomance must not reroll who she is.
     ; 2 = archetype fallback: DO retry - the fallback was a stopgap, and a
-    ; fresh enrollment is the natural moment to upgrade it to the real thing
-    ; (ApplyPreferenceList never overwrites, so the archetype picks survive).
+    ; fresh enrollment is the natural moment to upgrade it to the real thing.
     ;
     ; SNRom_ForceAuthor BYPASSES THIS GUARD TOO, and leaving it out of the
     ; condition made ReauthorDisposition a silent no-op for exactly the actors
@@ -3413,12 +3632,6 @@ Function AuthorDisposition(Actor akActor)
     ; version exactly. That is a real latent bug for a name containing a quote,
     ; and it gets fixed on the way back up - not now, while establishing a
     ; baseline.
-    ; 0..57 inclusive: RandomInt's upper bound IS inclusive in Papyrus, and the
-    ; catalogue is 58 entries, so this can name any starting position. The
-    ; prompt reads it through default(cat_seed, 0), so an older .pex that does
-    ; not send it renders the list unrotated instead of rendering nothing.
-    Int catSeed = Utility.RandomInt(0, 57)
-
     ; AN INT, NOT A JSON BOOLEAN, AND NOT A STRING LITERAL EITHER.
     ;
     ; JSON has no True/False, so a Papyrus Bool rendered into the context makes
@@ -3448,12 +3661,12 @@ Function AuthorDisposition(Actor akActor)
     ; path that runs once per character, not per tick.
     String ctx = "{\"npc_name\":\"" + _pendingName + "\"" + \
         ",\"npc_formid\":" + akActor.GetFormID() + \
-        ",\"cat_seed\":" + catSeed + \
+\
         ",\"npc_married\":" + marriedFlag + MarasContext(akActor) + \
         ",\"circle\":\"" + circleText + "\"" + \
         ",\"npc_bio\":\"" + b.GetRace().GetName() + ", " + \
         SNRom_Decorators.SexWord(b.GetSex()) + ", level " + akActor.GetLevel() + \
-        ". Traveling companion of the Dragonborn.\"}"
+        ". Known to the Dragonborn.\"}"
 
     Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_author_disposition", VariantName(), ctx, \
         Self, "SNRom_Bridge", "OnDispositionAuthored")   ; this script IS the quest
@@ -3931,17 +4144,20 @@ Function RefreshNextAttraction()
     EndIf
     Float now = Utility.GetCurrentGameTime()
     Float interval = SkyrimNetApi.GetConfigFloat(CFG(), "attractionRefreshHours", 24.0) / 24.0
-    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int n = 0
+    If _observers
+        n = _observers.Length
+    EndIf
     Int i = 0
     Actor pick = None
     Float bestWait = -1.0
     While i < n
-        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        Actor a = _observers[i]
         ; IsFollowing, matching every other candidate test in this script. The
         ; ratio only matters while they are with the player, and refreshing it
         ; for someone dismissed to Whiterun spends the budget on a number
         ; nothing will read.
-        If a != None && !a.IsDead() && IsFollowing(a)
+        If a != None
             Float last = StorageUtil.GetFloatValue(a, "SNRom_LastAttrCheck", 0.0)
             If (now - last) >= interval && (now - last) > bestWait
                 bestWait = now - last
@@ -4237,7 +4453,10 @@ Int Function CommitmentState(Actor akActor) Global
       the vanilla faction or MARAS, because a completed marriage outranks any
       earlier rung regardless of which mod recorded it. Without MARAS the
       middle two rungs simply do not exist and this collapses to 0 or 3, which
-      is the correct answer for a game that only models the wedding. }
+      is the correct answer for a game that only models the wedding.
+
+      THE DASHBOARD DRAWS A COPY OF THIS: Display::Commitment in
+      native/src/Display.cpp, line for line. Change one, change both. }
     If akActor == None
         Return 0
     EndIf
@@ -4261,7 +4480,10 @@ Bool Function IsMarriedToPlayer(Actor akActor) Global
 
       GLOBAL so SNRom_Decorators.RomanceOk can reach it. That gate runs on
       authored orientation, and an authored trait must never be able to
-      contradict a recorded marriage - see the note there. }
+      contradict a recorded marriage - see the note there.
+
+      THE DASHBOARD DRAWS A COPY OF THIS: Display::MarriedToPlayer in
+      native/src/Display.cpp, line for line. Change one, change both. }
     If akActor == None
         Return False
     EndIf
@@ -4359,7 +4581,7 @@ Bool Function SeedActor(Actor akActor)
     ; It also makes backfilling the existing roster safe: someone who has
     ; already earned MORE than their history justifies gets nothing rather than
     ; a windfall.
-    Int current = Romantasy.GetPoints(akActor)
+    Int current = PointsOf(akActor)
     Int delta = target - current
     If delta <= 0
         StorageUtil.SetIntValue(akActor, "SNRom_Seeded", 1)
@@ -4369,17 +4591,17 @@ Bool Function SeedActor(Actor akActor)
         Return True
     EndIf
 
-    MarkSelfAward(akActor)
     ; NOT ScaleAward: seeding describes a relationship that existed before this mod
     ; was installed. A slow setting must not retroactively shrink someone's past.
-    Bool applied = Romantasy.ModifyPoints(akActor, delta, "Prior history together", True)
+    ; From 1.9 the points are ours and this is not refused for being newly
+    ; enrolled; the branch below is left for the one refusal that remains
+    ; (their points could not be brought over from Romantasy yet).
+    Bool applied = ApplyDepth(akActor, delta, "Prior history together", True, "seed") > 0
     If !applied
-        ; NOT an error, and deliberately not stamped. This is the EXPECTED path
-        ; for a newly enrolled NPC and it resolves itself on the next game load.
-        ; Stamping SNRom_Seeded here would mean an NPC enrolled mid-session is
-        ; never seeded at all, silently.
-        Diag(LOG_DEBUG(), "Seeding: Romantasy is not scoring " + akActor.GetDisplayName() + \
-            " yet - will retry. This is normal until one game load after enrollment.")
+        ; Not stamped, so the next tick tries again: never seeding someone at
+        ; all, silently, is the worse failure.
+        Diag(LOG_DEBUG(), "Seeding: the seed for " + akActor.GetDisplayName() + \
+            " did not land - will retry on the next check.")
         Return False
     EndIf
 
@@ -4406,8 +4628,8 @@ Bool Function SeedActor(Actor akActor)
         affection = MARAS.GetPermanentAffection(akActor)
     EndIf
     Diag(LOG_INFO(), "Seeded " + akActor.GetDisplayName() + " +" + delta + " -> " + \
-        Romantasy.GetPoints(akActor) + " pts, tier " + (Romantasy.GetLevel(akActor) - 1) + \
-        " (" + Romantasy.GetLevelName(akActor) + "). rapport=" + rapportNow + \
+        PointsOf(akActor) + " pts, tier " + TierOf(akActor) + \
+        " (" + TierName(TierOf(akActor)) + "). rapport=" + rapportNow + \
         " rank=" + akActor.GetRelationshipRank(Game.GetPlayer()) + \
         " marasAffection=" + affection + " (logged for calibration only, unused)" +         MarasStateLine(akActor))
 
@@ -4525,7 +4747,7 @@ Function MaintainProposalGate(Actor akActor)
         EndIf
         Return
     EndIf
-    Bool shouldBlock = Romantasy.GetPoints(akActor) < SPOUSE_MIN()
+    Bool shouldBlock = PointsOf(akActor) < SPOUSE_MIN()
     Bool isBlocked   = akActor.HasKeyword(kw)
     If shouldBlock == isBlocked
         Return                                  ; already correct - the common case
@@ -4533,12 +4755,12 @@ Function MaintainProposalGate(Actor akActor)
     If shouldBlock
         PO3_SKSEFunctions.AddKeywordToRef(akActor, kw)
         Diag(LOG_INFO(), "Marriage gate closed for " + akActor.GetDisplayName() + \
-            " - below Spouse at " + Romantasy.GetPoints(akActor) + " pts.")
+            " - below Spouse at " + PointsOf(akActor) + " pts.")
     Else
         PO3_SKSEFunctions.RemoveKeywordFromRef(akActor, kw)
         PO3_SKSEFunctions.RemoveKeywordOnForm(akActor.GetActorBase(), kw)
         Diag(LOG_INFO(), "Marriage gate OPEN for " + akActor.GetDisplayName() + \
-            " - reached Spouse at " + Romantasy.GetPoints(akActor) + " pts. A formal " + \
+            " - reached Spouse at " + PointsOf(akActor) + " pts. A formal " + \
             "proposal is now earned.")
     EndIf
 EndFunction
@@ -4587,7 +4809,7 @@ Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEn
     ; assets, hierarchy rank and house tenancy across 13 registered homes, and
     ; a mod that quietly dissolves marriages is worse than one that leaks.
     If st == "ENGAGED"
-        Int held = Romantasy.GetPoints(who)
+        Int held = PointsOf(who)
         If held < SPOUSE_MIN()
             If MARAS.PromoteNPCToStatus(who, "candidate")
                 Diag(LOG_INFO(), "Engagement reversed for " + who.GetDisplayName() + \
@@ -4614,9 +4836,9 @@ Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEn
     ; SAID LOUDLY AND NOT UNDONE: see the note above on what unpicking a
     ; marriage would cost. ReconcileMarriages will still put them at Spouse,
     ; because a recorded marriage outranks the ladder once it exists.
-    If Romantasy.GetPoints(who) < SPOUSE_MIN()
+    If PointsOf(who) < SPOUSE_MIN()
         Diag(LOG_ERROR(), "MARRIED BELOW SPOUSE: " + who.GetDisplayName() + " holds " + \
-            Romantasy.GetPoints(who) + " pts against a floor of " + SPOUSE_MIN() + \
+            PointsOf(who) + " pts against a floor of " + SPOUSE_MIN() + \
             ". The proposal gate was bypassed - most likely accepted during paused " + \
             "dialogue, where SkyrimNet skips Papyrus eligibility. Not undone: a " + \
             "recorded marriage is left standing." + MarasStateLine(who))
@@ -4837,52 +5059,29 @@ Function CheckContentLoaded(Bool abSettled = False)
         "reaching it. Everything else will appear to run and nothing will work: " + \
         "LLM calls are accepted and never answered, and companion bios lose their " + \
         "relationship section entirely. SkyrimNet build " + \
-        SkyrimNetApi.GetBuildVersion() + ". On 0.25.0 and later the content must " + \
-        "be installed under SkyrimNet's external plugin folder; before that, under " + \
-        "prompts/ and config/. Reinstalling this mod is the usual fix.")
-    Say("Relationships is installed but SkyrimNet is not loading its content - see the log.")
+        SkyrimNetApi.GetBuildVersion() + ". Relationships 2.0 needs SkyrimNet 0.25.0 " + \
+        "(Beta 25) or newer, which reads it from SkyrimNet's external plugin folder; " + \
+        "older builds cannot see it at all. On 0.25.0 or newer, reinstalling this mod " + \
+        "is the usual fix.")
+    Say("SkyrimNet is not loading Relationships' content - it needs SkyrimNet Beta 25 or newer. See the log.")
 EndFunction
 
 Function SweepLoverCeiling()
-    { Establish the unanswered ceiling AND the consent question across the whole
-      roster, not just on whoever earned something recently.
+    { The consent question across the whole roster, not just on whoever
+      earned something recently: CheckRomanceQuestion is level-triggered, and
+      a romance held short of Lover earns nothing while it waits, so the one
+      state the question exists to resolve never reaches Ledger by itself.
 
-      THE SAME LAZY-GATE BUG SweepProposalGates WAS WRITTEN TO FIX, and the
-      argument is identical: EnforceLoverCeiling is called from Ledger, Ledger
-      fires only on a point change, so the ceiling was only ever applied to
-      someone the moment they moved. For an actor already parked AT the old
-      ceiling that is too late by construction - she is one point under Lover, so
-      the very next award crosses before anything can trim her, and the crossing
-      is what splashes.
-
-      Fastred, 2026-09-08. Left at 1999 by the previous build, sandboxing well out
-      of range, 388 already banked. The headroom shipped, but nothing re-parked
-      her: the only code that could was waiting for a point change, and any point
-      change from 1999 crosses Lover first. She crossed, exactly as before, and
-      the fix looked broken when it was merely unreachable.
-
-      A gate that exists only for whoever recently earned something is not a
-      gate. This closes the same hole for the same reason, and it is what carries
-      everyone parked at the old ceiling down to the new rest point without
-      having to cross once to get there.
-
-      CHEAP IN THE STEADY STATE. EnforceLoverCeiling returns after one GetPoints
-      for anyone at or below the rest point, and writes nothing. }
+      1.x also pulled back here anyone Romantasy's own scoring had carried
+      over the line (EnforceLoverCeiling). From 2.0 nothing can carry them
+      over - ApplyDepth withholds - so only the question is left. }
     Int i = 0
     Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
     While i < n
         Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
         If a != None && !a.IsDead()
-            ; NO IsFollowing OR Is3DLoaded FILTER. The actor this exists for is
-            ; precisely the one nobody is looking at: Romantasy credits its own
-            ; scoring to everyone in the romance faction regardless of presence,
-            ; so a follower sandboxing on the far side of Skyrim accrues exactly
-            ; like one standing next to the player. Both reported cases were out
-            ; of range.
-            EnforceLoverCeiling(a)
-            ; AND THE QUESTION, IN THE SAME WALK AND IN THIS ORDER. The ceiling
-            ; may have just banked something, and CheckRomanceQuestion reads
-            ; points PLUS the bank, so asking first would test a stale total.
+            ; NO IsFollowing OR Is3DLoaded FILTER: the question can be owed to
+            ; someone nobody is looking at, and that is who this exists for.
             ;
             ; THIRD TIME THIS EXACT GAP HAS APPEARED IN THIS FILE, which is what
             ; makes it worth stating rather than just fixing. CheckRomanceQuestion
@@ -4890,8 +5089,8 @@ Function SweepLoverCeiling()
             ; a romance held at the rest point earns nothing while it waits - so
             ; the one state the question exists to resolve is the one state that
             ; never re-evaluates it. MaintainProposalGate had it and got
-            ; SweepProposalGates; EnforceLoverCeiling had it and got this sweep
-            ; last week; its neighbour had it all along and I did not look.
+            ; SweepProposalGates; the 1.x Lover ceiling had it and got this
+            ; sweep; its neighbour had it all along and I did not look.
             ;
             ; Sybille Stentor, 2026-09-15: 1749 held, 483 banked, 2232 earned,
             ; idle. The corrected test was installed and could not run for her.
@@ -4951,7 +5150,7 @@ EndFunction
 
 Function ReconcileMarriages()
     { Heal a spouse who was seeded before MARAS could say they were married.
-      ONE CHECK PER FOLLOWER PER SAVE LOAD.
+      ONE CHECK PER CHARACTER PER SAVE LOAD.
 
       THIS IS THE ONE THAT FIXES AN ALREADY-BROKEN SAVE, and the obvious
       alternative does not. Declining to stamp SNRom_Seeded when a marriage is
@@ -4974,10 +5173,10 @@ Function ReconcileMarriages()
       faction lookup, no MARAS call, no GetPoints. Only an unchecked FOLLOWER
       pays for those, at most once per load each.
 
-      NON-FOLLOWERS ARE NEVER STAMPED, deliberately. Romantasy refuses to adjust
-      points for anyone not actively following, so stamping a spouse waiting at
-      home would mark them checked while doing nothing for them, and they would
-      be skipped for the rest of the session once they started travelling. }
+      FROM 2.0, ANYONE NEAR THE PLAYER (Observers), following or not. The
+      follower test was Romantasy's: it refused points to anyone not
+      following. Ours land, so a spouse waiting at home is checked when the
+      player is home. }
     If !_ready
         Return
     EndIf
@@ -4987,32 +5186,32 @@ Function ReconcileMarriages()
     Int session      = StorageUtil.GetIntValue(None, "SNRom_SessionId", 0)
     Int spouseFloor  = 2500
     Int i = 0
-    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int n = 0
+    If _observers
+        n = _observers.Length
+    EndIf
     While i < n
-        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        Actor a = _observers[i]
         ; Cheapest test first: everyone settled this session stops here.
+        ; Alive and near the player already (Observers): following stopped
+        ; mattering with Romantasy, which refused points to anyone not following.
         If a != None && StorageUtil.GetIntValue(a, "SNRom_MarriageChecked", -1) != session
-            If !a.IsDead() && IsFollowing(a)
-                StorageUtil.SetIntValue(a, "SNRom_MarriageChecked", session)
-                If IsMarriedToPlayer(a)
-                    Int have = Romantasy.GetPoints(a)
-                    If have < spouseFloor
-                        MarkSelfAward(a)
-                        ; NOT ScaleAward: a correction to prior history, the same
-                        ; exemption seeding has. Bond Pace must not shrink a
-                        ; marriage that already happened.
-                        If Romantasy.ModifyPoints(a, spouseFloor - have, "Married to you", True)
-                            Diag(LOG_INFO(), "Marriage reconcile: " + a.GetDisplayName() + \
-                                " is married but held only " + have + " pts - raised to " + \
-                                spouseFloor + "." + MarasStateLine(a))
-                        Else
-                            ; Unstamp so the next tick tries again - a refusal here
-                            ; means they stopped following between the check above
-                            ; and this call, which is a race worth retrying.
-                            StorageUtil.SetIntValue(a, "SNRom_MarriageChecked", -1)
-                            Diag(LOG_WARN(), "Marriage reconcile: Romantasy refused the top-up for " + \
-                                a.GetDisplayName() + " - not following any more? Will retry.")
-                        EndIf
+            StorageUtil.SetIntValue(a, "SNRom_MarriageChecked", session)
+            If IsMarriedToPlayer(a)
+                Int have = PointsOf(a)
+                If have < spouseFloor
+                    ; NOT ScaleAward: a correction to prior history, the same
+                    ; exemption seeding has. Bond Pace must not shrink a
+                    ; marriage that already happened.
+                    If ApplyDepth(a, spouseFloor - have, "Married to you", True, "married") > 0
+                        Diag(LOG_INFO(), "Marriage reconcile: " + a.GetDisplayName() + \
+                            " is married but held only " + have + " pts - raised to " + \
+                            spouseFloor + "." + MarasStateLine(a))
+                    Else
+                        ; Unstamp so the next tick tries again.
+                        StorageUtil.SetIntValue(a, "SNRom_MarriageChecked", -1)
+                        Diag(LOG_WARN(), "Marriage reconcile: the top-up for " + \
+                            a.GetDisplayName() + " did not land. Will retry.")
                     EndIf
                 EndIf
             EndIf
@@ -5158,7 +5357,7 @@ Function AssessSeed(Actor akActor)
     EndIf
     String ctx = "{\"npc_name\":\"" + _seedName + "\"" + \
         ",\"npc_formid\":" + akActor.GetFormID() + \
-        ",\"npc_bio\":\"" + Escape(akActor.GetActorBase().GetRace().GetName()) + ", traveling companion\"" + \
+        ",\"npc_bio\":\"" + Escape(akActor.GetActorBase().GetRace().GetName()) + ", known to the Dragonborn\"" + \
         ",\"npc_prior\":\"" + Escape(prior) + "\"" + MarasContext(akActor) + "}"
     Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_seed_assess", VariantName(), ctx, \
         Self, "SNRom_Bridge", "OnSeedAssessed")
@@ -5212,6 +5411,18 @@ Bool Function SeedReadInFlight()
 EndFunction
 
 Event OnSeedAssessed(String asResponse, Int aiSuccess)
+    { SkyrimNet's callback for AssessSeed, named in its dispatch. A thin
+      wrapper since WP2: the read itself is SeedAssessed, below, which has many
+      exits, and an open dashboard wants the row pushed after whichever one
+      runs - a re-read started from the dashboard ends here. }
+    Actor who = _seedActor
+    SeedAssessed(asResponse, aiSuccess)
+    If _dashText
+        PushBond(who, 0)
+    EndIf
+EndEvent
+
+Function SeedAssessed(String asResponse, Int aiSuccess)
     { The read comes back as a tier word. Papyrus decides what it is worth.
 
       TOPS UP, NEVER CLAWS BACK. The author's call, and it is the rule seeding has
@@ -5298,7 +5509,7 @@ Event OnSeedAssessed(String asResponse, Int aiSuccess)
     If target > cap
         target = cap
     EndIf
-    Int held = Romantasy.GetPoints(who)
+    Int held = PointsOf(who)
     String timeNote = ", known " + known
     If byRead < readRaw
         timeNote = timeNote + " - read " + readRaw + " held to " + byRead + " by time known"
@@ -5319,15 +5530,27 @@ Event OnSeedAssessed(String asResponse, Int aiSuccess)
         SeedRomanticFlag(who)
         Return
     EndIf
-    MarkSelfAward(who)
     ; NOT ScaleAward: prior history predates this mod, and Bond Pace has no
     ; business retroactively shrinking someone's past. Same exemption SeedActor
     ; carries for the same reason.
-    If Romantasy.ModifyPoints(who, target - held, "Prior history together", True)
+    ;
+    ; FROM 1.9 NOT REFUSED FOR SOMEONE WHO ISN'T FOLLOWING. Romantasy dropped
+    ; these ("skipped Prior history together point adjustment ... not actively
+    ; following"): a dashboard re-read of Erdi read DEVOTED three times and
+    ; changed nothing. Ours lands wherever they are.
+    ; THE JUDGE'S OWN REASON for the history, where it gave one: "Prior
+    ; history together" says nothing a dashboard reader could not guess. It
+    ; can name feelings nobody has said aloud, so the page shows it in the
+    ; developer view only (labels.js, CHANGE.seed).
+    String seedWhy = because
+    If seedWhy == ""
+        seedWhy = "Prior history together"
+    EndIf
+    If ApplyDepth(who, target - held, seedWhy, True, "seed") > 0
         StorageUtil.SetIntValue(who, "SNRom_Seeded", 1)
         SeedRomanticFlag(who)
         Diag(LOG_INFO(), "Seeded " + asked + " from the record: " + held + " -> " + \
-            Romantasy.GetPoints(who) + " pts." + MarasStateLine(who))
+            PointsOf(who) + " pts." + MarasStateLine(who))
         If announce
             Say(asked + " reads as " + shown + ".")
         EndIf
@@ -5345,29 +5568,24 @@ Event OnSeedAssessed(String asResponse, Int aiSuccess)
         ; probation permanently and is reserved for a romance the game records;
         ; this only changes WHEN the question is put. The assessor still decides,
         ; and it is free to answer no.
-        If Romantasy.GetPoints(who) >= CONFIDANT_MIN()
+        If PointsOf(who) >= CONFIDANT_MIN()
             RequestSparkNow(who)
         EndIf
     Else
-        Diag(LOG_DEBUG(), "Romantasy is not scoring " + asked + " yet - the seed read will be " + \
-            "reapplied. Normal until one game load after enrollment.")
+        Diag(LOG_WARN(), "The seed read for " + asked + " could not be written yet - their " + \
+            "Romantasy points did not verify while being brought over (see the line above). " + \
+            "It will be reapplied.")
         ; THE ONE OUTCOME A PLAYER CANNOT DIAGNOSE, so it is named rather than
         ; left as silence - the read was correct, it simply could not be written.
-        ;
-        ; DOES NOT TELL THEM TO RELOAD, and an earlier version of this line did.
-        ; That advice came from the pre-API-3 world, where Romantasy read faction
-        ; tags once at load and runtime enrollment genuinely needed a restart.
-        ; This mod requires Romantasy 1.1.1, which reports API level 4, and
-        ; CommitConfig forces synchronous discovery there - see its docstring.
-        ; A reload is not the remedy and never comes up on a supported install.
-        ; What actually happens is a retry: SNRom_Seeded is still unset, so the
-        ; housekeeping tick picks them up again on its own.
+        ; From 2.0 the only way here is ImportPoints failing to verify a copy
+        ; from Romantasy. What happens is a retry: SNRom_Seeded is still unset,
+        ; so the housekeeping tick picks them up again on its own.
         If announce
-            Say(asked + " reads as " + standing + ", but Romantasy has not started " + \
-                "scoring them yet. It will be retried automatically.")
+            Say(asked + " reads as " + standing + ", but it could not be written yet. " + \
+                "It will be retried automatically.")
         EndIf
     EndIf
-EndEvent
+EndFunction
 
 Function ReseedActor(Actor akActor)
     { Clear the once-ever stamp and seed again. ONE argument, so it dispatches
@@ -5396,225 +5614,671 @@ Function ReseedActor(Actor akActor)
     If akActor == None || !_ready
         Return
     EndIf
-    Int had = Romantasy.GetPoints(akActor)
+    Int had = PointsOf(akActor)
     StorageUtil.UnsetIntValue(akActor, "SNRom_Seeded")
     Diag(LOG_INFO(), "Re-seeding " + akActor.GetDisplayName() + " (currently " + had +         " pts) - reading the record again")
     AssessSeed(akActor)
 EndFunction
 
 ; ===========================================================================
-; The re-read hotkey - the one repair a player can reach without the web API
+; The crosshair hotkeys - re-read, re-author, enroll - live in the DLL from 2.0
 ;
-; EVERY DESIGN CHOICE HERE COMES FROM SkyrimNet Kinship, which solved this on
-; this load order first. Its lessons, in the order they matter:
+; RegisterForKey takes a SCAN code and SkyrimNet's hotkey widget stores a
+; VIRTUAL key, so the re-read key set to End (VK 35) armed H (scan 35). The
+; DLL converts, takes a modifier for each key, and follows the settings within
+; seconds (native/src/Hotkey.h, WP8). On a press it sends SNRom_Hotkey with the
+; key's name and the actor under the crosshair; OnHotkey routes it here.
 ;
-;   1. NO MCM. SkyUI's mod registry is a Papyrus array capped at 128 entries,
-;      and past that a menu registers but can never render - so MCM Helper's
-;      keybind can never be bound either, because binding happens ON the page
-;      that will not open. This save is at that ceiling. The key is registered
-;      directly in Papyrus and the setting lives in SkyrimNet's own panel,
-;      which this mod already depends on and the player already has open. That
-;      REMOVES a dependency rather than adding one.
-;
-;   2. THE CROSSHAIR ANSWERS "WHICH NPC" and needs no candidate list at all.
-;      The hard part of identifying one of Skyrim's actors is solved by the
-;      player looking at them, which is why there is no picker here and so no
-;      UI library to depend on. Kinship borrows UILIB_1 from Fertility Mode's
-;      handler quest; this mod has no such dependency and needs none.
-;
-;   3. NO CONFIRMATION PROMPT, and that is what keeps this small. A re-seed
-;      cannot do harm: SeedActor and OnSeedAssessed both seed to a FLOOR and
-;      subtract what the actor already holds, so it can only ever raise someone
-;      to what their history justifies. It cannot pay twice and it cannot take
-;      anything away. A yes/no box would need either a Creation Kit Message
-;      record or a UI dependency, to guard an action that needs no guarding.
-;
-;      THE SECOND KEY IS NOT LIKE THAT, and the argument above must not be read
-;      as covering it. Re-AUTHORING rewrites who someone is and discards
-;      accumulated drift, so it genuinely wants a confirmation - and it has one,
-;      moved from press time to BIND time: reauthorHotkey defaults to 0, so the
-;      only way to reach a destructive keypress is to have typed a scan code
-;      into the setting on purpose. That buys the same protection as a yes/no
-;      box, once instead of every time, and still needs no UI dependency.
-;
-; NO CREATION KIT WORK. RegisterForKey is a Form member and this script is on a
-; Quest, so the whole feature is loose Papyrus on records that already exist.
+; The re-read needs no confirmation: a seed only ever raises someone to what
+; their history justifies. The re-author rewrites who someone is and discards
+; their drift, and its confirmation is moved to BIND time: reauthorKey ships
+; unbound, so a destructive press needs a key bound on purpose. Enrolling is
+; what the player asked for, and is undone from the dashboard.
 ; ===========================================================================
 
-Int Function HotkeyCode() Global
-    { DirectX SCAN code for the re-read key. 0 disables it.
-
-      A SCAN CODE, AND THE SETTING IS A PLAIN INT FOR THAT REASON. SkyrimNet's
-      panel offers a `hotkey` field type which captures a keypress, and it was
-      the obvious choice and the wrong one: the widget stores a VIRTUAL KEY
-      code, and RegisterForKey takes a scan code. Setting the field to End
-      through the widget stored 35 - VK_END - so this registered scan code 35,
-      which is the H key, and End was never listened for. Measured 2026-09-02.
-      Nothing errored; the key simply did nothing, twice, for two different
-      reasons.
-
-      This is the same trap the note below records for Community Shaders. Having
-      written that note, I then walked into it. The lesson generalises: a key
-      NUMBER means nothing without its scheme, and the scheme is a property of
-      whoever consumes the number - C++ plugins read VK, Papyrus reads scan.
-
-      DEFAULTS TO HOME (199), AND IT TOOK THREE TRIES TO FIND A FREE KEY.
-      Worth recording, because the reasoning that produced the first two was
-      wrong in a way that will recur.
-
-      It shipped as Insert (210) on the grounds that Insert is unbound in
-      vanilla and rarely claimed. Insert is claimed TWICE here - STFU's
-      MenuHotkey=0xD2 and SSEDisplayTweaks' ToggleKey=0xD2. "Unbound in vanilla"
-      says nothing useful about a large load order: the keys mods reach for are
-      exactly the ones vanilla leaves free, so being unbound is what makes a key
-      CONTESTED rather than available.
-
-      The second attempt was End (207), which Community Shaders owns.
-
-      Claimed on the development load order, measured 2026-09-02:
-
-        210 Insert     STFU, SSEDisplayTweaks
-        207 End        Community Shaders
-        201 / 209      Community Shaders (PageUp / PageDown)
-         68 F10        Community Shaders overlay
-        183 PrtScn     Community Shaders screenshot
-          1 Escape     Community Shaders, SSEDisplayTweaks combo key
-         55 Numpad *   Community Shaders, IntelEngine's dashboard
-         56 Left Alt   TK Dodge RE
-         42 Left Shift Dynamic Activation Key, and Kinship's own modifier
-         29 / 47       po3 Console++ (Left Ctrl + V)
-         10            Kinship
-         39 40 48 49   Follower Stats, DynamicArmor, OStimFurnitureSwitch
-         24 14 70      OpenAnimationReplacer, IED, NPC Renamer
-
-      CROSS-REFERENCING CONFIGS NEEDS CARE, because mods do not agree on what a
-      key number means. Community Shaders stores VIRTUAL KEY codes (its End is
-      35 = VK_END); this mod, Kinship and MCM Helper use DIRECTX SCAN codes
-      (End is 207). The same key is a different number in the two files, so a
-      raw numeric comparison across mods is meaningless - translate first.
-
-      199 Home, 197 Pause, 211 Delete and 87 F11 were the survivors. Home wins
-      on being full-size and present on laptops; it is usually ReShade that
-      claims it, and there is no ReShade or ENB here. Delete is avoided on
-      principle - a key named Delete bound to a mod action invites the wrong
-      kind of muscle memory.
-
-      A BARE KEY RATHER THAN A CHORD, and Kinship documents why a chord does not
-      actually help: the modifier is only checked by the mod that owns it, so
-      whatever else claims the base key still sees the press. Holding Shift with
-      Insert does not stop STFU opening. Only changing the base key does. }
-    Return SkyrimNetApi.GetConfigInt(CFG(), "reseedHotkey", 199)
-EndFunction
-
-Int Function ReauthorHotkeyCode() Global
-    { DirectX SCAN code for the re-author key. 0 disables it, AND 0 IS THE
-      DEFAULT - deliberately, for two reasons.
-
-      RE-AUTHORING IS DESTRUCTIVE AND RE-READING IS NOT. A re-read seeds to a
-      floor, subtracts what someone already holds, and its worst case is that
-      nothing happens. Re-authoring rewrites orientation, intimacy, ardor,
-      exclusivity, WHY, LIMIT and ADDRESS from a fresh response and DISCARDS
-      ACCUMULATED DRIFT - for a long-running companion that is weeks of change,
-      and there is no undo. An action that can lose work should have to be bound
-      on purpose; an action that cannot should be ready to hand.
-
-      That asymmetry is also why these are two keys rather than one key doing
-      both. Fused, the safe repair could never be taken without accepting the
-      destructive one - and they are wanted at different moments anyway: a
-      re-read after fixing what the mod READS, a re-author after changing who it
-      is reading ABOUT.
-
-      AND KEYS ARE SCARCE. Finding one free code took three attempts and three
-      test loads on this load order - see HotkeyCode for the audit. Claiming a
-      second one for every user by default would spend that scarcity on a repair
-      most players will never reach for. Free here if you want one: 197 Pause,
-      211 Delete, 87 F11. Same scheme as HotkeyCode: SCAN codes, not VK. }
-    Return SkyrimNetApi.GetConfigInt(CFG(), "reauthorHotkey", 0)
-EndFunction
-
-Int Function HotkeyModifier() Global
-    { Optional held modifier, Dynamic-Activation-Key style. 0 = none.
-      42 Left Shift, 29 Left Ctrl, 56 Left Alt. }
-    Return SkyrimNetApi.GetConfigInt(CFG(), "reseedHotkeyModifier", 0)
-EndFunction
-
-Function RegisterHotkey()
-    { Arms both hotkeys, every load.
-
-      KEY REGISTRATIONS DO NOT SURVIVE A SAVE/LOAD, which is why this belongs
-      in Bootstrap alongside the decorator and ModEvent registrations rather
-      than in OnInit. Same reason, same place, same failure if forgotten.
-
-      UnregisterForAllKeys first, so changing a key does not leave the old one
-      live as well - and then BOTH are registered again, because clearing all of
-      them drops the sibling too. This script owns no keys but these two, so
-      clearing all of them is exactly the set it re-arms.
-
-      RE-CALLED FROM THE TICK WHEN THE SETTING MOVES, which is what makes the
-      setting live rather than load-only. Registration happens here and nowhere
-      else, so editing the key mid-session used to leave the game registered for
-      the OLD code while OnKeyDown compared against the NEW one - and then
-      NEITHER key worked: the old one arrived and was rejected as the wrong
-      code, and the new one was never delivered because nothing was listening
-      for it. Silently, with a correct-looking setting on screen. Hit while
-      testing 1.4.0 on 2026-09-02, after Insert turned out to be claimed by two
-      other mods.
-
-      _hotkeyArmed and _reauthorArmed are what is REGISTERED; HotkeyCode() and
-      ReauthorHotkeyCode() are what is ASKED FOR. The tick compares both pairs,
-      so the cost is two config reads per tick and a re-registration only when
-      the player actually changes a key. }
-    Int code = HotkeyCode()
-    Int recode = ReauthorHotkeyCode()
-    UnregisterForAllKeys()
-    _hotkeyArmed = code
-    _reauthorArmed = recode
-    If code > 0
-        RegisterForKey(code)
-        Diag(LOG_INFO(), "Re-read hotkey armed on scan code " + code + \
-            " (modifier " + HotkeyModifier() + ").")
-    Else
-        Diag(LOG_INFO(), "Re-read hotkey disabled (reseedHotkey = 0).")
+Event OnHotkey(String asEventName, String asKey, Float afNumArg, Form akSender)
+    { The DLL's crosshair keys. akSender is whoever was under the crosshair at
+      the press, or None. }
+    Actor who = akSender as Actor
+    If asKey == "reread"
+        ReseedUnderCrosshair(who)
+    ElseIf asKey == "reauthor"
+        ; ONE A MINUTE PER CHARACTER. A press re-rolls a whole character, and a
+        ; key shared with something else - a scene menu, once - repeats it at
+        ; every press. A second press inside the minute is refused, out loud.
+        If who != None && Utility.GetCurrentRealTime() - StorageUtil.GetFloatValue(who, "SNRom_ReauthorKeyAt", -1000.0) < 60.0 && \
+           Utility.GetCurrentRealTime() >= StorageUtil.GetFloatValue(who, "SNRom_ReauthorKeyAt", -1000.0)
+            Say(who.GetDisplayName() + " was re-authored less than a minute ago. Press again later if you mean it.")
+            Return
+        EndIf
+        If who != None
+            StorageUtil.SetFloatValue(who, "SNRom_ReauthorKeyAt", Utility.GetCurrentRealTime())
+        EndIf
+        ReauthorUnderCrosshair(who)
+    ElseIf asKey == "enroll"
+        String refused = EnrollByHand(who)
+        If refused != ""
+            Say(refused)
+        Else
+            Say(who.GetDisplayName() + " is enrolled. Their character is being written.")
+        EndIf
     EndIf
-    ; BOTH SETTINGS POINTING AT ONE KEY is not worth refusing, but it must not
-    ; silently let the destructive action shadow the safe one. OnKeyDown gives
-    ; the tie to the re-read; this says so out loud rather than choosing
-    ; quietly, because the player who typed the same number twice meant
-    ; something by it and cannot otherwise see which half won.
-    If recode > 0 && recode != code
-        RegisterForKey(recode)
-        Diag(LOG_INFO(), "Re-author hotkey armed on scan code " + recode + \
-            " - that key REWRITES a character and discards accumulated drift.")
-    ElseIf recode > 0
-        Diag(LOG_WARN(), "reauthorHotkey and reseedHotkey are both " + code + \
-            ", so that key will only ever re-read. Give them different keys.")
-    Else
-        Diag(LOG_INFO(), "Re-author hotkey disabled (reauthorHotkey = 0).")
-    EndIf
+EndEvent
+
+; ===========================================================================
+; The dashboard - SkyrimNetRelationships.dll, optional
+;
+; The DLL hosts the dashboard page in Meridian UI and owns its hotkey (design
+; 6.5, 7.1). Papyrus only hands it the dashboard settings, once per bootstrap;
+; the DLL keeps them current itself by watching the settings file SkyrimNet
+; saves (native/src/Settings.cpp), so nothing here polls for them. Nothing else
+; here calls it, and nothing here may come to need it.
+; ===========================================================================
+
+Bool Function DashboardDllPresent() Global
+    { PAPYRUS CANNOT TEST WHETHER A NATIVE EXISTS. Calling SNRom_Native without
+      the DLL logs a Papyrus error and returns 0 or False, which looks exactly
+      like a real refusal - so every call is gated on this first.
+
+      Global, uncached, like SeverActionsPresent: it runs once per bootstrap,
+      never per actor. }
+    Return SKSE.GetPluginVersion("SkyrimNetRelationships") > 0
 EndFunction
 
-Event OnKeyDown(Int aiKeyCode)
-    Int reseedKey = HotkeyCode()
-    If aiKeyCode != reseedKey && aiKeyCode != ReauthorHotkeyCode()
+Int Function DashboardKeyWanted() Global
+    { A VIRTUAL-KEY code, unlike the two keys above: the setting is SkyrimNet's
+      hotkey widget, which captures a keypress and stores it as VK, and the DLL
+      converts it natively - the job HotkeyCode's note says Papyrus should never
+      attempt. 0, the shipped value, is unbound: the author's call, because the
+      keys free in vanilla are the ones other mods have already taken. }
+    Return SkyrimNetApi.GetConfigInt(CFG(), "dashboardHotkey", 0)
+EndFunction
+
+Bool Function DeveloperViewWanted() Global
+    { The dashboard's developer view (design 7.6): off, the page shows only what
+      the player could know. }
+    Return SkyrimNetApi.GetConfigBool(CFG(), "dashboardDeveloperView", False)
+EndFunction
+
+String Function DashboardScaleWanted() Global
+    { The dashboard's scale as the settings panel names it: Auto, or 75% to
+      200%. Handed to the DLL by name; see SNRom_Native.SetDisplaySettings. }
+    Return SkyrimNetApi.GetConfigString(CFG(), "dashboardScale", "Auto")
+EndFunction
+
+String Function DashboardTextSizeWanted() Global
+    { The dashboard's text size as the settings panel names it: Normal, Large or
+      Larger. On top of the scale. }
+    Return SkyrimNetApi.GetConfigString(CFG(), "dashboardTextSize", "Normal")
+EndFunction
+
+String Function DashboardModifierWanted() Global
+    { The dashboard key's modifier as the settings panel names it: None, Left
+      Shift, Right Shift, Left Ctrl, Right Ctrl, Left Alt or Right Alt. A select,
+      so it arrives as the option's name; DashboardModifierVK turns it into what
+      the DLL takes. }
+    Return SkyrimNetApi.GetConfigString(CFG(), "dashboardHotkeyModifier", "None")
+EndFunction
+
+Int Function DashboardModifierVK(String asName) Global
+    { A dashboardHotkeyModifier option as the VIRTUAL KEY of that side of the
+      keyboard, which is what SNRom_Native.SetDashboardHotkey takes: 0 for None,
+      160 to 165 for the six others. The same table as kModifiers in the DLL's
+      Hotkey.cpp, which the DLL's settings watcher uses; the two and the
+      manifest's options must agree.
+
+      -1 for anything else, which the DLL refuses rather than binding the bare
+      key: a key that opens without the modifier the player chose is a guess.
+      Papyrus string comparison ignores case, and so does the DLL's. }
+    If asName == "" || asName == "None"
+        Return 0
+    ElseIf asName == "Left Shift"
+        Return 160
+    ElseIf asName == "Right Shift"
+        Return 161
+    ElseIf asName == "Left Ctrl"
+        Return 162
+    ElseIf asName == "Right Ctrl"
+        Return 163
+    ElseIf asName == "Left Alt"
+        Return 164
+    ElseIf asName == "Right Alt"
+        Return 165
+    EndIf
+    Return -1
+EndFunction
+
+Function ArmDashboard()
+    { Hands the dashboard settings to the DLL, once per bootstrap, so they hold
+      from the first load even if the DLL cannot read the settings file.
+
+      NOT FROM THE TICK. The DLL watches the file SkyrimNet rewrites whenever
+      its panel saves, and applies a change within seconds - see Settings.cpp
+      in native/src. Re-arming from OnUpdateGameTime took minutes to notice a
+      change, and put more Papyrus on the tick, where the aim is less. The
+      re-read and re-author keys are different, because Papyrus registers
+      those itself - see OnHotkey. }
+    ; Zeroed first, so every call site's gate reads "no" until the checks below
+    ; say otherwise - including in a save made with a DLL that is gone now.
+    _dashNatives = 0
+    ; THE DLL IS REQUIRED FROM 2.0 (design 6.7): the dashboard, the hotkeys,
+    ; the held tier notices, the bond history and who-is-near all live in it.
+    ; Without it the mod still scores and gates - every native has a Papyrus
+    ; fallback or is skipped - but the player must be told, once a load, in
+    ; words that say what to check.
+    If !DashboardDllPresent()
+        Diag(LOG_ERROR(), "SkyrimNetRelationships.dll did not load. Relationships 2.0 needs it: " + \
+            "check that it is installed, with SKSE and Address Library for this game version.", True)
+        Say("SkyrimNetRelationships.dll did not load - no dashboard, hotkeys or bond history. " + \
+            "Check SKSE and Address Library for this game version.")
         Return
     EndIf
-    ; NEVER IN MENU MODE. A press during dialogue would dispatch an LLM call
-    ; from a paused game, which is the state SkyrimNet refuses Papyrus in - and
-    ; the crosshair reference is not meaningful there anyway.
-    If Utility.IsInMenuMode()
+    ; OLDER DLL, NEWER SCRIPTS. Version 1's SetDashboardHotkey took the key
+    ; alone and these scripts pass two; version 2 has no read model, so the
+    ; dashboard would open on an empty roster forever; version 3 has no
+    ; SetDisplaySettings, so the dashboard's size could not be set. Each failure
+    ; would read like something else. The gates below that ask for 3 still
+    ; hold: _dashNatives is 0 or at least 4.
+    Int natives = SNRom_Native.Version()
+    If natives < 7
+        Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
+            ", these need v7). Install the DLL from the same release.", True)
+        Say("SkyrimNetRelationships.dll is older than the scripts - install both from the same release.")
+    EndIf
+    If natives < 5
         Return
     EndIf
-    Int held = HotkeyModifier()
-    If held != 0 && !Input.IsKeyPressed(held)
-        Return
+    _dashNatives = natives
+    ; READ NOW, WHILE SKYRIMNET ANSWERS. The refresh runs while the dashboard
+    ; has the game paused and may not ask it anything; see OnDashboardRefresh.
+    ; A kin-guard setting changed mid-session reaches the dashboard's
+    ; foreclosure at the next load - display only, the gate itself reads it live.
+    DashboardCacheStore()
+    _dashKinGuard = SNRom_Decorators.KinGuardOn() as Int
+    ; Plugin presence cannot change mid-session, and asking per refresh is a
+    ; frame each (Game.IsPluginInstalled).
+    _dashMaras = MarasPresent()
+    _dashSever = SeverActionsPresent()
+    Int vk = DashboardKeyWanted()
+    String modName = DashboardModifierWanted()
+    Int modVK = DashboardModifierVK(modName)
+    Bool dev = DeveloperViewWanted()
+    SNRom_Native.SetDeveloperView(dev)
+    ; The dashboard's size, by the options' names. A name the DLL
+    ; does not know leaves that setting as it was, and the DLL logs which.
+    String scaleName = DashboardScaleWanted()
+    String textName = DashboardTextSizeWanted()
+    If !SNRom_Native.SetDisplaySettings(scaleName, textName)
+        Diag(LOG_WARN(), "Dashboard scale '" + scaleName + "' or text size '" + textName + \
+            "' is not one of the options; see SkyrimNetRelationships.log.")
     EndIf
-    ; The re-read wins a tie, per the note in RegisterHotkey: if both settings
-    ; name the same key, the harmless action is the one that fires.
-    If aiKeyCode == reseedKey
-        ReseedUnderCrosshair()
+    If SNRom_Native.SetDashboardHotkey(vk, modVK)
+        If vk > 0
+            Diag(LOG_INFO(), "Dashboard hotkey armed on virtual key " + vk + ", modifier " + modName + \
+                " (natives v" + natives + ", developer view " + dev + ").")
+        Else
+            Diag(LOG_INFO(), "Dashboard hotkey not set (dashboardHotkey = 0) - choose one under " + \
+                "Dashboard in the settings panel.")
+        EndIf
+    ElseIf modVK < 0
+        ; REFUSED, NOT GUESSED, the modifier this time: binding the bare key
+        ; would open the dashboard without the modifier the player chose.
+        Diag(LOG_WARN(), "Dashboard hotkey NOT bound: modifier '" + modName + "' is not one of the " + \
+            "options. Choose one under Dashboard in the settings panel.")
+        Say("That dashboard modifier can't be used - choose another in the settings.")
     Else
-        ReauthorUnderCrosshair()
+        ; REFUSED, NOT GUESSED. The DLL found no keyboard scan code for this key
+        ; and bound nothing; binding the nearest number is how End became H.
+        Diag(LOG_WARN(), "Dashboard hotkey NOT bound: virtual key " + vk + " has no keyboard " + \
+            "scan code. Choose another key under Dashboard in the settings panel.")
+        ; AND SAID ON SCREEN, because the player chose that key and is about to
+        ; press it; a refusal only in the log reads as a key that does nothing.
+        ; Every bootstrap while it stays set, which is the same as saying it
+        ; still does not work.
+        Say("That dashboard key can't be used - choose another in the settings.")
     EndIf
+EndFunction
+
+Function DashboardCacheStore()
+    { The live store and the playthrough id, as the dashboard's refresh reads
+      them. Both come from SkyrimNet, which the refresh may not ask (see
+      OnDashboardRefresh), so they are read here: at every bootstrap, and by
+      StartFreshStore and AdoptLegacyStore, the only things that move the store
+      mid-session. EnsureSaveId decides the store once per bootstrap, before
+      ArmDashboard runs. }
+    _dashPlaythrough = PlaythroughId()
+    _dashStore = StoreFile()
+EndFunction
+
+Int[] Function DashboardPoints(Actor akActor) Global
+    { THE ONE PLACE THE DASHBOARD READS POINTS: [0] points held, [1] the tier
+      0-5 (DashboardTier), [2] points banked by the consent gate while the
+      question waits.
+
+      OURS FROM 1.9 (WP4): PointsOf is a StorageUtil read, so a refresh no
+      longer makes Romantasy's frame-waiting GetPoints call once per bond -
+      that call was nearly all of the 2.5-3 s a refresh took. An actor the
+      one-time import has not reached yet still reads Romantasy's number
+      through PointsOf. It only reads: nothing on the dashboard's path writes
+      a point. }
+    Int[] pts = new Int[3]
+    pts[0] = PointsOf(akActor)
+    pts[1] = DashboardTier(pts[0])
+    pts[2] = StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0)
+    Return pts
+EndFunction
+
+Int Function DashboardTier(Int aiPoints) Global
+    { The tier, 0-5, from points on the ladder the snapshot sends (thresholds
+      500 apart). Romantasy's own level is exactly this: GetLevel is
+      LevelNumberForPoints(points), 1-6, in its RomanceManager.cpp. Worked out
+      here instead of asking GetLevel because that native waits a frame, and a
+      refresh may not make a per-bond call that waits a frame (design 7.3,
+      "Measured in play"). Nobody Romantasy tracks has 0 points, which is tier
+      0 either way. }
+    If aiPoints >= 2500
+        Return 5
+    ElseIf aiPoints >= 2000
+        Return 4
+    ElseIf aiPoints >= 1500
+        Return 3
+    ElseIf aiPoints >= 1000
+        Return 2
+    ElseIf aiPoints >= 500
+        Return 1
+    EndIf
+    Return 0
+EndFunction
+
+Int Function DashMinutes(Float afGameTime) Global
+    { A game time as whole game minutes, for the dashboard's Int array; -1 for
+      never, which is how every one of these keys reads when unset (0.0). }
+    If afGameTime <= 0.0
+        Return -1
+    EndIf
+    Return (afGameTime * 1440.0) as Int
+EndFunction
+
+Int[] Function DashboardNumbers(Actor akActor) Global
+    { ONE ACTOR'S NUMBERS, as SNRom_Native.PutBondNumbers takes them.
+
+      THE ORDER IS enum Number IN native/src/Model.h, which cites this function.
+      Change one, change both: the DLL refuses an array of the wrong length, and
+      a reordering it cannot see would put one value in another's place.
+
+      STORAGEUTIL READS ONLY - points included, since WP4 made them ours
+      (PointsOf; until the import reaches someone, their number is still read
+      from Romantasy). The first
+      version asked the engine, MARAS and SeverActions here too, about twenty
+      calls per bond that each waited a frame: 55 seconds for 122 bonds
+      (design 7.3, "Measured in play"). Now the DLL reads the engine itself, and
+      OnDashboardRefresh fetches MARAS and SeverActions once per refresh.
+      Following, commitment and foreclosure are worked out by display copies in
+      the DLL (native/src/Display.cpp); the gates keep calling Papyrus.
+
+      NO SKYRIMNET CALL, NO DIAG, NO JSONUTIL: it runs inside
+      OnDashboardRefresh, while the dashboard has the game paused. }
+    Int[] n = new Int[21]
+    Int[] pts = DashboardPoints(akActor)
+    n[0] = pts[0]                                                                       ; kPoints
+    n[1] = pts[1]                                                                       ; kTier
+    n[2] = pts[2]                                                                       ; kBanked
+    n[3] = DashMinutes(StorageUtil.GetFloatValue(akActor, "SNRom_LastFollowingAt", 0.0)) ; kLastFollowingAt
+    n[4] = StorageUtil.GetIntValue(akActor, "SNRom_AutoEnrolled", 0)                    ; kAutoEnrolled
+    n[5] = StorageUtil.GetIntValue(akActor, "SNRom_Enrolled", 0)                        ; kEnrolledFlag
+    n[6] = StorageUtil.GetIntValue(akActor, "SNRom_PlayerStance", 0)                    ; kStance
+    n[7] = StorageUtil.GetIntValue(akActor, "SNRom_AskPending", 0)                      ; kAskPending
+    n[8] = StorageUtil.GetIntValue(akActor, "SNRom_Sparked", 0)                         ; kSparked
+    n[9] = SparkDecided(akActor) as Int                                                 ; kSparkDecided
+    n[10] = DashMinutes(StorageUtil.GetFloatValue(akActor, "SNRom_SparkedAt", 0.0))     ; kSparkedAt
+    n[11] = DashMinutes(StorageUtil.GetFloatValue(akActor, "SNRom_LastSparkCheck", 0.0)) ; kLastSparkCheck
+    n[12] = DashMinutes(StorageUtil.GetFloatValue(akActor, "SNRom_EndedAt", 0.0))       ; kEndedAt
+    n[13] = StorageUtil.GetIntValue(akActor, "SNRom_Seeded", 0)                         ; kSeeded
+    n[14] = StorageUtil.GetIntValue(akActor, "SNRom_DispositionAuthored", 0)            ; kAuthored
+    n[15] = SNRom_Decorators.IntimacyRank(StorageUtil.GetIntValue(akActor, "SNRom_PhysMinTier", 4)) ; kIntimacy
+    n[16] = StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2)                          ; kArdor
+    n[17] = StorageUtil.GetIntValue(akActor, "SNRom_Exclusivity", 50)                   ; kExclusivity
+    n[18] = StorageUtil.GetIntValue(akActor, "SNRom_Orientation", 3)                    ; kOrientation
+    n[19] = StorageUtil.GetIntValue(akActor, "SNRom_OrientationKnown", 0)               ; kOrientationBasis
+    n[20] = SNRom_Decorators.IsPlayerKin(akActor) as Int                                ; kPlayerKin
+    Return n
+EndFunction
+
+String[] Function DashboardText(Actor akActor, String asStoreName) Global
+    { ONE ACTOR'S TEXT, as SNRom_Native.PutBondText takes it: [0] WHY, [1] LIMIT,
+      [2] ADDRESS. THE ORDER IS enum Text IN native/src/Model.h, which cites
+      this function. No name: GetDisplayName waits a frame, and the DLL reads
+      the name from the engine itself.
+
+      asStoreName is the store ArmDashboard cached, because StoreFile() asks
+      SkyrimNet for the playthrough id and this runs while the game is paused.
+
+      The form id comes from SNRom_Native.FormIdOf, which answers without
+      waiting for a frame, rather than akActor.GetFormID(), which StoreKey
+      would otherwise call once per field: a full refresh reads 122 bonds.
+
+      NO LIKES OR DISLIKES. Romantasy's name game statistics and do not carry
+      into Relationships (the author, 2026-09-30); phase 5's own preferences,
+      against our vocabulary, are the ones the dashboard will show. }
+    Int id = SNRom_Native.FormIdOf(akActor)
+    String[] t = new String[3]
+    t[0] = StoreGetText(akActor, "Why", asStoreName, id)
+    t[1] = StoreGetText(akActor, "Limit", asStoreName, id)
+    t[2] = StoreGetText(akActor, "Address", asStoreName, id)
+    Return t
+EndFunction
+
+Function PushBondText(Actor akActor)
+    { A TEXT WRITER'S PUSH. Once a full refresh has answered this session
+      (_dashText), the DLL holds everyone's name, WHY, LIMIT and ADDRESS, and it
+      never asks for them again until the next load - every later open refreshes
+      only the numbers. So each function that writes that text pushes the actor
+      it wrote, here: one native call, as generation 0, which the DLL shows at
+      once if the dashboard is open.
+
+      CALLERS CHECK _dashText FIRST, so the only cost when nobody opens the
+      dashboard is that Bool (kickoff WP2, e). This checks the version gate as
+      well, like every native call site.
+
+      The writers, and the grep that finds them, are listed in the WP2 pull
+      request: every StoreSetText of Why, Limit or Address, and the two store
+      repairs, which change which store all of it is read from. }
+    If _dashNatives >= 3 && akActor != None
+        SNRom_Native.PutBondText(0, akActor, DashboardText(akActor, _dashStore))
+    EndIf
+EndFunction
+
+Function DashboardPutFacts(Int aiGeneration)
+    { What the DLL's display copies need from other mods, fetched ONCE per
+      refresh with their batch calls and handed over in one native
+      (SNRom_Native.PutRefreshFacts). Asking per bond was IsNPCStatus three
+      times and Native_GetIsFollower once, each waiting a frame.
+
+      - MARAS.GetNPCsByStatus for "married", "engaged" and "candidate". Each is
+        exactly the set its IsNPCStatus tests (both read the same set in MARAS's
+        NPCRelationshipManager), less forms that are not loaded, which a
+        roster member always is.
+      - SeverActions' Native_GetActiveFollowerRoster and
+        Native_GetDeadTrackedFollowers. Native_GetIsFollower, which IsFollowing
+        asks, reads isFollower in SeverActions' store; the active roster is
+        that minus the dead (its own docstring), and the other is exactly the
+        dead. Together they answer as it does.
+      - The kin guard ArmDashboard read. }
+    Actor[] married
+    Actor[] engaged
+    Actor[] candidates
+    If _dashMaras
+        married = MARAS.GetNPCsByStatus("married")
+        engaged = MARAS.GetNPCsByStatus("engaged")
+        candidates = MARAS.GetNPCsByStatus("candidate")
+    EndIf
+    Actor[] severActive
+    Actor[] severDead
+    If _dashSever
+        severActive = SeverActionsNativeExt.Native_GetActiveFollowerRoster()
+        severDead = SeverActionsNativeExt.Native_GetDeadTrackedFollowers()
+    EndIf
+    SNRom_Native.PutRefreshFacts(aiGeneration, _dashKinGuard > 0, _dashMaras, married, engaged, candidates, \
+        _dashSever, severActive, severDead)
+EndFunction
+
+Function PushAllBondText()
+    { Everyone's text again, and the playthrough: for StartFreshStore and
+      AdoptLegacyStore, which switch the store every line is read from. One call
+      per roster member, like a full refresh, but only when a player runs one of
+      those repairs with the dashboard live. }
+    If _dashNatives < 3
+        Return
+    EndIf
+    Int count = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int i = 0
+    While i < count
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None
+            SNRom_Native.PutBondText(0, a, DashboardText(a, _dashStore))
+        EndIf
+        i += 1
+    EndWhile
+    SNRom_Native.PutPlaythrough(0, _dashPlaythrough, _dashStore, StorageUtil.GetIntValue(None, "SNRom_SaveId", 0))
+EndFunction
+
+Function PushBond(Actor akActor, Int aiGeneration)
+    { One actor's whole row, numbers and text. For a page action (generation
+      -1, answered by ActionDone, which sends the snapshot) and for the LLM
+      callbacks a long-running action ends in (generation 0, shown at once if
+      the dashboard is open). Not for the refresh, which pushes its own. }
+    If _dashNatives < 3 || akActor == None
+        Return
+    EndIf
+    SNRom_Native.PutBondNumbers(aiGeneration, akActor, DashboardNumbers(akActor))
+    SNRom_Native.PutBondText(aiGeneration, akActor, DashboardText(akActor, _dashStore))
+EndFunction
+
+Bool Function DashboardDeveloperOp(String asOp) Global
+    { The developer tools in ui/relationships/actions.js (developer: true), and
+      in the DLL's op table. Each bypasses a gate that is the design, so both
+      sides refuse them unless the developer view is on. }
+    Return asOp == "RequestSparkNow" || asOp == "UnsparkActor" || asOp == "ForceDriftReview" || \
+        asOp == "CheckDisplay"
+EndFunction
+
+String Function CheckDashboardDisplay()
+    { DEVELOPER TOOL: "Check the display against the rules". Runs the REAL
+      IsFollowing, CommitmentState and RomanceApplicability for every bond and
+      hands each answer to the DLL, which works out its display copy of the same
+      three (native/src/Display.cpp) at the same moment and logs every
+      disagreement to SkyrimNetRelationships.log, with the name, the field and
+      both values. Returns the line the page shows.
+
+      WHY IT EXISTS. The dashboard draws following, commitment and foreclosure
+      from those copies, because asking Papyrus per bond cost 55 seconds for
+      122 bonds (design 7.3, "Measured in play"). The author wants to see in
+      play that the copies agree before trusting them; this is that evidence.
+
+      LIKE FOR LIKE. The batch sets are fetched fresh first, as a refresh
+      fetches them, and each bond's StorageUtil values are pushed just before
+      its answer, so the copy and the rules see the same facts. The kin guard
+      is read once and handed to both.
+
+      SLOW ON PURPOSE: it pays the old per-bond cost, about a minute with 120
+      bonds. It runs only when asked from the dashboard; nothing runs it
+      automatically. }
+    _dashKinGuard = SNRom_Decorators.KinGuardOn() as Int
+    DashboardPutFacts(-1)
+    Int checked = 0
+    Int disagreements = 0
+    Int count = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int i = 0
+    While i < count
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None
+            SNRom_Native.PutBondNumbers(-1, a, DashboardNumbers(a))
+            disagreements += SNRom_Native.CheckBond(a, IsFollowing(a), CommitmentState(a), \
+                SNRom_Decorators.RomanceApplicability(a, _dashKinGuard))
+            checked += 1
+        EndIf
+        i += 1
+    EndWhile
+    ; A String on the left, so the rest concatenates rather than adds.
+    Return (checked as String) + " bonds checked, " + disagreements + \
+        " disagreements (see SkyrimNetRelationships.log)."
+EndFunction
+
+Event OnDashboardAction(String asEventName, String asOp, Float afRequestId, Form akSender)
+    { A page action, from SkyrimNetRelationships.dll (kickoff WP2, d). The DLL
+      has already checked asOp against its own fixed table; this maps it again,
+      through this one, to the function actions.js names beside it. The page
+      is data and never names a function.
+
+      akSender is the actor, as a form: never a form id in a string. The Int
+      arguments come from SNRom_Native.ActionArgs, never parsed from text.
+
+      THE ROW, THEN THE ANSWER. The actor's row is pushed first (generation -1)
+      and ActionDone second, because ActionDone is what makes the DLL send the
+      page its result and a fresh snapshot.
+
+      LONG-RUNNING ACTIONS SAY "STARTED". The re-read, re-author and preference
+      repair finish in an LLM callback; their wrappers push the row when it
+      lands (OnSeedAssessed, OnDispositionAuthored), and the DLL tells the page.
+
+      Calls each function as it is. None of them changes the consent gate, and
+      none is changed here (brief 2; design 13.4). }
+    If _dashNatives < 3
+        Return
+    EndIf
+    Int requestId = afRequestId as Int
+    Actor who = akSender as Actor
+    If !_ready
+        SNRom_Native.ActionDone(requestId, False, "Relationships has not started, so nothing was done.")
+        Return
+    EndIf
+    ; THE SECOND LOCK on the developer tools. The DLL refused them already
+    ; unless the developer view is on; this reads the setting itself, because a
+    ; page can be edited.
+    If DashboardDeveloperOp(asOp) && !DeveloperViewWanted()
+        SNRom_Native.ActionDone(requestId, False, "That is a developer tool, and the developer view is off.")
+        Return
+    EndIf
+    Bool forPlaythrough = asOp == "StartFreshStore" || asOp == "AdoptLegacyStore" || asOp == "CheckDisplay"
+    If !forPlaythrough && who == None
+        SNRom_Native.ActionDone(requestId, False, "They could not be found in the game right now.")
+        Return
+    EndIf
+    String whoName = ""
+    If who != None
+        whoName = who.GetDisplayName()
+    EndIf
+    String answer = ""
+    If asOp == "ReseedActor"
+        ; NO FOLLOW REQUIREMENT FROM 1.9. Until WP4 this was refused for anyone
+        ; not following: Romantasy moved points only for an active follower, so
+        ; a re-read of Erdi (2026-09-29) read DEVOTED three times and changed
+        ; nothing. The points are ours now and land wherever they are.
+        ;
+        ; AssessSeed holds one read at a time and turns a second away with only
+        ; a log line; say so here instead of "started".
+        If SeedReadInFlight()
+            SNRom_Native.ActionDone(requestId, False, "A read for " + _seedName + \
+                " is still out. Try again when it comes back.")
+            Return
+        EndIf
+        ReseedActor(who)
+        answer = "Reading " + whoName + "'s record again. This updates when the answer comes back."
+    ElseIf asOp == "ReauthorCharacter"
+        ReauthorCharacter(who)
+        answer = "Writing " + whoName + "'s character again. This updates when the answer comes back."
+    ElseIf asOp == "SetCharacterField"
+        Int[] fieldArgs = SNRom_Native.ActionArgs(requestId)
+        If fieldArgs.Length < 2
+            SNRom_Native.ActionDone(requestId, False, "Correct one trait needs a trait and a value.")
+            Return
+        EndIf
+        SetCharacterField(who, fieldArgs[0], fieldArgs[1])
+        answer = "Corrected one of " + whoName + "'s traits."
+    ElseIf asOp == "EnrollActor"
+        String refused = EnrollByHand(who)
+        If refused != ""
+            SNRom_Native.ActionDone(requestId, False, refused)
+            Return
+        EndIf
+        answer = whoName + " is enrolled. Their character is being written, and their record read, " + \
+            "in the next few minutes."
+    ElseIf asOp == "UnenrollActor"
+        UnenrollActor(who)
+        SNRom_Native.DropBond(who)
+        SNRom_Native.ActionDone(requestId, True, whoName + " is off the roster and no longer observed.")
+        Return
+    ElseIf asOp == "StartFreshStore"
+        StartFreshStore()
+        answer = "This playthrough now has its own store. Nothing was deleted."
+    ElseIf asOp == "AdoptLegacyStore"
+        AdoptLegacyStore()
+        answer = "This playthrough is back on the main store."
+    ElseIf asOp == "RequestSparkNow"
+        RequestSparkNow(who)
+        answer = "Asked the spark assessor about " + whoName + ". It declines on its own if they " + \
+            "already have a verdict or are not loaded; the next open shows the result."
+    ElseIf asOp == "UnsparkActor"
+        UnsparkActor(who)
+        answer = whoName + " is back on the platonic ladder, with every point kept."
+    ElseIf asOp == "ForceDriftReview"
+        ; No field from the page keeps the rotation, as ForceDriftReview documents.
+        Int[] driftArgs = SNRom_Native.ActionArgs(requestId)
+        Int field = -1
+        If driftArgs.Length > 0
+            field = driftArgs[0]
+        EndIf
+        ForceDriftReview(who, field)
+        answer = "Asked for a drift review of " + whoName + ". The next open shows the result."
+    ElseIf asOp == "CheckDisplay"
+        answer = CheckDashboardDisplay()
+    Else
+        SNRom_Native.ActionDone(requestId, False, "This version of the scripts has no operation " + asOp + ".")
+        Return
+    EndIf
+    If who != None
+        PushBond(who, -1)
+    EndIf
+    SNRom_Native.ActionDone(requestId, True, answer)
+EndEvent
+
+Event OnDashboardRefresh(String asEventName, String asScope, Float afGeneration, Form akSender)
+    { SkyrimNetRelationships.dll asks for the roster: every time the dashboard
+      opens (design 7.3, the WP2 transport). The page is already showing what
+      the DLL held; this pushes one call per roster member into its read model,
+      then says RefreshDone, and the DLL sends the page the result.
+
+      asScope "full" (the first open after a load) also pushes everyone's text
+      and the playthrough; "numbers" pushes only the numbers, which every open
+      refreshes. afGeneration numbers this refresh, so the DLL can drop an
+      answer to one it has stopped waiting for.
+
+      THREE THINGS IT MUST NOT DO, because the dashboard has the game paused:
+      - Utility.Wait, which does not return while the game is paused;
+      - write to JsonUtil;
+      - call SkyrimNet's API, which SkyrimNet has been seen refusing while the
+        game is paused. That rules out Diag too, since every Diag line reads the
+        log level from SkyrimNet. The DLL logs the outcome and how long it took.
+
+      "NOT READY" IS AN ANSWER. Said instead of an empty roster, so the page
+      can tell the player the mod has not started rather than that nobody is
+      on it. }
+    ; Not armed this session (no DLL, or too old): nothing to answer. The DLL
+    ; tells the page it heard nothing.
+    If _dashNatives < 3
+        Return
+    EndIf
+    Int generation = afGeneration as Int
+    If !_ready
+        SNRom_Native.RefreshDone(generation, 0, "not ready: Relationships has not started. " + \
+            "SNRom_Integration.esl is missing or out of date (see snrom.log).")
+        Return
+    EndIf
+    Bool withText = asScope == "full"
+    String fromStore = _dashStore
+    ; ONCE PER REFRESH, NOT PER BOND: what MARAS and SeverActions know, with
+    ; their batch calls, for the DLL's display copies.
+    DashboardPutFacts(generation)
+    Int pushed = 0
+    Int count = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int i = 0
+    While i < count
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None
+            SNRom_Native.PutBondNumbers(generation, a, DashboardNumbers(a))
+            If withText
+                SNRom_Native.PutBondText(generation, a, DashboardText(a, fromStore))
+            EndIf
+            pushed += 1
+        EndIf
+        i += 1
+    EndWhile
+    If withText
+        SNRom_Native.PutPlaythrough(generation, _dashPlaythrough, fromStore, \
+            StorageUtil.GetIntValue(None, "SNRom_SaveId", 0))
+        _dashText = True
+    EndIf
+    SNRom_Native.RefreshDone(generation, pushed, "ok")
 EndEvent
 
 String Function EnrollmentPendingReason(Actor akActor)
@@ -5656,7 +6320,7 @@ String Function EnrollmentPendingReason(Actor akActor)
         Return akActor.GetDisplayName() + " was enrolled this session - reload before their standing can be scored."
     EndIf
     If !IsFollowing(akActor)
-        Return akActor.GetDisplayName() + " is not travelling with you - only companions are observed."
+        Return akActor.GetDisplayName() + " is not enrolled - only followers are enrolled, once they have followed you a while."
     EndIf
     Float firstSeen = StorageUtil.GetFloatValue(akActor, "SNRom_FirstSeenFollowing", 0.0)
     Float wait = SkyrimNetApi.GetConfigFloat(CFG(), "enrollmentDelayHours", 2.0)
@@ -5680,8 +6344,8 @@ Function Say(String asText)
     Debug.Notification("[Relationships] " + asText)
 EndFunction
 
-Function ReseedUnderCrosshair()
-    { Point at a follower, press the key, and their standing is read again from
+Function ReseedUnderCrosshair(Actor akTarget)
+    { Point at anyone enrolled, press the key, and their standing is read again from
       the record as it now stands.
 
       WHY THIS EXISTS. Fixing the material is the advice this mod gives - correct
@@ -5695,10 +6359,10 @@ Function ReseedUnderCrosshair()
       open. The asynchronous answer arrives in OnSeedAssessed, which announces
       all four of its outcomes when the request came from here. }
     If !_ready
-        Say("Not ready - Romantasy did not resolve this session.")
+        Say("Not ready - Relationships has not started this session.")
         Return
     EndIf
-    Actor who = Game.GetCurrentCrosshairRef() as Actor
+    Actor who = akTarget
     If who == None
         Say("Point at someone first.")
         Return
@@ -5724,16 +6388,6 @@ Function ReseedUnderCrosshair()
         Say(EnrollmentPendingReason(who))
         Return
     EndIf
-    If !IsFollowing(who)
-        ; ROMANTASY ONLY SCORES ACTIVE FOLLOWERS, and it rejects a dismissed one
-        ; every time rather than late - see the note in SeedNextActor. Caught
-        ; HERE rather than discovered after the fact, because the alternative is
-        ; spending an LLM call and then announcing a failure whose cause the
-        ; player cannot see. Enrolled and dismissed is the ordinary state of most
-        ; of a large roster, so this is the likely refusal, not an exotic one.
-        Say(who.GetDisplayName() + " is not travelling with you - only active followers are scored.")
-        Return
-    EndIf
     If SeedReadInFlight()
         Say("Still reading the record for " + _seedName + " - try again in a moment.")
         Return
@@ -5747,7 +6401,7 @@ Function ReseedUnderCrosshair()
     ReseedActor(who)
 EndFunction
 
-Function ReauthorUnderCrosshair()
+Function ReauthorUnderCrosshair(Actor akTarget)
     { Point at someone, press the OTHER key, and their character is written
       again from scratch - orientation, intimacy, ardor, exclusivity, WHY, LIMIT
       and ADDRESS.
@@ -5788,10 +6442,10 @@ Function ReauthorUnderCrosshair()
       hand, which is the difference between a bad afternoon and a lost
       character. }
     If !_ready
-        Say("Not ready - Romantasy did not resolve this session.")
+        Say("Not ready - Relationships has not started this session.")
         Return
     EndIf
-    Actor who = Game.GetCurrentCrosshairRef() as Actor
+    Actor who = akTarget
     If who == None
         Say("Point at someone first.")
         Return
@@ -5854,7 +6508,7 @@ Function ReauthorUnderCrosshair()
         ", ardor=" + StorageUtil.GetIntValue(who, "SNRom_Ardor", 2) + \
         " (" + SNRom_Decorators.ArdorWord(StorageUtil.GetIntValue(who, "SNRom_Ardor", 2)) + ")" + \
         ", exclusivity=" + StorageUtil.GetIntValue(who, "SNRom_Exclusivity", 50) + \
-        ". Preferences are NOT touched. There is no undo.", True)
+        ". There is no undo.", True)
     ; The WHY on its own line - it is prose, it is the part with no numeric
     ; equivalent to type back in, and it is what identifies the character that
     ; was here if the press was a mistake.
@@ -5913,8 +6567,10 @@ Function SeedNextActor()
       Two things here are load-bearing and both are the same bug this project
       already fixed once in AssessNextTalk:
 
-      1. IsFollowing, not just roster membership. Romantasy only scores active
-         followers, so a dismissed one is rejected EVERY time - not late, never.
+      1. Anyone enrolled, following or not, from 2.0: the follower test was
+         Romantasy's rule, and the points are ours (design 3.2). The seed reads
+         the record, which needs nobody nearby. The cheap seeded test first:
+         IsDead waits for a frame.
 
       2. Do not stop on a rejection, only on a settled seed. Stopping on the
          first ATTEMPT means one permanently un-seedable actor at the front of
@@ -5943,7 +6599,7 @@ Function SeedNextActor()
     Int i = 0
     While i < n
         Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
-        If a != None && !a.IsDead() && StorageUtil.GetIntValue(a, "SNRom_Seeded", 0) != 1 && IsFollowing(a)
+        If a != None && StorageUtil.GetIntValue(a, "SNRom_Seeded", 0) != 1 && !a.IsDead()
             ; THE RECORD READ, not the old rank-and-rapport table. Measured
             ; 2026-09-01 across 63 seeded followers: rapport was exactly 5.0 for
             ; 57% and rank was 3 for 61 of 63, so SeedTarget returned about 200
@@ -6035,12 +6691,6 @@ Event OnUpdateGameTime()
       assessing anyone more often than their cooldown already allows. That was
       the whole problem: at a fixed two hours a party of seven waited fourteen
       game hours apiece while talkCooldownHours sat at 3.0 and never bound. }
-    ; THE HOTKEY SETTING, MADE LIVE. One config read; re-registers only when the
-    ; player has actually changed the key. Without this the setting appears to
-    ; take effect and does nothing at all until the next load.
-    If HotkeyCode() != _hotkeyArmed || ReauthorHotkeyCode() != _reauthorArmed
-        RegisterHotkey()
-    EndIf
     ; ON THE FAST TICK, NOT INSIDE HOUSEKEEPING. It was in the housekeeping block
     ; first, which is gated on two GAME HOURS - so a player whose content had not
     ; loaded would play most of an in-game morning before the mod admitted it,
@@ -6056,6 +6706,7 @@ Event OnUpdateGameTime()
     ; Costs one Int compare per tick once it has answered. True = by now the
     ; registry has certainly finished loading, so a NO is a real no.
     CheckContentLoaded(True)
+    _observers = Observers()
     Float now = Utility.GetCurrentGameTime()
     Float sinceKeep = now - StorageUtil.GetFloatValue(None, "SNRom_LastHousekeep", 0.0)
     ; A negative delta means the clock moved backwards - a load of an older save.
@@ -6066,6 +6717,8 @@ Event OnUpdateGameTime()
         ; is not on it is invisible to them - and the event we used to rely on
         ; never fires for anyone SeverActions already knows.
         SweepFollowers()
+        ; Wherever they are: a follower told to wait out of range still enrolls.
+        CheckPendingEnrollments()
         ; Attraction BEFORE the assessors. It is the cheap deterministic one and
         ; it feeds a gate the spark assessment's outcome is read against.
         RefreshNextAttraction()
@@ -6084,8 +6737,8 @@ Event OnUpdateGameTime()
         ; for an idle follower at all. One HasKeyword read per roster entry once
         ; everyone is settled.
         SweepProposalGates()
-        ; BEFORE the migration and the partner count, because this one is racing
-        ; Romantasy's next award rather than tidying stored data.
+        ; The Lover question, for anyone owed it whether or not they have earned
+        ; anything lately.
         SweepLoverCeiling()
         ; AFTER SweepFollowers above, so the roster is settled, and BEFORE
         ; RefreshPartnerCount so the partner count is taken from post-migration
@@ -6174,17 +6827,23 @@ Function AssessNextTalk()
     ; Picking the largest wait is self-balancing and needs no persisted cursor.
     ; A never-assessed NPC has lastCheck 0.0, so her wait is the whole game
     ; clock and she is picked first - correct, and it self-corrects the moment
-    ; she is stamped. Ties break on roster order, which then rotates on the
-    ; next tick because the winner has just been stamped.
+    ; she is stamped. Ties break on the order the scan found them in, which
+    ; then rotates on the next tick because the winner has just been stamped.
+    ;
+    ; FROM WHO CAN OBSERVE THE PLAYER, not the roster (Observers): following
+    ; is not a qualifier (design 3.2).
     Float now = Utility.GetCurrentGameTime()
     Float cooldown = SkyrimNetApi.GetConfigFloat(CFG(), "talkCooldownHours", 3.0) / 24.0
-    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int n = 0
+    If _observers
+        n = _observers.Length
+    EndIf
     Int i = 0
     Actor pick = None
     Float pickSince = 0.0
     Float bestWait = -1.0
     While i < n
-        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        Actor a = _observers[i]
         If a != None && TalkCandidate(a, now, cooldown)
             Float last = StorageUtil.GetFloatValue(a, "SNRom_LastTalkCheck", 0.0)
             If (now - last) > bestWait
@@ -6211,22 +6870,9 @@ Function AssessNextTalk()
 EndFunction
 
 Bool Function TalkCandidate(Actor akActor, Float afNow, Float afCooldown)
-    ; IsFollowing, NOT IsPlayerTeammate. These have to ask the SAME question the
-    ; sweep asks, and for a long time they did not: SweepFollowers used the
-    ; permissive two-test IsFollowing while this used the bare vanilla flag. An
-    ; NPC in CurrentFollowerFaction who does not carry IsPlayerTeammate - which
-    ; is normal for SeverActions-managed companions - was therefore ENROLLED and
-    ; then never assessed, forever, with nothing logged.
-    ;
-    ; IsFollowing's own comment warns about exactly this ("never enrolled and
-    ; never scored, silently, forever") and the warning did not reach the two
-    ; functions that needed it. Observed 2026-08-01: Svana followed for 24 game
-    ; hours as the most-overdue candidate and was never once picked, while
-    ; Nicollette - waiting and sandboxing, but still flagged a teammate - was
-    ; assessed repeatedly.
-    If akActor.IsDead() || !IsFollowing(akActor) || !akActor.Is3DLoaded()
-        Return False
-    EndIf
+    ; Alive, loaded and near the player already: akActor comes from Observers.
+    ; This asked IsFollowing until 2.0 - a gate that was only ever Romantasy's
+    ; (design 3.2), and that left a non-follower's conversations unscored.
     Return (afNow - StorageUtil.GetFloatValue(akActor, "SNRom_LastTalkCheck", 0.0)) >= afCooldown
 EndFunction
 
@@ -6347,6 +6993,10 @@ Event OnTalkAssessed(String asResponse, Int aiSuccess)
         String oldAddress = StoreGetText(who, "Address")
         If oldAddress != newAddress
             StoreSetText(who, "Address", newAddress)
+            ; The dashboard holds ADDRESS too; see PushBondText.
+            If _dashText
+                PushBondText(who)
+            EndIf
             Diag(LOG_INFO(), asked + " now calls " + Game.GetPlayer().GetDisplayName() + \
                 ": " + newAddress + (" (was: " + oldAddress + ")"))
         EndIf
@@ -6393,7 +7043,7 @@ Event OnTalkAssessed(String asResponse, Int aiSuccess)
     String landKind = SNRom_Decorators.Upper(SNRom_Decorators.Trim(\
         SNRom_Decorators.FieldValue(asResponse, "LANDMARK_KIND:")))
     If SNRom_Decorators.Upper(weightWord) == "LANDMARK" && landKind == "MARRIAGE"
-        Int held = Romantasy.GetPoints(who)
+        Int held = PointsOf(who)
         If held < LOVER_MIN()
             Diag(LOG_INFO(), "Talk landmark for " + asked + " was a commitment to " + \
                 "marry, and they hold " + held + " pts - below Lover at " + LOVER_MIN() + \
@@ -6541,12 +7191,12 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
         StorageUtil.SetIntValue(akActor, "SNRom_TalkToday", spent + used)
     EndIf
 
-    ; CHECK THE RETURN. Romantasy rejects points for an actor it does not yet
-    ; consider enrolled - and it snapshots its roster at LOAD, so every NPC
-    ; enrolled during this session is invisible to it until the next one
-    ; (CommitConfig returns False; that is what "Romantasy scoring live: False"
-    ; means at enrollment). Ignoring the return meant writing a ledger row for
-    ; an award that never happened.
+    ; CHECK THE RETURN. In 1.x Romantasy rejected points for an actor it did not
+    ; yet consider enrolled - it snapshotted its roster at LOAD, so every NPC
+    ; enrolled during a session was invisible to it until the next one.
+    ; Ignoring the return meant writing a ledger row for an award that never
+    ; happened. From 2.0 the one refusal left is a Romantasy copy that did not
+    ; verify (ImportPoints), and the rule stands.
     ;
     ; Observed 2026-08-01: Svana lost 40 and Haelga lost 350 - the first LANDMARK
     ; this project ever produced - both recorded in the ledger as if they landed,
@@ -6555,12 +7205,14 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
     ; The one moment in normal play where an award must not reach Romantasy: it
     ; would carry an unanswered romance into Lover. Withheld, not written and
     ; corrected, so there is no false LOVER splash and no phantom tier event.
-    If HoldShortOfLover(akActor, awarded)
+    ;
+    ; EARNED, so the consent gate inside ApplyDepth decides the withhold.
+    Int result = ApplyDepth(akActor, awarded, asWhat, True, "talk")
+    If result == DEPTH_WITHHELD()
         Ledger(akActor, "withheld", "", awarded, 1, asWhat)
         Return
     EndIf
-    MarkSelfAward(akActor)
-    Bool applied = Romantasy.ModifyPoints(akActor, awarded, asWhat, True)
+    Bool applied = result > 0
     If !applied
         ; Roll back what we already spent. Without this a rejected award still
         ; burns the 3-day landmark cooldown and the daily conversation budget -
@@ -6579,10 +7231,9 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
             StorageUtil.SetIntValue(akActor, "SNRom_TalkToday", \
                 StorageUtil.GetIntValue(akActor, "SNRom_TalkToday", 0) - refund)
         EndIf
-        Diag(LOG_ERROR(), "Romantasy REJECTED " + awarded + " pts for " + \
-            akActor.GetDisplayName() + " (tier=" + (Romantasy.GetLevel(akActor) - 1) + \
-            ") - she is enrolled in our roster but not live in Romantasy yet, which " + \
-            "needs one game load after enrollment. Award LOST, no ledger row written.")
+        Diag(LOG_ERROR(), "Could not write " + awarded + " pts for " + \
+            akActor.GetDisplayName() + " - their points are not ours yet and could not be " + \
+            "brought over from Romantasy (see the line above). Award LOST, no ledger row written.")
         Return
     EndIf
     Ledger(akActor, "talk", "", awarded, 1, asWhat)
@@ -6621,7 +7272,9 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
 EndFunction
 
 Function AssessNextSpark()
-    { Picks ONE eligible follower and asks whether the bond has crossed.
+    { Picks ONE eligible character who can observe the player (Observers) and
+      asks whether the bond has crossed. A non-follower can spark (design 3.2,
+      question 9).
 
       One at a time, on a long interval, because this is a once-per-NPC
       transition that rewrites how she speaks for the rest of the game. There
@@ -6652,12 +7305,15 @@ Function AssessNextSpark()
     ; she traveled. Still exactly one per tick.
     Float now = Utility.GetCurrentGameTime()
     Float cooldown = SkyrimNetApi.GetConfigFloat(CFG(), "sparkCooldownHours", 6.0) / 24.0
-    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int n = 0
+    If _observers
+        n = _observers.Length
+    EndIf
     Int i = 0
     Actor pick = None
     Float bestWait = -1.0
     While i < n
-        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        Actor a = _observers[i]
         If a != None && SparkCandidate(a, now, cooldown)
             Float last = StorageUtil.GetFloatValue(a, "SNRom_LastSparkCheck", 0.0)
             If (now - last) > bestWait
@@ -6682,13 +7338,8 @@ Bool Function SparkCandidate(Actor akActor, Float afNow, Float afCooldown)
     If SNRom_Decorators.IsSparked(akActor)
         Return False                            ; once only, ever
     EndIf
-    ; IsFollowing, not IsPlayerTeammate - same fix as TalkCandidate, see the note
-    ; there. A SeverActions companion who never sets the vanilla flag would
-    ; otherwise be permanently unable to cross into romance, and spark fires once
-    ; per NPC ever, so "never assessed" and "never able to" are the same thing.
-    If akActor.IsDead() || !IsFollowing(akActor)
-        Return False                            ; not currently traveling together
-    EndIf
+    ; Alive and near the player already: akActor comes from Observers. This
+    ; asked IsFollowing until 2.0; anyone enrolled can spark (design 3.2).
 
     ; ---- TENURE GATE ------------------------------------------------------
     ; An NPC's FIRST assessment runs with SNRom_LastSparkCheck at 0.0, so the
@@ -6797,12 +7448,14 @@ Event OnSparkAssessed(String asResponse, Int aiSuccess)
         ; the points are simply owed.
         Int held = StorageUtil.GetIntValue(who, "SNRom_BankedPoints", 0)
         If held > 0
-            StorageUtil.UnsetIntValue(who, "SNRom_BankedPoints")
             StorageUtil.UnsetIntValue(who, "SNRom_AskPending")
-            MarkSelfAward(who)
-            If Romantasy.ModifyPoints(who, held, "Held while the bond was still unnamed", True)
+            ; The bank is cleared only once the release lands, as in
+            ; AcceptRomance: clearing it first lost it whenever Romantasy
+            ; refused someone not following.
+            If ApplyDepth(who, held, "Held while the bond was still unnamed", True, "released") > 0
+                StorageUtil.UnsetIntValue(who, "SNRom_BankedPoints")
                 Ledger(who, "unbank", "", held, 1, "Released - judged platonic")
-                Diag(LOG_INFO(), "Released " + held + " pts held for " + asked +                     " while the spark was undecided - judged platonic, so depth is free. " +                     "Now " + Romantasy.GetPoints(who) + " pts.")
+                Diag(LOG_INFO(), "Released " + held + " pts held for " + asked +                     " while the spark was undecided - judged platonic, so depth is free. " +                     "Now " + PointsOf(who) + " pts.")
             EndIf
         EndIf
         Return
@@ -6892,8 +7545,7 @@ Function ApplySpark(Actor akActor, String asMoment)
         Diag(LOG_INFO(), "Spark confirmed for " + akActor.GetDisplayName() +             " with " + StorageUtil.GetIntValue(akActor, "SNRom_BankedPoints", 0) +             " pts already held - raising the question now.")
     EndIf
 
-    MarkSelfAward(akActor)
-    Romantasy.ModifyPoints(akActor, ScaleAward(25), asMoment, False)
+    ApplyDepth(akActor, ScaleAward(25), asMoment, False, "spark")
 
     ; A SPARK IS HERS ALONE, SO IT IS A THOUGHT, NOT AN EVENT. This used to be
     ; RegisterPersistentEvent("<her> and <player> have reached an understanding
@@ -7026,12 +7678,15 @@ Function AssessNextDrift()
 
     ; Most overdue wins, same starvation fix as the other two assessors.
     Float now = Utility.GetCurrentGameTime()
-    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int n = 0
+    If _observers
+        n = _observers.Length
+    EndIf
     Int i = 0
     Actor pick = None
     Float bestWait = -1.0
     While i < n
-        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        Actor a = _observers[i]
         If a != None && DriftCandidate(a, now)
             Float last = StorageUtil.GetFloatValue(a, "SNRom_LastDriftCheck", 0.0)
             If (now - last) > bestWait
@@ -7054,9 +7709,7 @@ Bool Function DriftCandidate(Actor akActor, Float afNow)
     If StorageUtil.GetIntValue(akActor, "SNRom_DispositionAuthored", 0) != 1
         Return False                            ; nothing to drift FROM yet
     EndIf
-    If akActor.IsDead() || !IsFollowing(akActor) || !akActor.Is3DLoaded()
-        Return False
-    EndIf
+    ; Alive, loaded and near the player already: akActor comes from Observers.
 
     ; ---- GATE 2: EVIDENCE -------------------------------------------------
     ; Checked before the clock, because it is the cheaper read and because it
@@ -7439,6 +8092,19 @@ Function PumpAuthoringQueue()
 EndFunction
 
 Event OnDispositionAuthored(String asResponse, Int aiSuccess)
+    { SkyrimNet's callback for AuthorDisposition, named in its dispatch. A
+      thin wrapper since WP2, like OnSeedAssessed: DispositionAuthored has six
+      early exits, and an open dashboard wants the row - traits as well as the
+      prose ApplyProse pushes - after whichever one runs. A re-author or
+      preference repair started from the dashboard ends here. }
+    Actor who = _pendingActor
+    DispositionAuthored(asResponse, aiSuccess)
+    If _dashText
+        PushBond(who, 0)
+    EndIf
+EndEvent
+
+Function DispositionAuthored(String asResponse, Int aiSuccess)
     Actor who = _pendingActor
     String asked = _pendingName
     _pendingActor = None
@@ -7491,119 +8157,19 @@ Event OnDispositionAuthored(String asResponse, Int aiSuccess)
         Return
     EndIf
 
-    ; Character BEFORE the likes check, deliberately. These are independent
-    ; judgments and failing one says nothing about the other.
+    ; THE CHARACTER IS THE WHOLE ANSWER FROM 2.0. The response may still carry
+    ; LIKES and DISLIKES lines until the prompt stops asking for them; they are
+    ; not read. Romantasy's preferences do not carry into Relationships (the
+    ; author, 2026-09-30), and phase 5 brings preferences back on our own
+    ; vocabulary. Which retires 1.x's preference guards with them: the
+    ; list-truncation fallback, other authors' preferences, the player-managed
+    ; flag and Romantasy's refusals were all about writing into Romantasy.
     ;
-    ; Proven the hard way: given a real profile, the model answered the likes
-    ; from the bio's "Interject Summary" (fishing, Dibella, Kleppr) and every
-    ; one was rejected - but in the SAME response it judged Lynea CASUAL,
-    ; ardor 3, exclusivity 60, which is the most characterful read we had ever
-    ; got and the first CASUAL ever produced. All of it was discarded because
-    ; the early return sat above this line. Never throw away a good answer
-    ; because a different answer in the same response was bad.
+    ; What the response must carry is the character block, which the
+    ; truncation guard above has already checked reached EXCLUSIVITY. The
+    ; lists were always last, precisely so a runaway list could not destroy
+    ; the judgment that preceded it.
     ApplyCharacter(who, asResponse)
-
-    ; --- character-only path ----------------------------------------------
-    ; Updates the four gate ints plus WHY/LIMIT/ADDRESS and touches PREFERENCES
-    ; NOT AT ALL - no ApplyPreferenceList, no ApplyArchetype.
-    ;
-    ; This exists because preference removal CANNOT SURVIVE A RELOAD. Romantasy
-    ; keeps its own persistent per-follower set and restores it, so every
-    ; ApplyPreferenceList only ever ADDS, permanently. Jordis reached 50
-    ; preferences that way and cannot be reduced - and an NPC who likes
-    ; everything likes nothing.
-    ;
-    ; So re-authoring to pick up a prompt improvement used to cost irreversible
-    ; preference growth. Fifteen NPCs still hold orientations authored under the
-    ; old MEN/WOMEN/ANY vocabulary, which answered ANY 16 times out of 17
-    ; because a bare gender word was the low-effort answer. Their character
-    ; blocks are worth redoing; their preference lists are not worth inflating.
-    ;
-    ; Also the code path the living-disposition design will need: that asks a
-    ; narrow question about ONE field and must never re-run preference authoring.
-    If StorageUtil.GetIntValue(who, "SNRom_CharOnly", 0) == 1
-        StorageUtil.UnsetIntValue(who, "SNRom_CharOnly")
-        ApplyProse(who, asResponse, asked)
-        Diag(LOG_INFO(), "Character block updated for " + asked + " - preferences untouched by design")
-        LogDisposition(asked, aiSuccess, asResponse, "character-only")
-        Return
-    EndIf
-
-    ; --- transcription guard ----------------------------------------------
-    ; DISLIKES is now the final line, so its absence means the response was
-    ; cut off DURING the lists - which only happens when the model is
-    ; transcribing the catalogue rather than choosing from it. The surviving
-    ; LIKES are then just the head of the list in catalogue order, a
-    ; positional artefact and not a judgment about anyone.
-    ;
-    ; The character block above it is already safely written, which is the
-    ; whole point of the reordering. Only the lists are abandoned.
-    String likesCsv = SNRom_Decorators.FieldValue(asResponse, "LIKES:")
-    If SNRom_Decorators.FieldValue(asResponse, "DISLIKES:") == ""
-        Diag(LOG_WARN(), "Lists truncated for " + asked + \
-            " - character fields kept, preferences discarded as catalogue transcription")
-        LogDisposition(asked, aiSuccess, asResponse, "truncated-lists")
-        ApplyArchetype(who)
-        Return
-    EndIf
-
-    ; Caps are enforced HERE, not trusted to the prompt. Rule 1 asks for 4-7
-    ; likes; a model handed a flat 58-name list answered with 34. Prose cannot
-    ; enforce a count - Papyrus can.
-    ; These are RECOGNIZED counts; newLikes/newDislikes are what actually
-    ; changed. Falling back on "nothing NEW applied" wrongly discarded a good
-    ; response for any already-established NPC.
-    ; THE PLAYER MAY HAVE TAKEN THIS ONE OVER.
-    ;
-    ; Romantasy API 3 carries a per-actor ownership flag its own editor sets when
-    ; a player edits someone's likes and dislikes by hand. The flag covers
-    ; PREFERENCES ONLY, so this skips the preference write and lets the character
-    ; block through - orientation, intimacy, ardor, exclusivity, WHY and LIMIT are
-    ; ours, live in our own store, and his editor never touches them. That split
-    ; already exists here as ReauthorCharacter versus ReauthorDisposition.
-    ;
-    ; We only ever READ this flag. SetPreferencesManual is for a genuine
-    ; player-facing editor, and this mod is the automated authoring the flag
-    ; exists to hold off - setting it would be claiming the player's edits as
-    ; our own.
-    If PreferencesAreForeign(who)
-        Diag(LOG_INFO(), asked + " already holds preferences this mod did not write (" +             HeldPreferenceCount(who) + " of them) - another mod or a follower author " +             "owns them. Left untouched; character fields still authored.")
-        LogDisposition(asked, aiSuccess, asResponse, "foreign-preferences")
-        StorageUtil.SetIntValue(who, "SNRom_PrefsForeign", 1)
-        StorageUtil.SetIntValue(who, "SNRom_DispositionAuthored", 1)
-        Return
-    EndIf
-    If RomApi() >= 3 && Romantasy.IsPreferencesManual(who)
-        Diag(LOG_INFO(), asked + " is player-managed in Romantasy - preferences left alone, " +             "character fields still authored")
-        LogDisposition(asked, aiSuccess, asResponse, "player-managed")
-        StorageUtil.SetIntValue(who, "SNRom_DispositionAuthored", 1)
-        Return
-    EndIf
-
-    _prefsRefused = False
-    Int liked    = ApplyPreferenceList(who, likesCsv, 1, 7)
-    Int newLikes = _lastApplied
-    Int disliked = ApplyPreferenceList(who, SNRom_Decorators.FieldValue(asResponse, "DISLIKES:"), 0, 4)
-    Int newDislikes = _lastApplied
-
-    If _prefsRefused
-        ; DO NOT FALL THROUGH TO THE ARCHETYPE. Its fallback writes preferences
-        ; with AddToFaction/SetFactionRank - the legacy path, which Romantasy does
-        ; not guard - so a refused write followed by "no valid likes" put our
-        ; archetype preferences on Endarie through the back door on 2026-08-21,
-        ; overriding the exact ownership the refusal was protecting. Refused means
-        ; refused, by every route we have.
-        LogDisposition(asked, aiSuccess, asResponse, "romantasy-refused")
-        StorageUtil.SetIntValue(who, "SNRom_DispositionAuthored", 1)
-        Return
-    EndIf
-
-    If liked == 0
-        Diag(LOG_WARN(), "No valid likes parsed for " + asked + " - archetype fallback (character fields kept)")
-        ApplyArchetype(who)
-        Return
-    EndIf
-
     StorageUtil.SetIntValue(who, "SNRom_DispositionAuthored", 1)
 
     ; Same rule the character fields already follow in ApplyCharacter: an ABSENT
@@ -7614,11 +8180,9 @@ Event OnDispositionAuthored(String asResponse, Int aiSuccess)
     ; symptom that read as "it reverted with the save" for two sessions.
     ApplyProse(who, asResponse, asked)
 
-    Diag(LOG_INFO(), "Disposition authored for " + asked + ": " + liked + " likes (" + newLikes + \
-        " new), " + disliked + " dislikes (" + newDislikes + " new)")
-    LogDisposition(asked, aiSuccess, asResponse, "applied:" + newLikes + "/" + newDislikes + \
-        " recognized:" + liked + "/" + disliked)
-EndEvent
+    Diag(LOG_INFO(), "Disposition authored for " + asked)
+    LogDisposition(asked, aiSuccess, asResponse, "applied")
+EndFunction
 
 Function ApplyProse(Actor akActor, String asResponse, String asName)
     { The three free-text fields: WHY, LIMIT and ADDRESS.
@@ -7691,6 +8255,12 @@ Function ApplyProse(Actor akActor, String asResponse, String asName)
     String addressLine = SNRom_Decorators.FieldValue(asResponse, "ADDRESS:")
     If addressLine != ""
         StoreSetText(akActor, "Address", addressLine)
+    EndIf
+    ; THE DASHBOARD HOLDS THIS TEXT once a full refresh has answered this
+    ; session, so the change goes to it now, not at the next load. A Bool when
+    ; nobody has opened it. See PushBondText.
+    If _dashText
+        PushBondText(akActor)
     EndIf
 EndFunction
 
@@ -7965,201 +8535,32 @@ String Function BlockAnswer(String[] akTitles, String asPrefix)
     Return found
 EndFunction
 
-Int Function CountHighFrequencyHeld(Actor akActor)
-    { How many high-frequency preferences this actor ALREADY holds, counted from
-      live faction membership rather than from anything we cached.
 
-      Exists because the frequency budget was per-CALL and therefore only ever
-      capped one response. Walks the same contiguous 0x801-0x83A preference
-      range ClearDisposition uses, asking IsHighFrequency about each. }
-    Int held = 0
-    Int off = 0x801
-    While off <= 0x83A
-        If SNRom_Decorators.IsHighFrequency(off)
-            Faction f = Game.GetFormFromFile(off, "CS_Romantasy.esp") as Faction
-            If f != None && akActor.GetFactionRank(f) >= 0
-                held += 1
-            EndIf
-        EndIf
-        off += 1
-    EndWhile
-    Return held
-EndFunction
 
-; Set by ApplyPreferenceList when Romantasy REFUSED a write. A refusal is not a
-; failure of ours and it is not a bad LLM response - it is Romantasy saying these
-; preferences belong to somebody else. The caller has to know the difference,
-; because its fallback for "no valid likes" is to write archetype preferences
-; through AddToFaction, which bypasses the very protection that just refused us.
-Bool _prefsRefused
-
-Int Function ApplyPreferenceList(Actor akActor, String asCsv, Int aiRank, Int aiMax)
-    { Returns how many names were RECOGNIZED - newly applied plus already
-      held. _lastApplied carries the newly-applied count for logging.
-
-      The distinction matters: returning only the newly-applied count made
-      "she already believes everything you named" indistinguishable from
-      "you named nothing real", and the caller threw away a perfectly good
-      response as an archetype fallback. Re-authoring an established NPC hits
-      that case constantly, because ApplyPreferenceList never overwrites.
-
-      Unrecognized names are still dropped, not guessed at - LabelToOffset IS
-      the whitelist.
-
-      aiMax is a HARD cap. An NPC who likes everything likes nothing: the
-      whole design rests on a few sharp preferences distinguishing one person
-      from another, so a list of 34 is not a generous disposition, it is a
-      destroyed one.
-
-      The FREQUENCY BUDGET below is the subtler cap and matters more to how
-      the game actually feels. See SNRom_Decorators.IsHighFrequency. }
-    If asCsv == ""
-        Return 0
-    EndIf
-    ; MIND THE ZERO.
-    ;
-    ; Our aiRank convention is 1 = LIKE and 0 = DISLIKE, and that is what both
-    ; call sites pass. Romantasy's aiDirection uses 0 for REMOVE. Passing aiRank
-    ; straight through to SetPreference would delete every dislike in the game,
-    ; on every authored character, and the only symptom would be characters who
-    ; mysteriously object to nothing. Derived here once so the two conventions
-    ; never meet.
-    Int dir = -1
-    If aiRank == 1
-        dir = 1
-    EndIf
-    ; Normalize separators first - a model that copies the catalogue's own
-    ; display separator into its answer otherwise yields ONE giant unrecognized
-    ; "name". See SNRom_Decorators.NormalizeSeparators.
-    String[] parts = StringUtil.Split(SNRom_Decorators.NormalizeSeparators(asCsv), ",")
-    Int i = 0
-    Int applied = 0
-    Int recognized = 0
-
-    ; FREQUENCY BUDGET COUNTS WHAT SHE ALREADY HOLDS, not just this list.
-    ; hiFreq used to start at 0 every call, so it only ever capped a single
-    ; response - re-author an NPC three times and she accumulates six
-    ; high-frequency preferences, two at a time, with the log cheerfully
-    ; reporting the budget working on each pass. Since preferences can never be
-    ; removed, that is a permanent distortion of her pacing. Seeding from the
-    ; actor's CURRENT faction membership makes the cap mean what its comment
-    ; always claimed.
-    Int hiFreq = CountHighFrequencyHeld(akActor)
-    While i < parts.Length && applied < aiMax && !_prefsRefused
-        String label = SNRom_Decorators.Trim(parts[i])
-        ; Papyrus has no Continue, so the whole body is guarded instead. Empty
-        ; entries are normal here: separator normalization turns a multi-byte
-        ; separator into two commas, leaving a gap between them. They are not
-        ; worth a rejection warning.
-        If label != ""
-            ; Exact first, so the log can distinguish "the model wrote it
-            ; correctly" from "we had to fold an inflection". Naming drift that
-            ; goes unlogged is naming drift you cannot tune the prompt against.
-            Int offset = SNRom_Decorators.LabelToOffset(SNRom_Decorators.Canon(label))
-            If offset == 0
-                offset = SNRom_Decorators.LabelToOffsetFuzzy(label)
-                If offset != 0
-                    Diag(LOG_INFO(), "Normalized '" + label + "' to a known activity for " + akActor.GetDisplayName())
-                EndIf
-            EndIf
-            If offset == 0
-                Diag(LOG_WARN(), "Rejected unrecognized activity '" + label + "' for " + akActor.GetDisplayName())
-            Else
-                ; Two DIFFERENT silent skips used to look identical from
-                ; outside: a form that failed to resolve, and an opinion she
-                ; already holds. The first is a bug, the second is the design
-                ; working exactly as intended. "5 listed, 4 applied" is
-                ; unattributable without this.
-                Bool hf = SNRom_Decorators.IsHighFrequency(offset)
-                Faction f = Game.GetFormFromFile(offset, "CS_Romantasy.esp") as Faction
-                If hf && hiFreq >= 2
-                    ; Rule 2 in the prompt asks for at most two of these.
-                    ; Jordis came back with three of five - Chests Looted,
-                    ; Critical Strikes, Backstabs - which would have paced her
-                    ; entire romance on looting and combat mechanics instead of
-                    ; on who she is. Prose did not hold the count limit either.
-                    Diag(LOG_WARN(), "Frequency budget: dropped high-frequency '" + label + "' for " + \
-                        akActor.GetDisplayName() + " (already has 2)")
-                ElseIf f == None
-                    Diag(LOG_ERROR(), "GetFormFromFile failed for '" + label + "' (offset " + offset + \
-                        ") - CS_Romantasy.esp not loaded, or ESL indirection failed")
-                ElseIf RomApi() < 3 && akActor.GetFactionRank(f) >= 0
-                    ; LEGACY PATH ONLY, and the reason this branch existed at all:
-                    ; before API 3 a preference could not be removed across a
-                    ; reload, so an overwrite was a permanent addition rather than
-                    ; a replacement, and not overwriting was the least bad option.
-                    Diag(LOG_INFO(), "Kept " + akActor.GetDisplayName() + "'s existing opinion on '" + label + "'")
-                    recognized += 1
-                    If hf
-                        hiFreq += 1                              ; still spends frequency budget
-                    EndIf
-                Else
-                    Bool wrote = False
-                    If RomApi() >= 3
-                        ; NOT the label. Ten of the fifty-eight labels are
-                        ; shorthands that are not the statistic name - see
-                        ; OffsetToStatName, generated from the plugin's own records.
-                        String statName = OffsetToStatName(offset)
-                        If statName == ""
-                            Diag(LOG_ERROR(), "No Romantasy stat name for offset " + offset +                                 " ('" + label + "') - preference NOT written")
-                        Else
-                            wrote = Romantasy.SetPreference(akActor, statName, dir)
-                            If !wrote
-                                ; ONE LINE, NOT TEN, AND STOP. Romantasy refuses every
-                                ; write for a follower it considers author-defined, so
-                                ; carrying on produced ten identical ERROR lines that
-                                ; looked like our bug. The refusal is also the only
-                                ; detection we have - there is no API to ask - so it
-                                ; sets the same sticky flag PreferencesAreForeign uses
-                                ; and we never try this actor again.
-                                _prefsRefused = True
-                                StorageUtil.SetIntValue(akActor, "SNRom_PrefsForeign", 1)
-                                Diag(LOG_INFO(), "Romantasy refused '" + statName + "' for " +                                     akActor.GetDisplayName() + " - it owns their preferences. " +                                     "Leaving all of them alone; character fields still authored.")
-                            EndIf
-                        EndIf
-                    Else
-                        akActor.AddToFaction(f)
-                        akActor.SetFactionRank(f, aiRank)
-                        wrote = True
-                    EndIf
-                    If wrote
-                        applied += 1
-                        recognized += 1
-                        If hf
-                            hiFreq += 1
-                        EndIf
-                    EndIf
-                EndIf
-            EndIf
-        EndIf
-        i += 1
-    EndWhile
-    _lastApplied = applied
-    Return recognized
-EndFunction
 
 Function ApplyArchetype(Actor akActor)
-    { Deterministic fallback. Silent failure here is the worst outcome - an
-      enrolled NPC with no opinions never moves, and looks like nothing is
-      broken - so something is always applied. }
+    { The fallback when authoring fails: the character fields keep their
+      defaults, and SNRom_DispositionAuthored 2 marks the actor for a real
+      authoring at the next chance (AuthorDisposition retries 2).
+
+      1.x wrote two archetype preferences into Romantasy here. From 2.0 there
+      is nothing to write - which also fixes what the marker did to someone
+      ALREADY authored: a failed re-author set them to 2, "archetype", when
+      their authored character was intact. Only someone never authored is
+      marked now. }
     ; SAY SO IF A PERSON IS STANDING THERE WAITING. Reaching the fallback means
     ; the LLM call failed, echoed the wrong actor, or came back truncated - all
     ; of which are invisible from inside the game, and all of which leave the
     ; player believing a repair happened. Their old character is still intact in
     ; that case, which is the part worth telling them.
     AnnounceAuthored(akActor, akActor.GetDisplayName() + " could not be re-authored - the read failed. Their character is unchanged; try again.")
-    Faction f = Game.GetFormFromFile(0x802, "CS_Romantasy.esp") as Faction   ; Dungeons Cleared
-    If f != None && akActor.GetFactionRank(f) < 0
-        akActor.AddToFaction(f)
-        akActor.SetFactionRank(f, 1)
+    If StorageUtil.GetIntValue(akActor, "SNRom_DispositionAuthored", 0) == 0
+        StorageUtil.SetIntValue(akActor, "SNRom_DispositionAuthored", 2)     ; 2 = archetype
+        Diag(LOG_INFO(), "Archetype disposition applied to " + akActor.GetDisplayName())
+    Else
+        Diag(LOG_INFO(), "Authoring failed for " + akActor.GetDisplayName() + \
+            " - their existing character is kept")
     EndIf
-    f = Game.GetFormFromFile(0x838, "CS_Romantasy.esp") as Faction           ; Murders
-    If f != None && akActor.GetFactionRank(f) < 0
-        akActor.AddToFaction(f)
-        akActor.SetFactionRank(f, 0)
-    EndIf
-    StorageUtil.SetIntValue(akActor, "SNRom_DispositionAuthored", 2)         ; 2 = archetype
-    Diag(LOG_INFO(), "Archetype disposition applied to " + akActor.GetDisplayName())
 EndFunction
 
 Function LogDisposition(String asName, Int aiSuccess, String asRaw, String asOutcome)
@@ -8168,7 +8569,7 @@ Function LogDisposition(String asName, Int aiSuccess, String asRaw, String asOut
         ",\"success\":" + aiSuccess + \
         ",\"outcome\":\"" + asOutcome + "\"" + \
         ",\"raw\":\"" + SNRom_Decorators.JsonEscape(asRaw) + "\"}"
-    MiscUtil.WriteToFile("Data/SKSE/Plugins/SkyrimNet Relationships/logs/dispositions.jsonl", row + NL(), True, False)
+    WriteLog("dispositions.jsonl", "Data/SKSE/Plugins/SkyrimNet Relationships/logs/dispositions.jsonl", row + NL())
 EndFunction
 
 ; ===========================================================================
@@ -8195,7 +8596,6 @@ Function TestConfig()
     Diag(LOG_ERROR(), "CFG int  awardMaxPoints=" + SkyrimNetApi.GetConfigInt(CFG(), "awardMaxPoints", -999) + " (settings.yaml: 75)")
     Diag(LOG_ERROR(), "CFG int  logFlushEvery=" + SkyrimNetApi.GetConfigInt(CFG(), "logFlushEvery", -999) + " (settings.yaml: 25)")
     Diag(LOG_ERROR(), "CFG bool enrollmentOrganic=" + SkyrimNetApi.GetConfigBool(CFG(), "enrollmentOrganic", False) + " (settings.yaml: true)")
-    Diag(LOG_ERROR(), "CFG flt  barkPreferenceChance=" + SkyrimNetApi.GetConfigFloat(CFG(), "barkPreferenceChance", -1.0) + " (settings.yaml: 0.15)")
 EndFunction
 
 ; The TestPrompt / TestPromptWithCtx / TestRender diagnostics that debugged

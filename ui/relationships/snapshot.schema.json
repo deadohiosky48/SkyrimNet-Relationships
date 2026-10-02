@@ -1,0 +1,332 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:snrom:dashboard:snapshot:3",
+  "title": "Relationships dashboard snapshot, version 3",
+  "description": "Everything the dashboard page renders, pushed to it whole by the native host (bridge.js, message kind 'snapshot'). Built by SkyrimNetRelationships.dll from its read model (design 7.3, the WP2 transport), which Papyrus fills through the SNRom_Native natives: every open refreshes the numbers, and the text arrives on the first open after a load and from its writers after that. The DLL adds settings and crosshairTarget, sends the page this, and writes the same snapshot to SkyrimNetRelationships.snapshot.json beside its log. Derived, never read back as truth: the model is cleared whenever a save loads. The page shows only part of it by default: player mode (mode.js) draws what the player could know and hides the rest behind one developer switch. Each field's description names where the value lives TODAY, in SNRom_Bridge.psc or SNRom_Decorators.psc; SNRom_Bridge.DashboardNumbers and DashboardText read them, in the order native/src/Model.h defines. 'New in phase 2' means nothing holds it yet. Game times are Utility.GetCurrentGameTime() values: game days, fractional. Form ids are Actor.GetFormID() as Papyrus returns it: a signed 32-bit int, so FF-range references are negative. A BOND IS A PAIR (design 3.3): subject and object, with the object always the player for now. Nothing here is keyed by actor alone, so NPC-to-NPC bonds need new rows, not a new shape.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedAt", "roster", "playthrough", "ladder", "player", "settings", "bonds"],
+  "properties": {
+    "schemaVersion": {
+      "const": 3,
+      "description": "This file's version. Additive changes keep it; anything that renames, removes or re-means a field bumps it, and the page refuses a version it does not know rather than guessing. 2 added the required roster block (WP2), because a snapshot can now be sent before Papyrus has answered, and an empty roster must not be mistaken for nobody. 3 added the required settings.scale and settings.textSize, with natives v4, which hand them to the DLL."
+    },
+    "generatedAt": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Calendar::GetCurrentGameTime() when SkyrimNetRelationships.dll built this snapshot. The page measures 'joined 12 days ago' from here, never from a clock of its own."
+    },
+    "roster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "message"],
+      "description": "How current the bonds are (WP2). The page opens at once with whatever the DLL's read model holds, then asks Papyrus to refresh it (the SNRom_DashboardRefresh ModEvent); this says where that stands. The page stays usable in every status.",
+      "properties": {
+        "status": {
+          "enum": ["reading", "current", "not ready", "no answer"],
+          "description": "'reading': a refresh is out and has not answered; on the first open after a load there is nothing yet, and bonds is empty. 'current': the last refresh answered. 'not ready': Papyrus answered that the mod has not started (SNRom_Bridge.OnDashboardRefresh; message says why), so an empty roster means nothing. 'no answer': ten seconds passed with no answer; the Papyrus VM may be running behind, and a late answer is still taken."
+        },
+        "message": {
+          "type": ["string", "null"],
+          "description": "Why, when status is 'not ready': Papyrus's own words. Null otherwise."
+        }
+      }
+    },
+    "playthrough": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "store", "storeDecision"],
+      "description": "Which per-playthrough store is live, for the playthrough repairs (StartFreshStore, AdoptLegacyStore). All three are null until the first full refresh after a load answers: Papyrus pushes them with SNRom_Native.PutPlaythrough, from values SNRom_Bridge.ArmDashboard cached at bootstrap (the refresh may not ask SkyrimNet, since the dashboard pauses the game).",
+      "properties": {
+        "id": {
+          "type": ["string", "null"],
+          "description": "SNRom_Bridge.PlaythroughId(): SkyrimNet's GetSaveUniqueID for this playthrough. Re-read every time, never stored (StorageUtil strings do not survive a reload). Empty while SkyrimNet has not answered."
+        },
+        "store": {
+          "type": ["string", "null"],
+          "description": "SNRom_Bridge.StoreFile(): the JsonUtil store name without '.json', either 'SNRom_Dispositions' (the legacy file) or 'SNRom_Dispositions_<id>'. Also published as the 'store' key of SNRom_Current.json by WriteStorePointer."
+        },
+        "storeDecision": {
+          "enum": ["undecided", "legacy", "own", null],
+          "description": "StorageUtil Int SNRom_SaveId on None: 0 undecided, 1 this playthrough owns the legacy file, 2 it has its own (EnsureSaveId). Any other value is a leftover of the retired random-id scheme; the writer reports it as 'undecided', which is how EnsureSaveId treats it."
+        }
+      }
+    },
+    "ladder": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["thresholds"],
+      "description": "The point scale. Sent rather than hard-coded in the page, so a threshold we change later (design 6.6: points are our economy) changes in one place.",
+      "properties": {
+        "thresholds": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": { "type": "integer", "minimum": 0 },
+          "description": "Points at which tiers 0-5 begin: [0, 500, 1000, 1500, 2000, 2500]. 500 points a tier, kept from 1.x (design 1), and SNRom_Bridge's constants CONFIDANT_MIN 1500, LOVER_MIN 2000 and SPOUSE_MIN 2500. Tier NAMES are not here: they depend on the track and live in the page (labels.js)."
+        }
+      }
+    },
+    "player": {
+      "$ref": "#/$defs/party",
+      "description": "The player, as the object of every bond today. Game.GetPlayer(): formId 20 (0x14) and the display name."
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["developer", "scale", "textSize"],
+      "description": "Player settings the page needs: SkyrimNet plugin settings, handed to SkyrimNetRelationships.dll by SNRom_Bridge.ArmDashboard at every bootstrap and by the DLL's own settings watcher when they are saved, and sent here by the DLL.",
+      "properties": {
+        "developer": {
+          "type": "boolean",
+          "description": "The developer view (design 7.6), from the SkyrimNet setting dashboardDeveloperView, handed to the DLL by SNRom_Native.SetDeveloperView at bootstrap and by its settings watcher when the setting is saved. True shows what characters have not said, and the developer tools. mode.js turns it on when this is true, or when its own constant or ?developer=1 in a browser says so; it never turns it off against either."
+        },
+        "scale": {
+          "anyOf": [{ "const": "auto" }, { "enum": [75, 90, 100, 110, 125, 150, 175, 200] }],
+          "description": "How big the page is drawn, text and spacing alike, from the SkyrimNet select dashboardScale: 'auto' for Auto, or the percent of a fixed choice. Handed to the DLL by name, by SNRom_Native.SetDisplaySettings at bootstrap and by its settings watcher when the setting is saved; the DLL reads the names with one table (Settings::ScaleFromName). display.js applies it from every snapshot. In play a change shows the next time the dashboard opens: SkyrimNet's settings screen and the dashboard are never open at the same time. Auto sizes the page to the view's height, 1080 lines being 100%, kept between 75% and 200%."
+        },
+        "textSize": {
+          "enum": ["normal", "large", "larger"],
+          "description": "How big the text is drawn on top of the scale, from the SkyrimNet select dashboardTextSize (Normal, Large, Larger), delivered as scale is. It sizes the text and the boxes that hold it, not the spacing between them (display.js)."
+        }
+      }
+    },
+    "crosshairTarget": {
+      "anyOf": [{ "$ref": "#/$defs/crosshairTarget" }, { "type": "null" }],
+      "description": "Who the player was looking at when the dashboard opened. Optional: absent or null when nobody was. New in 2.0: SkyrimNetRelationships.dll reads the crosshair (CrosshairPickData's active target) BEFORE the view opens, because the view pauses the game and covers the crosshair (design 3.2, dashboard route). It sends a living, loaded actor other than the player, or null."
+    },
+    "bonds": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/bond" },
+      "description": "One entry per enrolled pair. Today that is every Actor on the StorageUtil FormList SNRom_Roster (on None), each paired with the player. Order is not meaningful; the page sorts."
+    }
+  },
+  "$defs": {
+    "formId": {
+      "type": "integer",
+      "minimum": -2147483648,
+      "maximum": 2147483647,
+      "description": "Actor.GetFormID(), a signed 32-bit int. The page shows it as eight hex digits, the form the web API and the README use."
+    },
+    "gameTime": {
+      "anyOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }],
+      "description": "A game time in game days, or null when it has never been stamped."
+    },
+    "party": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["formId", "name", "isPlayer"],
+      "description": "One side of a bond.",
+      "properties": {
+        "formId": { "$ref": "#/$defs/formId" },
+        "name": {
+          "type": "string",
+          "description": "The display name, read by SkyrimNetRelationships.dll from the engine (GetDisplayFullName). For showing only: the mod never resolves an actor by name, and neither may anything that reads this."
+        },
+        "isPlayer": { "type": "boolean", "description": "True for the player. Always true for a bond's object until NPC-to-NPC bonds exist (design 3.3)." }
+      }
+    },
+    "crosshairTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["formId", "name", "enrolled"],
+      "properties": {
+        "formId": { "$ref": "#/$defs/formId" },
+        "name": { "type": "string", "description": "GetDisplayName() of the crosshair actor." },
+        "enrolled": {
+          "type": ["boolean", "null"],
+          "description": "Whether they already have a bond with the player: their Actor is on SNRom_Roster (StorageUtil Int SNRom_Enrolled is the per-actor echo of it), as the DLL's read model last heard. When false, the page offers 'Enroll <name>'; when true, it offers to show their bond instead. Null until a refresh has answered since the load, because until then the model cannot tell; the page then names them and offers nothing."
+        }
+      }
+    },
+    "bond": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subject", "object", "following", "nearby", "lastFollowingAt", "enrollment",
+        "depth", "track", "state", "foreclosure", "stance", "askPending",
+        "spark", "commitment", "seeded", "traits", "prose"
+      ],
+      "description": "A bond between two parties. Every per-actor key named below is read on the SUBJECT, because today every stored value describes the subject's side of their bond with the player.",
+      "properties": {
+        "subject": { "$ref": "#/$defs/party", "description": "Whose side of the bond this is. Always an NPC today." },
+        "object": { "$ref": "#/$defs/party", "description": "Who the bond is with. Always the player today (isPlayer true)." },
+        "following": {
+          "type": "boolean",
+          "description": "SNRom_Bridge.IsFollowing(subject): IsPlayerTeammate, SeverActions' own follower flag, or vanilla CurrentFollowerFaction. Drawn by SkyrimNetRelationships.dll's display copy of that function (native/src/Display.cpp, Following), from facts it reads from the engine and SeverActions' follower roster, which Papyrus fetches once per refresh; the gates keep calling IsFollowing. Following is one attribute among many: it decides automatic enrollment and nothing else (design 3.2)."
+        },
+        "nearby": {
+          "type": "boolean",
+          "description": "Is3DLoaded(), the presence gate SNRom_Bridge.RequestSparkNow applies, read by SkyrimNetRelationships.dll from the engine when it builds the snapshot. The page greys out the actions that need it (actions.js, needsNearby)."
+        },
+        "lastFollowingAt": {
+          "$ref": "#/$defs/gameTime",
+          "description": "StorageUtil Float SNRom_LastFollowingAt: when the follower sweep last saw them following. Null if never."
+        },
+        "enrollment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["by", "joinedAt"],
+          "properties": {
+            "by": {
+              "enum": ["following", "dialogue", "player", "unknown"],
+              "description": "How the bond began. 'following': AutoEnroll after the enrollment window (StorageUtil Int SNRom_AutoEnrolled = 1). 'dialogue': the RomanceBeginSpark action's BeginSpark (SNRom_Enrolled = 1 without SNRom_AutoEnrolled). 'player': enrolled by the player by crosshair, from a hotkey or this dashboard; new in 2.0 (WP7), nothing writes it yet. 'unknown': enrolled by a build that recorded neither."
+            },
+            "joinedAt": {
+              "$ref": "#/$defs/gameTime",
+              "description": "When they joined the roster. No join date exists yet: phase 2 stores a real enrollment time, and until then the snapshot sends null (design 7.3). A bond enrolled before phase 2 stays null, since nothing can recover the day. NOT StorageUtil Float SNRom_EnrolledAt: BeginSpark, UnsparkActor and EndRomance re-stamp that to re-arm the spark tenure gate, so it is 'tenure clock started', not 'joined'."
+            }
+          }
+        },
+        "depth": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["points", "tier", "banked"],
+          "description": "Depth: points and tier, the axis that is not a state machine and can fall at any time (design 5.1).",
+          "properties": {
+            "points": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "SNRom_Bridge.DashboardPoints(subject)[0], the one accessor the dashboard reads points through. From WP4 the points are the mod's own, StorageUtil Int SNRom_Points in the co-save, read through SNRom_Bridge.PointsOf (design 6.4, 9.1)."
+            },
+            "tier": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5,
+              "description": "SNRom_Bridge.DashboardPoints(subject)[1]: derived from the points on ladder.thresholds (DashboardTier) (GetLevel is LevelNumberForPoints, 1-6), less one. Sent rather than recomputed so the page and the game can never disagree about which rung someone is on."
+            },
+            "banked": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "SNRom_Bridge.DashboardPoints(subject)[2], StorageUtil Int SNRom_BankedPoints: points withheld by HoldShortOfLover while the consent question is unanswered, released whole on acceptance and discarded on a decline. Display only; the page never adds it to points."
+            }
+          }
+        },
+        "track": {
+          "enum": ["platonic", "romantic"],
+          "description": "Which ladder's names the depth is shown with (design 7.1, two tracks). 'romantic' only for a mutual romance: spark set AND the player accepted (SNRom_Sparked = 1 and SNRom_PlayerStance = 1), or a recorded engagement or marriage (CommitmentState >= 2). Everything else is 'platonic', including a foreclosed, declined or ended bond, so a platonic bond can never render as Lover. A spark the player has not answered is platonic too (the author, 2026-09-29): the character has not said it, so an Interested bond reads as any other friendship. No single stored flag holds this today: 0330 picks its ladder from SNRom_Sparked alone, which is only THEIR side."
+        },
+        "state": {
+          "enum": ["foreclosed", "unexamined", "platonic", "interested", "courting", "declined", "ended"],
+          "description": "The kind of bond, design 5.2's state machine. No stored flag holds it; SkyrimNetRelationships.dll derives it from the flags Papyrus pushes (native/src/Model.cpp, State), first match wins: 'foreclosed' if SNRom_Decorators.RomanceApplicability(subject) != 0; 'declined' if SNRom_PlayerStance = -1; 'courting' if SNRom_Sparked = 1 and SNRom_PlayerStance = 1 (design 5.3: 'they ask, player says yes'; the page labels it Courting below Spouse depth and Devoted at it, a label on this state and not a state of its own, decided 2026-09-29 in design 5.6); 'interested' if SNRom_Sparked = 1; 'ended' if StorageUtil Float SNRom_EndedAt is set (EndRomance); 'platonic' if SNRom_SparkDecided = 1; otherwise 'unexamined'. Nothing in code yet moves an ended bond on to platonic 'given time' (design 5.3); until something does, an ended bond stays ended until it sparks again."
+        },
+        "foreclosure": {
+          "anyOf": [{ "enum": ["kin", "minor", "orientation"] }, { "type": "null" }],
+          "description": "Why the romantic question never applies, when state is 'foreclosed'; null otherwise. SNRom_Decorators.RomanceApplicability(subject), drawn by SkyrimNetRelationships.dll's display copy of it (native/src/Display.cpp, Applicability): 1 kin (Kinship's SNKin_IsPlayerChild or SNKin_Bound, gated on kinshipBlockRomance), 2 minor (IsChild), 3 orientation (a KNOWN orientation that excludes this player). Derived at call time and never stored, by design."
+        },
+        "stance": {
+          "enum": ["unanswered", "accepted", "declined"],
+          "description": "StorageUtil Int SNRom_PlayerStance: 0 unanswered, 1 accepted, -1 declined (STANCE_* in SNRom_Bridge). The player's answer to the consent question. Display only: the dashboard offers no way to change it."
+        },
+        "askPending": {
+          "type": "boolean",
+          "description": "StorageUtil Int SNRom_AskPending = 1: the consent question is owed and waits for them to raise it in their own words (PumpAskQueue; today it also needs them loaded and in range, design 9.3)."
+        },
+        "spark": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sparked", "decided", "sparkedAt", "lastCheckedAt"],
+          "description": "The spark assessor's record: has something romantic crossed on THEIR side.",
+          "properties": {
+            "sparked": { "type": "boolean", "description": "StorageUtil Int SNRom_Sparked = 1 (SNRom_Decorators.IsSparked). Kept through a decline; cleared by UnsparkActor and EndRomance." },
+            "decided": { "type": "boolean", "description": "StorageUtil Int SNRom_SparkDecided = 1 (SNRom_Bridge.SparkDecided): the assessor has returned a usable verdict at least once. False is the third state, 'never judged', not 'no'." },
+            "sparkedAt": { "$ref": "#/$defs/gameTime", "description": "StorageUtil Float SNRom_SparkedAt. Null when not sparked." },
+            "lastCheckedAt": { "$ref": "#/$defs/gameTime", "description": "StorageUtil Float SNRom_LastSparkCheck: the spark assessor's watermark. It judges only what happened after this." }
+          }
+        },
+        "commitment": {
+          "enum": ["none", "candidate", "engaged", "married"],
+          "description": "SNRom_Bridge.CommitmentState(subject): 0 none, 1 candidate, 2 engaged, 3 married. Read from MARAS and vanilla PlayerMarriedFaction, never recorded by us. Drawn by SkyrimNetRelationships.dll's display copy of that function (native/src/Display.cpp, Commitment), from PlayerMarriedFaction and MARAS's three status lists, which Papyrus fetches once per refresh."
+        },
+        "seeded": {
+          "type": "boolean",
+          "description": "StorageUtil Int SNRom_Seeded = 1: their starting standing has been read from the record. ReseedActor clears it and reads again."
+        },
+        "traits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authored", "intimacy", "ardor", "exclusivity", "orientation", "orientationBasis"],
+          "description": "The authored character block, shown as chips on the roster row. When 'authored' is false these are StorageUtil's defaults, not anyone's judgement, and the page dims them.",
+          "properties": {
+            "authored": { "type": "boolean", "description": "StorageUtil Int SNRom_DispositionAuthored = 1." },
+            "intimacy": {
+              "enum": ["casual", "romantic", "guarded", "never"],
+              "description": "StorageUtil Int SNRom_PhysMinTier (default 4), mapped by SNRom_Decorators.IntimacyRank: below 0 never, 5 or more guarded, 4 romantic, anything else casual. The stored number is a minimum tier and does not sort; send the word."
+            },
+            "ardor": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4,
+              "description": "StorageUtil Int SNRom_Ardor (default 2): how much of what they feel they show. 0 reserved, 1 measured, 2 warm, 3 open, 4 intense (SNRom_Decorators.ArdorToInt)."
+            },
+            "exclusivity": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "StorageUtil Int SNRom_Exclusivity (default 50): what they require of the player about others. Authored as a word (0 untroubled, 25 accepting, 50 conventional, 75 possessive, 100 consuming); drift moves it by 20, so any value 0-100 is legal."
+            },
+            "orientation": {
+              "enum": ["men", "women", "both", "none"],
+              "description": "StorageUtil Int SNRom_Orientation (default 3): 0 none, 1 men, 2 women, 3 both."
+            },
+            "orientationBasis": {
+              "enum": ["unknown", "inferred", "known"],
+              "description": "StorageUtil Int SNRom_OrientationKnown: 0 unknown, 1 inferred, 2 known. Only 'known' can foreclose; the page marks the others as guesses."
+            }
+          }
+        },
+        "prose": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["why", "limit", "address"],
+          "description": "The authored lines, shown in the detail view only. Per-playthrough JsonUtil store, file StoreFile(), keys '<formId>.Why', '<formId>.Limit', '<formId>.Address' with the form id in decimal (SNRom_Bridge.StoreKey). Empty string when absent: ApplyProse never writes a blank, so empty means 'never authored', not 'authored as nothing'.",
+          "properties": {
+            "why": { "type": "string", "description": "WHY: one sentence on what their disposition says about them." },
+            "limit": { "type": "string", "description": "LIMIT: one line they will not cross, whatever they feel." },
+            "address": { "type": "string", "description": "ADDRESS: how they address the player." }
+          }
+        },
+        "history": {
+          "type": "array",
+          "maxItems": 12,
+          "description": "What moved the bond, newest first: the last few changes to its depth, kept by SkyrimNetRelationships.dll in the SKSE co-save (native/src/History.h), so they roll back with the save. Recorded by SNRom_Bridge.ApplyDepth (every change that lands, and every earned award the consent gate withholds) and by the one-time import. Optional and additive: a snapshot from a DLL before natives v5 has none. labels.js CHANGE decides what a player sees.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["day", "delta", "total", "kind", "reason"],
+            "properties": {
+              "day": { "type": "number", "description": "Calendar::GetCurrentGameTime() when it happened, in game days; the page shows it against generatedAt." },
+              "delta": { "type": "integer", "description": "The change in points; for 'withheld', the award held back; for 'import', the points brought over." },
+              "total": { "type": "integer", "minimum": 0, "description": "The points after it." },
+              "kind": { "type": "string", "description": "ApplyDepth's asKind: moment, talk, began, spark, seed, married, accepted, declined, ended, released, ceiling, withheld, import." },
+              "reason": { "type": "string", "description": "The reason the change was made with, at most 600 bytes." }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "state": { "const": "foreclosed" } } },
+          "then": { "properties": { "foreclosure": { "enum": ["kin", "minor", "orientation"] }, "track": { "const": "platonic" } } },
+          "else": { "properties": { "foreclosure": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "state": { "enum": ["unexamined", "platonic", "interested", "declined", "ended"] }, "commitment": { "enum": ["none", "candidate"] } } },
+          "then": { "properties": { "track": { "const": "platonic" } } }
+        },
+        {
+          "if": { "properties": { "state": { "const": "courting" } } },
+          "then": { "properties": { "track": { "const": "romantic" }, "stance": { "const": "accepted" } } }
+        },
+        {
+          "if": { "properties": { "state": { "const": "declined" } } },
+          "then": { "properties": { "stance": { "const": "declined" } } }
+        },
+        {
+          "if": { "properties": { "object": { "properties": { "isPlayer": { "const": true } } } } },
+          "then": { "properties": { "subject": { "properties": { "isPlayer": { "const": false } } } } }
+        }
+      ]
+    }
+  }
+}

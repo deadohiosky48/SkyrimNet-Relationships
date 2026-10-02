@@ -10,9 +10,8 @@
 # them either.
 # Deliberate ending. Rare, and it should stay rare.
 #
-# The marker faction is deliberately NOT removed - the NPC keeps their history
-# and stays visible in the Romantasy dashboard. An ended romance is part of the
-# record, not an erasure of it.
+# Ending does NOT unenroll - the NPC keeps their history and stays on the
+# dashboard. An ended romance is part of the record, not an erasure of it.
 
 customCategory: romance
 name: RomanceEndIt
@@ -40,7 +39,7 @@ parameterMapping:
 eligibilityRules:
   - conditions:
       - decoratorName: "get_faction_rank"
-        arguments: ["currentActor", "ROM_RomanceLevel"]
+        arguments: ["currentActor", "SNRom_Bond"]
         comparisonOperator: ">="
         expectedValue: 0
     logicalOperator: "AND"

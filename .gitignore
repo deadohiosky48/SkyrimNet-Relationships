@@ -38,6 +38,19 @@
 # ten minutes of clicking in the CK rather than running a script.
 !SNRom_Integration.esl
 
+# ---------------------------------------------------------------------------
+# Native build environment, several GB of it, none of it ours.
+#
+# vcpkg and CommonLibSSE-NG are FETCHED by tools/build-dll.ps1 -Setup, so they
+# are reproducible from one command and must never enter history: git does not
+# forget, and one commit of them stays in every future clone. native/build is
+# the DLL's build output, which ships in release archives rather than here.
+# ---------------------------------------------------------------------------
+/.tools/
+/native/extern/
+/native/build/
+/native/out/
+
 # Build scratch: vanilla sources unpacked from the game's own Scripts.zip, and
 # superseded artifacts. Bethesda's and ours respectively, neither to be tracked.
 /.build/
@@ -86,3 +99,9 @@ desktop.ini
 # The list is private by definition - publishing it would be the leak.
 # ---------------------------------------------------------------------------
 /tools/identity-denylist.txt
+
+# Dashboard test harness (ui/tests): its packages, and the screenshots every run
+# rewrites. A PR's evidence is copied out to ui/tests/pr-screenshots/ on purpose.
+/ui/tests/node_modules/
+/ui/tests/package-lock.json
+/ui/tests/screenshots/

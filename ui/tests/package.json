@@ -1,0 +1,12 @@
+{
+  "name": "snrom-dashboard-tests",
+  "private": true,
+  "description": "Headless tests for ui/relationships. Development only: nothing here ships, and the page itself needs no packages at all.",
+  "scripts": {
+    "test": "node run.mjs",
+    "mocks": "node gen-mocks.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

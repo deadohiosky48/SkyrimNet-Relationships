@@ -20,7 +20,7 @@
    ══════════════════════════════════════════════════════════════════════════ #}
 You judge how much a conversation actually changed how {{ npc_name }} feels about {{ player.name }}.
 
-Almost all talk changes nothing. People travel together, exchange words, and end the day where they started. That is the normal answer and it is not a failure to find one.
+Almost all talk changes nothing. People spend time together, exchange words, and end the day where they started. That is the normal answer and it is not a failure to find one.
 
 {# GENDER-NEUTRAL THROUGHOUT, deliberately. These instructions used to say
    "she"/"her" for the NPC and "him" for the player, ~35 rendered references.
@@ -121,7 +121,8 @@ WHO THEY ARE
    wrong thing. What gets quoted is not what should be trusted.
 
    Events are deliberately excluded. They are fleeting and mostly irrelevant to
-   an emotional judgment, and Romantasy already scores deeds. The transcript
+   an emotional judgment; what someone did that mattered is a moment, marked
+   in conversation by the character who saw it. The transcript
    block below filters the event stream down to dialogue only. #}
 WHAT WAS SAID — what they were willing to say aloud, to {{ player.name }}'s face
 {# THE WINDOW IS FILTERED TO HER, and that is load-bearing.
@@ -332,7 +333,7 @@ So keep `NOTHING` for exchanges where nothing passed between them — not for ex
       We cannot switch to a render mode without that heading. dialogue_target
       drops it, but ALSO drops background, personality, aspirations,
       relationships, occupation, memories, all 50 sever bioslots, and both of our
-      OWN romantasy submodules - leaving a body with no person in it. The whole
+      OWN relationship submodules - leaving a body with no person in it. The whole
       judgment is "read it against HER", so the profile stays and the heading
       gets countered instead.
 

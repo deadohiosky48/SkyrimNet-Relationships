@@ -1,7 +1,7 @@
 plugin:
   name: "SkyrimNet Relationships"
   version: "1.8.1"
-  description: "Lets SkyrimNet drive romance through ColdSun's Romantasy framework — organic enrollment, LLM-authored preferences, and bond-aware dialogue."
+  description: "Bonds that SkyrimNet characters earn with you — friendship or romance, followers enrolled on their own and anyone else by hand, LLM-authored characters, a consent gate, and bond-aware dialogue."
   icon: "🥀"
 
 # ── LLM Variants ─────────────────────────────────────────────────────────────
@@ -35,10 +35,9 @@ variants:
 schema:
   fields:
     # ── Point economy ────────────────────────────────────────────────────────
-    # Romantasy needs 2,500 points to reach Spouse, and its own activity ledger
-    # awards 1-3 per action (20 for a full questline). These caps keep an
-    # LLM-awarded emotional beat roughly comparable to clearing a dungeon —
-    # meaningful, but not a shortcut past the shared adventuring.
+    # A tier is 500 points and Spouse is 2,500. These caps keep one
+    # LLM-awarded emotional beat meaningful without letting it stand in for
+    # the time two people actually spend together.
     - name: "Max Points Per Award"
       path: "awardMaxPoints"
       type: "int"
@@ -50,14 +49,14 @@ schema:
     - name: "Automatic Enrollment"
       path: "enrollmentOrganic"
       type: "bool"
-      description: "Start tracking a bond automatically when someone becomes a follower. This only begins observing them at Stranger with no points - it does not start a romance. Turn off to work only with followers whose own mod already opted them into Romantasy."
+      description: "Start tracking a bond automatically once someone has followed you for a while (see Wait Before Tracking a New Follower). This only begins observing them at Stranger with no points - it does not start a romance. Anyone else is enrolled by hand, with the Enroll Hotkey or from the dashboard. Turn off to enroll only by hand."
       defaultValue: true
       category: "Enrollment"
 
     - name: "Scan Nearby NPCs For Followers"
       path: "cellScanEnabled"
       type: "bool"
-      description: "Periodically look around for followers this mod has not enrolled yet. This is what catches companions recruited before installing, and anyone a follower framework never announced. Turn it OFF if you crash in busy interiors - the scan is handled by PapyrusUtil, and a VR user hit a crash inside it on a heavily patched cell. With it off, people are still enrolled when a follower framework announces them; they are simply not discovered by looking. Default: on."
+      description: "Periodically look around for followers this mod has not enrolled yet. This is what catches companions recruited before installing, and anyone a follower framework never announced. Turn it OFF if you crash in busy interiors - the scan is handled by PapyrusUtil, and a VR user hit a crash inside it on a heavily patched cell. With it off, people are still enrolled when a follower framework announces them; they are simply not discovered by looking. Who is near enough to be judged does not depend on this scan. Default: on."
       defaultValue: true
       category: "Enrollment"
 
@@ -73,14 +72,14 @@ schema:
     - name: "Conversational Scoring"
       path: "talkEnabled"
       type: "bool"
-      description: "Judge periodically whether recent conversation actually moved a follower's feelings, and award or subtract points accordingly. This is what lets talking to someone matter. Turn off to have bonds move only through shared adventuring."
+      description: "Judge periodically whether recent conversation actually moved someone's feelings toward you, and award or subtract points accordingly. Anyone enrolled who is near you is judged, following you or not. This is what lets talking to someone matter. Turn off to have bonds move only through moments the characters mark themselves."
       defaultValue: true
       category: "Conversation"
 
     - name: "Conversation Re-check Interval (hours)"
       path: "talkCooldownHours"
       type: "float"
-      description: "Game hours before the same follower's conversations are judged again. Lower means more responsive, at the cost of more LLM calls. Default: 3."
+      description: "Game hours before the same person's conversations are judged again. Lower means more responsive, at the cost of more LLM calls. Default: 3."
       defaultValue: 3.0
       category: "Conversation"
 
@@ -101,7 +100,7 @@ schema:
     - name: "Pause Before the Question Appears (seconds)"
       path: "askVoiceSeconds"
       type: "float"
-      description: "Real seconds between a follower raising the question of where you stand and the choice appearing on screen. The pause is there so she asks it in her own words first and the choice is only your half of the exchange. Too short and the box talks over her; too long and it feels detached from what she just said. Set to 0 for the choice with no spoken lead-in. Default: 6."
+      description: "Real seconds between someone raising the question of where you stand and the choice appearing on screen. The pause is there so they ask it in their own words first and the choice is only your half of the exchange. Too short and the box talks over them; too long and it feels detached from what they just said. Set to 0 for the choice with no spoken lead-in. Default: 6."
       defaultValue: 6.0
       category: "Conversation"
 
@@ -115,34 +114,34 @@ schema:
     - name: "Let Personalities Change Over Time"
       path: "driftEnabled"
       type: "bool"
-      description: "Whether a companion's disposition can shift as they live. Someone who swore off commitment can fall in love and stay; someone badly treated can close up. Change requires a sustained pattern, never a single night, and moves one step at a time. Turn off to freeze everyone as they were first written. Default: on."
+      description: "Whether a character's disposition can shift as they live. Someone who swore off commitment can fall in love and stay; someone badly treated can close up. Change requires a sustained pattern, never a single night, and moves one step at a time. Turn off to freeze everyone as they were first written. Default: on."
       defaultValue: true
       category: "Change Over Time"
 
     - name: "Game Days Between Reviews"
       path: "driftMinDays"
       type: "float"
-      description: "Game days before the same companion's disposition is looked at again. Lower means personalities move faster and cost more LLM calls. Default: 7."
+      description: "Game days before the same person's disposition is looked at again. Lower means personalities move faster and cost more LLM calls. Default: 7."
       defaultValue: 7.0
       category: "Change Over Time"
 
     - name: "Events Required Before a Review"
       path: "driftMinEvents"
       type: "int"
-      description: "How much must actually have happened to a companion before their disposition is reviewed at all. Counts every scoring event. This is what stops a quiet month from being read as change, and a companion who has been sitting at home is never reviewed however long they wait. Default: 6."
+      description: "How much must actually have happened to someone before their disposition is reviewed at all. Counts every scoring event. This is what stops a quiet month from being read as change: someone you have not spent time with is never reviewed, however long it has been. Default: 6."
       defaultValue: 6
       category: "Change Over Time"
 
     - name: "Days Events Must Span Before a Review"
       path: "driftMinSpanDays"
       type: "float"
-      description: "Game days that must separate the first and last thing that happened to a companion before their disposition is reviewed. Exists because six things happening in one evening is still one occasion, and asking whether a pattern has formed when only a moment exists produces an invented answer rather than an honest no. Default: 1."
+      description: "Game days that must separate the first and last thing that happened to someone before their disposition is reviewed. Exists because six things happening in one evening is still one occasion, and asking whether a pattern has formed when only a moment exists produces an invented answer rather than an honest no. Default: 1."
       defaultValue: 1.0
       category: "Change Over Time"
     - name: "Days Together Before Romance Can Begin"
       path: "sparkMinDaysEnrolled"
       type: "float"
-      description: "Game days a follower must have traveled with you before romance can be judged to have begun at all. Exists because the very first judgment sees her entire history at once and almost always says yes, which turns romance into something that happens on arrival rather than something that grows. Someone the game already records as your spouse or lover skips this wait. Default: 2."
+      description: "Game days someone must have been enrolled before romance can be judged to have begun at all. Exists because the very first judgment sees their entire history at once and almost always says yes, which turns romance into something that happens on arrival rather than something that grows. Someone the game already records as your spouse or lover skips this wait. Default: 2."
       defaultValue: 2.0
       category: "Spark"
 
@@ -153,106 +152,106 @@ schema:
     - name: "Seed Existing Relationships"
       path: "seedEnabled"
       type: "bool"
-      description: "Start followers you already have a history with partway up the ladder instead of at Stranger, based on how they actually feel about you, your relationship rank, and whether the game records you as married or engaged. Applies once per follower, including everyone already traveling with you when this was installed. Turn it off before loading if you would rather every bond start from nothing."
+      description: "Start anyone newly enrolled whom you already have a history with partway up the ladder instead of at Stranger, based on how they actually feel about you, your relationship rank, and whether the game records you as married or engaged. Applies once per person, including everyone already enrolled when this was installed. Turn it off before loading if you would rather every bond start from nothing."
       defaultValue: true
       category: "Seeding"
 
     - name: "Limit Seeds by Time Known"
       path: "seedTimeLimit"
       type: "bool"
-      description: "Cap a follower's head start by how long you have actually known each other, read from their oldest memory. Nothing recorded between you at all: Stranger, and only part way. Met today or yesterday: Stranger at most, however much happened. Within a week: Acquaintance. Within a month: Friend. Longer, or married: no limit. Everything that happens after they start following still counts at the normal pace; this only limits how much history a new acquaintance can be credited with."
+      description: "Cap someone's head start by how long you have actually known each other, read from their oldest memory. Nothing recorded between you at all: Stranger, and only part way. Met today or yesterday: Stranger at most, however much happened. Within a week: Acquaintance. Within a month: Friend. Longer, or married: no limit. Everything that happens after they are enrolled still counts at the normal pace; this only limits how much history a new acquaintance can be credited with."
       defaultValue: true
       category: "Seeding"
 
-    # ── The re-read hotkey ───────────────────────────────────────────────────
-    # Registered directly in Papyrus rather than through MCM Helper. SkyUI's
-    # mod registry is a Papyrus array capped at 128 entries, and past that a
-    # menu registers but can never render - so an MCM keybind can never be
-    # bound either, because binding happens on the page that will not open.
-    # The setting lives here because the player already has this panel open.
+    # THE CROSSHAIR KEYS, all in the DLL from 2.0 (native/src/Hotkey.h, WP8).
+    # SkyrimNet's hotkey widget stores a VIRTUAL key; the 1.x settings were
+    # scan codes typed as numbers because Papyrus's RegisterForKey takes
+    # one, and the re-read key set to End through the widget armed H. The
+    # DLL converts, so these are real hotkey fields with a modifier each,
+    # under new names so a 1.x scan code is never read as a virtual key.
     #
-    # type: "int", NOT type: "hotkey", AND THAT IS DELIBERATE.
-    #
-    # The hotkey widget is the obvious choice and it is the wrong one: it
-    # captures and stores a VIRTUAL KEY code, while Papyrus RegisterForKey takes
-    # a DIRECTX SCAN CODE. The two are different numbering schemes for the same
-    # keyboard. IntelEngine's manifest says so outright for its own hotkey field
-    # - "VK code, e.g., 55 = 7" - and IntelEngine reads its config from C++,
-    # where VK is the natural unit.
-    #
-    # Measured 2026-09-02: setting this field to End through the widget stored
-    # 35, which is VK_END. Papyrus then registered scan code 35, which is the H
-    # key, and the End key was never listened for at all. Nothing errored.
-    #
-    # So this is a plain int holding a scan code, which is exactly what Kinship
-    # does for the same reason and is proven on this stack. The cost is that the
-    # player types a number instead of pressing a key; the alternative is a
-    # ~100-entry VK-to-scan-code table in Papyrus that breaks silently if the
-    # widget ever changes.
+    # ALL THREE SHIP UNBOUND. The re-author key is destructive, and binding
+    # it on purpose is its confirmation; the other two would each claim a
+    # key on load orders where few are free.
     - name: "Re-Read Hotkey"
-      path: "reseedHotkey"
-      type: "int"
-      description: "Point at a follower and press this to read their standing again from the record as it now stands. Use it after you have improved what the mod has to read - corrected a bio, written a missing diary entry, applied a bio block - because fixing the material does not move a standing that was already written down. It can only ever raise someone to what their history justifies: it subtracts what they already hold, so it cannot pay twice and cannot take anything away. The answer takes a few seconds and appears as a notification. THIS IS A DIRECTX SCAN CODE, not a virtual key code - the same numbers Dynamic Activation Key and MCM Helper use. Default: 199, which is Home. Also usually free: 197 Pause, 211 Delete, 87 F11. Deliberately NOT 210 Insert (STFU, SSEDisplayTweaks), 207 End or 201/209 PageUp/PageDown (Community Shaders), or 70 Scroll Lock (NPC Renamer). Note the digit row is offset by one: 2 is '1', 10 is '9', 11 is '0'. Changing this takes effect within a couple of minutes - no reload needed. Set to 0 to disable it."
-      defaultValue: 199
-      min: 0
-      max: 255
-      category: "Seeding"
+      path: "rereadKey"
+      type: "hotkey"
+      description: "Point at someone on your roster and press this to read their standing again from the record as it now stands. Use it after improving what the mod has to read - a corrected bio, a missing diary entry, a bio block. It can only raise someone to what their history supports. Unbound until you set one."
+      defaultValue: 0
+      category: "Hotkeys"
 
     - name: "Re-Read Hotkey Modifier"
-      path: "reseedHotkeyModifier"
-      type: "int"
-      description: "Optional key that must be held with the hotkey. 0 for none, 42 Left Shift, 29 Left Ctrl, 56 Left Alt. IMPORTANT: a modifier does NOT stop another mod firing on the base key - only this mod checks it, so binding Shift+Insert still opens whatever else owns Insert. If the key collides, change the key itself rather than adding a modifier. Note also that Left Shift is Dynamic Activation Key's own key and Left Alt is TK Dodge's on many setups. Default: 0, a bare keypress."
-      defaultValue: 0
-      min: 0
-      max: 255
-      category: "Seeding"
+      path: "rereadKeyModifier"
+      type: "select"
+      description: "A key to hold with it, for example Left Shift. Each side counts separately. This narrows when the key fires; it does not stop another mod that uses the same key."
+      defaultValue: "None"
+      options:
+        - None
+        - Left Shift
+        - Right Shift
+        - Left Ctrl
+        - Right Ctrl
+        - Left Alt
+        - Right Alt
+      category: "Hotkeys"
 
-    # THE ONLY DESTRUCTIVE KEY THIS MOD OWNS, hence defaultValue 0 while its
-    # sibling above ships bound. Re-reading a standing can only raise someone
-    # toward what their history justifies; re-authoring a character throws the
-    # current one away. An action with no undo should have to be armed on
-    # purpose, and that requirement IS the confirmation prompt - paid once at
-    # bind time rather than on every press, and costing no UI dependency.
-    #
-    # It also spares every user a second key claim. Finding one uncontested
-    # code on a large load order took three attempts; see the Re-Read Hotkey
-    # notes above for the audit.
     - name: "Re-Author Hotkey"
-      path: "reauthorHotkey"
-      type: "int"
-      description: "Point at a companion and press this to write their CHARACTER again from scratch - who they are drawn to, how guarded they are, how ardent, and how willing they are to share you. Different job from the Re-Read Hotkey above: that one re-scores a standing, this one re-decides a personality, and re-reading someone will never move a character that was written down before you improved what the mod had to read. Use it after adding a bio block, correcting a bio, or writing the diary entry that explains someone - or on a companion the mod enrolled long ago and never got right. THIS ONE CAN LOSE WORK: it discards the drift a long relationship has accumulated, and there is no undo, which is why it starts unbound - set a scan code here on purpose and it becomes live within a couple of minutes. Their likes and dislikes are NOT touched. The old values are written to the log first, so a mistaken press on the wrong companion is at least legible afterwards. SCAN CODE, as above: usually free are 197 Pause, 211 Delete, 87 F11. Default: 0, which is off."
+      path: "reauthorKey"
+      type: "hotkey"
+      description: "Point at someone on your roster and press this to write their CHARACTER again from scratch - who they are drawn to, how guarded, how ardent, how willing to share you. Throws away the current one and everything that has drifted. No undo. A second press on the same person within a minute is refused. Unbound until you set one."
       defaultValue: 0
-      min: 0
-      max: 255
-      category: "Seeding"
+      category: "Hotkeys"
+
+    - name: "Re-Author Hotkey Modifier"
+      path: "reauthorKeyModifier"
+      type: "select"
+      description: "A key to hold with it, for example Left Shift. Each side counts separately. This narrows when the key fires; it does not stop another mod that uses the same key."
+      defaultValue: "None"
+      options:
+        - None
+        - Left Shift
+        - Right Shift
+        - Left Ctrl
+        - Right Ctrl
+        - Left Alt
+        - Right Alt
+      category: "Hotkeys"
+
+    - name: "Enroll Hotkey"
+      path: "enrollKey"
+      type: "hotkey"
+      description: "Point at anyone and press this to start a bond with them, following you or not. Their character is written and their history read over the next few minutes. Followers are enrolled on their own once they have stayed with you a while; this is how everyone else joins. Unbound until you set one."
+      defaultValue: 0
+      category: "Hotkeys"
+
+    - name: "Enroll Hotkey Modifier"
+      path: "enrollKeyModifier"
+      type: "select"
+      description: "A key to hold with it, for example Left Shift. Each side counts separately. This narrows when the key fires; it does not stop another mod that uses the same key."
+      defaultValue: "None"
+      options:
+        - None
+        - Left Shift
+        - Right Shift
+        - Left Ctrl
+        - Right Ctrl
+        - Left Alt
+        - Right Alt
+      category: "Hotkeys"
 
 
-    # THE BUFFER THAT KEEPS ROMANTASY'S OWN SPLASH OFF THE SCREEN. Its point
-    # scoring is internal and credits everyone in the romance faction, including
-    # a follower sandboxing on the other side of Skyrim - so the withhold path in
-    # this mod never sees it. Parked at 1999 the next internal award always
-    # crosses. Observed 2026-09-08 on a follower who went 967 -> 2084 with one
-    # 10-point award from this mod in the whole span.
-    - name: "Unanswered Headroom"
-      path: "unansweredHeadroom"
-      type: "int"
-      description: "How far below the Lover threshold a companion is parked while you have not yet answered whether you accept the relationship. Romantasy awards points from its own activity scoring, and that never passes through this mod - so a companion held one single point below Lover gets pushed over it by the next thing you do, Romantasy announces the new tier with its own splash, and only afterwards is she pulled back and the question raised. You were told the answer before you were asked. This buffer gives that scoring room to land without crossing. It costs nothing you can see: tiers are 500 apart, so anywhere in this range still reads as Confidant, and every point held back is returned in full the moment you say yes. Larger values are safer against big awards; the buffer is capped so it can never drag someone below Confidant. Default: 250."
-      defaultValue: 250
-      min: 0
-      max: 499
-      category: "Spark"
 
     - name: "Most Points a Seed Can Grant"
       path: "seedMaxPoints"
       type: "int"
-      description: "Ceiling on the head start any one follower can be given, so no accumulated history can hand out the top of the ladder. Tiers are 500 apart and Spouse is 2500, so the default stops one full tier short. Someone the game records as your actual spouse is exempt and seeds to Spouse regardless - a completed marriage is not history to be weighed, it is the relationship itself. Default: 2000."
+      description: "Ceiling on the head start any one person can be given, so no accumulated history can hand out the top of the ladder. Tiers are 500 apart and Spouse is 2500, so the default stops one full tier short. Someone the game records as your actual spouse is exempt and seeds to Spouse regardless - a completed marriage is not history to be weighed, it is the relationship itself. Default: 2000."
       defaultValue: 2000
       category: "Seeding"
 
     - name: "Points Per Point of Rapport"
       path: "seedPointsPerRapport"
       type: "float"
-      description: "How much a follower's SeverActions rapport counts toward their head start. Rapport runs -100 to 100, so the default makes a wholly devoted companion worth about 1500 points - more than being recruited, less than the game recording you as lovers. Rapport competes with relationship rank rather than adding to it; the strongest single piece of evidence wins. This is what separates someone you have genuinely traveled with from someone you hired yesterday, so setting it much lower makes every new companion start in the same place. Set to 0 to ignore rapport entirely. Default: 15."
+      description: "How much someone's SeverActions rapport counts toward their head start. Rapport runs -100 to 100, so the default makes a wholly devoted companion worth about 1500 points - more than being recruited, less than the game recording you as lovers. Rapport competes with relationship rank rather than adding to it; the strongest single piece of evidence wins. This is what separates someone you have genuinely traveled with from someone you hired yesterday, so setting it much lower makes every new companion start in the same place. Set to 0 to ignore rapport entirely. Default: 15."
       defaultValue: 15.0
       category: "Seeding"
 
@@ -263,59 +262,44 @@ schema:
     - name: "Use OStim Attraction"
       path: "attractionEnabled"
       type: "bool"
-      description: "Let a follower who is written as taking sex casually act on plain physical attraction instead of waiting for the bond to deepen. Reads OStim Community Resource's attraction score; does nothing without it. Note that taking a reading makes OCR assign that NPC a social class and a randomly-chosen taste in adventurers if they have neither - OCR does this itself the first time it looks at them, but turning this off avoids causing it early."
+      description: "Let someone who is written as taking sex casually act on plain physical attraction instead of waiting for the bond to deepen. Reads OStim Community Resource's attraction score; does nothing without it. Note that taking a reading makes OCR assign that NPC a social class and a randomly-chosen taste in adventurers if they have neither - OCR does this itself the first time it looks at them, but turning this off avoids causing it early."
       defaultValue: true
       category: "Attraction"
 
     - name: "Attraction Needed to Skip the Bond"
       path: "attractionBypassRatio"
       type: "float"
-      description: "How attractive a follower must find the player before wanting them physically without the bond having deepened first. 1.0 means exactly as attractive as someone of their standing expects. Only applies to followers written as taking sex casually. Early characters sit near 0.7 and established ones clear 2.0, so raise this as the game goes on. Default: 1.5."
+      description: "How attractive someone must find the player before wanting them physically without the bond having deepened first. 1.0 means exactly as attractive as someone of their standing expects. Only applies to characters written as taking sex casually. Early characters sit near 0.7 and established ones clear 2.0, so raise this as the game goes on. Default: 1.5."
       defaultValue: 1.5
       category: "Attraction"
 
     - name: "Attraction Re-check Interval (hours)"
       path: "attractionRefreshHours"
       type: "float"
-      description: "Game hours before a follower's attraction is recalculated. One follower is recalculated per check and the reading is expensive, so low values cost framerate for a number that moves with skills and reputation rather than with events. Default: 24."
+      description: "Game hours before someone's attraction is recalculated. One person near you is recalculated per check and the reading is expensive, so low values cost framerate for a number that moves with skills and reputation rather than with events. Default: 24."
       defaultValue: 24.0
       category: "Attraction"
 
     - name: "Spark Re-check Interval (hours)"
       path: "sparkCooldownHours"
       type: "float"
-      description: "Game hours before the same follower is judged again. One follower is judged at a time and only while traveling with you, so this mostly controls how much has to happen between chances. Default: 6."
+      description: "Game hours before the same person is judged again. One person is judged at a time, and only while they are near you, so this mostly controls how much has to happen between chances. Default: 6."
       defaultValue: 6.0
       category: "Spark"
 
     - name: "Wait Before Tracking a New Follower (hours)"
       path: "enrollmentDelayHours"
       type: "float"
-      description: "Game hours someone must keep traveling with you before the mod starts tracking them at all. Exists because SkyrimNet conversations can make almost anyone a follower by accident, and tracking cannot be undone once it begins. A deliberate companion clears this without noticing; a mistake is usually gone long before it elapses. Default: 2."
+      description: "Game hours someone must keep traveling with you before the mod starts tracking them at all. Exists because SkyrimNet conversations can make almost anyone a follower by accident, and tracking cannot be undone once it begins. A deliberate companion clears this without noticing, even while waiting for you somewhere else; a mistake is usually gone long before it elapses. Anyone you enroll by hand skips this wait. Default: 2."
       defaultValue: 2.0
       category: "Enrollment"
 
-    - name: "LLM-Authored Preferences"
+    - name: "LLM-Authored Characters"
       path: "enrollmentLlmPreferences"
       type: "bool"
-      description: "On enrollment, ask the LLM to author this follower's likes and dislikes from their actual personality. Turn off to use the built-in archetype presets instead."
+      description: "On enrollment, ask the LLM to write the character from their actual personality: orientation, intimacy, ardor, exclusivity and what draws them to you. Turn off to leave them at neutral defaults."
       defaultValue: true
       category: "Enrollment"
-
-    - name: "Enrollment Requires Follower"
-      path: "enrollmentRequireFollower"
-      type: "bool"
-      description: "Only allow enrollment for NPCs currently following the player. Turning this off lets romances begin with settled NPCs, but Romantasy only awards points while an NPC is actively following, so the bond will not move until they join you."
-      defaultValue: true
-      category: "Enrollment"
-
-    # ── Barks ────────────────────────────────────────────────────────────────
-    - name: "Preference Bark Chance"
-      path: "barkPreferenceChance"
-      type: "float"
-      description: "Chance (0.0-1.0) that a follower comments when the player does something they have opinions about. Romantasy fires this on every matching statistic increment, so low values are strongly recommended. Default: 0.15."
-      defaultValue: 0.15
-      category: "Barks"
 
     # ── Pacing ───────────────────────────────────────────────────────────────
     # ONE LEVER ABOVE FOURTEEN KNOBS. awardMaxPoints, talkCooldownHours,
@@ -324,7 +308,7 @@ schema:
     # for people who want them; this moves the whole thing at once.
     #
     # It multiplies what is EARNED. It cannot move the finish line - a tier is
-    # exactly 500 and that number is Romantasy's, not ours.
+    # exactly 500, whatever the pace.
     - name: "Bond Pace"
       path: "bondPace"
       type: "select"
@@ -347,6 +331,87 @@ schema:
         - DiaryGeneration
       category: "Enrollment"
 
+    # ── Dashboard (optional: SkyrimNetRelationships.dll and Meridian UI) ─────
+    # All three are handed to the DLL by SNRom_Bridge.ArmDashboard once per
+    # bootstrap, and read by the DLL itself from settings.yaml whenever SkyrimNet
+    # saves it (native/src/Settings.cpp), so a change applies in seconds with no
+    # Papyrus polling. Without the DLL, or without Meridian UI, none of them does
+    # anything and nothing else cares.
+    #
+    # type: "hotkey" HERE, where the re-read and re-author keys are plain ints,
+    # and that is the design working rather than a contradiction. The widget
+    # stores a VIRTUAL KEY code; those two keys are registered by Papyrus, which
+    # takes scan codes, while this one is handled by the DLL, which converts VK
+    # natively and refuses a key it cannot map instead of binding a wrong one.
+    #
+    # SHIPS UNBOUND - the author's decision. The keys vanilla leaves free are
+    # exactly the ones other mods reach for (see the audit on HotkeyCode), so the
+    # player picks one that is free on their own load order.
+    - name: "Dashboard Hotkey"
+      path: "dashboardHotkey"
+      type: "hotkey"
+      description: "Opens the Relationships dashboard: everyone you have a bond with, how deep it runs, and who they are. UNBOUND UNTIL YOU SET ONE. Pick a key nothing else in your load order uses. Press Escape in the dashboard to close it. Needs Meridian UI; without it this does nothing and the rest of the mod works as before. Changing it takes effect a couple of seconds after the settings are saved - no reload needed."
+      defaultValue: 0
+      category: "Dashboard"
+
+    # A select, so it reaches Papyrus as the option's name. The DLL and
+    # SNRom_Bridge.DashboardModifierVK both map these names to the virtual key of
+    # that side of the keyboard; change an option here and both must follow.
+    - name: "Dashboard Hotkey Modifier"
+      path: "dashboardHotkeyModifier"
+      type: "select"
+      description: "A key to hold with the Dashboard Hotkey, for example Left Shift so that only Left Shift + your key opens the dashboard. Each side counts separately: Left Ctrl does not accept Right Ctrl. This narrows when the dashboard opens; it does NOT stop another mod that uses the same key from reacting to it, with or without the modifier, so a key nothing else uses is still the best choice. A change applies the next time you open the dashboard, no reload needed. Default: None."
+      defaultValue: "None"
+      options:
+        - None
+        - Left Shift
+        - Right Shift
+        - Left Ctrl
+        - Right Ctrl
+        - Left Alt
+        - Right Alt
+      category: "Dashboard"
+
+    - name: "Dashboard Developer View"
+      path: "dashboardDeveloperView"
+      type: "bool"
+      description: "Shows what characters have not said: feelings they have not spoken, a question they are waiting to ask you, points held back until you answer, and the assessor's private verdicts - plus developer tools. The dashboard is written to be played without it; turn it on to look under the hood or to troubleshoot. A change applies the next time you open the dashboard, no reload needed. Default: off."
+      defaultValue: false
+      category: "Dashboard"
+
+    # Two selects, so they reach Papyrus and settings.yaml as the option's name.
+    # The DLL reads those names with one table (Settings::ScaleFromName and
+    # TextSizeFromName in native/src/Settings.cpp), for both the name Papyrus
+    # hands over at bootstrap and the one its settings watcher reads; change an
+    # option here and that table must follow.
+    - name: "Dashboard Scale"
+      path: "dashboardScale"
+      type: "select"
+      description: "How big the Relationships dashboard is drawn: everything in it, text and spacing alike. Auto sizes it to your screen's height, so it looks the same at 1080p, 1440p or 4K (1440p draws it at about 133%). Pick a fixed size if Auto is too small or too large for you. A change applies the next time you open the dashboard, no reload needed. Default: Auto."
+      defaultValue: "Auto"
+      options:
+        - Auto
+        - 75%
+        - 90%
+        - 100%
+        - 110%
+        - 125%
+        - 150%
+        - 175%
+        - 200%
+      category: "Dashboard"
+
+    - name: "Dashboard Text Size"
+      path: "dashboardTextSize"
+      type: "select"
+      description: "Makes the dashboard's text larger without making its spacing larger, on top of Dashboard Scale. A change applies the next time you open the dashboard, no reload needed. Default: Normal."
+      defaultValue: "Normal"
+      options:
+        - Normal
+        - Large
+        - Larger
+      category: "Dashboard"
+
     # ── Logging ──────────────────────────────────────────────────────────────
     # The ledger is deliberately NOT governed by log level. Balance analysis
     # needs a complete record from the first save; discovering you needed
@@ -359,7 +424,7 @@ schema:
       defaultValue: 3
       category: "Logging"
 
-    - name: "Write Romance Ledger"
+    - name: "Write Bond Ledger"
       path: "logLedgerEnabled"
       type: "bool"
       description: "Record every point change to logs/ledger.jsonl for balance analysis with tools/analyze_romance.py. Independent of log level. Leave on unless you are certain you will never want to tune pacing."

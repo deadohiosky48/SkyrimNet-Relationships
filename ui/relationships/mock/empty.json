@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 3,
+  "generatedAt": 214.37,
+  "roster": {
+    "status": "current",
+    "message": null
+  },
+  "playthrough": {
+    "id": "c04d2e17",
+    "store": "SNRom_Dispositions_c04d2e17",
+    "storeDecision": "own"
+  },
+  "ladder": {
+    "thresholds": [
+      0,
+      500,
+      1000,
+      1500,
+      2000,
+      2500
+    ]
+  },
+  "player": {
+    "formId": 20,
+    "name": "Tamsin Vey",
+    "isPlayer": true
+  },
+  "settings": {
+    "developer": false,
+    "scale": "auto",
+    "textSize": "normal"
+  },
+  "crosshairTarget": null,
+  "bonds": []
+}

@@ -19,32 +19,22 @@
    like this one.
 
    Other design notes:
-   - The 750-char cap is on the RESPONSE, not the prompt. So the full list of
-     activities goes in by NAME. No numeric indices: mapping concepts to
-     indices is needlessly hard for small models and gains nothing for large
-     ones.
-   - Labeled lines, not JSON. Papyrus parses "LIKES: a, b, c" trivially;
+   - NO LIKES OR DISLIKES from 2.0 (the author, 2026-09-30). They named
+     game statistics ("Dungeons Cleared"); the catalogue, its
+     rotation and the frequency budget went with them. Phase 5 brings
+     preferences back on the mod's own vocabulary.
+   - Labeled lines, not JSON. Papyrus parses "WHY: ..." trivially;
      nested JSON it does not. Small models also produce it far more reliably.
    - NAME must be echoed back first. Models confuse nearby NPCs — a follower
      answering as her own daughter is a real failure mode — and a mismatched
      echo lets us discard the whole response instead of persisting someone
      else's personality forever.
-   - The frequency budget is not flavour. Romantasy's weights are fixed and
-     activities fire at wildly different rates: liking Critical Strikes earns
-     hundreds of points an hour, liking Questlines Completed earns almost
-     none. Without the cap, every NPC ends up paced by grind rate rather than
-     character.
    ══════════════════════════════════════════════════════════════════════════ #}
-You are helping define what one specific person in Skyrim cares about.
+You are helping define who one specific person in Skyrim is in matters of the heart.
 
 RULES
-1. Pick **4 to 7 likes** and **2 to 4 dislikes**. Fewer, sharper choices beat many.
-2. **At most TWO** likes from this high-frequency set — they happen constantly and would drown everything else: Critical Strikes, People Killed, Creatures Killed, Chests Looted, Barters, Skill Increases, Sneak Attacks, Backstabs, Locks Picked, Items Stolen, Animals Killed.
-3. Choose what reveals character, not what the class implies. A Nord warrior liking People Killed says nothing. A gentle healer who quietly likes Undead Killed — because of what happened at home — says everything.
-4. Dislikes should be able to genuinely cost a relationship. Pick things a companion would actually travel differently to avoid.
-5. Copy each name CHARACTER-FOR-CHARACTER from the catalogue, **including its plural** — a singular where the catalogue is plural is a different string and is discarded. Do not invent, abbreviate or re-word. (No example is given here on purpose: naming a valid answer in the instructions gets it copied into every character.)
-6. Nothing may appear in both lists.
-7. Two different people must not come out with the same answers. These choices are the whole point of the exercise.
+1. Answer for this one person, from what is known of them - not from what their class or role implies.
+2. Two different people must not come out with the same answers. These choices are the whole point of the exercise.
 
 [ user ]
 THE PERSON: **{{ npc_name }}**
@@ -191,7 +181,7 @@ DO NOT RESTATE ANY OF IT. The WHY and the LIMIT are one line each, in their own 
 TRAVELING WITH {{ player.name }} NOW, OR RECENTLY
 {{ circle }}
 
-These are the people {{ npc_name }} stands beside, most recent first, and the player sees them together. Whatever you decide must not read as a variation on one of the others - not the same likes, and above all not the same answer to who they are in matters of the heart. If your first instinct matches one of the above, treat that as a reason to look at their profile again rather than as confirmation.
+These are the people {{ npc_name }} stands beside, most recent first, and the player sees them together. Whatever you decide must not read as a variation on one of the others - above all not the same answer to who they are in matters of the heart. If your first instinct matches one of the above, treat that as a reason to look at their profile again rather than as confirmation.
 
 They are not interchangeable with the person standing next to them. That is the entire point of being asked.
 {% endif %}
@@ -231,11 +221,7 @@ It settles nothing else. How much they show (`ARDOR`), what closeness requires o
 
 
 
-Every name in the catalogue below is something **{{ player.name }}** does out in the world, and that the world keeps a count of. Choose the ones **{{ npc_name }}** would feel something about on hearing {{ player.name }} had done them.
-
-They do not have to be things {{ npc_name }} does, or could ever do. Someone who never leaves their own hold still has opinions about what {{ player.name }} does out in the world. Judge each entry by what it would mean to THEM — not by whether it belongs to their own life.
-
-Then answer four questions about who {{ npc_name }} is in matters of the heart and body. These are independent - wanting no romance does not mean wanting no intimacy, and the reverse is equally true.
+Answer four questions about who {{ npc_name }} is in matters of the heart and body. These are independent - wanting no romance does not mean wanting no intimacy, and the reverse is equally true.
 
 SEXUAL_ORIENTATION - who they could fall for: `ATTRACTED_TO_MEN`, `ATTRACTED_TO_WOMEN`, `ATTRACTED_TO_BOTH`, or `ATTRACTED_TO_NEITHER` (not drawn to anyone that way).
   This is who they are drawn TO, never what they are themselves. A woman who loves men answers `ATTRACTED_TO_MEN`.
@@ -329,77 +315,6 @@ Judge these from who this person actually is, reading the material above. The fo
 
 If the material is thin, answer with what is ordinary for a person like them — most people are somewhere in the middle on all of these. A wrong restrictive answer is not neutral: it permanently forecloses parts of their story, and unlike a wrong permissive one, nothing in play can ever open it back up.
 
-{# The catalogue lives HERE, immediately above the answer, and NOT up in the
-   system block. It was in the system block with the character profile between
-   it and the answer, and the model stopped referring back to it - inventing
-   plausible-sounding names ("Quiet Moments", "Precision Casting") instead.
-
-   The previous attempt at a fix made it WORSE: it illustrated translation
-   with two real catalogue entries, and the model copied those two verbatim
-   into all three NPCs and invented the rest. Three different women came out
-   with identical preferences - the precise opposite of the point. NEVER name
-   a valid answer in the instructions. #}
-**THE CATALOGUE — your `LIKES` and `DISLIKES` must be names from this list and nothing else.**
-
-{# FLAT LIST, NO GROUP HEADINGS - deliberately.
-
-   The catalogue used to be grouped under EXPLORATION / LEARNING / COMBAT /
-   etc. Once it moved next to the answer, those ALL-CAPS labels became the
-   most prominent text on the page and one NPC came back with
-   "Exploration, Learning, Combat, Dealings, Deeds, crime, Blood" as her
-   likes - the headings, not the entries.
-
-   Same lesson as the seeded-example failure before it: do not put a
-   plausible-looking wrong answer where the model is about to answer. Remove
-   the attack surface rather than adding an instruction against it. #}
-{% set CAT = ["Locations Discovered", "Dungeons Cleared", "Standing Stones Found", "Chests Looted", "Days Passed", "Skill Increases", "Skill Books Read", "Spells Learned", "Shouts Learned", "Dragon Souls Collected", "People Killed", "Animals Killed", "Creatures Killed", "Undead Killed", "Daedra Killed", "Automatons Killed", "Critical Strikes", "Sneak Attacks", "Backstabs", "Weapons Disarmed", "Bunnies Slaughtered", "Barters", "Persuasions", "Bribes", "Intimidations", "Locks Picked", "Pockets Picked", "Items Stolen", "Assaults", "Murders", "Horses Stolen", "Trespasses", "Weapons Made", "Armor Made", "Magic Items Made", "Potions Mixed", "Poisons Mixed", "Souls Trapped", "Quests Completed", "Misc Objectives Completed", "Main Quests Completed", "Side Quests Completed", "Companions Completed", "College Completed", "Thieves Completed", "Dark Brotherhood Completed", "Civil War Completed", "Daedric Completed", "Dawnguard Completed", "Dragonborn Completed", "Questlines Completed", "Diseases Contracted", "Days Vampire", "Necks Bitten", "Vampirism Cures", "Days Werewolf", "Werewolf Transformations", "Mauls"] %}
-{# ROTATED PER CALL, so position carries no information. Elisif once answered
-   with catalogue positions 1-7 and Sybille with 11-13: the model was reading
-   contiguous spans off a fixed list, and every answer looked plausible because
-   every entry was a valid name. Rotation does not PREVENT a positional answer
-   - it makes one obvious and non-repeating. The transcription guard in Papyrus
-   is what actually rejects it, as it did for Elisif on 2026-08-07.
-
-   Built from range/length/at and two ifs - two passes, tail then head. No
-   split(), which appears in no shipped prompt, and no modulo, unproven here.
-
-   seed is guarded because cat_seed only exists once the rebuilt .pex is
-   running. Until then default() yields 0 and the list renders unrotated,
-   rather than the whole catalogue vanishing. #}
-{% set seed = default(cat_seed, 0) %}{% for i in range(length(CAT)) %}{% if i >= seed %}{{ at(CAT, i) }} · {% endif %}{% endfor %}{% for i in range(length(CAT)) %}{% if i < seed %}{{ at(CAT, i) }} · {% endif %}{% endfor %}
-{# ── ROTATED PER CALL, so position carries no information ──────────────────
-   Elisif's likes were catalogue positions 1,2,3,4,5,6,7 and her dislikes were
-   46,47,48,49. Sybille's dislikes were 11,12,13. The model was not choosing at
-   all - it was reading contiguous spans off a fixed list, and every answer
-   looked plausible because every entry was a valid catalogue name.
-
-   cat_seed is a fresh Utility.RandomInt(0,57) from Papyrus on every authoring
-   call, so "the first four" is a different four each time. That does not make
-   a positional answer good - it makes it OBVIOUS, and non-repeating, which is
-   what turns a silent failure into a visible one.
-
-   Built from range/length/at and two ifs. No split(), which appears in no
-   shipped prompt; no modulo, which is unproven as an operator here. Two passes
-   over the array - tail first, then head - is a rotation using only constructs
-   that dynamic_character_bio.prompt already relies on. #}
-
-
-Every valid answer is one of the 58 names above. Anything else — a heading, a category, a theme, a word from their profile — is discarded.
-
-**At most SEVEN likes and FOUR dislikes.** Anything past the seventh like is thrown away unread. Fewer and sharper beats more - four that cohere say more about someone than seven that merely apply.
-
-**THE SET HAS TO DESCRIBE ONE PERSON.** This is the whole test, and it is not the same as picking four things that individually fit.
-
-Read your four back as a group and ask what kind of person they add up to. A vampire's four hang together. A thief's four hang together. A scholar's four hang together — someone reading the list alone could name the sort of person it belongs to. If your four could belong to almost anyone, or describe nobody in particular, they are wrong however defensible each one was on its own.
-
-{% if npc_name %}Two different people must not come out with overlapping sets. If yours would suit the person standing next to {{ npc_name }} equally well, start again.{% endif %}
-
-**A CONTIGUOUS RUN OF THE LIST IS NOT AN ANSWER.** Entries that sit next to each other below have nothing in common except their position — the order is arbitrary and carries no meaning. Taking the first few, or four in a row from the middle, produces a set that describes nobody. If your picks are adjacent in the list, that is the strongest possible sign you selected by position rather than by person, and you should discard them and choose again by asking what {{ npc_name }} actually cares about.
-
-**Nothing from the profile is a valid answer.** Not their goals, not their interests, not the people or places they care about, and above all not their "Interject Summary" — that lists conversation *topics*, which is a different thing entirely. The profile tells you who they are so you can choose FROM THE LIST ABOVE on their behalf. It is not the vocabulary you answer in.
-
-Before writing each name, find it in the catalogue and copy it. If what you want to say is not there, choose the nearest thing that IS, or choose fewer.
-
 Answer in exactly this form and nothing else:
 
 NAME: {{ npc_name }}
@@ -410,5 +325,3 @@ ARDOR: <RESERVED|MEASURED|WARM|OPEN|INTENSE>   <- if an `Expression:` block was 
 EXCLUSIVITY: <UNTROUBLED|ACCEPTING|CONVENTIONAL|POSSESSIVE|CONSUMING>   <- if an `Attachment:` block was applied, COPY ITS ANSWER. `Untroubled by Others`=UNTROUBLED, `Accepts Others Easily`=ACCEPTING, `Expects the Usual Arrangement`=CONVENTIONAL, `Needs to Be the Only One`=POSSESSIVE, `Cannot Share at All`=CONSUMING. The block is the answer; do not read past it to the bio. With NO block applied, CONVENTIONAL is the ordinary answer and the one most people deserve - it is the societal norm, not a weak reading. CONSUMING is the rarest answer here and describes someone for whom a rival ends the relationship outright, not someone who would merely mind very much; do not reach for it because the bio is passionate.
 WHY: <one short sentence, in third person, on what these say about them>
 LIMIT: <one short sentence, in third person, on a line they will not cross>
-LIKES: <at most 7 names, copied from the catalogue>
-DISLIKES: <at most 4 names, copied from the catalogue>

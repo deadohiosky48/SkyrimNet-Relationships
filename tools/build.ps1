@@ -1,5 +1,5 @@
 <#
-    Compiles the SkyrimNet-Romantasy Papyrus sources.
+    Compiles the SkyrimNet Relationships Papyrus sources.
 
     Three non-obvious things this handles, all discovered the hard way:
 
