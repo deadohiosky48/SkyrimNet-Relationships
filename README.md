@@ -44,10 +44,11 @@ bio by an LLM, once, and is theirs.
 
 ## What it does
 
-**Enrolls the people who matter.** Anyone who stays with you as a follower for a
-couple of game hours is enrolled on their own — even if you have told them to
-wait somewhere. Anyone else, from the innkeeper you flirt with to a jarl whose
-trust you have earned, you enroll yourself with a hotkey or from the dashboard.
+**Enrolls the people who matter.** Anyone can be enrolled, follower or not:
+the innkeeper you flirt with, a jarl whose trust you have earned, a spouse
+waiting at home. Point at them and press the Enroll hotkey, or use the button
+in the dashboard. Followers are also enrolled for you once they have stayed
+with you a couple of game hours, even if you have told them to wait somewhere.
 Enrollment means "this person is being watched", not "something has started":
 everyone begins as a Stranger with no points.
 
