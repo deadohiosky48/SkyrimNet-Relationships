@@ -301,6 +301,15 @@ schema:
       defaultValue: true
       category: "Enrollment"
 
+    # 2.1 (WP-B). Off still offers both libraries in SeverActions' Bio Blocks
+    # page; it only stops this mod applying them. Read by BioAssignOn().
+    - name: "Assign Relationships Bio Blocks"
+      path: "bioBlocksAssign"
+      type: "bool"
+      description: "Give everyone you enroll the Relationships bio blocks that match their character - Drawn To, Expression, Attachment, and up to two Limits - so you never have to apply them one by one. Chosen by the LLM when it writes the character, and kept in step as they change. Only fills a category that is empty: a block you applied yourself is never touched, and one you take off stays off. Needs SeverActions 4.0.1 or newer. Turn off to apply blocks only by hand; the blocks stay in SeverActions' Bio Blocks page either way. Default: on."
+      defaultValue: true
+      category: "Enrollment"
+
     # ── Pacing ───────────────────────────────────────────────────────────────
     # ONE LEVER ABOVE FOURTEEN KNOBS. awardMaxPoints, talkCooldownHours,
     # talkDailyCap, sparkCooldownHours, driftMinDays and nine more are all pacing

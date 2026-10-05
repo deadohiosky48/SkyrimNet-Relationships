@@ -9,366 +9,427 @@
   "blocks": [
     {
       "id": 9401,
+      "key": "appetite.seldom-stirred",
       "tab": "Arousal: Appetite",
       "title": "Appetite: Seldom Stirred",
       "content": "Desire is a rare visitor. Long stretches pass without it, and they do not notice the time.\n\n**Characteristics**\n\n- Closeness and touch matter; wanting more than that seldom follows\n- Finds other people's preoccupation with it faintly puzzling\n- When it does come, it is unmistakable, because it is unusual\n- Not a lack, not a wound, and not something to be fixed"
     },
     {
       "id": 9402,
+      "key": "appetite.slow-to-kindle",
       "tab": "Arousal: Appetite",
       "title": "Appetite: Slow to Kindle",
       "content": "Desire is there, but it builds rather than strikes. It needs time, ease and the right company before it shows itself.\n\n**Characteristics**\n\n- Rarely wants out of nowhere; usually wants in answer to something\n- Worry, hurry or distraction put it out before it catches\n- Once kindled, burns as steadily as anyone's"
     },
     {
       "id": 9403,
+      "key": "appetite.as-much-as-most",
       "tab": "Arousal: Appetite",
       "title": "Appetite: As Much as Most",
       "content": "Desire comes and goes with the days - stronger when life is easy, quieter when it is not.\n\n**Characteristics**\n\n- Rises with rest and good company, fades under strain\n- Notices an attractive stranger, and moves on\n- Would call themselves neither cold nor hungry"
     },
     {
       "id": 9404,
+      "key": "appetite.easily-stirred",
       "tab": "Arousal: Appetite",
       "title": "Appetite: Easily Stirred",
       "content": "Desire sits close to the surface and does not take much to wake. A look, a touch, the right voice, and it is there.\n\n**Characteristics**\n\n- Notices bodies, and knows they are noticing\n- Thoughts drift that way in idle moments\n- Wanting someone and choosing them are separate things to them"
     },
     {
       "id": 9405,
+      "key": "appetite.runs-hot",
       "tab": "Arousal: Appetite",
       "title": "Appetite: Runs Hot",
       "content": "Desire is a near-constant undercurrent - a large part of how they meet the world, and seldom far from mind.\n\n**Characteristics**\n\n- Thinks about it often, and without needing a reason\n- Goes without it poorly, and notices the lack\n- Hunger decides how often they want; it has never decided whom"
     },
     {
       "id": 9501,
+      "key": "stirred-by.competence",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Competence",
       "content": "Watching someone do a difficult thing well - a clean kill, a lock giving way, a blade finished at the forge.\n\n**Characteristics**\n\n- Notices how a thing was done, not only that it was done\n- Effortless mastery affects them more than effort"
     },
     {
       "id": 9502,
+      "key": "stirred-by.strength",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Strength",
       "content": "Physical power - a body built by labour or war, and the ease of someone who carries what others cannot.\n\n**Characteristics**\n\n- Notices shoulders, hands, the way someone lifts\n- Being steadied or lifted without effort lands hard"
     },
     {
       "id": 9503,
+      "key": "stirred-by.beauty",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Beauty",
       "content": "A face and form, plainly. The most ordinary pull there is, and they do not pretend otherwise.\n\n**Characteristics**\n\n- Looks first, learns the rest later\n- Knows the difference between wanting someone and liking them"
     },
     {
       "id": 9504,
+      "key": "stirred-by.a-sharp-mind",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: A Sharp Mind",
       "content": "Learning and cleverness - someone who knows things, reasons well, and can win an argument.\n\n**Characteristics**\n\n- Being out-argued excites more than it insults\n- Talk of books, history or strategy holds them"
     },
     {
       "id": 9505,
+      "key": "stirred-by.wit",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Wit",
       "content": "Banter. Being made to laugh, and being answered in kind.\n\n**Characteristics**\n\n- A quick reply does more than a compliment\n- Teasing is a form of courtship to them"
     },
     {
       "id": 9506,
+      "key": "stirred-by.confidence",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Confidence",
       "content": "Someone at ease in themselves, who fills a room without trying.\n\n**Characteristics**\n\n- Certainty draws them; arrogance is not the same thing\n- Notices who others turn to when a decision is needed"
     },
     {
       "id": 9507,
+      "key": "stirred-by.power-and-standing",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Power and Standing",
       "content": "Titles, wealth, influence - a name people lower their voices for.\n\n**Characteristics**\n\n- Notices who defers to whom\n- A Jarl's favour or a guild's respect does more than a gift"
     },
     {
       "id": 9508,
+      "key": "stirred-by.magic",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Magic",
       "content": "Real power in someone's hands - spellcraft done well, the air changing when it is cast.\n\n**Characteristics**\n\n- Watches spellwork the way others watch a dancer\n- The more effortless the casting, the stronger the pull"
     },
     {
       "id": 9509,
+      "key": "stirred-by.scars",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Scars",
       "content": "A body that has been through things and shows it. Every mark is a story they want told.\n\n**Characteristics**\n\n- Asks about scars rather than looking away\n- Smooth, unmarked skin says little to them"
     },
     {
       "id": 9510,
+      "key": "stirred-by.a-hint-of-danger",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: A Hint of Danger",
       "content": "A reputation, a capacity for violence that others are wary of. Someone who could do harm, and chooses where.\n\n**Characteristics**\n\n- The wariness in other people's eyes is part of the attraction\n- Draws closer to what others step back from"
     },
     {
       "id": 9511,
+      "key": "stirred-by.kindness-to-others",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Kindness to Others",
       "content": "Gentleness from someone capable of harm - care shown to children, animals, the hurt and the poor.\n\n**Characteristics**\n\n- Notices how someone treats those who can do nothing for them\n- A small unseen kindness moves them more than a grand gesture"
     },
     {
       "id": 9512,
+      "key": "stirred-by.voice",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Voice",
       "content": "How someone speaks - the pitch, the pace, the way a name is said. For a rare few, the Thu'um itself.\n\n**Characteristics**\n\n- Listens to the voice as much as the words\n- Being spoken to softly, close, affects them more than touch"
     },
     {
       "id": 9513,
+      "key": "stirred-by.the-rush-after-a-fight",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: The Rush After a Fight",
       "content": "Alive afterwards, with the fight still in the blood. Surviving together wakes something the calm never does.\n\n**Characteristics**\n\n- The heat comes after the danger, never during it\n- A near thing wakes it; an easy fight does not\n- Fades within the hour if nothing comes of it"
     },
     {
       "id": 9514,
+      "key": "stirred-by.drink-and-revelry",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Drink and Revelry",
       "content": "Mead, music, a loud hall and loosened rules. Celebration lowers their guard and raises everything else.\n\n**Characteristics**\n\n- A feast or a tavern night is when they are most open\n- A cup or two, not a drunk - past that it goes the other way"
     },
     {
       "id": 9515,
+      "key": "stirred-by.safety-and-warmth",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Safety and Warmth",
       "content": "A barred door, a fire, a full belly. Desire only comes when nothing is wrong.\n\n**Characteristics**\n\n- An inn room or a home of their own does what no campsite can\n- Has to stop being watchful before they can want anything"
     },
     {
       "id": 9516,
+      "key": "stirred-by.the-open-wild",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: The Open Wild",
       "content": "Hot springs, starlight, miles from anyone. The world far away and no walls anywhere.\n\n**Characteristics**\n\n- More at ease under the sky than under a roof\n- A quiet camp away from the road is when they are most open"
     },
     {
       "id": 9517,
+      "key": "stirred-by.secrecy",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Secrecy",
       "content": "The risk of being found, the thing they should not want. What is hidden is sweeter to them.\n\n**Characteristics**\n\n- A stolen moment means more than an evening freely given\n- Being openly claimed may cool them rather than warm them"
     },
     {
       "id": 9518,
+      "key": "stirred-by.the-unfamiliar",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: The Unfamiliar",
       "content": "New places, new people, first times. Novelty wakes them the way routine never will.\n\n**Characteristics**\n\n- Most open somewhere they have never been\n- The same room every night slowly dulls them"
     },
     {
       "id": 9519,
+      "key": "stirred-by.exertion",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Exertion",
       "content": "Their own body's heat - after sparring, a hard climb, a day's labour. A body used hard wakes up.\n\n**Characteristics**\n\n- Most aware of themselves when they are breathing hard\n- Sparring with the right person can turn into something else"
     },
     {
       "id": 9520,
+      "key": "stirred-by.being-wanted",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Being Wanted",
       "content": "Desire that follows being desired rather than coming first. Knowing they are wanted is what wakes it.\n\n**Characteristics**\n\n- Rarely wants first; answers wanting with wanting\n- Uncertain interest does little; unmistakable interest does a great deal\n- Being wanted is not the same as being pressed"
     },
     {
       "id": 9521,
+      "key": "stirred-by.being-known",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Being Known",
       "content": "Long talk, confidences kept, being understood. Desire follows closeness of mind, never the other way round.\n\n**Characteristics**\n\n- A conversation that goes deep can do what a body cannot\n- Nothing stirs for someone they do not yet know well"
     },
     {
       "id": 9522,
+      "key": "stirred-by.being-protected",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Being Protected",
       "content": "Someone stepping between them and harm. Being kept safe by another's hand wakes something.\n\n**Characteristics**\n\n- Remembers who stood in front of them, and when\n- Being shielded without having to ask lands hardest"
     },
     {
       "id": 9523,
+      "key": "stirred-by.being-needed",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Being Needed",
       "content": "Being relied upon. Caring for someone, being the one they turn to.\n\n**Characteristics**\n\n- Tending a wound can become something tender\n- Being sought out matters more than being thanked"
     },
     {
       "id": 9524,
+      "key": "stirred-by.tenderness",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Tenderness",
       "content": "Slowness and care. Being handled gently, without hurry.\n\n**Characteristics**\n\n- A patient touch does more than a bold one\n- Roughness or haste closes them up at once"
     },
     {
       "id": 9525,
+      "key": "stirred-by.yielding",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Yielding",
       "content": "Handing the decision to someone they trust, and being led. Given freely, never taken.\n\n**Characteristics**\n\n- Being told what happens next, by someone they chose, is a relief\n- The choice to yield is always theirs, and they know it"
     },
     {
       "id": 9526,
+      "key": "stirred-by.taking-the-lead",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Taking the Lead",
       "content": "Setting the pace and being followed. Deciding what happens next is part of the pleasure.\n\n**Characteristics**\n\n- Likes to be the one who begins it\n- Watches to see whether they will be followed"
     },
     {
       "id": 9527,
+      "key": "stirred-by.rivalry",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Rivalry",
       "content": "Contest, sparring, being matched or beaten. Friction is a kind of spark to them.\n\n**Characteristics**\n\n- A worthy opponent draws more interest than an admirer\n- Losing a fair contest can do as much as winning one"
     },
     {
       "id": 9528,
+      "key": "stirred-by.vulnerability",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Vulnerability",
       "content": "Seeing someone strong unguarded - wounded, grieving, afraid. Being trusted with weakness moves them.\n\n**Characteristics**\n\n- An admitted fear brings them closer than a victory\n- Would never use what they are shown against anyone"
     },
     {
       "id": 9529,
+      "key": "stirred-by.reunion",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Reunion",
       "content": "Coming back after time apart. Absence sharpens what routine had dulled.\n\n**Characteristics**\n\n- The first evening back is when they are most open\n- Being missed, and hearing it said, matters to them"
     },
     {
       "id": 9530,
+      "key": "stirred-by.the-end-of-a-quarrel",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: The End of a Quarrel",
       "content": "The heat that comes when a fight between them finally breaks. Making up is its own kind of closeness.\n\n**Characteristics**\n\n- Only once it is truly over; not while anything is unresolved\n- Anger that is aired does this; anger that festers does not"
     },
     {
       "id": 9531,
+      "key": "stirred-by.honour",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Honour",
       "content": "Doing right when it costs something. Integrity under pressure moves them.\n\n**Characteristics**\n\n- Remembers a kept promise longer than a gift\n- Watches what someone does when doing wrong would be easier"
     },
     {
       "id": 9532,
+      "key": "stirred-by.ruthlessness",
       "tab": "Arousal: Stirred By",
       "title": "Stirred By: Ruthlessness",
       "content": "Doing what has to be done without flinching. Hard decisions made cleanly draw them.\n\n**Characteristics**\n\n- Sentiment where resolve was needed disappoints them\n- Respects whoever does the necessary thing, even an ugly one"
     },
     {
       "id": 9601,
+      "key": "cooled-by.an-audience",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: An Audience",
       "content": "Others nearby. Whatever they feel stays put away while anyone else could see or hear.\n\n**Characteristics**\n\n- Companions within earshot are enough\n- A closed door changes everything"
     },
     {
       "id": 9602,
+      "key": "cooled-by.danger-nearby",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Danger Nearby",
       "content": "Cannot let go while anything is still a threat. Watchfulness and wanting do not share room in them.\n\n**Characteristics**\n\n- Nothing stirs in a crypt, a threatened camp or a hostile hold\n- Needs the danger fully past, not merely paused"
     },
     {
       "id": 9603,
+      "key": "cooled-by.grief",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Grief",
       "content": "Loss takes all of it for a while. Desire returns, but not on anyone's schedule.\n\n**Characteristics**\n\n- A recent death shuts it away entirely\n- Comfort is welcome; being wanted is not, yet"
     },
     {
       "id": 9604,
+      "key": "cooled-by.wounds-and-exhaustion",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Wounds and Exhaustion",
       "content": "A body that hurts or is spent has nothing to spare.\n\n**Characteristics**\n\n- After a long march or a bad wound, rest comes first\n- Cold, hunger and a wet camp do the same"
     },
     {
       "id": 9605,
+      "key": "cooled-by.squalor",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Squalor",
       "content": "Filth, blood, the smell of the dead - on the surroundings or on a person.\n\n**Characteristics**\n\n- Needs to be clean before they can feel anything\n- Someone fresh from a crypt and still wearing it does not appeal"
     },
     {
       "id": 9606,
+      "key": "cooled-by.being-rushed",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Being Rushed",
       "content": "Haste puts it out. Wanting needs time to arrive.\n\n**Characteristics**\n\n- Hurry reads as not caring who they are\n- Given time, may arrive at the same place anyway"
     },
     {
       "id": 9607,
+      "key": "cooled-by.the-risk-of-a-child",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: The Risk of a Child",
       "content": "The chance of conceiving weighs on them and closes things off.\n\n**Characteristics**\n\n- Cannot forget the consequence long enough to want\n- Is more at ease once it has been spoken of openly"
     },
     {
       "id": 9608,
+      "key": "cooled-by.duty",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Duty",
       "content": "On watch, on a job, in the middle of a contract. Work comes first and everything else waits.\n\n**Characteristics**\n\n- Will not be distracted from a task in hand\n- Once it is done, may be a different person entirely"
     },
     {
       "id": 9609,
+      "key": "cooled-by.drink",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Drink",
       "content": "Drink dulls it rather than loosening it. Wine makes them sleepy, sad or sharp, never warm.\n\n**Characteristics**\n\n- A drunk companion is unappealing, and so are they to themselves\n- Wants a clear head for anything that matters"
     },
     {
       "id": 9610,
+      "key": "cooled-by.meanness",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Meanness",
       "content": "Small cruelties - a sneer, a jab at someone weaker, a kick at a dog. Seeing it puts desire out for a while.\n\n**Characteristics**\n\n- Notices how someone treats those beneath them\n- Not a verdict on the whole bond; nothing stirs for someone they have just watched be petty"
     },
     {
       "id": 9611,
+      "key": "cooled-by.arrogance",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Arrogance",
       "content": "Boasting, condescension, being talked down to. Self-regard fills the room and leaves none for them.\n\n**Characteristics**\n\n- A brag lands as a warning\n- Confidence is fine; contempt for others is not"
     },
     {
       "id": 9612,
+      "key": "cooled-by.crudeness",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Crudeness",
       "content": "Coarse talk, leering, being propositioned bluntly. Being addressed as a body rather than a person closes them up.\n\n**Characteristics**\n\n- The same wish, put gracefully, might have landed\n- Frankness is not crudeness; they know the difference"
     },
     {
       "id": 9613,
+      "key": "cooled-by.cowardice",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Cowardice",
       "content": "Someone who runs, hides behind others, or lets others take the blow.\n\n**Characteristics**\n\n- Fear is forgivable; leaving others to face it is not\n- Remembers who stepped back"
     },
     {
       "id": 9614,
+      "key": "cooled-by.dishonesty",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Dishonesty",
       "content": "Lies, even small and kindly meant ones. Being deceived makes them wary of every other word.\n\n**Characteristics**\n\n- Cannot want someone they cannot trust to mean what they say\n- A lie caught once colours everything after"
     },
     {
       "id": 9615,
+      "key": "cooled-by.self-pity",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Self-Pity",
       "content": "Wallowing, complaining, a mood that asks to be tended. Sympathy they can give; desire does not survive it.\n\n**Characteristics**\n\n- Hardship borne quietly draws them; hardship performed does not\n- Will comfort, and want nothing more"
     },
     {
       "id": 9616,
+      "key": "cooled-by.coldness",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Coldness",
       "content": "Warmth that is not returned. Desire needs somewhere to land, and indifference gives it nowhere.\n\n**Characteristics**\n\n- Cannot keep wanting someone who seems not to notice\n- A single warm word can undo a great deal of it"
     },
     {
       "id": 9617,
+      "key": "cooled-by.recklessness",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Recklessness",
       "content": "Someone who gambles with lives - their own, or other people's. Needless risk reads as not caring who gets hurt.\n\n**Characteristics**\n\n- Bravery is admired; carelessness is not the same thing\n- Worry for someone crowds out wanting them"
     },
     {
       "id": 9618,
+      "key": "cooled-by.sorcery",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Sorcery",
       "content": "Magic makes them uneasy - the smell of it, the unnatural light, what it does to the people who wield it.\n\n**Characteristics**\n\n- Hands that have just cast a spell are not hands they want on them\n- Respects a mage's skill from a distance"
     },
     {
       "id": 9619,
+      "key": "cooled-by.bloodlust",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Bloodlust",
       "content": "Someone who enjoys the killing. Necessary violence they understand; relish for it they cannot want.\n\n**Characteristics**\n\n- A smile over a body puts them off for the day\n- Notices the difference between finishing a fight and savouring it"
     },
     {
       "id": 9620,
+      "key": "cooled-by.being-taken-for-granted",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Being Taken for Granted",
       "content": "Left behind for weeks, then expected to be warm. Neglect cools what absence alone would not.\n\n**Characteristics**\n\n- Needs the time apart acknowledged, not ignored\n- Being remembered matters more to them than being visited"
     },
     {
       "id": 9621,
+      "key": "cooled-by.shame",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Shame",
       "content": "Desire arrives and guilt follows close behind. Something they were taught - by faith, family or hard experience - tells them it is wrong.\n\n**Characteristics**\n\n- Can want and still refuse, and be relieved to have refused\n- Being open about it may ease the shame, or deepen it"
     },
     {
       "id": 9622,
+      "key": "cooled-by.a-troubled-mind",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: A Troubled Mind",
       "content": "Worry takes up the room desire would need - a debt, a sick relative, a threat not yet dealt with.\n\n**Characteristics**\n\n- Cannot be present while something is unresolved\n- Relief when a trouble passes can open them up again"
     },
     {
       "id": 9623,
+      "key": "cooled-by.their-own-body",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Their Own Body",
       "content": "Self-consciousness - scars, age, a body they have never liked. Being looked at makes them want to be elsewhere.\n\n**Characteristics**\n\n- Darkness and privacy help; admiration in plain light does not\n- Reassurance works slowly, if at all"
     },
     {
       "id": 9624,
+      "key": "cooled-by.old-hurts",
       "tab": "Arousal: Cooled By",
       "title": "Cooled By: Old Hurts",
       "content": "Something from before that surfaces uninvited - a touch, a word or a place that recalls it.\n\n**Characteristics**\n\n- Can go cold without warning, and may not say why\n- Patience and a way out do more than any reassurance"

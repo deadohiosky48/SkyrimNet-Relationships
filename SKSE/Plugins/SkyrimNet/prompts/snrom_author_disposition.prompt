@@ -292,6 +292,17 @@ A limit belongs to THIS person and comes out of the material above: their circum
 
 Do not write a rule that would be true of almost anyone. Write the one that is true of them. And do not soften it: a limit that bends under pressure is not a limit, and writing it as though it might is worse than leaving the field out.
 
+LIMIT_BLOCKS - which of six standing refusals are true of this person. Each becomes a short block in their bio that every later conversation reads, so pick only what the material supports:
+
+- SECRET: will not be hidden, whatever else they accept.
+- TRUTH: would rather be hurt by the truth than shielded from it; a kindly meant omission is an insult.
+- BETWEEN: refuses to be the reason another person is hurt, however much they want the one they would be taking.
+- CRUELTY: cruelty toward someone who cannot defend themselves ends it, whatever they feel for the one who did it.
+- OWNED: accepts love and refuses possession.
+- COMPETE: when there are others, will not plead their case; would rather leave than ask to be preferred.
+
+Choose none, one or two. NONE is an ordinary answer, and the right one when nothing above says otherwise. These sit beside the LIMIT line rather than restating it, and must not contradict it or the EXCLUSIVITY answer: someone UNTROUBLED by other partners is not COMPETE.
+
 {# NO WORKED EXAMPLES HERE, deliberately. There used to be two - one
    illustrating CASUAL, one GUARDED - and the CASUAL one was the vivid,
    memorable half. Three consecutive NPCs then came back CASUAL/ardor 3, with
@@ -325,3 +336,4 @@ ARDOR: <RESERVED|MEASURED|WARM|OPEN|INTENSE>   <- if an `Expression:` block was 
 EXCLUSIVITY: <UNTROUBLED|ACCEPTING|CONVENTIONAL|POSSESSIVE|CONSUMING>   <- if an `Attachment:` block was applied, COPY ITS ANSWER. `Untroubled by Others`=UNTROUBLED, `Accepts Others Easily`=ACCEPTING, `Expects the Usual Arrangement`=CONVENTIONAL, `Needs to Be the Only One`=POSSESSIVE, `Cannot Share at All`=CONSUMING. The block is the answer; do not read past it to the bio. With NO block applied, CONVENTIONAL is the ordinary answer and the one most people deserve - it is the societal norm, not a weak reading. CONSUMING is the rarest answer here and describes someone for whom a rival ends the relationship outright, not someone who would merely mind very much; do not reach for it because the bio is passionate.
 WHY: <one short sentence, in third person, on what these say about them>
 LIMIT: <one short sentence, in third person, on a line they will not cross>
+LIMIT_BLOCKS: <NONE, or one or two of SECRET|TRUTH|BETWEEN|CRUELTY|OWNED|COMPETE, comma-separated>

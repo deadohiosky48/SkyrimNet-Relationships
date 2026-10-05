@@ -54,6 +54,12 @@ foreach ($p in @($compiler, $flags)) {
     if (-not (Test-Path $p)) { throw "Not found: $p`nPass -SkyrimRoot if your install is elsewhere." }
 }
 
+# The bio block libraries are compiled in: SNRom_SABioLib.psc is generated from
+# library\*.json on every build, so the shipped .pex can never disagree with the
+# JSON beside it.
+& (Join-Path $PSScriptRoot 'gen-bio-library.ps1')
+if (-not $?) { throw "gen-bio-library.ps1 failed" }
+
 # --- Vanilla source set (cached) -----------------------------------------
 if ($Clean -and (Test-Path $buildDir)) {
     Remove-Item $buildDir -Recurse -Force
