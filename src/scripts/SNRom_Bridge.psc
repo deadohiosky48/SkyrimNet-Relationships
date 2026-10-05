@@ -8925,15 +8925,17 @@ Int Function SyncOurBlocksWith(Actor akActor, String[] akTitles, String asLimitP
 EndFunction
 
 Bool Function BioEligible(Actor akActor)
-    { NOT FOR CHILDREN, AND NOT FOR THE PLAYER'S KIN. The Relationships blocks
-      describe how someone is with a partner - what they show, whether they
-      can share, what they will not be in a relationship. That has no place
-      in a child's bio, nor in that of the player's own children, whom this
-      mod already bars from the romantic ladder (IsPlayerKin). Both can still
-      be enrolled; they simply get none of ours. Found on the first in-game
-      run (2026-10-05): Nicollette, Toryy and Lyra had been given Expression
-      and Attachment blocks. }
-    Return !akActor.IsChild() && !SNRom_Decorators.IsPlayerKin(akActor)
+    { NOT FOR CHILDREN. The Relationships blocks describe how someone is with
+      a partner, which has no place in a child's bio. A child can still be
+      enrolled and simply gets none of ours. Actor.IsChild() is the authority,
+      as it is for the romance gate.
+
+      THE PLAYER'S KIN DO GET THEM (the author, 2026-10-05). Grown children are
+      adults with partners of their own, and the blocks describe them, not
+      their bond with the player; NPC-to-NPC relationships will want exactly
+      this. Romance with the player is barred separately, by the kin guard
+      and its setting - not by withholding who they are. }
+    Return !akActor.IsChild()
 EndFunction
 
 Int Function BioWithdrawOurs(Actor akActor, String[] akTitles)
@@ -8943,7 +8945,7 @@ Int Function BioWithdrawOurs(Actor akActor, String[] akTitles)
     Int cat = 0
     While cat < 4
         If BioOursAlone(akActor, akTitles, cat)
-            BioReplace(akActor, cat, StorageUtil.GetStringValue(akActor, "SNRom_BioOurs_" + cat, ""), "",                 "not for a child or the player's kin")
+            BioReplace(akActor, cat, StorageUtil.GetStringValue(akActor, "SNRom_BioOurs_" + cat, ""), "",                 "not for a child")
             n += 1
         EndIf
         cat += 1
