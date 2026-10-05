@@ -6754,6 +6754,9 @@ Event OnUpdateGameTime()
         ; values on the very first tick rather than one cycle later.
         MigrateLegacyExclusivity()
         RefreshPartnerCount()
+        If _bioWalkPending
+            BioBlocksOnLoad()       ; the load-time walk was held back; see BioStoreLooksLoaded
+        EndIf
     EndIf
 
     ; The outstanding question goes BEFORE the assessors. It is cheap, local and
@@ -9038,6 +9041,14 @@ Function BioBlocksOnLoad()
     Int defined = SNRom_SABio.DefineAll()
     Diag(LOG_INFO(), "Bio blocks: SeverActions accepted " + defined + " of 81 (any missing were deleted by the player, which is final).")
 
+    _bioWalkPending = False
+    If !BioStoreLooksLoaded()
+        _bioWalkPending = True
+        Diag(LOG_WARN(), "Bio blocks: SeverActions reports no blocks on anyone we applied blocks to - its save " + \
+            "data may not be loaded yet. Not checking the roster now; trying again at the next housekeeping.")
+        Return
+    EndIf
+
     Int count = StorageUtil.FormListCount(None, "SNRom_Roster")
     Int applied = 0
     Int i = 0
@@ -9052,6 +9063,53 @@ Function BioBlocksOnLoad()
     EndWhile
     Diag(LOG_INFO(), "Bio blocks: checked " + count + " enrolled, applied or updated " + applied + " of ours" + \
         BioAssignWord() + ".")
+EndFunction
+
+Bool _bioWalkPending = False
+
+Bool Function BioStoreLooksLoaded()
+    { NEVER JUDGE FROM AN EMPTY STORE. If SeverActions' per-save assignments
+      were not loaded yet, every block we applied would look taken off, and
+      BioNoticeRemoval would mark each of those categories "-": the player's,
+      for good. Permanent damage from a timing fault.
+
+      Measured 2026-10-05, it does not happen: SeverActions loads its library
+      at game start and restores the assignments from the co-save during the
+      load itself (11:30:35), well before OnPlayerLoadGame reaches us
+      (11:33:12). The minute SeverActions takes to settle is its own scripts,
+      which the Bio Blocks API does not wait on. This guard is for the day
+      that changes.
+
+      True unless someone we recorded blocks for carries none at all, and
+      nobody we recorded blocks for carries any. Stops at the first person
+      with any block, so it usually costs one call. }
+    Int count = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int recorded = 0
+    Int i = 0
+    While i < count
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None && BioHasRecord(a)
+            recorded += 1
+            String[] titles = SNRom_SABio.AssignedTitles(a)
+            If titles && titles.Length > 0
+                Return True
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    Return recorded == 0
+EndFunction
+
+Bool Function BioHasRecord(Actor akActor)
+    Int cat = 0
+    While cat < 4
+        String rec = StorageUtil.GetStringValue(akActor, "SNRom_BioOurs_" + cat, "")
+        If rec != "" && rec != "-"
+            Return True
+        EndIf
+        cat += 1
+    EndWhile
+    Return False
 EndFunction
 
 String Function BioAssignWord()
