@@ -16,7 +16,8 @@ namespace SNRom::Natives {
     //      Announce: a tier change, shown when the player can see it (Notices.h)
     //   6  ObserversNear: the enrolled characters who can observe the player
     //   7  AppendLog: the mod's own log files, written natively and in order
-    inline constexpr std::int32_t kVersion = 7;
+    //   8  BioPlan: one person's Relationships bio blocks, decided natively
+    inline constexpr std::int32_t kVersion = 8;
 
     // Registers the natives declared in src/scripts/SNRom_Native.psc.
     void Register(const SKSE::PapyrusInterface* a_papyrus);

@@ -78,6 +78,7 @@ find_package(spdlog CONFIG REQUIRED)
 
 set(SOURCES
     plugin.cpp
+    src/BioPlan.cpp
     src/Dashboard.cpp
     src/Display.cpp
     src/History.cpp

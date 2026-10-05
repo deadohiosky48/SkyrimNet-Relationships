@@ -2,6 +2,7 @@
 
 #include "PCH.h"
 
+#include "BioPlan.h"
 #include "Dashboard.h"
 #include "History.h"
 #include "Hotkey.h"
@@ -225,6 +226,14 @@ namespace SNRom::Natives {
         // Is3DLoaded and GetDistance waited for a frame: some hundreds of
         // frames a tick at 122 enrolled, one here. NOT callable from tasklets:
         // it reads the engine.
+        // VERSION 8. WP-B: one person's Relationships bio blocks, decided here
+        // rather than in Papyrus string handling (BioPlan.h). Pure, so callable
+        // from a tasklet.
+        std::vector<std::int32_t> BioPlan(RE::StaticFunctionTag*, RE::Actor* a_actor, std::vector<std::string> a_titles,
+                                          std::vector<std::int32_t> a_state) {
+            return BioPlan::Plan(a_actor, a_titles, a_state);
+        }
+
         std::vector<RE::Actor*> ObserversNear(RE::StaticFunctionTag*, float a_range) {
             std::vector<RE::Actor*> out;
             static RE::TESFaction* bond = nullptr;
@@ -286,9 +295,11 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("Announce", kScript, Announce, true);
             a_vm->RegisterFunction("ObserversNear", kScript, ObserversNear);  // main thread: see above
             a_vm->RegisterFunction("AppendLog", kScript, AppendLog, true);
+            a_vm->RegisterFunction("BioPlan", kScript, BioPlan, true);
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
                             "PutBondNumbers, PutBondText, DropBond, FormIdOf, PutPlaythrough, PutRefreshFacts, "
-                            "RefreshDone, ActionArgs, ActionDone, CheckBond, RecordChange, Announce, ObserversNear, AppendLog",
+                            "RefreshDone, ActionArgs, ActionDone, CheckBond, RecordChange, Announce, ObserversNear, AppendLog, "
+                            "BioPlan",
                             kScript, kVersion);
             return true;
         });

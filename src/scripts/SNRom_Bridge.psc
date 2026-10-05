@@ -8436,167 +8436,28 @@ Function ApplyCharacter(Actor akActor, String asResponse)
 EndFunction
 
 Function EnforceBlockAnswers(Actor akActor)
-    { THE BLOCKS WIN, ENFORCED RATHER THAN ASKED FOR.
+    { THE PLAYER'S BLOCKS WIN, ENFORCED RATHER THAN ASKED FOR.
 
-      A `Drawn To:`, `Expression:` or `Attachment:` block is a direct answer the
-      player applied on purpose, and the authoring prompt has always said so -
-      "on its own field it outranks everything". Vivienne Onis, 2026-09-28:
-      Drawn To: Both applied, re-authored ATTRACTED_TO_MEN / IMPLIED anyway. The
-      two fields whose answer line carried a block-to-word mapping (ardor,
-      exclusivity) came out right; the one that did not, did not. The mapping is
-      now on that line too - and this makes the rule hold even when the model
-      reads past it, the same reasoning as the marriage clamp in ApplyCharacter:
-      once persuasion is spent, write the fact where the value enters.
+      A Drawn To, Expression or Attachment block the player applied is a
+      direct answer, and the authoring prompt has always said so. Vivienne
+      Onis, 2026-09-28: Drawn To: Both applied, re-authored ATTRACTED_TO_MEN
+      anyway. Once persuasion is spent, the fact is written where the value
+      enters - here after authoring, and on every load (BioBlocksOnLoad),
+      because blocks are applied whenever the player likes: 22 of 78 people
+      with an Expression block once disagreed with their ardor.
 
-      READ FROM SEVERACTIONS, NEVER FROM PROSE. Native_BioBlock_AssignedTitles
-      (3.9.14+, still present in the Beta 25 build) returns the titles exactly as
-      the library shows them. An older SeverActions lacks the native: the call
-      logs one Papyrus error and returns None, and nothing is overridden.
-
-      ONLY THE THREE FIELDS A BLOCK ANSWERS. Intimacy has no block and stays the
-      model's reading. A block we cannot parse - a custom answer, or two
-      different blocks of one kind - is reported and left alone; guessing
-      would be the same mistake in the other direction.
-
-      A RECORDED MARRIAGE STILL OUTRANKS A BLOCK on orientation, exactly as it
-      outranks the model. The block is then wrong, and the log says so.
-
-      OUR OWN BLOCKS ARE NOT THE PLAYER'S ANSWER (2.1). A category holding only
-      the block this mod applied (BioOursAlone) is our earlier guess, kept in
-      step with the field by SyncOurBlocks; enforcing it here would undo every
-      re-author and every drift step. Skipped. }
+      Decided natively since 2.1 (SNRom_Native.BioPlan): a block of ours,
+      alone in its category, is our earlier guess and not the player's answer,
+      and is skipped; two different answers, or wording we do not know, are
+      reported and left alone; a recorded marriage outranks a Drawn To block
+      that excludes the player. }
     If akActor == None || !SeverActionsPresent()
         Return
     EndIf
-    EnforceBlockAnswersWith(akActor, SNRom_SABio.AssignedTitles(akActor))
+    BioRun(akActor, SNRom_SABio.AssignedTitles(akActor), BIO_ENFORCE(), -1, "authoring")
 EndFunction
 
-Function EnforceBlockAnswersWith(Actor akActor, String[] titles)
-    { EnforceBlockAnswers with the person's titles already in hand. }
-    If akActor == None || !titles || titles.Length == 0
-        Return
-    EndIf
-    String who = akActor.GetDisplayName()
 
-    ; ---- Drawn To -> orientation, and the basis becomes STATED ----------------
-    String drawn = ""
-    If !BioOursAlone(akActor, titles, BIO_DRAWN())
-        drawn = BlockAnswer(titles, "Drawn To:")
-    EndIf
-    String oWord = ""
-    If drawn == "Men"
-        oWord = "ATTRACTED_TO_MEN"
-    ElseIf drawn == "Women"
-        oWord = "ATTRACTED_TO_WOMEN"
-    ElseIf drawn == "Both"
-        oWord = "ATTRACTED_TO_BOTH"
-    ElseIf drawn == "No One"
-        oWord = "ATTRACTED_TO_NEITHER"
-    EndIf
-    If oWord != ""
-        Int o = SNRom_Decorators.OrientationToInt(oWord)
-        If IsMarriedToPlayer(akActor) && OrientationExcludesPlayer(o)
-            Diag(LOG_WARN(), "Block 'Drawn To: " + drawn + "' NOT applied to " + who + \
-                " - the game records a marriage to the player, which the block contradicts. Fix the block.")
-        ElseIf StorageUtil.GetIntValue(akActor, "SNRom_Orientation", 3) != o || \
-            StorageUtil.GetIntValue(akActor, "SNRom_OrientationKnown", 0) != 2
-            StorageUtil.SetIntValue(akActor, "SNRom_Orientation", o)
-            StorageUtil.SetIntValue(akActor, "SNRom_OrientationKnown", 2)
-            Diag(LOG_INFO(), "BLOCK OVERRIDE for " + who + ": orientation -> " + oWord + \
-                " / STATED, from the applied block 'Drawn To: " + drawn + "'.")
-        EndIf
-    ElseIf drawn != ""
-        Diag(LOG_WARN(), "Block 'Drawn To: " + drawn + "' on " + who + \
-            " is not one of the library's answers (or two disagree) - orientation left as authored.")
-    EndIf
-
-    ; ---- Expression -> ardor ------------------------------------------------
-    String expr = ""
-    If !BioOursAlone(akActor, titles, BIO_EXPRESSION())
-        expr = BlockAnswer(titles, "Expression:")
-    EndIf
-    String rWord = ""
-    If expr == "Reserved and Undemonstrative"
-        rWord = "RESERVED"
-    ElseIf expr == "Measured, Shows Little"
-        rWord = "MEASURED"
-    ElseIf expr == "Warm but Not Effusive"
-        rWord = "WARM"
-    ElseIf expr == "Open About What They Feel"
-        rWord = "OPEN"
-    ElseIf expr == "Intense and Unmistakable"
-        rWord = "INTENSE"
-    EndIf
-    If rWord != ""
-        Int r = SNRom_Decorators.ArdorToInt(rWord)
-        If StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2) != r
-            StorageUtil.SetIntValue(akActor, "SNRom_Ardor", r)
-            Diag(LOG_INFO(), "BLOCK OVERRIDE for " + who + ": ardor -> " + rWord + \
-                ", from the applied block 'Expression: " + expr + "'.")
-        EndIf
-    ElseIf expr != ""
-        Diag(LOG_WARN(), "Block 'Expression: " + expr + "' on " + who + \
-            " is not one of the library's answers (or two disagree) - ardor left as authored.")
-    EndIf
-
-    ; ---- Attachment -> exclusivity (the seed value for that band) -------------
-    String attach = ""
-    If !BioOursAlone(akActor, titles, BIO_ATTACHMENT())
-        attach = BlockAnswer(titles, "Attachment:")
-    EndIf
-    String xWord = ""
-    If attach == "Untroubled by Others"
-        xWord = "UNTROUBLED"
-    ElseIf attach == "Accepts Others Easily"
-        xWord = "ACCEPTING"
-    ElseIf attach == "Expects the Usual Arrangement"
-        xWord = "CONVENTIONAL"
-    ElseIf attach == "Needs to Be the Only One"
-        xWord = "POSSESSIVE"
-    ElseIf attach == "Cannot Share at All"
-        xWord = "CONSUMING"
-    EndIf
-    If xWord != ""
-        Int x = SNRom_Decorators.ExclusivityToInt(xWord)
-        If StorageUtil.GetIntValue(akActor, "SNRom_Exclusivity", 50) != x
-            StorageUtil.SetIntValue(akActor, "SNRom_Exclusivity", x)
-            Diag(LOG_INFO(), "BLOCK OVERRIDE for " + who + ": exclusivity -> " + xWord + " (" + x + \
-                "), from the applied block 'Attachment: " + attach + "'.")
-        EndIf
-    ElseIf attach != ""
-        Diag(LOG_WARN(), "Block 'Attachment: " + attach + "' on " + who + \
-            " is not one of the library's answers (or two disagree) - exclusivity left as authored.")
-    EndIf
-EndFunction
-
-String Function BlockAnswer(String[] akTitles, String asPrefix)
-    { The answer half of the applied block whose title starts with asPrefix -
-      "Both" from "Drawn To: Both". "" when none is applied; "?" when two
-      DIFFERENT ones are, a contradiction to report rather than resolve by
-      picking one. Strips the " (2)" suffix SeverActions' import adds when a
-      title already existed. Papyrus == ignores case, so callers match the
-      library's wording as written. }
-    String found = ""
-    Int plen = StringUtil.GetLength(asPrefix)
-    Int i = 0
-    While i < akTitles.Length
-        String t = SNRom_Decorators.Trim(akTitles[i])
-        If StringUtil.Find(t, asPrefix) == 0
-            String v = SNRom_Decorators.Trim(StringUtil.Substring(t, plen))
-            Int cut = StringUtil.Find(v, " (")
-            If cut > 0 && StringUtil.GetNthChar(v, StringUtil.GetLength(v) - 1) == ")"
-                v = SNRom_Decorators.Trim(StringUtil.Substring(v, 0, cut))
-            EndIf
-            If found == ""
-                found = v
-            ElseIf found != v
-                Return "?"
-            EndIf
-        EndIf
-        i += 1
-    EndWhile
-    Return found
-EndFunction
 
 ; ===========================================================================
 ; WP-B (2.1): OUR RELATIONSHIPS BIO BLOCKS, CHOSEN BY THE MODEL.
@@ -8647,18 +8508,6 @@ Int Function BIO_LIMITS() Global
     Return 3
 EndFunction
 
-String Function BioPrefix(Int aiCat) Global
-    { The title prefix SeverActions reports for each category. Limits titles
-      read "Limit: ...", singular, while the tab is "Relationships: Limits". }
-    If aiCat == 0
-        Return "Drawn To:"
-    ElseIf aiCat == 1
-        Return "Expression:"
-    ElseIf aiCat == 2
-        Return "Attachment:"
-    EndIf
-    Return "Limit:"
-EndFunction
 
 String Function BioCatName(Int aiCat) Global
     If aiCat == 0
@@ -8671,70 +8520,11 @@ String Function BioCatName(Int aiCat) Global
     Return "Limits"
 EndFunction
 
-Bool Function BioApiReady()
-    { True when SeverActions' Bio Blocks API (v1, SeverActions 4.0.1+) is
-      there. Checked once per session in BioBlocksOnLoad; on an older
-      SeverActions the version call logs one Papyrus error, so it is not
-      repeated per actor. }
-    Return _bioApi == 1
-EndFunction
 
 Bool Function BioAssignOn()
     Return _bioApi == 1 && SkyrimNetApi.GetConfigBool(CFG(), "bioBlocksAssign", True)
 EndFunction
 
-String Function BioDesiredKey(Actor akActor, Int aiCat)
-    { The block that says what the character already says. "" when no block
-      should be there.
-
-      DRAWN TO ONLY WHEN THE ORIENTATION IS STATED. A block renders into the
-      bio as a fact, and the bond prompt deliberately states orientation only
-      when it is known (basis 2): an inference is not a fact, and silence is
-      what lets the story discover it. A Drawn To block for an IMPLIED reading
-      would undo that. }
-    If aiCat == 0
-        If StorageUtil.GetIntValue(akActor, "SNRom_OrientationKnown", 0) < 2
-            Return ""
-        EndIf
-        Int o = StorageUtil.GetIntValue(akActor, "SNRom_Orientation", 3)
-        If o == 1
-            Return "drawn-to.men"
-        ElseIf o == 2
-            Return "drawn-to.women"
-        ElseIf o == 0
-            Return "drawn-to.no-one"
-        EndIf
-        Return "drawn-to.both"
-    ElseIf aiCat == 1
-        Int a = StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2)
-        If a <= 0
-            Return "expression.reserved-and-undemonstrative"
-        ElseIf a == 1
-            Return "expression.measured-shows-little"
-        ElseIf a == 2
-            Return "expression.warm-but-not-effusive"
-        ElseIf a == 3
-            Return "expression.open-about-what-they-feel"
-        EndIf
-        Return "expression.intense-and-unmistakable"
-    ElseIf aiCat == 2
-        ; Bands around the five authored seeds (0/25/50/75/100). Drift moves
-        ; exclusivity 20 at a time, so it lands between seeds; the nearest
-        ; seed's block is the honest one.
-        Int x = StorageUtil.GetIntValue(akActor, "SNRom_Exclusivity", 50)
-        If x <= 12
-            Return "attachment.untroubled-by-others"
-        ElseIf x <= 37
-            Return "attachment.accepts-others-easily"
-        ElseIf x <= 62
-            Return "attachment.expects-the-usual-arrangement"
-        ElseIf x <= 87
-            Return "attachment.needs-to-be-the-only-one"
-        EndIf
-        Return "attachment.cannot-share-at-all"
-    EndIf
-    Return ""
-EndFunction
 
 String Function LimitKeyFromWord(String asWord) Global
     { LIMIT_BLOCKS answers, one word per block. "" for anything else. }
@@ -8931,8 +8721,7 @@ Function MarkBioOurs(Actor akActor, Int aiCat, String asKey)
     If akActor == None || _bioApi != 1
         Return
     EndIf
-    String[] titles = SNRom_SABio.AssignedTitles(akActor)
-    If !TitleIn(titles, SNRom_BioTitles.TitleOf(asKey))
+    If !SNRom_SABio.IsApplied(akActor, asKey)
         Diag(LOG_WARN(), "MarkBioOurs: " + akActor.GetDisplayName() + " does not carry '" + asKey + "' - not recorded")
         Return
     EndIf
@@ -8949,247 +8738,48 @@ Function MarkBioOurs(Actor akActor, Int aiCat, String asKey)
     Diag(LOG_INFO(), "MarkBioOurs: " + akActor.GetDisplayName() + " " + BioCatName(aiCat) + " recorded as ours: '" + rec + "'")
 EndFunction
 
-Int Function BioCountIn(String[] akTitles, Int aiCat)
-    String p = BioPrefix(aiCat)
-    Int n = 0
-    Int i = 0
-    While akTitles && i < akTitles.Length
-        If StringUtil.Find(SNRom_Decorators.Trim(akTitles[i]), p) == 0
-            n += 1
-        EndIf
-        i += 1
-    EndWhile
-    Return n
-EndFunction
 
-Bool Function TitleIn(String[] akTitles, String asTitle) Global
-    { True when asTitle is among the person's blocks, exactly as SeverActions
-      shows it or with the " (2)" a title clash adds. Papyrus == ignores case,
-      which also absorbs Skyrim's string pool re-casing a title. }
-    If asTitle == "" || !akTitles
-        Return False
-    EndIf
-    Int tl = StringUtil.GetLength(asTitle)
-    Int i = 0
-    While i < akTitles.Length
-        String t = SNRom_Decorators.Trim(akTitles[i])
-        If t == asTitle
-            Return True
-        ElseIf StringUtil.GetLength(t) > tl + 2 && StringUtil.Substring(t, 0, tl + 2) == asTitle + " ("
-            Return True
-        EndIf
-        i += 1
-    EndWhile
-    Return False
-EndFunction
 
-Bool Function BioOursAlone(Actor akActor, String[] akTitles, Int aiCat)
-    { True while the category holds exactly what we applied, and nothing else.
-
-      READ FROM THE TITLES, WITH NO CALL INTO SEVERACTIONS. Each native call
-      from Papyrus can cost a frame, and the load-time roster walk asks this
-      for every category of every enrolled person; BioApi_IsApplied per block
-      came to about a thousand calls a load. One AssignedTitles per person,
-      matched against SNRom_BioTitles, answers the same question.
-
-      A copy the player made of ours sits beside it and makes two blocks, so
-      the category is theirs. The one case titles cannot tell apart: the
-      player took ours off and applied their own block with the identical
-      title. Then we still believe it is ours, and the worst outcome is one of
-      ours added beside theirs at the next change. }
-    If _bioApi != 1
-        Return False
-    EndIf
-    String rec = BioRecGet(akActor, aiCat)
-    If rec == "" || rec == "-"
-        Return False
-    EndIf
-    String[] keys = StringUtil.Split(rec, ",")
-    If BioCountIn(akTitles, aiCat) != keys.Length
-        Return False
-    EndIf
-    Int i = 0
-    While i < keys.Length
-        If !TitleIn(akTitles, SNRom_BioTitles.TitleOf(keys[i]))
-            Return False
-        EndIf
-        i += 1
-    EndWhile
-    Return True
-EndFunction
 
 Bool Function BioPlayerHolds(Actor akActor, Int aiCat)
     { True when the player's own choice sits in this category, so the field
       it answers is theirs: drift does not move it. }
-    If !SeverActionsPresent()
+    If akActor == None || !SeverActionsPresent() || _dashNatives < 8
         Return False
     EndIf
-    String[] titles = SNRom_SABio.AssignedTitles(akActor)
-    Return BioCountIn(titles, aiCat) > 0 && !BioOursAlone(akActor, titles, aiCat)
-EndFunction
-
-Bool Function BioNoticeRemoval(Actor akActor, String[] akTitles, Int aiCat)
-    { True when we had applied something here and the player has since taken
-      it off. Records "-" so it is never put back, and says so once. }
-    String rec = BioRecGet(akActor, aiCat)
-    If rec == "" || rec == "-"
-        Return rec == "-"
+    Int[] plan = SNRom_Native.BioPlan(akActor, SNRom_SABio.AssignedTitles(akActor), BioState(akActor, 0, -1))
+    If !plan || plan.Length < 13
+        Return False
     EndIf
-    String[] keys = StringUtil.Split(rec, ",")
-    Int i = 0
-    While i < keys.Length
-        If !TitleIn(akTitles, SNRom_BioTitles.TitleOf(keys[i]))
-            BioRecSet(akActor, aiCat, "-")
-            Diag(LOG_INFO(), akActor.GetDisplayName() + ": the " + BioCatName(aiCat) + \
-                " block we applied was taken off. That category is the player's now; we will not apply one there again.")
-            Return True
-        EndIf
-        i += 1
-    EndWhile
-    Return False
+    Return Math.LogicalAnd(plan[5], Math.LeftShift(1, aiCat)) != 0
 EndFunction
 
-Function BioNoteOccupancy(Actor akActor, String[] akTitles)
-    { Records which Relationships categories hold a block - ours or the
-      player's - as SNRom_BioHas_<cat> (an Int: StorageUtil strings do not
-      survive a reload). get_romance reports it so the bond prompt can leave
-      out what a block already says, without the prompt calling SeverActions
-      on every render. Refreshed wherever titles are in hand: every load, and
-      after each change we make. A block the player adds mid-session is
-      noticed at the next load; until then the prompt says it twice, which
-      costs tokens and nothing else. }
-    Int cat = 0
-    While cat < 4
-        If BioCountIn(akTitles, cat) > 0
-            StorageUtil.SetIntValue(akActor, "SNRom_BioHas_" + cat, 1)
-        Else
-            StorageUtil.UnsetIntValue(akActor, "SNRom_BioHas_" + cat)
-        EndIf
-        cat += 1
-    EndWhile
-EndFunction
+
 
 Int Function SyncOurBlocks(Actor akActor, String asLimitPicks, String asWhy)
     { Puts our blocks where they belong, and only there. Returns how many
-      blocks it applied or swapped.
+      blocks it applied or took off.
 
       asLimitPicks: "?" leaves Limits alone (drift, repair, load - nothing has
       chosen limits); otherwise the authoring call's picks, "" for none.
 
-      Per category: empty and never ours -> apply the matching block. Ours
-      alone -> swap it if the character moved (drift, repair, re-author).
-      The player's, or taken off by the player -> leave it. }
+      Per category: empty and never ours -> the matching block. Ours alone ->
+      swapped when the character moved. The player's, or taken off by the
+      player -> left alone. Children get none of ours. Decided natively
+      (SNRom_Native.BioPlan). }
     If akActor == None || !BioAssignOn() || !IsEnrolled(akActor)
         Return 0
     EndIf
-    Int changed = SyncOurBlocksWith(akActor, SNRom_SABio.AssignedTitles(akActor), asLimitPicks, asWhy)
-    If changed > 0
-        BioNoteOccupancy(akActor, SNRom_SABio.AssignedTitles(akActor))
+    Int picks = -1
+    If asLimitPicks != "?"
+        picks = BioLimitBits(asLimitPicks)
     EndIf
-    Return changed
+    Return BioRun(akActor, SNRom_SABio.AssignedTitles(akActor), BIO_SYNC(), picks, asWhy)
 EndFunction
 
-Int Function SyncOurBlocksWith(Actor akActor, String[] akTitles, String asLimitPicks, String asWhy)
-    { SyncOurBlocks with the person's titles already in hand, so the load-time
-      roster walk costs one call into SeverActions per person. }
-    If akActor == None || !BioAssignOn() || !IsEnrolled(akActor)
-        Return 0
-    EndIf
-    If !BioEligible(akActor)
-        Return BioWithdrawOurs(akActor, akTitles)
-    EndIf
-    Int changed = 0
-    Int cat = 0
-    While cat < 4
-        If cat < 3 || asLimitPicks != "?"
-            String want = asLimitPicks
-            If cat < 3
-                want = BioDesiredKey(akActor, cat)
-            EndIf
-            If !BioNoticeRemoval(akActor, akTitles, cat)
-                String rec = BioRecGet(akActor, cat)
-                Int there = BioCountIn(akTitles, cat)
-                Bool mine = BioOursAlone(akActor, akTitles, cat)
-                If (there == 0 && rec == "") || (mine && rec != want)
-                    changed += BioReplace(akActor, cat, rec, want, asWhy)
-                EndIf
-            EndIf
-        EndIf
-        cat += 1
-    EndWhile
-    Return changed
-EndFunction
 
-Bool Function BioEligible(Actor akActor)
-    { NOT FOR CHILDREN. The Relationships blocks describe how someone is with
-      a partner, which has no place in a child's bio. A child can still be
-      enrolled and simply gets none of ours. Actor.IsChild() is the authority,
-      as it is for the romance gate.
 
-      THE PLAYER'S KIN DO GET THEM (the author, 2026-10-05). Grown children are
-      adults with partners of their own, and the blocks describe them, not
-      their bond with the player; NPC-to-NPC relationships will want exactly
-      this. Romance with the player is barred separately, by the kin guard
-      and its setting - not by withholding who they are. }
-    Return !akActor.IsChild()
-EndFunction
 
-Int Function BioWithdrawOurs(Actor akActor, String[] akTitles)
-    { Takes off every category that holds only our blocks. The player's own
-      blocks on the same person are left exactly as they are. }
-    Int n = 0
-    Int cat = 0
-    While cat < 4
-        If BioOursAlone(akActor, akTitles, cat)
-            BioReplace(akActor, cat, BioRecGet(akActor, cat), "", \
-                "not for a child")
-            n += 1
-        EndIf
-        cat += 1
-    EndWhile
-    Return n
-EndFunction
-
-Int Function BioReplace(Actor akActor, Int aiCat, String asOld, String asNew, String asWhy)
-    { Takes our old block(s) off and puts the new one(s) on, recording what is
-      ours. A key SeverActions refuses (the player deleted that block from the
-      library) is skipped and not recorded. }
-    Int n = 0
-    If asOld != ""
-        String[] olds = StringUtil.Split(asOld, ",")
-        Int i = 0
-        While i < olds.Length
-            If StringUtil.Find("," + asNew + ",", "," + olds[i] + ",") < 0
-                SNRom_SABio.Unapply(akActor, olds[i])
-            EndIf
-            i += 1
-        EndWhile
-    EndIf
-    String applied = ""
-    If asNew != ""
-        String[] news = StringUtil.Split(asNew, ",")
-        Int j = 0
-        While j < news.Length
-            If SNRom_SABio.Apply(akActor, news[j])
-                If applied != ""
-                    applied += ","
-                EndIf
-                applied += news[j]
-                n += 1
-            Else
-                Diag(LOG_WARN(), "SeverActions refused block '" + news[j] + "' for " + akActor.GetDisplayName() + \
-                    " - most likely the player deleted it from the library, which is final.")
-            EndIf
-            j += 1
-        EndWhile
-    EndIf
-    BioRecSet(akActor, aiCat, applied)
-    If asOld != "" || applied != ""
-        Diag(LOG_INFO(), "BIO BLOCKS (" + asWhy + ") " + akActor.GetDisplayName() + " " + BioCatName(aiCat) + \
-            ": '" + asOld + "' -> '" + applied + "'")
-    EndIf
-    Return n
-EndFunction
 
 Function LiftOurBlocks(Actor akActor)
     { Before a re-author: take off the blocks that are ours alone, so they do
@@ -9202,27 +8792,7 @@ Function LiftOurBlocks(Actor akActor)
     If akActor == None || _bioApi != 1
         Return
     EndIf
-    String[] titles = SNRom_SABio.AssignedTitles(akActor)
-    StorageUtil.UnsetIntValue(akActor, "SNRom_BioLiftedLimits")
-    Int cat = 0
-    While cat < 4
-        If BioOursAlone(akActor, titles, cat)
-            String rec = BioRecGet(akActor, cat)
-            String[] keys = StringUtil.Split(rec, ",")
-            Int i = 0
-            While i < keys.Length
-                SNRom_SABio.Unapply(akActor, keys[i])
-                i += 1
-            EndWhile
-            BioRecSet(akActor, cat, "")
-            If cat == 3
-                StorageUtil.SetIntValue(akActor, "SNRom_BioLiftedLimits", BioLimitBits(rec))
-            EndIf
-            Diag(LOG_INFO(), "BIO BLOCKS (re-author) " + akActor.GetDisplayName() + " " + BioCatName(cat) + \
-                ": lifted '" + rec + "' so it does not steer the rewrite")
-        EndIf
-        cat += 1
-    EndWhile
+    BioRun(akActor, SNRom_SABio.AssignedTitles(akActor), BIO_LIFT(), -1, "re-author")
 EndFunction
 
 Function SyncAfterAuthoring(Actor akActor, String asLimitPicks)
@@ -9243,20 +8813,26 @@ EndFunction
 
 Function BioBlocksOnLoad()
     { Every game load. Offers both libraries (new text reaches players this
-      way), then walks the roster once, ONE call into SeverActions per person:
+      way), then walks the roster once:
 
-        1. EnforceBlockAnswersWith - a block the PLAYER applied since we last
-           looked sets its field. Measured 2026-10-05: 22 of 78 people with an
-           Expression block had an ardor contradicting it, because this ran
-           only at authoring and blocks are applied whenever the player likes.
-        2. SyncOurBlocksWith - fills empty categories from the current
-           character (the one-time backfill, and everyone enrolled since),
-           with no model call. Limits are left alone: nothing has chosen them.
+        - the player's own blocks set their traits (they are applied whenever
+          the player likes, so authoring alone is not enough);
+        - our blocks fill empty categories from the current character (the
+          one-time backfill, and everyone enrolled since), with no model call,
+          and leave Limits alone: nothing has chosen them;
+        - a block of ours the player took off is recorded as theirs.
 
-      Applies only into categories that are empty and were never ours, so a
-      player's removal survives every load. }
+      ONE CALL INTO SEVERACTIONS AND ONE INTO THE DLL PER PERSON. Until 2.1's
+      native BioPlan this was Papyrus string handling, about 250 small calls a
+      person and 25-35 s of background Papyrus a load for 130 people with
+      nothing to change. }
     _bioApi = 0
     If !SeverActionsPresent()
+        Return
+    EndIf
+    If _dashNatives < 8
+        Diag(LOG_WARN(), "Bio blocks need SkyrimNetRelationships.dll from 2.1 (natives v8; this one reports v" + \
+            _dashNatives + ") - not offered or applied.")
         Return
     EndIf
     If SNRom_SABio.Version() < 1
@@ -9276,24 +8852,183 @@ Function BioBlocksOnLoad()
     EndIf
 
     Int count = StorageUtil.FormListCount(None, "SNRom_Roster")
-    Int applied = 0
+    Int changed = 0
     Int i = 0
     While i < count
         Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
         If a != None && !a.IsDead() && IsEnrolled(a)
-            String[] titles = SNRom_SABio.AssignedTitles(a)
-            EnforceBlockAnswersWith(a, titles)
-            BioNoteOccupancy(a, titles)
-            Int changed = SyncOurBlocksWith(a, titles, "?", "on load")
-            If changed > 0
-                BioNoteOccupancy(a, SNRom_SABio.AssignedTitles(a))
-            EndIf
-            applied += changed
+            changed += BioRun(a, SNRom_SABio.AssignedTitles(a), Math.LogicalOr(BIO_ENFORCE(), BIO_SYNC()), -1, "on load")
         EndIf
         i += 1
     EndWhile
-    Diag(LOG_INFO(), "Bio blocks: checked " + count + " enrolled, applied or updated " + applied + " of ours" + \
+    Diag(LOG_INFO(), "Bio blocks: checked " + count + " enrolled, applied or took off " + changed + " of ours" + \
         BioAssignWord() + ".")
+EndFunction
+
+Int Function BIO_ENFORCE() Global
+    Return 8
+EndFunction
+Int Function BIO_SYNC() Global
+    Return 16
+EndFunction
+Int Function BIO_LIFT() Global
+    Return 32
+EndFunction
+
+Int[] Function BioState(Actor akActor, Int aiMode, Int aiLimitPicks)
+    { One person's stored values, for SNRom_Native.BioPlan (layout in
+      native/src/BioPlan.h): orientation, its basis, ardor, exclusivity, the
+      four records, marriage, flags, Limits picks. }
+    Int[] s = new Int[11]
+    s[0] = StorageUtil.GetIntValue(akActor, "SNRom_Orientation", 3)
+    s[1] = StorageUtil.GetIntValue(akActor, "SNRom_OrientationKnown", 0)
+    s[2] = StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2)
+    s[3] = StorageUtil.GetIntValue(akActor, "SNRom_Exclusivity", 50)
+    s[4] = StorageUtil.GetIntValue(akActor, "SNRom_BioOurs_0", 0)
+    s[5] = StorageUtil.GetIntValue(akActor, "SNRom_BioOurs_1", 0)
+    s[6] = StorageUtil.GetIntValue(akActor, "SNRom_BioOurs_2", 0)
+    s[7] = StorageUtil.GetIntValue(akActor, "SNRom_BioOurs_3", 0)
+    ; Only an enforcement can use it, and asking MARAS costs calls.
+    If Math.LogicalAnd(aiMode, BIO_ENFORCE()) != 0 && IsMarriedToPlayer(akActor)
+        s[8] = 1
+    EndIf
+    Int flags = aiMode
+    If _bioApi == 1
+        flags = Math.LogicalOr(flags, 1)
+    EndIf
+    If BioAssignOn()
+        flags = Math.LogicalOr(flags, 2)
+    EndIf
+    If IsEnrolled(akActor)
+        flags = Math.LogicalOr(flags, 4)
+    EndIf
+    s[9] = flags
+    s[10] = aiLimitPicks
+    Return s
+EndFunction
+
+Int Function BioRun(Actor akActor, String[] akTitles, Int aiMode, Int aiLimitPicks, String asWhy)
+    { Asks the DLL what to do about one person's blocks, and does it: writes
+      the traits the player's blocks set, applies and takes off our blocks,
+      and records what is ours. Returns how many blocks it applied or took off.
+      Writes and SeverActions calls happen only for what changes. }
+    If akActor == None || _dashNatives < 8
+        Return 0
+    EndIf
+    Int[] p = SNRom_Native.BioPlan(akActor, akTitles, BioState(akActor, aiMode, aiLimitPicks))
+    If !p || p.Length < 13
+        Return 0
+    EndIf
+    String who = akActor.GetDisplayName()
+
+    ; ---- the traits the player's own blocks set ----
+    If p[0] >= 0
+        StorageUtil.SetIntValue(akActor, "SNRom_Orientation", p[0])
+        StorageUtil.SetIntValue(akActor, "SNRom_OrientationKnown", p[1])
+        Diag(LOG_INFO(), "BLOCK OVERRIDE for " + who + ": orientation -> " + p[0] + " / STATED, from their own Drawn To block.")
+    EndIf
+    If p[2] >= 0
+        StorageUtil.SetIntValue(akActor, "SNRom_Ardor", p[2])
+        Diag(LOG_INFO(), "BLOCK OVERRIDE for " + who + ": ardor -> " + SNRom_Decorators.ArdorWord(p[2]) + \
+            ", from their own Expression block.")
+    EndIf
+    If p[3] >= 0
+        StorageUtil.SetIntValue(akActor, "SNRom_Exclusivity", p[3])
+        Diag(LOG_INFO(), "BLOCK OVERRIDE for " + who + ": exclusivity -> " + p[3] + ", from their own Attachment block.")
+    EndIf
+
+    ; ---- notes ----
+    Int notes = p[10]
+    Int cat = 0
+    While cat < 4
+        If Math.LogicalAnd(notes, Math.LeftShift(1, cat)) != 0
+            Diag(LOG_INFO(), who + ": the " + BioCatName(cat) + \
+                " block we applied was taken off. That category is the player's now; we will not apply one there again.")
+        EndIf
+        If cat < 3 && Math.LogicalAnd(notes, Math.LeftShift(1, 4 + cat)) != 0
+            Diag(LOG_WARN(), who + "'s " + BioCatName(cat) + " blocks are not one of the library's answers, or two " + \
+                "disagree - that trait is left as authored.")
+        EndIf
+        cat += 1
+    EndWhile
+    If Math.LogicalAnd(notes, 256) != 0
+        Diag(LOG_WARN(), "Drawn To block NOT applied to " + who + \
+            " - the game records a marriage to the player, which the block contradicts. Fix the block.")
+    EndIf
+
+    ; ---- before the records change, for the log ----
+    String[] before = new String[4]
+    cat = 0
+    While cat < 4
+        before[cat] = BioRecGet(akActor, cat)
+        cat += 1
+    EndWhile
+
+    ; ---- the blocks ----
+    Int[] refused = new Int[4]   ; per category: bits of keys SeverActions refused
+    Int n = p[12]
+    Int done = 0
+    Int i = 0
+    While i < n && 13 + i * 3 + 2 < p.Length
+        Int op = p[13 + i * 3]
+        Int c = p[14 + i * 3]
+        Int k = p[15 + i * 3]
+        String bkey = BioCatKey(c, k)
+        If op == 1
+            If SNRom_SABio.Apply(akActor, bkey)
+                done += 1
+            Else
+                refused[c] = Math.LogicalOr(refused[c], Math.LeftShift(1, k))
+                Diag(LOG_WARN(), "SeverActions refused block '" + bkey + "' for " + who + \
+                    " - most likely the player deleted it from the library, which is final.")
+            EndIf
+        ElseIf op == 2
+            SNRom_SABio.Unapply(akActor, bkey)
+            done += 1
+        EndIf
+        i += 1
+    EndWhile
+
+    ; ---- what is ours now ----
+    cat = 0
+    While cat < 4
+        Int rec = p[6 + cat]
+        If rec != -999
+            If rec > 0 && refused[cat] != 0
+                If cat == 3
+                    rec = Math.LogicalAnd(rec, Math.LogicalNot(refused[cat]))
+                ElseIf Math.LogicalAnd(refused[cat], Math.LeftShift(1, rec - 1)) != 0
+                    rec = 0
+                EndIf
+            EndIf
+            If rec == 0
+                StorageUtil.UnsetIntValue(akActor, "SNRom_BioOurs_" + cat)
+            Else
+                StorageUtil.SetIntValue(akActor, "SNRom_BioOurs_" + cat, rec)
+            EndIf
+            String after = BioRecGet(akActor, cat)
+            If after != before[cat] && after != "-"
+                Diag(LOG_INFO(), "BIO BLOCKS (" + asWhy + ") " + who + " " + BioCatName(cat) + \
+                    ": '" + before[cat] + "' -> '" + after + "'")
+            EndIf
+        EndIf
+        ; Which categories hold a block, for the bond prompt (get_romance).
+        If Math.LogicalAnd(p[4], Math.LeftShift(1, cat)) != 0
+            StorageUtil.SetIntValue(akActor, "SNRom_BioHas_" + cat, 1)
+        Else
+            StorageUtil.UnsetIntValue(akActor, "SNRom_BioHas_" + cat)
+        EndIf
+        cat += 1
+    EndWhile
+
+    If Math.LogicalAnd(aiMode, BIO_LIFT()) != 0
+        If p[11] > 0
+            StorageUtil.SetIntValue(akActor, "SNRom_BioLiftedLimits", p[11])
+        Else
+            StorageUtil.UnsetIntValue(akActor, "SNRom_BioLiftedLimits")
+        EndIf
+    EndIf
+    Return done
 EndFunction
 
 Bool _bioWalkPending = False

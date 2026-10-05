@@ -148,6 +148,11 @@ Actor[] Function ObserversNear(Float afRange) Global Native
  at a time. Called only by SNRom_Bridge.Observers.}
 
 Bool Function AppendLog(String asFile, String asText) Global Native
+
+; VERSION 8 (2.1, WP-B). One person's Relationships bio blocks: given their
+; block titles (SeverActions) and stored values (SNRom_Bridge.BioState), the
+; plan SNRom_Bridge.BioRun carries out. Layout in native/src/BioPlan.h.
+Int[] Function BioPlan(Actor akActor, String[] asTitles, Int[] aiState) Global Native
 {VERSION 7. Appends asText to asFile - a bare name: snrom.log, ledger.jsonl
  or dispositions.jsonl - in the mod's logs folder, at once and in order.
  snrom.log lines get the wall clock in front. False when it could not be
