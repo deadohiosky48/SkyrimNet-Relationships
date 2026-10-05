@@ -8611,8 +8611,12 @@ EndFunction
 ; the same call (LIMIT_BLOCKS). Same judgment, one call fewer, and the blocks
 ; can never disagree with the character.
 ;
-; OURS VERSUS THE PLAYER'S. SNRom_BioOurs_<cat> holds the key we applied
-; (Limits: a comma list). A category is OURS ALONE while what we applied is
+; OURS VERSUS THE PLAYER'S. SNRom_BioOurs_<cat> records the block we applied
+; (Limits: up to two). AN INT, NEVER A STRING: StorageUtil strings on actors
+; do not survive a reload (see "Durable text store"). The first in-game run
+; stored this as text and lost 93 of 99 records at the next load - PapyrusUtil
+; logged "STRV Load / Data Shrink: 83 -> 14" - after which every block of
+; ours read as the player's. BioRecGet/BioRecSet translate. A category is OURS ALONE while what we applied is
 ; still applied and nothing else is in that category. Then it is ours to keep
 ; in step with drift, and to lift before a re-author so it does not steer the
 ; rewrite. Anything else in a category is the player's choice: never touched,
@@ -8777,6 +8781,174 @@ String Function ParseLimitPicks(String asResponse)
     Return picks
 EndFunction
 
+; ---- The record, as an Int --------------------------------------------------
+; SNRom_BioOurs_<cat>: 0 none, -1 the player took ours off ("-"), otherwise
+;   Drawn To / Expression / Attachment: 1 + the block's place in BioCatKey,
+;   Limits: a bit per block (bit i = BioCatKey(3, i)), so up to two fit.
+; SNRom_BioLiftedLimits: Limits bits, the same encoding.
+
+String Function BioCatKey(Int aiCat, Int aiIndex) Global
+    { Our keys, in a FIXED order that the stored record depends on: append
+      only, never reorder. "" past the end. }
+    If aiCat == 0
+        If aiIndex == 0
+            Return "drawn-to.men"
+        ElseIf aiIndex == 1
+            Return "drawn-to.women"
+        ElseIf aiIndex == 2
+            Return "drawn-to.both"
+        ElseIf aiIndex == 3
+            Return "drawn-to.no-one"
+        EndIf
+    ElseIf aiCat == 1
+        If aiIndex == 0
+            Return "expression.reserved-and-undemonstrative"
+        ElseIf aiIndex == 1
+            Return "expression.measured-shows-little"
+        ElseIf aiIndex == 2
+            Return "expression.warm-but-not-effusive"
+        ElseIf aiIndex == 3
+            Return "expression.open-about-what-they-feel"
+        ElseIf aiIndex == 4
+            Return "expression.intense-and-unmistakable"
+        EndIf
+    ElseIf aiCat == 2
+        If aiIndex == 0
+            Return "attachment.untroubled-by-others"
+        ElseIf aiIndex == 1
+            Return "attachment.accepts-others-easily"
+        ElseIf aiIndex == 2
+            Return "attachment.expects-the-usual-arrangement"
+        ElseIf aiIndex == 3
+            Return "attachment.needs-to-be-the-only-one"
+        ElseIf aiIndex == 4
+            Return "attachment.cannot-share-at-all"
+        EndIf
+    Else
+        If aiIndex == 0
+            Return "limits.will-not-be-a-secret"
+        ElseIf aiIndex == 1
+            Return "limits.will-not-be-spared-the-truth"
+        ElseIf aiIndex == 2
+            Return "limits.will-not-come-between"
+        ElseIf aiIndex == 3
+            Return "limits.will-not-stay-for-cruelty"
+        ElseIf aiIndex == 4
+            Return "limits.will-not-be-owned"
+        ElseIf aiIndex == 5
+            Return "limits.will-not-compete-for-a-place"
+        EndIf
+    EndIf
+    Return ""
+EndFunction
+
+Int Function BioKeyIndex(Int aiCat, String asKey) Global
+    { The key's place in BioCatKey, or -1. }
+    Int i = 0
+    While i < 6
+        String k = BioCatKey(aiCat, i)
+        If k == ""
+            Return -1
+        ElseIf k == asKey
+            Return i
+        EndIf
+        i += 1
+    EndWhile
+    Return -1
+EndFunction
+
+Int Function BioLimitBits(String asCsv) Global
+    Int bits = 0
+    If asCsv == "" || asCsv == "-"
+        Return 0
+    EndIf
+    String[] keys = StringUtil.Split(asCsv, ",")
+    Int i = 0
+    While i < keys.Length
+        Int at = BioKeyIndex(3, keys[i])
+        If at >= 0
+            bits = Math.LogicalOr(bits, Math.LeftShift(1, at))
+        EndIf
+        i += 1
+    EndWhile
+    Return bits
+EndFunction
+
+String Function BioLimitKeys(Int aiBits) Global
+    String csv = ""
+    Int i = 0
+    While i < 6
+        If Math.LogicalAnd(aiBits, Math.LeftShift(1, i)) != 0
+            If csv != ""
+                csv += ","
+            EndIf
+            csv += BioCatKey(3, i)
+        EndIf
+        i += 1
+    EndWhile
+    Return csv
+EndFunction
+
+String Function BioRecGet(Actor akActor, Int aiCat) Global
+    { What we applied in this category, as keys: "" none, "-" the player took
+      ours off, otherwise a key (Limits: comma-separated keys). }
+    Int v = StorageUtil.GetIntValue(akActor, "SNRom_BioOurs_" + aiCat, 0)
+    If v == 0
+        Return ""
+    ElseIf v < 0
+        Return "-"
+    ElseIf aiCat == 3
+        Return BioLimitKeys(v)
+    EndIf
+    Return BioCatKey(aiCat, v - 1)
+EndFunction
+
+Function BioRecSet(Actor akActor, Int aiCat, String asKeys) Global
+    { Records asKeys (as BioRecGet returns them) as what we applied. }
+    Int v = 0
+    If asKeys == "-"
+        v = -1
+    ElseIf asKeys != ""
+        If aiCat == 3
+            v = BioLimitBits(asKeys)
+        Else
+            v = BioKeyIndex(aiCat, asKeys) + 1
+        EndIf
+    EndIf
+    If v == 0
+        StorageUtil.UnsetIntValue(akActor, "SNRom_BioOurs_" + aiCat)
+    Else
+        StorageUtil.SetIntValue(akActor, "SNRom_BioOurs_" + aiCat, v)
+    EndIf
+EndFunction
+
+Function MarkBioOurs(Actor akActor, Int aiCat, String asKey)
+    { DEV TOOL, for the web API (execute-quest-script-function, arguments: a
+      hex FormID, the category 0-3, a key). Records asKey as a block we
+      applied, when the person carries it. Written to recover the records the
+      text-based first build lost on reload; harmless otherwise. Limits add to
+      what is already recorded. }
+    If akActor == None || _bioApi != 1
+        Return
+    EndIf
+    String[] titles = SNRom_SABio.AssignedTitles(akActor)
+    If !TitleIn(titles, SNRom_BioTitles.TitleOf(asKey))
+        Diag(LOG_WARN(), "MarkBioOurs: " + akActor.GetDisplayName() + " does not carry '" + asKey + "' - not recorded")
+        Return
+    EndIf
+    String rec = asKey
+    If aiCat == 3
+        String had = BioRecGet(akActor, 3)
+        If had != "" && had != "-" && StringUtil.Find("," + had + ",", "," + asKey + ",") < 0
+            rec = had + "," + asKey
+        ElseIf had != "" && had != "-"
+            rec = had
+        EndIf
+    EndIf
+    BioRecSet(akActor, aiCat, rec)
+    Diag(LOG_INFO(), "MarkBioOurs: " + akActor.GetDisplayName() + " " + BioCatName(aiCat) + " recorded as ours: '" + rec + "'")
+EndFunction
+
 Int Function BioCountIn(String[] akTitles, Int aiCat)
     String p = BioPrefix(aiCat)
     Int n = 0
@@ -8828,7 +9000,7 @@ Bool Function BioOursAlone(Actor akActor, String[] akTitles, Int aiCat)
     If _bioApi != 1
         Return False
     EndIf
-    String rec = StorageUtil.GetStringValue(akActor, "SNRom_BioOurs_" + aiCat, "")
+    String rec = BioRecGet(akActor, aiCat)
     If rec == "" || rec == "-"
         Return False
     EndIf
@@ -8859,7 +9031,7 @@ EndFunction
 Bool Function BioNoticeRemoval(Actor akActor, String[] akTitles, Int aiCat)
     { True when we had applied something here and the player has since taken
       it off. Records "-" so it is never put back, and says so once. }
-    String rec = StorageUtil.GetStringValue(akActor, "SNRom_BioOurs_" + aiCat, "")
+    String rec = BioRecGet(akActor, aiCat)
     If rec == "" || rec == "-"
         Return rec == "-"
     EndIf
@@ -8867,7 +9039,7 @@ Bool Function BioNoticeRemoval(Actor akActor, String[] akTitles, Int aiCat)
     Int i = 0
     While i < keys.Length
         If !TitleIn(akTitles, SNRom_BioTitles.TitleOf(keys[i]))
-            StorageUtil.SetStringValue(akActor, "SNRom_BioOurs_" + aiCat, "-")
+            BioRecSet(akActor, aiCat, "-")
             Diag(LOG_INFO(), akActor.GetDisplayName() + ": the " + BioCatName(aiCat) + \
                 " block we applied was taken off. That category is the player's now; we will not apply one there again.")
             Return True
@@ -8911,7 +9083,7 @@ Int Function SyncOurBlocksWith(Actor akActor, String[] akTitles, String asLimitP
                 want = BioDesiredKey(akActor, cat)
             EndIf
             If !BioNoticeRemoval(akActor, akTitles, cat)
-                String rec = StorageUtil.GetStringValue(akActor, "SNRom_BioOurs_" + cat, "")
+                String rec = BioRecGet(akActor, cat)
                 Int there = BioCountIn(akTitles, cat)
                 Bool mine = BioOursAlone(akActor, akTitles, cat)
                 If (there == 0 && rec == "") || (mine && rec != want)
@@ -8945,7 +9117,8 @@ Int Function BioWithdrawOurs(Actor akActor, String[] akTitles)
     Int cat = 0
     While cat < 4
         If BioOursAlone(akActor, akTitles, cat)
-            BioReplace(akActor, cat, StorageUtil.GetStringValue(akActor, "SNRom_BioOurs_" + cat, ""), "",                 "not for a child")
+            BioReplace(akActor, cat, BioRecGet(akActor, cat), "", \
+                "not for a child")
             n += 1
         EndIf
         cat += 1
@@ -8986,10 +9159,7 @@ Int Function BioReplace(Actor akActor, Int aiCat, String asOld, String asNew, St
             j += 1
         EndWhile
     EndIf
-    StorageUtil.SetStringValue(akActor, "SNRom_BioOurs_" + aiCat, applied)
-    If applied == ""
-        StorageUtil.UnsetStringValue(akActor, "SNRom_BioOurs_" + aiCat)
-    EndIf
+    BioRecSet(akActor, aiCat, applied)
     If asOld != "" || applied != ""
         Diag(LOG_INFO(), "BIO BLOCKS (" + asWhy + ") " + akActor.GetDisplayName() + " " + BioCatName(aiCat) + \
             ": '" + asOld + "' -> '" + applied + "'")
@@ -9009,20 +9179,20 @@ Function LiftOurBlocks(Actor akActor)
         Return
     EndIf
     String[] titles = SNRom_SABio.AssignedTitles(akActor)
-    StorageUtil.UnsetStringValue(akActor, "SNRom_BioLiftedLimits")
+    StorageUtil.UnsetIntValue(akActor, "SNRom_BioLiftedLimits")
     Int cat = 0
     While cat < 4
         If BioOursAlone(akActor, titles, cat)
-            String rec = StorageUtil.GetStringValue(akActor, "SNRom_BioOurs_" + cat, "")
+            String rec = BioRecGet(akActor, cat)
             String[] keys = StringUtil.Split(rec, ",")
             Int i = 0
             While i < keys.Length
                 SNRom_SABio.Unapply(akActor, keys[i])
                 i += 1
             EndWhile
-            StorageUtil.UnsetStringValue(akActor, "SNRom_BioOurs_" + cat)
+            BioRecSet(akActor, cat, "")
             If cat == 3
-                StorageUtil.SetStringValue(akActor, "SNRom_BioLiftedLimits", rec)
+                StorageUtil.SetIntValue(akActor, "SNRom_BioLiftedLimits", BioLimitBits(rec))
             EndIf
             Diag(LOG_INFO(), "BIO BLOCKS (re-author) " + akActor.GetDisplayName() + " " + BioCatName(cat) + \
                 ": lifted '" + rec + "' so it does not steer the rewrite")
@@ -9039,11 +9209,11 @@ Function SyncAfterAuthoring(Actor akActor, String asLimitPicks)
         Return
     EndIf
     String picks = asLimitPicks
-    String lifted = StorageUtil.GetStringValue(akActor, "SNRom_BioLiftedLimits", "")
+    String lifted = BioLimitKeys(StorageUtil.GetIntValue(akActor, "SNRom_BioLiftedLimits", 0))
     If picks == "?" && lifted != ""
         picks = lifted
     EndIf
-    StorageUtil.UnsetStringValue(akActor, "SNRom_BioLiftedLimits")
+    StorageUtil.UnsetIntValue(akActor, "SNRom_BioLiftedLimits")
     SyncOurBlocks(akActor, picks, "after authoring")
 EndFunction
 
@@ -9135,7 +9305,7 @@ EndFunction
 Bool Function BioHasRecord(Actor akActor)
     Int cat = 0
     While cat < 4
-        String rec = StorageUtil.GetStringValue(akActor, "SNRom_BioOurs_" + cat, "")
+        String rec = BioRecGet(akActor, cat)
         If rec != "" && rec != "-"
             Return True
         EndIf
