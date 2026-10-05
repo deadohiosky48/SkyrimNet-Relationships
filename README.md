@@ -213,7 +213,7 @@ inert; nothing errors and no prompt breaks.
 | | adds |
 |---|---|
 | Meridian UI 1.5.0 or newer, or Prisma UI 1.5.1 or newer | the dashboard. In Skyrim VR, Prisma UI |
-| SeverActions | follower detection, including for companions you already know. From **3.9.11** it detects this mod and steps its own Intimacy & Consent section aside, so nobody is handed two ideas of how receptive they are. Its custom bio blocks are read as direct evidence when a character is authored - see below |
+| SeverActions | follower detection, including for companions you already know. From **3.9.11** it detects this mod and steps its own Intimacy & Consent section aside, so nobody is handed two ideas of how receptive they are. From **4.0.1** everyone you enroll gets this mod's Relationships bio blocks, chosen from their character - see *Bio blocks* below |
 | OStim Community Resource | physical attraction as an input, for characters whose disposition allows it to matter |
 | OStim NG or SexLab | tier notices wait until a scene is over |
 | MARAS | marriage and engagement are read as facts rather than judged |
@@ -229,6 +229,28 @@ Install with a mod manager, or copy the contents over your `Data` folder.
 `SNRom_Integration.esl` is ESL-flagged and does not consume a load-order slot.
 
 Settings appear in SkyrimNet's plugin panel under **SkyrimNet Relationships**.
+
+## Upgrading from 2.0
+
+Install over 2.0 and load your save. On that first load, everyone already
+enrolled is given the Relationships bio blocks that match their character, in
+any category they do not already have one in (see *Bio blocks* below). Blocks
+you applied yourself are left exactly as they are.
+
+SkyrimNet does not add new settings to a `settings.yaml` that already exists,
+so the new **Assign Relationships Bio Blocks** switch works at its default (on)
+but will not remember being turned off. To be able to change it, add this line
+to `SKSE\Plugins\SkyrimNet\config\plugins\SkyrimNet Relationships\settings.yaml`
+while the game is closed:
+
+```yaml
+bioBlocksAssign: true
+```
+
+If you imported this mod's block library into SeverActions by hand, you are
+done with that: the blocks now arrive by themselves. Any block whose text you
+had edited, or that an older import damaged, may show twice, once with
+` (2)` after its title. Delete whichever copy you do not want.
 
 ## Upgrading from 1.x
 
@@ -272,71 +294,57 @@ enrollKey: 0
 enrollKeyModifier: None
 ```
 
-### Optional: the disposition block library
+### Bio blocks (SeverActions)
 
-If you use SeverActions, this mod ships a library of character blocks you can
-import and apply to anyone.
+SeverActions lets you give anyone short **bio blocks** - snippets that become
+part of their character. This mod has two libraries of its own, and with
+SeverActions **4.0.1 or newer** both appear in SeverActions' Bio Blocks page by
+themselves, marked as this mod's, and stay up to date with each release.
 
-SeverActions' import window takes **pasted JSON text**, not a file, so all you
-need is the text:
-
-1. Open [relationships_bio_blocks.json](https://raw.githubusercontent.com/deadohiosky48/SkyrimNet-Relationships/main/library/relationships_bio_blocks.json)
-   in a browser.
-2. Select all and copy.
-3. Paste it into SeverActions' bio block import window.
-4. Apply blocks to someone.
-
-A copy also ships in the download, as `relationships_bio_blocks.json` under
-`Docs\SkyrimNet Relationships\` *inside the zip* - open it in a text editor and
-copy the contents. Once installed it is at
-`...\Skyrim Special Edition\Data\Docs\SkyrimNet Relationships\` with Vortex or a
-manual install, or inside the mod's own folder under MO2.
-
-> This is **not** the `docs` folder in the GitHub repository. That one holds
-> developer documentation; the library lives in `library/`.
-
-**It is optional and changes no mechanics.** Everything works without it. What
-it does is make the judge more accurate. Applied blocks are the most direct
-evidence this mod ever gets about someone - written deliberately about that
-person rather than inferred from a bio - so they outrank the bio where the two
-disagree. Without them nothing breaks; the mod simply goes on guessing from
-what it can read.
-
-Four tabs, one per axis this mod reads:
+**Relationships** - four tabs, one per trait this mod reads:
 
 | tab | what it settles |
 |---|---|
 | Relationships: Attachment | how much they need to be the only one |
 | Relationships: Expression | how much of what they feel they show |
 | Relationships: Drawn To | who they are drawn to |
-| Relationships: Limits | the line they will not cross |
+| Relationships: Limits | lines they will not cross |
 
-Apply **one** block from Attachment, Expression and Drawn To. Each is a single
-value, and when a character is authored a single block from one of these tabs is
-not weighed as evidence: it is the answer. Two from the same tab is a
-contradiction, so neither wins and the judge goes back to reading the bio. A
-recorded marriage still outranks a Drawn To block. Limits can take several.
+**Everyone you enroll gets these for you.** When someone is enrolled and their
+character is written, they get the Attachment, Expression and Drawn To blocks
+that match it, and the LLM picks up to two Limits for them in the same call.
+Nobody has to be done by hand, and nothing is invented twice: the blocks say
+what the character already says. Drawn To is only given when their orientation
+is actually established; a guess stays a guess. Children get none.
+
+**Your choices always win.**
+
+- A block is only added to a tab that is **empty**. Anything you applied
+  yourself is never touched.
+- **Take one of ours off and it stays off** - that tab is yours for that
+  person from then on.
+- A block **you** apply settles its trait outright, from the next load or the
+  next time they are authored, whichever comes first, and change over time
+  stops moving that trait.
+- Ours **follow the character**: when someone changes over time, the block
+  changes with them. Re-authoring someone takes ours off first, so the old
+  answer is not read back as yours, then puts the new ones on.
+
+To apply blocks only by hand, turn off **Assign Relationships Bio Blocks**
+under *Enrollment*. The libraries stay in SeverActions' page either way.
+
+Apply **one** block each from Attachment, Expression and Drawn To. Each is a
+single value; two from the same tab contradict each other, so neither wins and
+the trait is read from the bio instead. A recorded marriage still outranks a
+Drawn To block. Limits can take several.
 
 **Balance matters more than restraint.** Blocks describing physical taste say
 nothing about how someone expresses feeling, so a character carrying twenty of
 those and none of these leaves the emotional questions to be answered from
 whatever else is lying around - and what is lying around is the physical.
-Apply as many true blocks as you like; just make sure the emotional side is
-described too.
 
-SeverActions keeps block assignments for all of your saves at once, so a block
-applied in one playthrough is applied in every other.
-
-Blocks are read when a character is first authored, and again whenever their
-disposition is reviewed - so applying one later is not wasted. It pulls them
-toward it gradually instead of all at once. To have it land immediately,
-re-author the character with the Re-Author Hotkey.
-
-### Optional: the arousal block library
-
-A second library, [arousal_bio_blocks.json](https://raw.githubusercontent.com/deadohiosky48/SkyrimNet-Relationships/main/library/arousal_bio_blocks.json),
-describes desire rather than disposition. It imports the same way and ships
-beside the first one.
+**Arousal** - a second library, describing desire rather than disposition. It
+is offered in SeverActions' page and **never applied for you**:
 
 | tab | what it describes |
 |---|---|
@@ -347,18 +355,21 @@ beside the first one.
 **It unlocks nothing.** Whether someone is free to be intimate with you is still
 settled by their disposition and your bond. These blocks shape whether they want
 to *right now*, so the same person can say yes one evening and no the next, and
-mean both. Without them someone still has good and bad nights, read from the
-moment; with them, the reasons are theirs. Someone cooled by danger is not in
-the mood in a crypt, and someone stirred by kindness might be after watching you
-give your coin away.
+mean both. Someone cooled by danger is not in the mood in a crypt, and someone
+stirred by kindness might be after watching you give your coin away. **Wanting
+is never read as falling:** it can lead a casual character to bed; it never
+makes anyone fall in love with you. Keep them consistent with the rest of a
+character's blocks - someone carrying SeverActions' *Shy* or *Reserved* is more
+likely *Slow to Kindle* than *Easily Stirred*.
 
-**Wanting is never read as falling.** Someone stirred by exactly what you just
-did has been stirred, and that is all. It can lead a casual character to bed; it
-never makes anyone fall in love with you.
-
-Keep them consistent with the rest of a character's blocks. Someone carrying
-SeverActions' *Shy* or *Reserved* is more likely *Slow to Kindle* than *Easily
-Stirred*.
+**On an older SeverActions** (before 4.0.1) nothing is offered or applied, and
+the libraries can still be imported by hand. Its import window takes **pasted
+JSON text**, not a file: open
+[relationships_bio_blocks.json](https://raw.githubusercontent.com/deadohiosky48/SkyrimNet-Relationships/main/library/relationships_bio_blocks.json)
+or [arousal_bio_blocks.json](https://raw.githubusercontent.com/deadohiosky48/SkyrimNet-Relationships/main/library/arousal_bio_blocks.json)
+in a browser, copy all of it, and paste it in. Copies also ship in the download
+under `Docs\SkyrimNet Relationships\`. (This is not the repository's `docs`
+folder; the libraries live in `library/`.)
 
 ## Configuration
 
@@ -495,10 +506,11 @@ this mod decides about someone belong to one playthrough, and SkyrimNet keeps
 its memories per playthrough too. Two things can still make a new game look
 familiar:
 
-- **SeverActions bio blocks are shared by every save.** Blocks you applied to
-  someone in one playthrough are applied in every other, and this mod reads
-  them. A Drawn To, Expression or Attachment block decides that trait outright.
-  Remove the block in SeverActions if it doesn't belong in this playthrough.
+- **On SeverActions before 4.0, bio blocks were shared by every save.** Blocks
+  applied to someone in one playthrough were applied in every other, and this
+  mod reads them; a Drawn To, Expression or Attachment block decides that trait
+  outright. SeverActions 4.0 and later keep them per save. Remove a block in
+  SeverActions if it doesn't belong in this playthrough.
 - **A new game started before 1.8.1 could inherit an older playthrough's
   characters**, if it was the first save to run 1.4.1 or later. Give the
   playthrough a store of its own (nothing is deleted, and `AdoptLegacyStore`

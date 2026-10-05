@@ -208,7 +208,8 @@
           <td><span class="tag a">Best</span></td>
           <td class="w">The only source you write <em>deliberately</em>. A block you apply is
             treated as a direct statement and outranks everything else about that one trait.
-            Optional, and the strongest tool you have for a character who is being read wrong.</td>
+            With SeverActions 4.0.1 or newer the mod gives everyone matching blocks itself;
+            changing one is the strongest tool you have for a character who is being read wrong.</td>
         </tr>
         <tr>
           <td>Memories</td>
@@ -272,11 +273,12 @@
       </div>
       <div class="step good">
         <span class="step-n">Optional</span>
-        <h3>Apply bio blocks</h3>
-        <p>If you use SeverActions, the mod ships a library of blocks describing how someone
-          loves &mdash; how much they need to be the only one, how openly they show feeling,
-          who they are drawn to. Import it and apply what fits; instructions are two
-          sections down.</p>
+        <h3>Check their bio blocks</h3>
+        <p>If you use SeverActions 4.0.1 or newer, everyone you enroll is given blocks
+          describing how they love &mdash; how much they need to be the only one, how openly
+          they show feeling, who they are drawn to, lines they will not cross &mdash; chosen
+          from their character. Look them over in SeverActions' Bio Blocks page and change
+          any that are wrong; yours always win. More two sections down.</p>
       </div>
     </div>
   </section>
@@ -310,38 +312,37 @@
   <hr class="rule">
 
   <section>
-    <h2 class="sec">Getting the block library into SeverActions</h2>
-    <p class="lede">This is the step that confuses people, so plainly:
-      <strong>SeverActions' import window takes pasted JSON text, not a file.</strong> You are
-      not browsing to the library &mdash; you are opening it, copying the text out, and pasting
-      it in.</p>
+    <h2 class="sec">Bio blocks in SeverActions</h2>
+    <p class="lede">With <strong>SeverActions 4.0.1 or newer</strong> there is nothing to
+      import. Both of the mod's libraries appear in SeverActions' Bio Blocks page by
+      themselves, marked as this mod's, and everyone you enroll is given the Relationships
+      blocks that match their character.</p>
 
     <ol class="seq">
-      <li><b>Open the library.</b> Easiest is straight from the project:
-        <a href="https://raw.githubusercontent.com/deadohiosky48/SkyrimNet-Relationships/main/library/relationships_bio_blocks.json">relationships_bio_blocks.json</a>
-        in a browser. A copy also ships in the download as
-        <code>relationships_bio_blocks.json</code> under
-        <code>Docs\SkyrimNet Relationships\</code> &mdash; open it in a text editor. Once
-        installed that is under <code>Data\Docs\SkyrimNet Relationships\</code> with Vortex
-        or a manual install, or inside the mod's own folder under MO2.</li>
-      <li><b>Select all and copy.</b> The entire contents, brackets included.</li>
-      <li><b>Paste it into SeverActions' bio block import window</b> and import. It adds four
-        tabs: Attachment, Expression, Drawn To and Limits.</li>
-      <li><b>Apply blocks to a companion.</b> One each from Attachment, Expression and Drawn To
-        &mdash; each is a single value, so two at once is a contradiction rather than a
-        preference stated twice. Limits can take several.</li>
+      <li><b>Look at who they were given.</b> One each from Attachment, Expression and
+        Drawn To, and up to two Limits picked when their character was written. Drawn To is
+        only given once their orientation is established.</li>
+      <li><b>Change what is wrong.</b> Swap a block for the one that fits; it settles that
+        trait at the next load, and change over time leaves it alone. Two from the same tab
+        contradict each other, so keep one.</li>
+      <li><b>Take off what does not belong.</b> A block of the mod's that you remove stays
+        removed, and that tab is yours for that person from then on.</li>
     </ol>
 
-    <p class="lede"><strong>There is a second, separate library</strong> for desire:
-      <a href="https://raw.githubusercontent.com/deadohiosky48/SkyrimNet-Relationships/main/library/arousal_bio_blocks.json">arousal_bio_blocks.json</a>,
-      imported exactly the same way and shipped beside the first. It adds Appetite, Stirred By
-      and Cooled By &mdash; how readily someone wants, and what wakes it or puts it out. It
-      unlocks nothing; see the project page for what it does.</p>
+    <p class="lede"><strong>The second library</strong>, Arousal &mdash; Appetite, Stirred By
+      and Cooled By, how readily someone wants and what wakes it or puts it out &mdash; is
+      offered in the same page and never applied for you. It unlocks nothing; see the
+      project page for what it does.</p>
 
-    <p class="quote"><b>Not the repo's <code>docs</code> folder.</b> That one holds these pages.
-      The library lives in <code>library/</code>. Full notes on what each tab settles, and why
-      balance matters more than restraint, are on the
-      <a href="https://github.com/deadohiosky48/SkyrimNet-Relationships#optional-the-disposition-block-library">project page</a>.</p>
+    <p class="quote"><b>On an older SeverActions</b> nothing is applied, and the libraries can
+      be imported by hand: its import window takes <em>pasted JSON text</em>, not a file, so
+      open
+      <a href="https://raw.githubusercontent.com/deadohiosky48/SkyrimNet-Relationships/main/library/relationships_bio_blocks.json">relationships_bio_blocks.json</a>
+      or
+      <a href="https://raw.githubusercontent.com/deadohiosky48/SkyrimNet-Relationships/main/library/arousal_bio_blocks.json">arousal_bio_blocks.json</a>
+      in a browser, copy all of it, and paste it in. Full notes on what each tab settles are
+      on the
+      <a href="https://github.com/deadohiosky48/SkyrimNet-Relationships#bio-blocks-severactions">project page</a>.</p>
   </section>
 
   <hr class="rule">
@@ -383,7 +384,7 @@
           <li><b>Fix a bio that is simply wrong.</b> They are editable. A sentence that
             misdescribes the relationship will be believed, so correcting it is the highest
             leverage edit available.</li>
-          <li><b>Add a bio block for a trait being read wrong.</b> Faster and more reliable
+          <li><b>Swap a bio block for a trait being read wrong.</b> Faster and more reliable
             than rewriting prose and hoping.</li>
           <li><b>Let it surprise you.</b> The point is that each companion reacts differently.
             Curating every character until they all behave as expected removes the thing you
