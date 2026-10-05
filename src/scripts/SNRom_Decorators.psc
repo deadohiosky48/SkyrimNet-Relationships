@@ -565,7 +565,9 @@ String Function GetRomance(Actor akActor) Global
         ",\"romanceNA\":" + SNRom_Decorators.RomanceApplicability(akActor) + \
         ",\"physMinTier\":" + StorageUtil.GetIntValue(akActor, "SNRom_PhysMinTier", 4) + \
         ",\"otherPartners\":" + SNRom_Decorators.OtherPartners(akActor) + \
-        ",\"stance\":" + StorageUtil.GetIntValue(akActor, "SNRom_PlayerStance", 0) + "}"
+        ",\"stance\":" + StorageUtil.GetIntValue(akActor, "SNRom_PlayerStance", 0) + \
+        ",\"blkDrawn\":" + StorageUtil.GetIntValue(akActor, "SNRom_BioHas_0", 0) + \
+        ",\"blkAttach\":" + StorageUtil.GetIntValue(akActor, "SNRom_BioHas_2", 0) + "}"
 EndFunction
 
 ; ===========================================================================

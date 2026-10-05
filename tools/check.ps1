@@ -175,6 +175,19 @@ $reads  = [regex]::Matches($allSrc, 'StorageUtil\.Get(?:Int|Float|String|Form)Va
 $writes = [regex]::Matches($allSrc, 'StorageUtil\.(?:Set|Unset)(?:Int|Float|String|Form)Value\s*\([^,]+,\s*"([^"]+)"') |
             ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
 
+# A FAMILY OF KEYS written as a prefix plus a computed suffix -
+# ("SNRom_BioHas_" + cat) - covers reads of its literal members
+# ("SNRom_BioHas_2"), and a literal read covers the prefix's write.
+$prefixWrites = [regex]::Matches($allSrc, 'StorageUtil\.(?:Set|Unset)(?:Int|Float|String|Form)Value\s*\([^,]+,\s*"([^"]+_)"\s*\+') |
+                  ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+foreach ($p in $prefixWrites) {
+    $members = $reads | Where-Object { $_.StartsWith($p) -and $_ -ne $p }
+    if ($members) {
+        $writes = @($writes) + @($members) | Sort-Object -Unique
+        $reads  = @($reads) + @($p) | Sort-Object -Unique
+    }
+}
+
 foreach ($k in $reads) {
     if ($writes -notcontains $k) {
         if ($foreignReads.ContainsKey($k)) {

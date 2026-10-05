@@ -9049,6 +9049,26 @@ Bool Function BioNoticeRemoval(Actor akActor, String[] akTitles, Int aiCat)
     Return False
 EndFunction
 
+Function BioNoteOccupancy(Actor akActor, String[] akTitles)
+    { Records which Relationships categories hold a block - ours or the
+      player's - as SNRom_BioHas_<cat> (an Int: StorageUtil strings do not
+      survive a reload). get_romance reports it so the bond prompt can leave
+      out what a block already says, without the prompt calling SeverActions
+      on every render. Refreshed wherever titles are in hand: every load, and
+      after each change we make. A block the player adds mid-session is
+      noticed at the next load; until then the prompt says it twice, which
+      costs tokens and nothing else. }
+    Int cat = 0
+    While cat < 4
+        If BioCountIn(akTitles, cat) > 0
+            StorageUtil.SetIntValue(akActor, "SNRom_BioHas_" + cat, 1)
+        Else
+            StorageUtil.UnsetIntValue(akActor, "SNRom_BioHas_" + cat)
+        EndIf
+        cat += 1
+    EndWhile
+EndFunction
+
 Int Function SyncOurBlocks(Actor akActor, String asLimitPicks, String asWhy)
     { Puts our blocks where they belong, and only there. Returns how many
       blocks it applied or swapped.
@@ -9062,7 +9082,11 @@ Int Function SyncOurBlocks(Actor akActor, String asLimitPicks, String asWhy)
     If akActor == None || !BioAssignOn() || !IsEnrolled(akActor)
         Return 0
     EndIf
-    Return SyncOurBlocksWith(akActor, SNRom_SABio.AssignedTitles(akActor), asLimitPicks, asWhy)
+    Int changed = SyncOurBlocksWith(akActor, SNRom_SABio.AssignedTitles(akActor), asLimitPicks, asWhy)
+    If changed > 0
+        BioNoteOccupancy(akActor, SNRom_SABio.AssignedTitles(akActor))
+    EndIf
+    Return changed
 EndFunction
 
 Int Function SyncOurBlocksWith(Actor akActor, String[] akTitles, String asLimitPicks, String asWhy)
@@ -9259,7 +9283,12 @@ Function BioBlocksOnLoad()
         If a != None && !a.IsDead() && IsEnrolled(a)
             String[] titles = SNRom_SABio.AssignedTitles(a)
             EnforceBlockAnswersWith(a, titles)
-            applied += SyncOurBlocksWith(a, titles, "?", "on load")
+            BioNoteOccupancy(a, titles)
+            Int changed = SyncOurBlocksWith(a, titles, "?", "on load")
+            If changed > 0
+                BioNoteOccupancy(a, SNRom_SABio.AssignedTitles(a))
+            EndIf
+            applied += changed
         EndIf
         i += 1
     EndWhile
