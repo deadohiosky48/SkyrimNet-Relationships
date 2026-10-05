@@ -16,7 +16,8 @@ Int Function Version() Global Native
    4  SetDisplaySettings
    5  RecordChange and Announce
    6  ObserversNear
-   7  AppendLog}
+   7  AppendLog
+   8  BioPlan}
 
 Bool Function SetDashboardHotkey(Int aiVirtualKey, Int aiModifierVirtualKey) Global Native
 {Binds the dashboard key. aiVirtualKey is a Windows VIRTUAL-KEY code, which is
