@@ -7815,7 +7815,7 @@ Function SetCharacterField(Actor akActor, Int aiField, Int aiValue)
         StorageUtil.SetIntValue(akActor, "SNRom_Exclusivity", e)
         Diag(LOG_INFO(), "REPAIR: " + who + " EXCLUSIVITY set to " + e + " out of 100")
     EndIf
-    SyncOurBlocks(akActor, "?", "repair")
+    SyncOurBlocks(akActor, "?", "after a repair")
 EndFunction
 
 Function ForceDriftReview(Actor akActor, Int aiField)
@@ -8098,7 +8098,7 @@ Function ApplyDrift(Actor akActor, Int aiField, Bool abOpen, String asPattern)
         before + " -> " + after + " - " + asPattern)
     ; Our block for this field (if it is ours alone) follows the character, or
     ; the bio and the bond prompt would contradict each other.
-    SyncOurBlocks(akActor, "?", "drift")
+    SyncOurBlocks(akActor, "?", "after drift")
     ; Written into the world, because this is a person changing and the people
     ; around her should be able to refer to it. Not a persistent event for the
     ; other two - only a change she has actually lived is worth remembering.
@@ -8899,6 +8899,9 @@ Int Function SyncOurBlocksWith(Actor akActor, String[] akTitles, String asLimitP
     If akActor == None || !BioAssignOn() || !IsEnrolled(akActor)
         Return 0
     EndIf
+    If !BioEligible(akActor)
+        Return BioWithdrawOurs(akActor, akTitles)
+    EndIf
     Int changed = 0
     Int cat = 0
     While cat < 4
@@ -8919,6 +8922,33 @@ Int Function SyncOurBlocksWith(Actor akActor, String[] akTitles, String asLimitP
         cat += 1
     EndWhile
     Return changed
+EndFunction
+
+Bool Function BioEligible(Actor akActor)
+    { NOT FOR CHILDREN, AND NOT FOR THE PLAYER'S KIN. The Relationships blocks
+      describe how someone is with a partner - what they show, whether they
+      can share, what they will not be in a relationship. That has no place
+      in a child's bio, nor in that of the player's own children, whom this
+      mod already bars from the romantic ladder (IsPlayerKin). Both can still
+      be enrolled; they simply get none of ours. Found on the first in-game
+      run (2026-10-05): Nicollette, Toryy and Lyra had been given Expression
+      and Attachment blocks. }
+    Return !akActor.IsChild() && !SNRom_Decorators.IsPlayerKin(akActor)
+EndFunction
+
+Int Function BioWithdrawOurs(Actor akActor, String[] akTitles)
+    { Takes off every category that holds only our blocks. The player's own
+      blocks on the same person are left exactly as they are. }
+    Int n = 0
+    Int cat = 0
+    While cat < 4
+        If BioOursAlone(akActor, akTitles, cat)
+            BioReplace(akActor, cat, StorageUtil.GetStringValue(akActor, "SNRom_BioOurs_" + cat, ""), "",                 "not for a child or the player's kin")
+            n += 1
+        EndIf
+        cat += 1
+    EndWhile
+    Return n
 EndFunction
 
 Int Function BioReplace(Actor akActor, Int aiCat, String asOld, String asNew, String asWhy)
@@ -9012,7 +9042,7 @@ Function SyncAfterAuthoring(Actor akActor, String asLimitPicks)
         picks = lifted
     EndIf
     StorageUtil.UnsetStringValue(akActor, "SNRom_BioLiftedLimits")
-    SyncOurBlocks(akActor, picks, "authoring")
+    SyncOurBlocks(akActor, picks, "after authoring")
 EndFunction
 
 Function BioBlocksOnLoad()
@@ -9057,7 +9087,7 @@ Function BioBlocksOnLoad()
         If a != None && !a.IsDead() && IsEnrolled(a)
             String[] titles = SNRom_SABio.AssignedTitles(a)
             EnforceBlockAnswersWith(a, titles)
-            applied += SyncOurBlocksWith(a, titles, "?", "load")
+            applied += SyncOurBlocksWith(a, titles, "?", "on load")
         EndIf
         i += 1
     EndWhile
