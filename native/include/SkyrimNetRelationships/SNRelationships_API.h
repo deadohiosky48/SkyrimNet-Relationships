@@ -18,6 +18,12 @@
 // sink, a Papyrus native that waits for the main thread). Listeners are called
 // there too.
 //
+// TIMING. A change reaches listeners about half a second after the mod writes
+// it, batched per person. While the game is paused (a menu, the console) the
+// batch waits and goes out when play resumes; several changes to one person in
+// that time arrive as one, and a value changed and changed back arrives as
+// nothing.
+//
 // WHEN VALUES ARE THERE. After a game loads, the mod publishes everyone once,
 // a few seconds after the load, and calls every listener with formId 0 and
 // kReloaded. Before that, IsReady() is false and GetValues finds nobody. A
