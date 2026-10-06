@@ -1,0 +1,14 @@
+{# WP-B2 TEST, NOT SHIPPED AS A FEATURE. Rendered by SNRom_Bridge.ProbeConversations
+   through SkyrimNetApi.RenderTemplate, with no model call. Answers three questions
+   before conversation enrollment is built on it:
+     1. Does RenderTemplate work from a quest script, with native decorators?
+     2. What does a recent event carry - names only, or something that identifies
+        the speaker (a UUID, a FormID)?
+     3. Does a variable passed in (the watermark the real scan will need) arrive?
+   The raw events are dumped whole so their fields can be read. #}
+probe.since = {{ default(probe.since, "missing") }}
+{% set events = get_recent_events(25) %}
+event count = {{ length(events) }}
+{% for ev in events %}
+EV {{ loop.index }}: {{ ev }}
+{% endfor %}

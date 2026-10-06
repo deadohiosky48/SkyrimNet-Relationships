@@ -8712,6 +8712,27 @@ Function BioRecSet(Actor akActor, Int aiCat, String asKeys) Global
     EndIf
 EndFunction
 
+Function ProbeConversations(String asSince)
+    { DEV TOOL - THE WP-B2 TEST. Dispatch with the web API
+      (execute-quest-script-function, functionName ProbeConversations, one
+      string argument, e.g. "123.5").
+
+      Conversation enrollment needs to know who has talked with the player, and
+      SkyrimNet sends no event for it. This renders snrom_probe_events with
+      SkyrimNetApi.RenderTemplate - native decorators only, no model call - and
+      writes the result to logs/snrom_probe.log, so we can read whether it
+      works from a quest script, what each recent event carries, and whether a
+      variable reaches the template. Changes nothing. }
+    Float t0 = Utility.GetCurrentRealTime()
+    String out = SkyrimNetApi.RenderTemplate("snrom_probe_events", "probe", "{\"since\":\"" + asSince + "\"}")
+    Float took = Utility.GetCurrentRealTime() - t0
+    WriteLog("snrom_probe.log", "Data/SKSE/Plugins/SkyrimNet Relationships/logs/snrom_probe.log", \
+        "==== probe at real " + t0 + ", game day " + Utility.GetCurrentGameTime() + ", took " + took + " s, " + \
+        StringUtil.GetLength(out) + " chars ====" + NL() + out + NL())
+    Diag(LOG_INFO(), "ProbeConversations: rendered " + StringUtil.GetLength(out) + " chars in " + took + \
+        " s - see logs/snrom_probe.log")
+EndFunction
+
 Function MarkBioOurs(Actor akActor, Int aiCat, String asKey)
     { DEV TOOL, for the web API (execute-quest-script-function, arguments: a
       hex FormID, the category 0-3, a key). Records asKey as a block we
