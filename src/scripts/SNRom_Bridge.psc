@@ -8768,6 +8768,7 @@ Function ScanConversations()
     String seen = ","
     Int considered = 0
     Int enrolled = 0
+    String report = ""
     String[] lines = StringUtil.Split(out, "\n")
     Int i = 0
     While i < lines.Length
@@ -8785,9 +8786,21 @@ Function ScanConversations()
                 If !fresh && id > mark && StringUtil.Find(seen, "," + f[1] + ",") < 0
                     seen += f[1] + ","
                     considered += 1
-                    If ConsiderTalkEnroll(SkyrimNetApi.GetActorByUUID(f[1]))
-                        enrolled += 1
+                    Actor who = SkyrimNetApi.GetActorByUUID(f[1])
+                    String why = TalkEnrollRefusal(who)
+                    String name = "UUID " + f[1]
+                    If who != None
+                        name = who.GetDisplayName()
                     EndIf
+                    If why == ""
+                        EnrollNow(who, "Enrolled after talking with you:")
+                        enrolled += 1
+                        why = "enrolled"
+                    EndIf
+                    If report != ""
+                        report += "; "
+                    EndIf
+                    report += name + " - " + why
                 EndIf
             EndIf
         EndIf
@@ -8809,32 +8822,58 @@ Function ScanConversations()
         StorageUtil.SetIntValue(None, "SNRom_TalkScanMark", newMark)
     EndIf
     If considered > 0
-        Diag(LOG_INFO(), "Conversation scan: " + considered + " not yet enrolled talked with you since the last scan; " + \
-            enrolled + " enrolled.")
+        ; Every person, with the outcome or the reason: a conversation that
+        ; enrolled nobody must say why, or it reads as the feature not working.
+        Diag(LOG_INFO(), "Conversation scan, " + considered + " talked with you since the last scan, " + enrolled + \
+            " enrolled: " + report + ".")
     EndIf
 EndFunction
 
-Bool Function ConsiderTalkEnroll(Actor akActor)
-    { The rules, decided with the author 2026-10-05: not already enrolled;
-      never someone the player unenrolled; alive, a person, not summoned, not
-      a child; and a named individual rather than a generic spawn. Enrollment
-      itself is EnrollNow, which queues the authoring call behind any already
-      running - a busy market waits its turn rather than being capped. }
-    If akActor == None || akActor == Game.GetPlayer() || IsEnrolled(akActor)
-        Return False
+Function ExplainTalkEnroll(String asUuid)
+    { DEV TOOL, for the web API (one string argument: a SkyrimNet UUID, as the
+      event record and snrom_met_scan print it). Logs whether talking would
+      enroll this person, and if not, why. Changes nothing. }
+    Actor who = SkyrimNetApi.GetActorByUUID(asUuid)
+    String why = TalkEnrollRefusal(who)
+    String name = "UUID " + asUuid
+    If who != None
+        ActorBase b = who.GetActorBase()
+        name = who.GetDisplayName() + " (" + SNRom_Native.FormIdOf(who) + ", unique base " + (b != None && b.IsUnique()) + ")"
     EndIf
-    If StorageUtil.GetIntValue(akActor, "SNRom_NoAutoEnroll", 0) == 1
-        Return False
+    If why == ""
+        why = "would be enrolled"
     EndIf
-    If akActor.IsDead() || akActor.IsCommandedActor() || akActor.IsChild() || !IsPerson(akActor)
-        Return False
+    Diag(LOG_INFO(), "ExplainTalkEnroll: " + name + " - " + why)
+EndFunction
+
+String Function TalkEnrollRefusal(Actor akActor)
+    { Why this person is not enrolled after talking with the player, in words
+      for the log; "" when they should be. The rules, decided with the author
+      2026-10-05: not already enrolled; never someone the player unenrolled;
+      alive, a person, not summoned, not a child; and a named individual rather
+      than a generic spawn. Enrollment itself is EnrollNow, which queues the
+      authoring call behind any already running - a busy market waits its turn
+      rather than being capped. }
+    If akActor == None
+        Return "SkyrimNet could not find them now (not loaded?)"
+    ElseIf akActor == Game.GetPlayer()
+        Return "that is you"
+    ElseIf IsEnrolled(akActor)
+        Return "already enrolled"
+    ElseIf StorageUtil.GetIntValue(akActor, "SNRom_NoAutoEnroll", 0) == 1
+        Return "you unenrolled them; only by hand now"
+    ElseIf akActor.IsDead()
+        Return "dead"
+    ElseIf akActor.IsCommandedActor()
+        Return "summoned"
+    ElseIf akActor.IsChild()
+        Return "a child"
+    ElseIf !IsPerson(akActor)
+        Return "not a person"
+    ElseIf !IsNamedIndividual(akActor)
+        Return "a generic NPC, not a named individual"
     EndIf
-    If !IsNamedIndividual(akActor)
-        Diag(LOG_DEBUG(), "Not enrolling " + akActor.GetDisplayName() + " after talking - a generic NPC, not a named individual")
-        Return False
-    EndIf
-    EnrollNow(akActor, "Enrolled after talking with you:")
-    Return True
+    Return ""
 EndFunction
 
 Bool Function IsNamedIndividual(Actor akActor)
