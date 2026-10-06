@@ -5,11 +5,13 @@
 // The UI framework that shows the dashboard page, behind the six operations the
 // dashboard needs: create, listen, show, focus, hide, send.
 //
-// TWO HOSTS: Meridian UI (MeridianHost.cpp) and Prisma UI (PrismaHost.cpp),
-// picked once in Dashboard::OnInputLoaded. Prisma was left out of 2.0 over its
-// non-MIT licence; the author brought it back on 2026-10-02, because Meridian
-// does not run in Skyrim VR. Its header is vendored unmodified with its licence
-// (include/PrismaUI/README.md). Nothing in Dashboard.cpp knows which it has.
+// THREE HOSTS: Meridian UI (MeridianHost.cpp), Magelight UI (MagelightHost.cpp,
+// 2.1) and Prisma UI (PrismaHost.cpp), picked once in
+// Dashboard::OnInputLoaded. Prisma was left out of 2.0 over its non-MIT
+// licence; the author brought it back on 2026-10-02, because Meridian does not
+// run in Skyrim VR. Its header is vendored unmodified with its licence
+// (include/PrismaUI/README.md), as is Magelight's (MIT,
+// include/MagelightUI/README.md). Nothing in Dashboard.cpp knows which it has.
 namespace SNRom {
 
     // Called with ONE string, on the framework's own thread. Copy the payload

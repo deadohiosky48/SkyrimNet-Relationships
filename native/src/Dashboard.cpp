@@ -18,6 +18,7 @@
 // the input sink. That raced the queued close and snapshot sends.
 // ---------------------------------------------------------------------------
 
+#include "MagelightHost.h"
 #include "MeridianHost.h"
 #include "Model.h"
 #include "PrismaHost.h"
@@ -596,22 +597,35 @@ namespace SNRom::Dashboard {
     }
 
     void OnInputLoaded() {
-        // MERIDIAN FIRST, PRISMA OTHERWISE - and Prisma first in Skyrim VR,
-        // where the Meridian runtime does not run (its author guide) and Prisma
-        // has a VR build. Both are asked at kInputLoaded: Meridian refuses a
-        // first query from later worker-thread messages, and Prisma only needs
-        // it at or after kPostLoad.
+        // THE FIRST HOST PRESENT, in this order (the author, 2026-10-05):
+        //   flat:      Meridian, Magelight, Prisma
+        //   Skyrim VR: Magelight, Prisma
+        // Meridian does not run in VR (its author guide). Magelight runs in
+        // both, ships with SeverActions 4.x - so many players have it without
+        // knowing - and is the better VR host (controller laser and trigger).
+        // All are asked at kInputLoaded: Meridian refuses a first query from
+        // later worker-thread messages; the others only need kPostLoad.
         const bool vr = REL::Module::IsVR();
-        g_host = vr ? AcquirePrisma() : AcquireMeridian();
-        if (!g_host) {
-            g_host = vr ? AcquireMeridian() : AcquirePrisma();
+        if (vr) {
+            g_host = AcquireMagelight();
+            if (!g_host) {
+                g_host = AcquirePrisma();
+            }
+        } else {
+            g_host = AcquireMeridian();
+            if (!g_host) {
+                g_host = AcquireMagelight();
+            }
+            if (!g_host) {
+                g_host = AcquirePrisma();
+            }
         }
         if (g_host) {
             SKSE::log::info("{} found{}", g_host->Name(), vr ? " (Skyrim VR)" : "");
         } else {
             // ONCE, and not an error. No dashboard is a supported configuration
             // (design 7.5), and nothing else in the mod depends on it.
-            SKSE::log::info("Neither Meridian UI (Meridian.View/1) nor Prisma UI found: no dashboard. "
+            SKSE::log::info("No Meridian UI, Magelight UI or Prisma UI found: no dashboard. "
                             "Everything else in SkyrimNet Relationships works without it.");
         }
     }

@@ -83,6 +83,7 @@ set(SOURCES
     src/Display.cpp
     src/History.cpp
     src/Hotkey.cpp
+    src/MagelightHost.cpp
     src/MeridianHost.cpp
     src/Model.cpp
     src/Natives.cpp

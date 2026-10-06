@@ -311,7 +311,16 @@ try {
         if ((Get-ChildItem $prismaPage -Recurse -File).Count -ne $pageCount) {
             throw "The Prisma copy of the page differs from the Meridian copy"
         }
-        $dashNote = "SkyrimNetRelationships.dll ($([math]::Round((Get-Item $dll).Length / 1KB)) KB), MeridianUI\snrelationships and PrismaUI\views\snrelationships ($pageCount files each)"
+        # And a third, for Magelight UI (2.1): Data\Magelight\<modId>\ is where
+        # Magelight pins a mod's file reads, and MagelightHost.cpp loads
+        # Magelight\snrelationships\index.html from there.
+        $magelightPage = Join-Path $stage 'Magelight\snrelationships'
+        New-Item -ItemType Directory -Force -Path (Split-Path $magelightPage) | Out-Null
+        Copy-Item $page $magelightPage -Recurse
+        if ((Get-ChildItem $magelightPage -Recurse -File).Count -ne $pageCount) {
+            throw "The Magelight copy of the page differs from the Meridian copy"
+        }
+        $dashNote = "SkyrimNetRelationships.dll ($([math]::Round((Get-Item $dll).Length / 1KB)) KB), MeridianUI\snrelationships, PrismaUI\views\snrelationships and Magelight\snrelationships ($pageCount files each)"
     } else {
         $dashNote = 'NOT INCLUDED - no DLL built (tools\build-dll.ps1); this package has no dashboard'
         Write-Host "  Dashboard not included: native\build\Release\SkyrimNetRelationships.dll is not built." -ForegroundColor Yellow
