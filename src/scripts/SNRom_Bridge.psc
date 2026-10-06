@@ -8853,11 +8853,13 @@ Function BioBlocksOnLoad()
 
     Int count = StorageUtil.FormListCount(None, "SNRom_Roster")
     Int changed = 0
+    Int flags = BioFlags(True)          ; read the switch once, not once a person
+    Int mode = Math.LogicalOr(BIO_ENFORCE(), BIO_SYNC())
     Int i = 0
     While i < count
         Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
         If a != None && !a.IsDead() && IsEnrolled(a)
-            changed += BioRun(a, SNRom_SABio.AssignedTitles(a), Math.LogicalOr(BIO_ENFORCE(), BIO_SYNC()), -1, "on load")
+            changed += BioRun(a, SNRom_SABio.AssignedTitles(a), mode, -1, "on load", flags)
         EndIf
         i += 1
     EndWhile
@@ -8875,10 +8877,16 @@ Int Function BIO_LIFT() Global
     Return 32
 EndFunction
 
-Int[] Function BioState(Actor akActor, Int aiMode, Int aiLimitPicks)
+Int[] Function BioState(Actor akActor, Int aiMode, Int aiLimitPicks, Int aiFlags = -1)
     { One person's stored values, for SNRom_Native.BioPlan (layout in
       native/src/BioPlan.h): orientation, its basis, ardor, exclusivity, the
-      four records, marriage, flags, Limits picks. }
+      four records, marriage, flags, Limits picks.
+
+      aiFlags: the api/assign/enrolled bits when the caller already knows them
+      (the roster walk reads the switch once, not once a person); -1 to work
+      them out here. Marriage is always 0: asking MARAS costs several calls a
+      person, and it only matters when a Drawn To block would change an
+      orientation, so BioRun asks then. }
     Int[] s = new Int[11]
     s[0] = StorageUtil.GetIntValue(akActor, "SNRom_Orientation", 3)
     s[1] = StorageUtil.GetIntValue(akActor, "SNRom_OrientationKnown", 0)
@@ -8888,26 +8896,30 @@ Int[] Function BioState(Actor akActor, Int aiMode, Int aiLimitPicks)
     s[5] = StorageUtil.GetIntValue(akActor, "SNRom_BioOurs_1", 0)
     s[6] = StorageUtil.GetIntValue(akActor, "SNRom_BioOurs_2", 0)
     s[7] = StorageUtil.GetIntValue(akActor, "SNRom_BioOurs_3", 0)
-    ; Only an enforcement can use it, and asking MARAS costs calls.
-    If Math.LogicalAnd(aiMode, BIO_ENFORCE()) != 0 && IsMarriedToPlayer(akActor)
-        s[8] = 1
+    If aiFlags < 0
+        aiFlags = BioFlags(IsEnrolled(akActor))
     EndIf
-    Int flags = aiMode
-    If _bioApi == 1
-        flags = Math.LogicalOr(flags, 1)
-    EndIf
-    If BioAssignOn()
-        flags = Math.LogicalOr(flags, 2)
-    EndIf
-    If IsEnrolled(akActor)
-        flags = Math.LogicalOr(flags, 4)
-    EndIf
-    s[9] = flags
+    s[9] = Math.LogicalOr(aiFlags, aiMode)
     s[10] = aiLimitPicks
     Return s
 EndFunction
 
-Int Function BioRun(Actor akActor, String[] akTitles, Int aiMode, Int aiLimitPicks, String asWhy)
+Int Function BioFlags(Bool abEnrolled)
+    { The api, assign and enrolled bits of BioPlan's flags. }
+    Int flags = 0
+    If _bioApi == 1
+        flags = 1
+    EndIf
+    If BioAssignOn()
+        flags = Math.LogicalOr(flags, 2)
+    EndIf
+    If abEnrolled
+        flags = Math.LogicalOr(flags, 4)
+    EndIf
+    Return flags
+EndFunction
+
+Int Function BioRun(Actor akActor, String[] akTitles, Int aiMode, Int aiLimitPicks, String asWhy, Int aiFlags = -1)
     { Asks the DLL what to do about one person's blocks, and does it: writes
       the traits the player's blocks set, applies and takes off our blocks,
       and records what is ours. Returns how many blocks it applied or took off.
@@ -8915,14 +8927,19 @@ Int Function BioRun(Actor akActor, String[] akTitles, Int aiMode, Int aiLimitPic
     If akActor == None || _dashNatives < 8
         Return 0
     EndIf
-    Int[] p = SNRom_Native.BioPlan(akActor, akTitles, BioState(akActor, aiMode, aiLimitPicks))
+    Int[] p = SNRom_Native.BioPlan(akActor, akTitles, BioState(akActor, aiMode, aiLimitPicks, aiFlags))
     If !p || p.Length < 13
         Return 0
     EndIf
     String who = akActor.GetDisplayName()
 
     ; ---- the traits the player's own blocks set ----
-    If p[0] >= 0
+    ; A RECORDED MARRIAGE STILL OUTRANKS A DRAWN TO BLOCK, as it outranks the
+    ; model: asked here, only when the block would change the orientation.
+    If p[0] >= 0 && IsMarriedToPlayer(akActor) && OrientationExcludesPlayer(p[0])
+        Diag(LOG_WARN(), "Drawn To block NOT applied to " + who + \
+            " - the game records a marriage to the player, which the block contradicts. Fix the block.")
+    ElseIf p[0] >= 0
         StorageUtil.SetIntValue(akActor, "SNRom_Orientation", p[0])
         StorageUtil.SetIntValue(akActor, "SNRom_OrientationKnown", p[1])
         Diag(LOG_INFO(), "BLOCK OVERRIDE for " + who + ": orientation -> " + p[0] + " / STATED, from their own Drawn To block.")
@@ -8951,16 +8968,14 @@ Int Function BioRun(Actor akActor, String[] akTitles, Int aiMode, Int aiLimitPic
         EndIf
         cat += 1
     EndWhile
-    If Math.LogicalAnd(notes, 256) != 0
-        Diag(LOG_WARN(), "Drawn To block NOT applied to " + who + \
-            " - the game records a marriage to the player, which the block contradicts. Fix the block.")
-    EndIf
 
-    ; ---- before the records change, for the log ----
+    ; ---- before the records change, for the log; only where they will ----
     String[] before = new String[4]
     cat = 0
     While cat < 4
-        before[cat] = BioRecGet(akActor, cat)
+        If p[6 + cat] != -999
+            before[cat] = BioRecGet(akActor, cat)
+        EndIf
         cat += 1
     EndWhile
 
@@ -9012,14 +9027,18 @@ Int Function BioRun(Actor akActor, String[] akTitles, Int aiMode, Int aiLimitPic
                     ": '" + before[cat] + "' -> '" + after + "'")
             EndIf
         EndIf
-        ; Which categories hold a block, for the bond prompt (get_romance).
-        If Math.LogicalAnd(p[4], Math.LeftShift(1, cat)) != 0
-            StorageUtil.SetIntValue(akActor, "SNRom_BioHas_" + cat, 1)
-        Else
-            StorageUtil.UnsetIntValue(akActor, "SNRom_BioHas_" + cat)
-        EndIf
         cat += 1
     EndWhile
+
+    ; Which categories hold a block, as bits, for the bond prompt
+    ; (get_romance). One Int, written only when it changes.
+    If StorageUtil.GetIntValue(akActor, "SNRom_BioHasBits", 0) != p[4]
+        If p[4] == 0
+            StorageUtil.UnsetIntValue(akActor, "SNRom_BioHasBits")
+        Else
+            StorageUtil.SetIntValue(akActor, "SNRom_BioHasBits", p[4])
+        EndIf
+    EndIf
 
     If Math.LogicalAnd(aiMode, BIO_LIFT()) != 0
         If p[11] > 0

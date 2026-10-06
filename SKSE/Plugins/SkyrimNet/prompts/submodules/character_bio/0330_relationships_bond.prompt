@@ -525,7 +525,7 @@ How you hold this, in particular: {{ rom.why }}
    inventing a version here would be worse than saying nothing. #}
 {# WHEN AN ATTACHMENT BIO BLOCK IS APPLIED (2.1, WP-B) it already describes
    this person's band in the bio, and the generic description below would say
-   it a second time on every line they speak. blkAttach is SNRom_BioHas_2, kept
+   it a second time on every line they speak. blkAttach is bit 2 of SNRom_BioHasBits, kept
    by the bridge, so there is no SeverActions call per render. With a block,
    only the generic description is left out. What stays: the lines about the
    other partners who actually exist, which no block can know, and the two
@@ -639,7 +639,7 @@ This holds regardless of what you feel, how close you have become, or how the mo
    asked yet - which is both true and the thing that invites play to settle
    it.                                                                     #}
 {# A Drawn To bio block (2.1) already states this in the bio; blkDrawn is
-   SNRom_BioHas_0. The block is only ever ours for a STATED orientation, and a
+   bit 0 of SNRom_BioHasBits. The block is only ever ours for a STATED orientation, and a
    player's block makes it STATED, so whenever this line would render beside
    one, the two say the same thing. #}
 {% if rom.orientation and rom.orientation != "" and default(rom.blkDrawn, 0) != 1 %}
