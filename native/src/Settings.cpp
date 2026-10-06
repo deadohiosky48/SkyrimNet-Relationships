@@ -445,8 +445,8 @@ namespace SNRom::Settings {
             } else if (key == kAttractionBypassRatio) {
                 float ratio = 0.0f;
                 const auto* last = value->data() + value->size();
-                const auto [end, error] = std::from_chars(value->data(), last, ratio);
-                if (error == std::errc{} && end == last && ratio > 0.0f) {
+                const auto [ratioEnd, ratioError] = std::from_chars(value->data(), last, ratio);
+                if (ratioError == std::errc{} && ratioEnd == last && ratio > 0.0f) {
                     values.attractionBypassRatio = ratio;
                 } else {
                     values.complaints.push_back(std::format(

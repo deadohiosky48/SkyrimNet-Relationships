@@ -243,6 +243,47 @@ namespace SNRom::Api {
         return a_version == SNREL_API::kApiVersion1 ? &g_api1 : nullptr;
     }
 
+    void SelfTest() {
+        Post([]() {
+            const HMODULE mod = GetModuleHandleW(L"SkyrimNetRelationships.dll");
+            using RequestFn = const void* (*)(std::uint32_t);
+            const auto request = mod ? reinterpret_cast<RequestFn>(GetProcAddress(mod, "SNRelationships_RequestApi"))
+                                     : nullptr;
+            const auto* api = request ? static_cast<const P::Api1*>(request(P::kApiVersion1)) : nullptr;
+            if (!api) {
+                SKSE::log::error("API self-test: SNRelationships_RequestApi(1) not found or null");
+                return;
+            }
+            const auto count = api->ListEnrolled(nullptr, 0);
+            std::vector<std::uint32_t> ids(count);
+            api->ListEnrolled(ids.data(), count);
+            SKSE::log::info("API self-test: IsReady {}, {} enrolled", api->IsReady(), count);
+            for (std::size_t i = 0; i < ids.size() && i < 5; ++i) {
+                P::Values v{};
+                v.size = sizeof(v);
+                if (api->GetValues(ids[i], &v)) {
+                    const auto facts = Dashboard::EngineFactsOf(static_cast<std::int32_t>(ids[i]));
+                    SKSE::log::info("API self-test: {:08X} {} tier {} points {} sparked {} stance {} ended {} "
+                                    "commitment {} orientation {}/{} intimacy {} gate {} followingSince {}",
+                                    v.formId, facts.name, v.tier, v.points, v.sparked, v.stance, v.romanceEnded,
+                                    v.commitment, v.orientation, v.orientationBasis, v.intimacyRank, v.intimacyGate,
+                                    v.followingSinceMinutes);
+                }
+            }
+            static std::uint32_t listener = 0;
+            if (!listener) {
+                listener = api->AddListener(
+                    [](std::uint32_t a_formId, std::uint32_t a_changed, void*) {
+                        const auto name = a_formId ? Dashboard::EngineFactsOf(static_cast<std::int32_t>(a_formId)).name
+                                                   : std::string{ "(everyone)" };
+                        SKSE::log::info("API self-test listener: {:08X} {} changed 0x{:X}", a_formId, name, a_changed);
+                    },
+                    nullptr);
+                SKSE::log::info("API self-test: listener {} installed; changes are logged from now on", listener);
+            }
+        });
+    }
+
     void Reset() {
         // Called from the load message on the game thread.
         const bool had = g_ready || !g_last.empty();

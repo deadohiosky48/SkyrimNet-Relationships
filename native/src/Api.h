@@ -30,4 +30,8 @@ namespace SNRom::Api {
     void Reset();
     // The interface table for a version, or null (the export calls this).
     const void* Request(std::uint32_t a_version);
+    // DEV TOOL (SNRom_Native.ApiSelfTest): uses the API exactly as another
+    // plugin would - the export looked up by name - logs what it reads, and
+    // leaves a listener that logs every change it hears.
+    void SelfTest();
 }

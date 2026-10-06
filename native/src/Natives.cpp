@@ -258,6 +258,10 @@ namespace SNRom::Natives {
             Api::Loaded(a_count);
         }
 
+        void ApiSelfTest(RE::StaticFunctionTag*) {
+            Api::SelfTest();
+        }
+
         std::vector<RE::Actor*> ObserversNear(RE::StaticFunctionTag*, float a_range) {
             std::vector<RE::Actor*> out;
             static RE::TESFaction* bond = nullptr;
@@ -322,10 +326,11 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("BioPlan", kScript, BioPlan, true);
             a_vm->RegisterFunction("UuidHex", kScript, UuidHex, true);
             a_vm->RegisterFunction("ApiLoaded", kScript, ApiLoaded, true);
+            a_vm->RegisterFunction("ApiSelfTest", kScript, ApiSelfTest, true);
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
                             "PutBondNumbers, PutBondText, DropBond, FormIdOf, PutPlaythrough, PutRefreshFacts, "
                             "RefreshDone, ActionArgs, ActionDone, CheckBond, RecordChange, Announce, ObserversNear, AppendLog, "
-                            "BioPlan, UuidHex, ApiLoaded",
+                            "BioPlan, UuidHex, ApiLoaded, ApiSelfTest",
                             kScript, kVersion);
             return true;
         });

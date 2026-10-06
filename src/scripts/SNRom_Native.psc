@@ -18,7 +18,8 @@ Int Function Version() Global Native
    6  ObserversNear
    7  AppendLog
    8  BioPlan
-   9  UuidHex}
+   9  UuidHex
+  10  ApiLoaded; PutBondNumbers takes 25 numbers}
 
 Bool Function SetDashboardHotkey(Int aiVirtualKey, Int aiModifierVirtualKey) Global Native
 {Binds the dashboard key. aiVirtualKey is a Windows VIRTUAL-KEY code, which is
@@ -159,6 +160,15 @@ Int[] Function BioPlan(Actor akActor, String[] asTitles, Int[] aiState) Global N
 ; VERSION 9 (2.1, WP-B2). SkyrimNet's event record prints UUIDs in decimal;
 ; SkyrimNetApi.GetActorByUUID wants uppercase hex. "" for anything else.
 String Function UuidHex(String asDecimal) Global Native
+
+; VERSION 10 (2.1, WP-A). Everyone has been pushed after a load: the read API
+; (native/include/SkyrimNetRelationships/SNRelationships_API.h) is ready, and
+; tells its listeners once. aiCount is how many were pushed, for the log.
+Function ApiLoaded(Int aiCount) Global Native
+
+; VERSION 10. DEV TOOL: the DLL uses its own read API as another plugin would,
+; logs what it reads to SkyrimNetRelationships.log, and logs every change after.
+Function ApiSelfTest() Global Native
 {VERSION 7. Appends asText to asFile - a bare name: snrom.log, ledger.jsonl
  or dispositions.jsonl - in the mod's logs folder, at once and in order.
  snrom.log lines get the wall clock in front. False when it could not be

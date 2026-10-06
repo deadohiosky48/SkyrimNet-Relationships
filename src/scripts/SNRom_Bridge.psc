@@ -322,6 +322,9 @@ Function Bootstrap(Bool abForce = False)
     ; Our bio block libraries, and the player's blocks read back into the
     ; character (2.1, WP-B). Last, so nothing above waits on the roster walk.
     BioBlocksOnLoad()
+    ; The read API (2.1, WP-A): everyone, after the block walk has settled
+    ; their traits.
+    ApiPublishAll()
 EndFunction
 
 Faction Function ResolveBondFaction() Global
@@ -430,6 +433,7 @@ Function BeginSpark(Actor akActor, String asReason)
     EndIf
 
     StorageUtil.SetIntValue(akActor, "SNRom_Enrolled", 1)
+    ApiTouch(akActor)
     JoinBondFaction(akActor)
     StorageUtil.SetFloatValue(akActor, "SNRom_EnrolledAt", Utility.GetCurrentGameTime())
     ; BeginSpark IS the spark - this is what puts her on the romantic ladder in
@@ -437,6 +441,7 @@ Function BeginSpark(Actor akActor, String asReason)
     ; auto-enroll, enrollment alone will stop meaning anything about romance
     ; and this flag becomes the only thing that does.
     StorageUtil.SetIntValue(akActor, "SNRom_Sparked", 1)
+    ApiTouch(akActor)
     ; Roster membership is what ResolveFromBase matches against, so an NPC
     ; enrolled through BeginSpark rather than AutoEnroll must be on it too -
     ; otherwise her passive scoring falls back to the fragile name lookup.
@@ -553,6 +558,7 @@ Function SweepFollowers()
                 ; reader moving that boundary should not silently reset people
                 ; who are long past this gate.
                 StorageUtil.UnsetFloatValue(a, "SNRom_FirstSeenFollowing")
+                ApiTouch(a)
                 StorageUtil.FormListRemove(None, PENDING_LIST(), a, True)
                 Diag(LOG_INFO(), a.GetDisplayName() + " is no longer following before enrollment - waiting period reset")
             EndIf
@@ -605,6 +611,7 @@ Function CheckPendingEnrollments()
             StorageUtil.FormListRemoveAt(None, PENDING_LIST(), i)
             If StorageUtil.GetFloatValue(a, "SNRom_FirstSeenFollowing", 0.0) > 0.0
                 StorageUtil.UnsetFloatValue(a, "SNRom_FirstSeenFollowing")
+                ApiTouch(a)
                 Diag(LOG_INFO(), a.GetDisplayName() + " is no longer following before enrollment - waiting period reset")
             EndIf
         EndIf
@@ -868,6 +875,7 @@ Function AutoEnroll(Actor akActor)
     Float firstSeen = StorageUtil.GetFloatValue(akActor, "SNRom_FirstSeenFollowing", 0.0)
     If firstSeen <= 0.0
         StorageUtil.SetFloatValue(akActor, "SNRom_FirstSeenFollowing", now)
+        ApiTouch(akActor)
         StorageUtil.FormListAdd(None, PENDING_LIST(), akActor, False)
         Diag(LOG_INFO(), "Noticed " + akActor.GetDisplayName() + \
             " following - enrollment held until they are still here in " + \
@@ -885,6 +893,7 @@ Function EnrollNow(Actor akActor, String asHow)
     { THE ENROLLMENT ITSELF, for both ways in: AutoEnroll once a follower's
       waiting period is up, and EnrollByHand. asHow opens the log line. }
     StorageUtil.SetIntValue(akActor, "SNRom_Enrolled", 1)
+    ApiTouch(akActor)
     JoinBondFaction(akActor)
     ; THE flag that keeps IsSparked honest. Faction membership used to imply a
     ; deliberate act; once anyone who signs on is enrolled it implies nothing,
@@ -1167,7 +1176,9 @@ Function UnsparkActor(Actor akActor)
     String who = akActor.GetDisplayName()
     Bool was = StorageUtil.GetIntValue(akActor, "SNRom_Sparked", 0) == 1
     StorageUtil.UnsetIntValue(akActor, "SNRom_Sparked")
+    ApiTouch(akActor)
     StorageUtil.UnsetFloatValue(akActor, "SNRom_SparkedAt")
+    ApiTouch(akActor)
     ; Also clear the seeding exemption, or they skip the tenure gate and are
     ; re-judged within one tick instead of after the wait everyone else serves.
     StorageUtil.UnsetIntValue(akActor, "SNRom_SeedRomantic")
@@ -1323,6 +1334,7 @@ EndFunction
 Function StorePoints(Actor akActor, Int aiPoints)
     { THE ONLY WRITE TO SNRom_Points. Callers: ApplyDepth and ImportPoints. }
     StorageUtil.SetIntValue(akActor, "SNRom_Points", aiPoints)
+    ApiTouch(akActor)
 EndFunction
 
 Function SyncBondRank(Actor akActor)
@@ -1847,6 +1859,7 @@ Function MoveToBondFaction()
         Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
         If a != None
             StorageUtil.SetIntValue(a, "SNRom_Enrolled", 1)
+            ApiTouch(a)
             JoinBondFaction(a)
             moved += 1
             If rom != None && a.IsInFaction(rom)
@@ -2019,6 +2032,7 @@ Function AcceptRomance(Actor akActor)
     ; acceptance path to try.
     If ApplyDepth(akActor, banked, "What was held while the question waited", True, "accepted") > 0
         StorageUtil.UnsetIntValue(akActor, "SNRom_BankedPoints")
+        ApiTouch(akActor)
         Ledger(akActor, "unbank", "", banked, 1, "Released on acceptance")
         Diag(LOG_INFO(), "Released " + banked + " banked pts to " + akActor.GetDisplayName() + \
             " on acceptance -> " + PointsOf(akActor) + " pts, tier " + \
@@ -2071,6 +2085,7 @@ Function DeclineRomance(Actor akActor)
     ; of the setback below and put her back at the question within an evening,
     ; which is the opposite of what a refusal should cost.
     StorageUtil.UnsetIntValue(akActor, "SNRom_BankedPoints")
+    ApiTouch(akActor)
     String who = akActor.GetDisplayName()
     Int had = PointsOf(akActor)
     Int drop = FRIEND_MID() - had
@@ -2151,6 +2166,7 @@ Function SetStance(Actor akActor, Int aiStance, String asWord)
         Return
     EndIf
     StorageUtil.SetIntValue(akActor, "SNRom_PlayerStance", aiStance)
+    ApiTouch(akActor)
     ; Any stance write settles the outstanding question, including a reopen -
     ; ReopenRomance re-arms it immediately afterwards via CheckRomanceQuestion,
     ; which is the same path a fresh crossing takes. Leaving it set here would
@@ -2220,6 +2236,7 @@ Function AskTheQuestion(Actor akActor)
         ; Without this the held amount accumulates across deferrals and a late yes
         ; pays out for every conversation the player declined to answer about.
         StorageUtil.UnsetIntValue(akActor, "SNRom_BankedPoints")
+        ApiTouch(akActor)
         Diag(LOG_INFO(), "Question deferred for " + who + " - stance left unanswered, still open.")
     Else
         ; ANSWER_NONE covers BOTH "timed out" and "the box never opened because
@@ -2269,15 +2286,19 @@ Function EndRomance(Actor akActor, String asReason)
     ; Back to the platonic ladder. This is the part the old version omitted and
     ; it is the part that actually changes how she speaks.
     StorageUtil.UnsetIntValue(akActor, "SNRom_Sparked")
+    ApiTouch(akActor)
     StorageUtil.UnsetFloatValue(akActor, "SNRom_SparkedAt")
+    ApiTouch(akActor)
     StorageUtil.UnsetIntValue(akActor, "SNRom_SeedRomantic")
     StorageUtil.SetIntValue(akActor, "SNRom_PlayerStance", STANCE_UNANSWERED())
+    ApiTouch(akActor)
     ; Direct write, so it bypasses SetStance and its pending-flag clear. Clear it
     ; here too: an ended romance must not leave a question hanging that the sweep
     ; would keep raising. The spark flag above is already gone, so nothing will
     ; re-arm it until the assessor crosses them again.
     StorageUtil.UnsetIntValue(akActor, "SNRom_AskPending")
     StorageUtil.SetFloatValue(akActor, "SNRom_EndedAt", Utility.GetCurrentGameTime())
+    ApiTouch(akActor)
     ; Re-arm both gates from now, exactly as UnsparkActor does - otherwise the
     ; next tick re-judges them on the history that just ended.
     StorageUtil.SetFloatValue(akActor, "SNRom_LastSparkCheck", Utility.GetCurrentGameTime())
@@ -3152,9 +3173,13 @@ Function ClearDisposition(Actor akActor)
         Return
     EndIf
     StorageUtil.UnsetIntValue(akActor, "SNRom_Orientation")
+    ApiTouch(akActor)
     StorageUtil.UnsetIntValue(akActor, "SNRom_OrientationKnown")
+    ApiTouch(akActor)
     StorageUtil.UnsetIntValue(akActor, "SNRom_PhysMinTier")
+    ApiTouch(akActor)
     StorageUtil.UnsetIntValue(akActor, "SNRom_PhysAttrBypass")
+    ApiTouch(akActor)
     StorageUtil.UnsetIntValue(akActor, "SNRom_Ardor")
     StorageUtil.UnsetIntValue(akActor, "SNRom_Exclusivity")
     StorageUtil.SetIntValue(akActor, "SNRom_DispositionAuthored", 0)
@@ -3346,11 +3371,13 @@ Function UnenrollActor(Actor akActor)
     StorageUtil.SetIntValue(akActor, "SNRom_NoAutoEnroll", 1)
     StorageUtil.FormListRemove(None, "SNRom_Roster", akActor, True)
     StorageUtil.UnsetIntValue(akActor, "SNRom_Enrolled")
+    ApiTouch(akActor)
     StorageUtil.UnsetIntValue(akActor, "SNRom_AutoEnrolled")
     If _bond != None
         akActor.RemoveFromFaction(_bond)
     EndIf
     StorageUtil.UnsetFloatValue(akActor, "SNRom_FirstSeenFollowing")
+    ApiTouch(akActor)
     StorageUtil.FormListRemove(None, PENDING_LIST(), akActor, True)
     StorageUtil.UnsetFloatValue(akActor, "SNRom_LastTalkCheck")
     StorageUtil.UnsetFloatValue(akActor, "SNRom_LastSparkCheck")
@@ -3702,6 +3729,7 @@ Function AuthorDisposition(Actor akActor)
 EndFunction
 
 Event OnUpdate()
+    ApiFlush()
     PumpAuthoringQueue()
     OpenPendingBox()
     CollectAskAnswer()
@@ -3967,6 +3995,7 @@ Function CollectAskAnswer()
         ; Without this the held amount accumulates across deferrals and a late yes
         ; pays out for every conversation the player declined to answer about.
         StorageUtil.UnsetIntValue(who, "SNRom_BankedPoints")
+        ApiTouch(who)
         Diag(LOG_INFO(), "Question deferred for " + who.GetDisplayName() + \
             " - still owed, raised again after backoff.")
     Else
@@ -4130,6 +4159,7 @@ Function ApplyAttraction(OCR_AttractionUtil akSource, Actor akActor)
       source ONCE per tick instead of once per actor. }
     Float ratio = akSource.CalculateNPCAttraction(akActor)
     StorageUtil.SetFloatValue(akActor, "SNRom_AttractionRatio", ratio)
+    ApiTouch(akActor)
     StorageUtil.SetFloatValue(akActor, "SNRom_LastAttrCheck", Utility.GetCurrentGameTime())
     ; Log the THRESHOLD alongside the ratio. On its own "1.83" is unreadable -
     ; the only question anyone asks of this line is whether it cleared the bar,
@@ -4695,10 +4725,13 @@ Function SeedRomanticFlag(Actor akActor)
         Bool changed = StorageUtil.GetIntValue(akActor, "SNRom_Sparked", 0) != 1 || \
                        StorageUtil.GetIntValue(akActor, "SNRom_PlayerStance", 0) != STANCE_ACCEPTED()
         StorageUtil.SetIntValue(akActor, "SNRom_Sparked", 1)
+        ApiTouch(akActor)
         If StorageUtil.GetFloatValue(akActor, "SNRom_SparkedAt", 0.0) <= 0.0
             StorageUtil.SetFloatValue(akActor, "SNRom_SparkedAt", Utility.GetCurrentGameTime())
+            ApiTouch(akActor)
         EndIf
         StorageUtil.SetIntValue(akActor, "SNRom_PlayerStance", STANCE_ACCEPTED())
+        ApiTouch(akActor)
         If changed
             Diag(LOG_INFO(), "Seeding: " + akActor.GetDisplayName() + " is MARRIED to the player - " + \
                 "romantic ladder and player stance set directly from the ceremony, not judged. " + \
@@ -4807,6 +4840,7 @@ Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEn
 
       A DIVORCE MUST NOT CLAW POINTS BACK - those were earned, and Romantasy owns
       what a break-up costs. Candidate and jilted are genuinely ignored. }
+    ApiFactsChanged()           ; commitment, for the read API
     Actor who = akSender as Actor
     If who == None || !_ready
         Return
@@ -5941,7 +5975,7 @@ Int[] Function DashboardNumbers(Actor akActor) Global
 
       NO SKYRIMNET CALL, NO DIAG, NO JSONUTIL: it runs inside
       OnDashboardRefresh, while the dashboard has the game paused. }
-    Int[] n = new Int[21]
+    Int[] n = new Int[25]
     Int[] pts = DashboardPoints(akActor)
     n[0] = pts[0]                                                                       ; kPoints
     n[1] = pts[1]                                                                       ; kTier
@@ -5964,6 +5998,11 @@ Int[] Function DashboardNumbers(Actor akActor) Global
     n[18] = StorageUtil.GetIntValue(akActor, "SNRom_Orientation", 3)                    ; kOrientation
     n[19] = StorageUtil.GetIntValue(akActor, "SNRom_OrientationKnown", 0)               ; kOrientationBasis
     n[20] = SNRom_Decorators.IsPlayerKin(akActor) as Int                                ; kPlayerKin
+    ; 2.1 (WP-A), for the read API (native/src/Api.cpp). DLL natives v10.
+    n[21] = DashMinutes(StorageUtil.GetFloatValue(akActor, "SNRom_FirstSeenFollowing", 0.0)) ; kFirstSeenFollowing
+    n[22] = StorageUtil.GetIntValue(akActor, "SNRom_PhysMinTier", 4)                    ; kPhysMinTier
+    n[23] = StorageUtil.GetIntValue(akActor, "SNRom_PhysAttrBypass", 0)                 ; kAttrBypass
+    n[24] = (StorageUtil.GetFloatValue(akActor, "SNRom_AttractionRatio", 0.0) * 1000.0) as Int ; kAttractionMilli
     Return n
 EndFunction
 
@@ -6771,6 +6810,9 @@ Event OnUpdateGameTime()
         If _bioWalkPending
             BioBlocksOnLoad()       ; the load-time walk was held back; see BioStoreLooksLoaded
         EndIf
+        ; Marriages and engagements made by other mods, and the kin guard,
+        ; reach the read API here at the latest: the header's known limit.
+        ApiFactsChanged()
     EndIf
 
     ; The outstanding question goes BEFORE the assessors. It is cheap, local and
@@ -7481,6 +7523,7 @@ Event OnSparkAssessed(String asResponse, Int aiSuccess)
             ; refused someone not following.
             If ApplyDepth(who, held, "Held while the bond was still unnamed", True, "released") > 0
                 StorageUtil.UnsetIntValue(who, "SNRom_BankedPoints")
+                ApiTouch(who)
                 Ledger(who, "unbank", "", held, 1, "Released - judged platonic")
                 Diag(LOG_INFO(), "Released " + held + " pts held for " + asked +                     " while the spark was undecided - judged platonic, so depth is free. " +                     "Now " + PointsOf(who) + " pts.")
             EndIf
@@ -7561,8 +7604,10 @@ Function ApplySpark(Actor akActor, String asMoment)
     { The crossing itself. Everything AutoEnroll deliberately withheld happens
       here, because now something actually has happened. }
     StorageUtil.SetIntValue(akActor, "SNRom_Sparked", 1)
+    ApiTouch(akActor)
     StorageUtil.SetIntValue(akActor, "SNRom_SparkDecided", 1)
     StorageUtil.SetFloatValue(akActor, "SNRom_SparkedAt", Utility.GetCurrentGameTime())
+    ApiTouch(akActor)
     ; A HOLD THAT PREDATES THE VERDICT NOW HAS ITS QUESTION. Points banked while
     ; the spark was undecided were withheld precisely because nobody could be
     ; asked yet; the moment the answer is YES, the asking is owed. Without this
@@ -7806,6 +7851,7 @@ Function SetCharacterField(Actor akActor, Int aiField, Int aiValue)
         Int tier = SNRom_Decorators.MinTierFromRank(rank)
         String word = SNRom_Decorators.IntimacyWordFromTier(tier)
         StorageUtil.SetIntValue(akActor, "SNRom_PhysMinTier", tier)
+        ApiTouch(akActor)
         StorageUtil.SetIntValue(akActor, "SNRom_PhysAttrBypass", \
             SNRom_Decorators.IntimacyToBypass(word))
         Diag(LOG_INFO(), "REPAIR: " + who + " INTIMACY set to " + word + \
@@ -8050,6 +8096,7 @@ Function ApplyDrift(Actor akActor, Int aiField, Bool abOpen, String asPattern)
         Int newTier = SNRom_Decorators.MinTierFromRank(rank)
         after = SNRom_Decorators.IntimacyWordFromTier(newTier)
         StorageUtil.SetIntValue(akActor, "SNRom_PhysMinTier", newTier)
+        ApiTouch(akActor)
         ; The bypass is derived from intimacy, never stored independently, so it
         ; MUST be rewritten here. Forgetting it would leave a woman who has
         ; drifted to CASUAL still gated behind Lover - the drift would show in
@@ -8400,13 +8447,17 @@ Function ApplyCharacter(Actor akActor, String asResponse)
                 "every other authored field kept.")
         Else
             StorageUtil.SetIntValue(akActor, "SNRom_Orientation", orient)
+            ApiTouch(akActor)
             StorageUtil.SetIntValue(akActor, "SNRom_OrientationKnown", basis)
+            ApiTouch(akActor)
             orientStored = True
         EndIf
     EndIf
     If intimWord != ""
         StorageUtil.SetIntValue(akActor, "SNRom_PhysMinTier", minTier)
+        ApiTouch(akActor)
         StorageUtil.SetIntValue(akActor, "SNRom_PhysAttrBypass", bypass)
+        ApiTouch(akActor)
     EndIf
     If SNRom_Decorators.FieldValue(asResponse, "ARDOR:") != ""
         StorageUtil.SetIntValue(akActor, "SNRom_Ardor", ardor)
@@ -8913,6 +8964,116 @@ Bool Function IsNamedIndividual(Actor akActor)
     Return own != b.GetName()
 EndFunction
 
+; ===========================================================================
+; WP-A (2.1): THE READ API'S MODEL STAYS CURRENT.
+;
+; Another SKSE plugin reads enrolled people's values from the DLL
+; (native/include/SkyrimNetRelationships/SNRelationships_API.h). The DLL
+; reads its dashboard model, which until 2.1 was filled only while the
+; dashboard was in use. Now: everyone once after a load (ApiPublishAll), then
+; each person as their values are written - every write of one is followed by
+; ApiTouch, which marks them and flushes the batch half a second later, so a
+; burst of writes to one person is one push. The MARAS / SeverActions / kin
+; guard facts are pushed with the load, on each housekeeping tick, and on each
+; MARAS status change.
+; ===========================================================================
+
+Bool _apiFlushPending = False
+Float _apiFlushAskedAt = 0.0
+Bool _apiFactsDirty = False
+
+Function RunApiSelfTest()
+    { DEV TOOL, for the web API (no arguments): SNRom_Native.ApiSelfTest - the
+      read API used as another plugin would, logged to
+      SkyrimNetRelationships.log, with a listener that logs every change. }
+    If _dashNatives >= 10
+        SNRom_Native.ApiSelfTest()
+    EndIf
+EndFunction
+
+Function ApiTouch(Actor akActor)
+    { Marks one person for the next read-API push. Cheap: one StorageUtil add,
+      and a single update half a second out unless one is already on its way. }
+    If akActor == None || _dashNatives < 10
+        Return
+    EndIf
+    StorageUtil.FormListAdd(None, "SNRom_ApiDirty", akActor, False)
+    ApiScheduleFlush()
+EndFunction
+
+Function ApiFactsChanged()
+    { The facts commitment and the gate depend on may have moved. }
+    If _dashNatives < 10
+        Return
+    EndIf
+    _apiFactsDirty = True
+    ApiScheduleFlush()
+EndFunction
+
+Function ApiScheduleFlush()
+    { One update for a burst of touches. Asked again if the last ask is more
+      than three seconds old: another update registration may have replaced
+      ours, and a flush that never comes would leave the API stale. }
+    Float now = Utility.GetCurrentRealTime()
+    If !_apiFlushPending || (now - _apiFlushAskedAt) > 3.0
+        _apiFlushPending = True
+        _apiFlushAskedAt = now
+        RegisterForSingleUpdate(0.5)
+    EndIf
+EndFunction
+
+Function ApiFlush()
+    { Pushes everyone marked: their numbers, or, when they are no longer
+      enrolled, that they are gone. StorageUtil reads only (DashboardNumbers),
+      so it is safe whenever OnUpdate runs. }
+    _apiFlushPending = False
+    If _dashNatives < 10
+        StorageUtil.FormListClear(None, "SNRom_ApiDirty")
+        Return
+    EndIf
+    If _apiFactsDirty
+        _apiFactsDirty = False
+        DashboardPutFacts(0)
+    EndIf
+    Int n = StorageUtil.FormListCount(None, "SNRom_ApiDirty")
+    While n > 0
+        Actor a = StorageUtil.FormListGet(None, "SNRom_ApiDirty", n - 1) as Actor
+        StorageUtil.FormListRemoveAt(None, "SNRom_ApiDirty", n - 1)
+        If a != None
+            If IsEnrolled(a)
+                SNRom_Native.PutBondNumbers(0, a, DashboardNumbers(a))
+            Else
+                SNRom_Native.DropBond(a)
+            EndIf
+        EndIf
+        n = StorageUtil.FormListCount(None, "SNRom_ApiDirty")
+    EndWhile
+EndFunction
+
+Function ApiPublishAll()
+    { Every load: the facts, then everyone on the roster, then "values are
+      back" (SNRom_Native.ApiLoaded), which the DLL announces to listeners once.
+      StorageUtil reads only, about 25 a person. }
+    If _dashNatives < 10
+        Return
+    EndIf
+    StorageUtil.FormListClear(None, "SNRom_ApiDirty")
+    _apiFactsDirty = False
+    DashboardPutFacts(0)
+    Int count = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int pushed = 0
+    Int i = 0
+    While i < count
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None && IsEnrolled(a)
+            SNRom_Native.PutBondNumbers(0, a, DashboardNumbers(a))
+            pushed += 1
+        EndIf
+        i += 1
+    EndWhile
+    SNRom_Native.ApiLoaded(pushed)
+EndFunction
+
 Function MarkBioOurs(Actor akActor, Int aiCat, String asKey)
     { DEV TOOL, for the web API (execute-quest-script-function, arguments: a
       hex FormID, the category 0-3, a key). Records asKey as a block we
@@ -9242,6 +9403,9 @@ Int Function BioRun(Actor akActor, String[] akTitles, Int aiMode, Int aiLimitPic
         EndIf
     EndIf
 
+    If p[0] >= 0 || p[2] >= 0 || p[3] >= 0
+        ApiTouch(akActor)
+    EndIf
     If Math.LogicalAnd(aiMode, BIO_LIFT()) != 0
         If p[11] > 0
             StorageUtil.SetIntValue(akActor, "SNRom_BioLiftedLimits", p[11])
