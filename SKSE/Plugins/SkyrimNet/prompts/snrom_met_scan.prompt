@@ -1,0 +1,32 @@
+{# RENDER-ONLY. WHO HAS TALKED WITH THE PLAYER (2.1, WP-B2). Not sent to any model: rendered
+   by SNRom_Bridge.ScanConversations through SkyrimNetApi.RenderTemplate on the
+   game-time tick, only while "Enroll People You Talk To" is on.
+
+   Output, one line each, oldest first:
+     WINDOW <events read> <oldest id>
+     <event id> <the other person's SkyrimNet UUID>
+
+   What counts, measured 2026-10-06 against the live event record:
+     dialogue              an NPC's line ADDRESSED TO the player (targetActor is
+                           the player) - Hilda's replies, Lynly offering her lute
+     dialogue_player_text  the player's line addressed to someone (targetActor
+     dialogue_player_stt   set) - "Hello there." to Hilda
+   What does not: dialogue_background (unaddressed lines, targetActor 0 - things
+   overheard), lines between NPCs, thoughts and narration.
+
+   Event ids rise across the whole record, so Papyrus keeps the last one it
+   handled and skips anything at or below it. A variable passed to
+   RenderTemplate does not reach the template (tested), which is why the
+   watermark lives in Papyrus rather than here. UUIDs are printed whole: they
+   are 64-bit and Papyrus keeps them as strings for GetActorByUUID. #}
+{% set _who = [] %}
+{% set _who = append(_who, player.UUID) %}
+{% set events = get_recent_events(300, _who) %}
+WINDOW {{ length(events) }} {% if length(events) > 0 %}{{ first(events).id }}{% else %}0{% endif %}
+{% for ev in events %}
+{% if ev.type == "dialogue" and ev.targetActor == player.UUID and ev.originatingActor != player.UUID and ev.originatingActor != 0 %}
+{{ ev.id }} {{ ev.originatingActor }}
+{% else if (ev.type == "dialogue_player_text" or ev.type == "dialogue_player_stt") and ev.originatingActor == player.UUID and ev.targetActor != 0 and ev.targetActor != player.UUID %}
+{{ ev.id }} {{ ev.targetActor }}
+{% endif %}
+{% endfor %}

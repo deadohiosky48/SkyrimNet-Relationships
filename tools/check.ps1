@@ -128,6 +128,14 @@ $foreignReads = @{
         Source = $localCfg.KinshipSource
         Const  = 'SNKin_IsPlayerChild'
     }
+    # 2.1 (WP-B2): a child Kinship keeps a record of is a named individual
+    # (IsNamedIndividual), so a spawned child qualifies for conversation
+    # enrollment. Published contract: docs/KINSHIP_LIFE_STAGES.md.
+    'SNKin_ChildRecordId' = @{
+        Owner  = 'SkyrimNet-Kinship'
+        Source = $localCfg.KinshipSource
+        Const  = 'SNKin_ChildRecordId'
+    }
 }
 
 
@@ -346,6 +354,9 @@ Section 'Prompts - section markers'
 # ---------------------------------------------------------------------------
 foreach ($p in Get-ChildItem $prompts -Filter *.prompt -File) {
     $t = Get-Content $p.FullName -Raw
+    # A template marked RENDER-ONLY is rendered with RenderTemplate and never
+    # sent to a model (snrom_met_scan), so it has no messages to mark.
+    if ($t -match 'RENDER-ONLY') { continue }
     if ($t -notmatch '\[\s*system\s*\]') { Fail 'prompt' "$($p.Name): no [ system ] marker - messages array will be EMPTY and nothing is sent" }
     if ($t -notmatch '\[\s*user\s*\]')   { Fail 'prompt' "$($p.Name): no [ user ] marker" }
 }

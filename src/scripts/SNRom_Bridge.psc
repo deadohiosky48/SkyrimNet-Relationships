@@ -416,6 +416,11 @@ Function BeginSpark(Actor akActor, String asReason)
         Diag(LOG_WARN(), "BeginSpark on already-enrolled " + akActor.GetDisplayName())
         Return
     EndIf
+    If StorageUtil.GetIntValue(akActor, "SNRom_NoAutoEnroll", 0) == 1
+        Diag(LOG_INFO(), "BeginSpark declined for " + akActor.GetDisplayName() + \
+            " - the player unenrolled them, so they are enrolled only by hand.")
+        Return
+    EndIf
     ; Eligibility YAML can only use NATIVE decorators (see the note in
     ; RomanceBeginSpark.yaml), so the real gate lives here. Belt and braces:
     ; the model cannot route past a Papyrus check.
@@ -806,6 +811,9 @@ Function AutoEnroll(Actor akActor)
         Diag(LOG_DEBUG(), "Not enrolling " + akActor.GetDisplayName() + " - not a person")
         Return
     EndIf
+    If StorageUtil.GetIntValue(akActor, "SNRom_NoAutoEnroll", 0) == 1
+        Return                                  ; the player unenrolled them: only by hand from now on
+    EndIf
 
     ; Two enrollment tests, not one. Romantasy cannot see a runtime AddToFaction
     ; until the next load, so GetLevel() stays 0 for the rest of this session
@@ -958,6 +966,8 @@ String Function EnrollByHand(Actor akActor)
     If IsEnrolled(akActor)
         Return who + " is already enrolled."
     EndIf
+    ; Enrolling by hand is the one thing that lifts the unenroll marker.
+    StorageUtil.UnsetIntValue(akActor, "SNRom_NoAutoEnroll")
     EnrollNow(akActor, "Enrolled by hand:")
     Return ""
 EndFunction
@@ -3322,14 +3332,18 @@ Function UnenrollActor(Actor akActor)
       NOT A RESET. Their points, character and prose stay stored; what this
       does is stop us ever acting on them again: off the roster, so neither
       assessor can enumerate them and BuildCircle cannot cite them; out of
-      SNRom_Bond and SNRom_Enrolled cleared, so nothing reads them as enrolled
-      and AutoEnroll treats them as new; and the debounce stamp cleared, so
-      re-adding them deliberately still serves the full waiting period rather
-      than enrolling instantly on the old stamp. }
+      SNRom_Bond and SNRom_Enrolled cleared, so nothing reads them as enrolled;
+      and the debounce stamp cleared.
+
+      NEVER RE-ENROLLED AUTOMATICALLY (2.1). SNRom_NoAutoEnroll keeps them off
+      every automatic route - following, the spark action, and talking with
+      the player - so an unenrolment sticks. Only enrolling them by hand lifts
+      it (the author, 2026-10-05). }
     If akActor == None
         Return
     EndIf
     String who = akActor.GetDisplayName()
+    StorageUtil.SetIntValue(akActor, "SNRom_NoAutoEnroll", 1)
     StorageUtil.FormListRemove(None, "SNRom_Roster", akActor, True)
     StorageUtil.UnsetIntValue(akActor, "SNRom_Enrolled")
     StorageUtil.UnsetIntValue(akActor, "SNRom_AutoEnrolled")
@@ -6764,6 +6778,7 @@ Event OnUpdateGameTime()
     ; the player is owed should not be what gets dropped. On the fast tick now,
     ; because a question waiting to be asked is the most latency-sensitive thing
     ; here and it was previously waiting up to two game hours for no reason.
+    ScanConversations()
     PumpAskQueue()
     AssessNextTalk()
     AssessNextSpark()
@@ -8712,25 +8727,143 @@ Function BioRecSet(Actor akActor, Int aiCat, String asKeys) Global
     EndIf
 EndFunction
 
-Function ProbeConversations(String asSince)
-    { DEV TOOL - THE WP-B2 TEST. Dispatch with the web API
-      (execute-quest-script-function, functionName ProbeConversations, one
-      string argument, e.g. "123.5").
+; ===========================================================================
+; WP-B2 (2.1): ENROLL THE PEOPLE YOU TALK TO. OPT-IN.
+;
+; A player asked for everyone they talk to, or who first talks to them, to be
+; enrolled. Every enrollment costs an authoring call, and every enrolled person
+; nearby costs background checks, so it is off unless the player turns it on
+; ("Enroll People You Talk To"); following, the hotkey and the dashboard stay
+; the defaults.
+;
+; SkyrimNet sends no "someone talked" event, so the record is read instead:
+; snrom_met_scan renders SkyrimNet's recent events involving the player (no
+; model call; 0.05 s measured) and lists each conversation as an event id and
+; the other person's UUID. Ids rise across the record, so SNRom_TalkScanMark
+; is the watermark. Runs on the existing game-time tick: no timer of its own.
+; ===========================================================================
 
-      Conversation enrollment needs to know who has talked with the player, and
-      SkyrimNet sends no event for it. This renders snrom_probe_events with
-      SkyrimNetApi.RenderTemplate - native decorators only, no model call - and
-      writes the result to logs/snrom_probe.log, so we can read whether it
-      works from a quest script, what each recent event carries, and whether a
-      variable reaches the template. Changes nothing. }
-    Float t0 = Utility.GetCurrentRealTime()
-    String out = SkyrimNetApi.RenderTemplate("snrom_probe_events", "probe", "{\"since\":\"" + asSince + "\"}")
-    Float took = Utility.GetCurrentRealTime() - t0
-    WriteLog("snrom_probe.log", "Data/SKSE/Plugins/SkyrimNet Relationships/logs/snrom_probe.log", \
-        "==== probe at real " + t0 + ", game day " + Utility.GetCurrentGameTime() + ", took " + took + " s, " + \
-        StringUtil.GetLength(out) + " chars ====" + NL() + out + NL())
-    Diag(LOG_INFO(), "ProbeConversations: rendered " + StringUtil.GetLength(out) + " chars in " + took + \
-        " s - see logs/snrom_probe.log")
+Function ScanConversations()
+    { Enrolls whoever has talked with the player since the last scan, and
+      qualifies. Turning the setting on starts from that moment: earlier
+      conversations are not counted, so switching it on does not enroll a
+      whole town at once. }
+    If !_ready
+        Return
+    EndIf
+    If !SkyrimNetApi.GetConfigBool(CFG(), "enrollByConversation", False)
+        StorageUtil.UnsetIntValue(None, "SNRom_TalkScanOn")
+        Return
+    EndIf
+    String out = SkyrimNetApi.RenderTemplate("snrom_met_scan", "", "")
+    If StringUtil.Find(out, "WINDOW") < 0
+        Diag(LOG_WARN(), "Conversation scan: snrom_met_scan did not render - SkyrimNet.log names the reason. Nobody enrolled by talking this time.")
+        Return
+    EndIf
+    Bool fresh = StorageUtil.GetIntValue(None, "SNRom_TalkScanOn", 0) == 0
+    Int mark = StorageUtil.GetIntValue(None, "SNRom_TalkScanMark", 0)
+    Int newMark = mark
+    Int windowCount = 0
+    Int windowOldest = 0
+    String seen = ","
+    Int considered = 0
+    Int enrolled = 0
+    String[] lines = StringUtil.Split(out, "\n")
+    Int i = 0
+    While i < lines.Length
+        String line = SNRom_Decorators.Trim(lines[i])
+        If line != ""
+            String[] f = StringUtil.Split(line, " ")
+            If f.Length >= 3 && f[0] == "WINDOW"
+                windowCount = f[1] as Int
+                windowOldest = f[2] as Int
+            ElseIf f.Length >= 2
+                Int id = f[0] as Int
+                If id > newMark
+                    newMark = id
+                EndIf
+                If !fresh && id > mark && StringUtil.Find(seen, "," + f[1] + ",") < 0
+                    seen += f[1] + ","
+                    considered += 1
+                    If ConsiderTalkEnroll(SkyrimNetApi.GetActorByUUID(f[1]))
+                        enrolled += 1
+                    EndIf
+                EndIf
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+
+    If fresh
+        If windowOldest > newMark
+            newMark = windowOldest
+        EndIf
+        StorageUtil.SetIntValue(None, "SNRom_TalkScanOn", 1)
+        Diag(LOG_INFO(), "Conversation enrollment is on: counting conversations from event " + newMark + \
+            " onward. Earlier ones are not counted.")
+    ElseIf windowCount >= 300 && windowOldest > mark
+        Diag(LOG_WARN(), "Conversation scan: more than 300 events involved you since the last scan, so anyone " + \
+            "who talked with you before event " + windowOldest + " may have been missed.")
+    EndIf
+    If newMark > mark
+        StorageUtil.SetIntValue(None, "SNRom_TalkScanMark", newMark)
+    EndIf
+    If considered > 0
+        Diag(LOG_INFO(), "Conversation scan: " + considered + " not yet enrolled talked with you since the last scan; " + \
+            enrolled + " enrolled.")
+    EndIf
+EndFunction
+
+Bool Function ConsiderTalkEnroll(Actor akActor)
+    { The rules, decided with the author 2026-10-05: not already enrolled;
+      never someone the player unenrolled; alive, a person, not summoned, not
+      a child; and a named individual rather than a generic spawn. Enrollment
+      itself is EnrollNow, which queues the authoring call behind any already
+      running - a busy market waits its turn rather than being capped. }
+    If akActor == None || akActor == Game.GetPlayer() || IsEnrolled(akActor)
+        Return False
+    EndIf
+    If StorageUtil.GetIntValue(akActor, "SNRom_NoAutoEnroll", 0) == 1
+        Return False
+    EndIf
+    If akActor.IsDead() || akActor.IsCommandedActor() || akActor.IsChild() || !IsPerson(akActor)
+        Return False
+    EndIf
+    If !IsNamedIndividual(akActor)
+        Diag(LOG_DEBUG(), "Not enrolling " + akActor.GetDisplayName() + " after talking - a generic NPC, not a named individual")
+        Return False
+    EndIf
+    EnrollNow(akActor, "Enrolled after talking with you:")
+    Return True
+EndFunction
+
+Bool Function IsNamedIndividual(Actor akActor)
+    { Someone with an identity of their own, not one of many from the same
+      template. Generic guards and bandits would fill the roster after one city
+      visit. SPAWNED INDIVIDUALS COUNT (the author, 2026-10-05): Kinship's
+      children and other mods' spawned followers. Any of:
+        - the base is unique (every vanilla named NPC);
+        - Kinship keeps a record of them;
+        - they carry a name of their own, different from their base's - how a
+          spawned or renamed NPC is told apart from its template. }
+    ActorBase b = akActor.GetActorBase()
+    If b != None && b.IsUnique()
+        Return True
+    EndIf
+    If StorageUtil.GetIntValue(akActor, "SNKin_ChildRecordId", 0) > 0 || \
+       StorageUtil.GetIntValue(akActor, "SNKin_IsPlayerChild", 0) == 1 || \
+       StorageUtil.GetIntValue(akActor, "SNKin_Bound", 0) == 1
+        Return True
+    EndIf
+    String own = akActor.GetDisplayName()
+    ActorBase lb = akActor.GetLeveledActorBase()
+    If own == "" || b == None
+        Return False
+    EndIf
+    If lb != None && own == lb.GetName()
+        Return False
+    EndIf
+    Return own != b.GetName()
 EndFunction
 
 Function MarkBioOurs(Actor akActor, Int aiCat, String asKey)

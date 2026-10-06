@@ -301,6 +301,16 @@ schema:
       defaultValue: true
       category: "Enrollment"
 
+    # 2.1 (WP-B2). Opt-in on purpose: each new person costs an authoring call,
+    # and every enrolled person nearby costs background checks. Read by
+    # SNRom_Bridge.ScanConversations on the game-time tick.
+    - name: "Enroll People You Talk To"
+      path: "enrollByConversation"
+      type: "bool"
+      description: "Also enroll named people the first time you talk with them, or they talk to you - not only followers. Lines you overhear do not count, nor do generic guards or bandits, children, or anyone you have unenrolled. Each new person costs one LLM call to write their character, and the more enrolled people are around you, the more background checks run, so this uses noticeably more LLM calls in towns. Counts conversations from the moment you turn it on. Default: off."
+      defaultValue: false
+      category: "Enrollment"
+
     # 2.1 (WP-B). Off still offers both libraries in SeverActions' Bio Blocks
     # page; it only stops this mod applying them. Read by BioAssignOn().
     - name: "Assign Relationships Bio Blocks"

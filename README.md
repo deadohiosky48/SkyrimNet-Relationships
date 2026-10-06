@@ -52,6 +52,14 @@ with you a couple of game hours, even if you have told them to wait somewhere.
 Enrollment means "this person is being watched", not "something has started":
 everyone begins as a Stranger with no points.
 
+**Or everyone you talk to, if you want it.** Turn on **Enroll People You Talk
+To** and anyone with a name of their own is enrolled the first time you talk
+with them, or they talk to you. Lines you overhear do not count, and neither do
+generic guards and bandits or children. It is off by default because it costs:
+each new person is one LLM call to write their character, and the more enrolled
+people are around you, the more is judged in the background. Someone you remove
+from the roster stays removed - nothing enrolls them again except you.
+
 **Writes a character for each of them.** From their actual bio: what they are
 drawn to, what closeness requires of them, how much of what they feel they show,
 how singular they need a bond to be, one line explaining why, and one line they
@@ -238,13 +246,15 @@ any category they do not already have one in (see *Bio blocks* below). Blocks
 you applied yourself are left exactly as they are.
 
 SkyrimNet does not add new settings to a `settings.yaml` that already exists,
-so the new **Assign Relationships Bio Blocks** switch works at its default (on)
-but will not remember being turned off. To be able to change it, add this line
+so the two new switches - **Assign Relationships Bio Blocks** and **Enroll
+People You Talk To** - work at their defaults (on, and off) but will not
+remember being changed. To be able to change them, add these lines
 to `SKSE\Plugins\SkyrimNet\config\plugins\SkyrimNet Relationships\settings.yaml`
 while the game is closed:
 
 ```yaml
 bioBlocksAssign: true
+enrollByConversation: false
 ```
 
 If you imported this mod's block library into SeverActions by hand, you are
@@ -456,7 +466,9 @@ Library are installed for your game version, and that the DLL is in
 see *Upgrading from 1.x*.
 
 **Someone was enrolled who should not have been.** Open their card and use
-**Remove from roster**, or by name, from anywhere:
+**Remove from roster**, or by name, from anywhere. They will not be enrolled
+again on their own - not by following you, nor by talking with you - until you
+enroll them by hand:
 
 ```json
 {"questEditorId":"SNRom_Quest","scriptName":"SNRom_Bridge",
