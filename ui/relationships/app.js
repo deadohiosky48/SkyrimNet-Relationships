@@ -464,6 +464,22 @@
   });
   $("close-btn").addEventListener("click", function () { snrom.request("close", { reason: "button" }); });
 
+  // THE HOTKEY CLOSES IT TOO, where the DLL cannot hear it: Magelight UI mutes
+  // the game's keyboard while the dashboard has input, so the DLL sends the
+  // key as settings.closeKey there, and nowhere else (snapshot.schema.json).
+  // Not while typing in a field, unless a modifier is part of the key.
+  document.addEventListener("keydown", function (e) {
+    var k = snap && snap.settings && snap.settings.closeKey;
+    if (!k || e.repeat || e.keyCode !== k.key) return;
+    if (k.modifier === "shift" ? !e.shiftKey : k.modifier === "ctrl" ? !e.ctrlKey : k.modifier === "alt" ? !e.altKey :
+        (e.shiftKey || e.ctrlKey || e.altKey)) return;
+    var t = e.target;
+    if (!k.modifier && t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+    e.preventDefault();
+    if (UI.picker) UI.picker.close();
+    snrom.request("close", { reason: "hotkey" });
+  });
+
   // ---------------------------------------------------------------- start
   // Developer mode says so on screen, so a screenshot of it is never mistaken
   // for what a player sees.

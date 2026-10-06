@@ -47,6 +47,13 @@ namespace SNRom {
 
         [[nodiscard]] virtual bool HasFocus() const = 0;
 
+        // True when the game's own keyboard input stops while the view has
+        // focus, so the hotkey sink (Hotkey.cpp) never sees the press that
+        // should close it. The page then closes on the hotkey itself
+        // (settings.closeKey). Only where the sink is deaf: where it is not,
+        // both would act, and the second would reopen what the first closed.
+        [[nodiscard]] virtual bool PageClosesOnHotkey() const { return false; }
+
         // Delivers one message to window.snromReceive. a_json must already be
         // ASCII-only JSON (dump with ensure_ascii), so nothing in it can end the
         // script early.

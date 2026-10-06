@@ -85,6 +85,21 @@
           "anyOf": [{ "const": "auto" }, { "enum": [75, 90, 100, 110, 125, 150, 175, 200] }],
           "description": "How big the page is drawn, text and spacing alike, from the SkyrimNet select dashboardScale: 'auto' for Auto, or the percent of a fixed choice. Handed to the DLL by name, by SNRom_Native.SetDisplaySettings at bootstrap and by its settings watcher when the setting is saved; the DLL reads the names with one table (Settings::ScaleFromName). display.js applies it from every snapshot. In play a change shows the next time the dashboard opens: SkyrimNet's settings screen and the dashboard are never open at the same time. Auto sizes the page to the view's height, 1080 lines being 100%, kept between 75% and 200%."
         },
+        "closeKey": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["key", "modifier"],
+              "properties": {
+                "key": { "type": "integer", "minimum": 1, "maximum": 255 },
+                "modifier": { "enum": ["shift", "ctrl", "alt", null] }
+              }
+            },
+            { "type": "null" }
+          ],
+          "description": "The dashboard hotkey, for the page to close on, from the SkyrimNet settings dashboardHotkey and dashboardHotkeyModifier: key a Windows virtual-key code (a key event's keyCode), modifier which kind must be held, either side. Optional: present only under a host that mutes the game's keyboard while the dashboard has input (Magelight UI), where the DLL never hears the second press; null or absent elsewhere, where the DLL closes it and the page must not as well. New in 2.1 (additive)."
+        },
         "textSize": {
           "enum": ["normal", "large", "larger"],
           "description": "How big the text is drawn on top of the scale, from the SkyrimNet select dashboardTextSize (Normal, Large, Larger), delivered as scale is. It sizes the text and the boxes that hold it, not the spacing between them (display.js)."

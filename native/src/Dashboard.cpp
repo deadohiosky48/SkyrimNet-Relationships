@@ -1,4 +1,5 @@
 #include "Dashboard.h"
+#include "Hotkey.h"
 
 #include "PCH.h"
 
@@ -233,6 +234,11 @@ namespace SNRom::Dashboard {
                     const char* name = actor->GetDisplayFullName();
                     overlay.crosshair =
                         Model::Overlay::Crosshair{ static_cast<std::int32_t>(actor->GetFormID()), name ? name : "" };
+                }
+            }
+            if (g_host && g_host->PageClosesOnHotkey()) {
+                if (const auto key = Hotkey::Requested(); key && key->virtualKey > 0) {
+                    overlay.closeKey = Model::Overlay::CloseKey{ key->virtualKey, key->modifier };
                 }
             }
             overlay.playerSex = PlayerSex();

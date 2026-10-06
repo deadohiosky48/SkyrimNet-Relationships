@@ -507,6 +507,18 @@ namespace SNRom::Model {
                              { "textSize", a_overlay.textSize == 2 ? "larger" :
                                            a_overlay.textSize == 1 ? "large" :
                                                                      "normal" } };
+        // settings.closeKey: the modifier by kind, not side - a page's key
+        // event says whether Shift is held, not which.
+        if (a_overlay.closeKey) {
+            const auto m = a_overlay.closeKey->modifier;
+            const json modifier = m == VK_LSHIFT || m == VK_RSHIFT     ? json("shift") :
+                                  m == VK_LCONTROL || m == VK_RCONTROL ? json("ctrl") :
+                                  m == VK_LMENU || m == VK_RMENU       ? json("alt") :
+                                                                         json(nullptr);
+            snap["settings"]["closeKey"] = { { "key", a_overlay.closeKey->virtualKey }, { "modifier", modifier } };
+        } else {
+            snap["settings"]["closeKey"] = nullptr;
+        }
         if (a_overlay.crosshair) {
             json enrolled = nullptr;
             if (m_answered) {

@@ -189,6 +189,12 @@ namespace SNRom {
 
             [[nodiscard]] bool HasFocus() const override { return _mod && _api->GetUIModeOwner() == _mod; }
 
+            // Magelight mutes the game's keyboard device while UI mode is on
+            // ("keyboard device poll hooked (muted while UI mode is on)"), so
+            // the dashboard hotkey opened it and could not close it (wpb16,
+            // 2026-10-06). The page hears the key instead.
+            [[nodiscard]] bool PageClosesOnHotkey() const override { return true; }
+
             bool Send(const std::string& a_json) override {
                 // Handed over as a string: window.snromReceive(text), as Prisma.
                 if (!g_view) {

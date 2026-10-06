@@ -165,6 +165,14 @@ namespace SNRom::Model {
         std::int32_t             scale = 0;
         std::int32_t             textSize = 0;
         std::optional<Crosshair> crosshair;
+        // The dashboard hotkey, for a host whose page must close on it itself
+        // (ViewHost::PageClosesOnHotkey): a virtual key, and the virtual key of
+        // the modifier held with it, 0 for none. Nothing otherwise.
+        struct CloseKey {
+            std::int32_t virtualKey = 0;
+            std::int32_t modifier = 0;
+        };
+        std::optional<CloseKey> closeKey;
         // The player's GetActorBase().GetSex(), for the orientation copy.
         std::int32_t playerSex = 0;
         // What the engine says about one actor, read when the snapshot is
