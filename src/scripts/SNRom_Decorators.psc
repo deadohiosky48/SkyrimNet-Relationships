@@ -998,6 +998,106 @@ String Function FieldValue(String asResponse, String asKey) Global
     Return Unquote(rest)
 EndFunction
 
+Int Function CountOccasionsBetween(String asText, Float afFrom, Float afTo) Global
+    { CountOccasions, counting only days that fall between two game times
+      (Utility.GetCurrentGameTime units). A stamp whose date cannot be read is
+      counted, as CountOccasions counts it, and the log says how many were
+      unreadable: a change in SkyrimNet's stamp format must not silently stop
+      all drift. }
+    String t = SNRom_Decorators.Trim(asText)
+    If t == "" || SNRom_Decorators.Upper(t) == "NONE"
+        Return 0
+    EndIf
+    String[] days = Utility.CreateStringArray(8, "")
+    Int found = 0
+    String rest = t + "|"
+    Int at = StringUtil.Find(rest, "|")
+    While at >= 0 && found < 8
+        String entry = SNRom_Decorators.Trim(StringUtil.Substring(rest, 0, at))
+        String day = SNRom_Decorators.DayOfStamp(entry)
+        If day != ""
+            Float g = SNRom_Decorators.StampGameDay(day)
+            If g <= -100000.0 || (g >= afFrom - 1.0 && g <= afTo)
+                Bool seen = False
+                Int i = 0
+                While i < found
+                    If days[i] == day
+                        seen = True
+                    EndIf
+                    i += 1
+                EndWhile
+                If !seen
+                    days[found] = day
+                    found += 1
+                EndIf
+            EndIf
+        EndIf
+        rest = StringUtil.Substring(rest, at + 1)
+        at = StringUtil.Find(rest, "|")
+    EndWhile
+    Return found
+EndFunction
+
+Float Function StampGameDay(String asDay) Global
+    { A stamp's day ("SUNDAS, 14TH OF MID YEAR, 4E 202", as DayOfStamp returns
+      it) as a game day, the units of Utility.GetCurrentGameTime: day 0 is the
+      17th of Last Seed, 4E 201, when the game begins. Checked in play
+      2026-10-06: game day 301.8 is the 14th of Mid Year, 4E 202. Returns
+      -100000 when the date cannot be read.
+
+      The day of the year is the month's start plus the date, months as the
+      Elder Scrolls calendar has them (365 days, no leap years); the 17th of
+      Last Seed is day 229. }
+    String d = SNRom_Decorators.Upper(asDay)
+    Int ofAt = StringUtil.Find(d, " OF ")
+    Int eraAt = StringUtil.Find(d, "4E ")
+    If ofAt < 0 || eraAt < 0
+        Return -100000.0
+    EndIf
+    ; the date: the digits just before " OF "
+    Int s = ofAt
+    While s > 0 && StringUtil.IsDigit(StringUtil.GetNthChar(d, s - 1)) == False
+        s -= 1
+    EndWhile
+    Int e = s
+    While s > 0 && StringUtil.IsDigit(StringUtil.GetNthChar(d, s - 1))
+        s -= 1
+    EndWhile
+    Int date = StringUtil.Substring(d, s, e - s) as Int
+    Int year = SNRom_Decorators.Trim(StringUtil.Substring(d, eraAt + 3)) as Int
+    String month = StringUtil.Substring(d, ofAt + 4, eraAt - ofAt - 4)
+    Int start = -1
+    If StringUtil.Find(month, "MORNING") >= 0
+        start = 0
+    ElseIf StringUtil.Find(month, "DAWN") >= 0
+        start = 31
+    ElseIf StringUtil.Find(month, "FIRST SEED") >= 0
+        start = 59
+    ElseIf StringUtil.Find(month, "RAIN") >= 0
+        start = 90
+    ElseIf StringUtil.Find(month, "SECOND SEED") >= 0
+        start = 120
+    ElseIf StringUtil.Find(month, "MID YEAR") >= 0
+        start = 151
+    ElseIf StringUtil.Find(month, "HEIGHT") >= 0
+        start = 181
+    ElseIf StringUtil.Find(month, "LAST SEED") >= 0
+        start = 212
+    ElseIf StringUtil.Find(month, "HEARTH") >= 0
+        start = 243
+    ElseIf StringUtil.Find(month, "FROST") >= 0
+        start = 273
+    ElseIf StringUtil.Find(month, "DUSK") >= 0
+        start = 304
+    ElseIf StringUtil.Find(month, "EVENING") >= 0
+        start = 334
+    EndIf
+    If start < 0 || date < 1 || date > 31 || year < 1
+        Return -100000.0
+    EndIf
+    Return ((year - 201) * 365 + start + date - 229) as Float
+EndFunction
+
 String Function DayOfStamp(String asEntry) Global
     { The DAY part of a bracketed timestamp, or "" if there is no stamp.
 

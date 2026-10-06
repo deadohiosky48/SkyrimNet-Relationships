@@ -7949,18 +7949,25 @@ Function AssessDrift(Actor akActor)
     ; would need a judgment this code cannot make, and would quietly bias
     ; every review toward whichever axis the last award happened to touch.
     _driftField = StorageUtil.GetIntValue(akActor, "SNRom_DriftField", 0)
-    ; A field the PLAYER answered with a bio block is theirs: drift does not
-    ; review it, so no call is spent on a step that would not be taken. Our
-    ; own blocks do not hold a field - SyncOurBlocks moves them with it.
-    ; Intimacy has no block, so this always ends on a reviewable field.
-    Int tries = 0
-    While tries < 2 && DriftFieldHeld(akActor, _driftField)
-        Diag(LOG_INFO(), "Drift skips " + DriftFieldName(_driftField) + " for " + _driftName + \
-            " - the player's own bio block answers it.")
-        _driftField = (_driftField + 1) % 3
-        tries += 1
-    EndWhile
     StorageUtil.SetIntValue(akActor, "SNRom_DriftField", (_driftField + 1) % 3)
+    ; A field the PLAYER answered with a bio block is theirs: drift does not
+    ; review it. THE TURN IS SKIPPED, NOT HANDED ON. The first version moved on
+    ; to the next field, so anyone whose Expression and Attachment the player
+    ; had set was reviewed on INTIMACY every time - three times its rate - and
+    ; Fridrika walked ROMANTIC -> CASUAL on the next one (2026-10-06). Now the
+    ; turn is spent as if reviewed, with no call, and each field keeps its pace.
+    ; Our own blocks do not hold a field - SyncOurBlocks moves them with it.
+    If DriftFieldHeld(akActor, _driftField)
+        Diag(LOG_INFO(), "Drift review for " + _driftName + " on " + DriftFieldName(_driftField) + \
+            " skipped - the player's own bio block answers it. Next turn: " + \
+            DriftFieldName((_driftField + 1) % 3) + ".")
+        StorageUtil.SetFloatValue(akActor, "SNRom_LastDriftCheck", Utility.GetCurrentGameTime())
+        StorageUtil.SetIntValue(akActor, "SNRom_EventsSinceDrift", 0)
+        StorageUtil.UnsetFloatValue(akActor, "SNRom_DriftFirstDay")
+        StorageUtil.UnsetFloatValue(akActor, "SNRom_DriftLastDay")
+        _driftActor = None
+        Return
+    EndIf
 
     Int minTier = StorageUtil.GetIntValue(akActor, "SNRom_PhysMinTier", 4)
     String current = ""
@@ -8007,7 +8014,11 @@ Event OnDriftAssessed(String asResponse, Int aiSuccess)
     ; review that ran and said "no change" has still spent its evidence - not
     ; resetting would leave her permanently eligible, asking every tick forever
     ; and burning a call each time.
-    StorageUtil.SetFloatValue(who, "SNRom_LastDriftCheck", Utility.GetCurrentGameTime())
+    ; The period under review began at the previous review; read before it is
+    ; overwritten, for the date check below.
+    Float now = Utility.GetCurrentGameTime()
+    Float since = StorageUtil.GetFloatValue(who, "SNRom_LastDriftCheck", 0.0)
+    StorageUtil.SetFloatValue(who, "SNRom_LastDriftCheck", now)
     StorageUtil.SetIntValue(who, "SNRom_EventsSinceDrift", 0)
     ; The span window restarts with the count. Leaving FirstDay behind would let
     ; a single later event pair with a month-old one and satisfy the span
@@ -8042,8 +8053,24 @@ Event OnDriftAssessed(String asResponse, Int aiSuccess)
     ; made of occasions; a model answering from whatever is most vivid nearby
     ; can restate one moment convincingly and cannot produce two dated ones.
     ; This is the check that makes "not an event, a PATTERN" enforceable.
-    Int cited = SNRom_Decorators.CountOccasions( \
-        SNRom_Decorators.FieldValue(asResponse, "OCCASIONS:"))
+    ; ONLY OCCASIONS INSIDE THE PERIOD UNDER REVIEW COUNT. Fridrika's verdict
+    ; (2026-10-06) had one day of material - 110 of its stamps were the same
+    ; date - and passed the two-day rule by re-dating a real line to 4E 201,
+    ; before the game began, and inventing a second dated 4E 203, in the
+    ; future. A date before the previous review (with a day's slack) or after
+    ; now is not evidence. With no previous review, the last 30 days.
+    Float from = since - 1.0
+    If since <= 0.0
+        from = now - 30.0
+    EndIf
+    String occasions = SNRom_Decorators.FieldValue(asResponse, "OCCASIONS:")
+    Int claimed = SNRom_Decorators.CountOccasions(occasions)
+    Int cited = SNRom_Decorators.CountOccasionsBetween(occasions, from, now + 0.5)
+    If cited < claimed
+        Diag(LOG_WARN(), "Drift for " + asked + ": " + (claimed - cited) + " of " + claimed + \
+            " cited day(s) fall outside the period under review (game days " + (from as Int) + " to " + \
+            (now as Int) + ") - re-dated or invented, and not counted.")
+    EndIf
     If cited < 2
         Diag(LOG_WARN(), "Drift for " + asked + " discarded - a pattern needs moments on at " + \
             "least two DIFFERENT DAYS and only " + cited + " distinct dated occasion(s) were " + \

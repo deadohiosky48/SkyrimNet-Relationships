@@ -39,11 +39,11 @@ Two people can live through the same month and be moved by it differently, or no
 ## The trait, and what its directions mean
 
 {% if drift_field == "INTIMACY" %}
-**INTIMACY** — what has to be true before they would want to be physical with someone. Currently: **{{ drift_current }}**.
+**INTIMACY** — what has to be true before they would want SEX with someone. Currently: **{{ drift_current }}**.
 
 The ladder runs: CASUAL → ROMANTIC → GUARDED → NEVER.
 
-- **OPEN** moves one rung toward CASUAL — physical closeness needs less established between them than it used to.
+- **OPEN** moves one rung toward CASUAL — sex needs less established between them than it used to.
 - **CLOSED** moves one rung toward NEVER — it needs more, or they have stopped wanting it.
 
 NEVER means genuinely without sexual interest — asexual, celibate, sworn, or done with it entirely. It is **not** where you put someone who has been hurt. Hurt people become guarded, and guarded is a different rung. Someone can also walk back from NEVER; it is not a door that locks.
@@ -53,6 +53,12 @@ NEVER means genuinely without sexual interest — asexual, celibate, sworn, or d
    several separate occasions of wanting, which passes the two-occasion rule
    below - would read as "needs less established than it used to" and walk a
    character who simply runs hot down to CASUAL. How often is not what first. #}
+{# SEX, NOT CLOSENESS, 2026-10-06. Fridrika moved ROMANTIC -> CASUAL on
+   "physical intimacy and shared moments of vulnerability" from an evening in
+   which she let the player hold her on a bedroll and turned down sex. Read as
+   "physical", the trait swallowed affection; it means sex. #}
+This trait is about SEX, not closeness. Holding, snuggling, kissing, an embrace, sharing a bedroll to sleep - these are affection and are not evidence here at all. Someone who welcomes all of that and still turns down sex has shown that their bar has NOT moved. And sex with someone they already love is exactly what ROMANTIC means: it is not evidence for OPEN. OPEN needs them now wanting sex where less is established than before - with less feeling, sooner, or with someone they do not love.
+
 How often they want someone is not this trait. Desire rises and falls with appetite and circumstance, and a stretch of wanting a great deal, or hardly at all, is not a change in what has to be established first. Move this only if what they need before acting on it has changed.
 {% elif drift_field == "ARDOR" %}
 **ARDOR** — how openly they show what they feel, whatever they feel. Currently: **{{ drift_current }}**.
