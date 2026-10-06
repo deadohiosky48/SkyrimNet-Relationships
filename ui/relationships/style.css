@@ -527,3 +527,32 @@ kbd {
 }
 .toast.is-error { border-left-color: var(--danger); }
 .toast.is-warn { border-left-color: var(--s-interested); }
+
+/* ---------------------------------------------------------------- picker */
+/* picker.js: the list a <select> opens. The engine's own popup is never used. */
+
+.picker {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface-2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.picker-item {
+  display: block;
+  padding: 0.3rem 0.7rem;
+  border: none;
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.picker-item[aria-selected="true"] { color: var(--accent); }
+.picker-item.is-active { background: var(--surface-hi); }
+.picker-item[disabled] { color: var(--faint); cursor: default; }
