@@ -11,6 +11,7 @@
 
 #include <chrono>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <mutex>
 #include <unordered_set>
@@ -234,6 +235,22 @@ namespace SNRom::Natives {
             return BioPlan::Plan(a_actor, a_titles, a_state);
         }
 
+        // VERSION 9. WP-B2: SkyrimNet's event record prints an actor's UUID as a
+        // decimal 64-bit number, while SkyrimNetApi.GetActorByUUID wants it in
+        // uppercase hex - given the decimal it logs "stoull argument out of range"
+        // and returns None. Papyrus has no 64-bit integers, so the conversion is
+        // here. "" for anything that is not a decimal number.
+        std::string UuidHex(RE::StaticFunctionTag*, std::string a_decimal) {
+            if (a_decimal.empty() || a_decimal.find_first_not_of("0123456789") != std::string::npos) {
+                return {};
+            }
+            try {
+                return std::format("{:X}", std::stoull(a_decimal));
+            } catch (const std::exception&) {
+                return {};
+            }
+        }
+
         std::vector<RE::Actor*> ObserversNear(RE::StaticFunctionTag*, float a_range) {
             std::vector<RE::Actor*> out;
             static RE::TESFaction* bond = nullptr;
@@ -296,10 +313,11 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("ObserversNear", kScript, ObserversNear);  // main thread: see above
             a_vm->RegisterFunction("AppendLog", kScript, AppendLog, true);
             a_vm->RegisterFunction("BioPlan", kScript, BioPlan, true);
+            a_vm->RegisterFunction("UuidHex", kScript, UuidHex, true);
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
                             "PutBondNumbers, PutBondText, DropBond, FormIdOf, PutPlaythrough, PutRefreshFacts, "
                             "RefreshDone, ActionArgs, ActionDone, CheckBond, RecordChange, Announce, ObserversNear, AppendLog, "
-                            "BioPlan",
+                            "BioPlan, UuidHex",
                             kScript, kVersion);
             return true;
         });

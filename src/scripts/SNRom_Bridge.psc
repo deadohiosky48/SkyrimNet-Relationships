@@ -8755,6 +8755,10 @@ Function ScanConversations()
         StorageUtil.UnsetIntValue(None, "SNRom_TalkScanOn")
         Return
     EndIf
+    If _dashNatives < 9
+        Diag(LOG_WARN(), "Conversation enrollment needs SkyrimNetRelationships.dll from 2.1 (natives v9; this one " +             "reports v" + _dashNatives + ") - nobody is enrolled by talking.")
+        Return
+    EndIf
     String out = SkyrimNetApi.RenderTemplate("snrom_met_scan", "", "")
     If StringUtil.Find(out, "WINDOW") < 0
         Diag(LOG_WARN(), "Conversation scan: snrom_met_scan did not render - SkyrimNet.log names the reason. Nobody enrolled by talking this time.")
@@ -8786,7 +8790,11 @@ Function ScanConversations()
                 If !fresh && id > mark && StringUtil.Find(seen, "," + f[1] + ",") < 0
                     seen += f[1] + ","
                     considered += 1
-                    Actor who = SkyrimNetApi.GetActorByUUID(f[1])
+                    ; The record prints UUIDs in decimal; GetActorByUUID wants
+                    ; uppercase hex and, given decimal, logs "stoull argument out
+                    ; of range" and returns None - which is how the first build
+                    ; turned away Una, Malukah and Pantea.
+                    Actor who = SkyrimNetApi.GetActorByUUID(SNRom_Native.UuidHex(f[1]))
                     String why = TalkEnrollRefusal(who)
                     String name = "UUID " + f[1]
                     If who != None
@@ -8833,7 +8841,7 @@ Function ExplainTalkEnroll(String asUuid)
     { DEV TOOL, for the web API (one string argument: a SkyrimNet UUID, as the
       event record and snrom_met_scan print it). Logs whether talking would
       enroll this person, and if not, why. Changes nothing. }
-    Actor who = SkyrimNetApi.GetActorByUUID(asUuid)
+    Actor who = SkyrimNetApi.GetActorByUUID(SNRom_Native.UuidHex(asUuid))
     String why = TalkEnrollRefusal(who)
     String name = "UUID " + asUuid
     If who != None

@@ -17,7 +17,8 @@ Int Function Version() Global Native
    5  RecordChange and Announce
    6  ObserversNear
    7  AppendLog
-   8  BioPlan}
+   8  BioPlan
+   9  UuidHex}
 
 Bool Function SetDashboardHotkey(Int aiVirtualKey, Int aiModifierVirtualKey) Global Native
 {Binds the dashboard key. aiVirtualKey is a Windows VIRTUAL-KEY code, which is
@@ -154,6 +155,10 @@ Bool Function AppendLog(String asFile, String asText) Global Native
 ; block titles (SeverActions) and stored values (SNRom_Bridge.BioState), the
 ; plan SNRom_Bridge.BioRun carries out. Layout in native/src/BioPlan.h.
 Int[] Function BioPlan(Actor akActor, String[] asTitles, Int[] aiState) Global Native
+
+; VERSION 9 (2.1, WP-B2). SkyrimNet's event record prints UUIDs in decimal;
+; SkyrimNetApi.GetActorByUUID wants uppercase hex. "" for anything else.
+String Function UuidHex(String asDecimal) Global Native
 {VERSION 7. Appends asText to asFile - a bare name: snrom.log, ledger.jsonl
  or dispositions.jsonl - in the mod's logs folder, at once and in order.
  snrom.log lines get the wall clock in front. False when it could not be
