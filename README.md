@@ -172,9 +172,11 @@ said aloud — feelings they have not spoken, a question they are waiting to ask
 points held back until you answer — and adds a few developer tools. The
 dashboard is written to be played without it.
 
-Press Escape to close it. The dashboard needs Meridian UI or Prisma UI; with
-both installed it uses Meridian, except in Skyrim VR, where Meridian does not
-run. Without either, everything else works and only the dashboard is missing.
+Press Escape to close it. The dashboard needs Meridian UI, Magelight UI or
+Prisma UI. Magelight comes with SeverActions 4.x, so you may have it already.
+With more than one installed it uses Meridian, then Magelight, then Prisma -
+and in Skyrim VR, where Meridian does not run, Magelight, then Prisma. Without
+any of them, everything else works and only the dashboard is missing.
 
 ## Hotkeys
 
@@ -220,7 +222,7 @@ inert; nothing errors and no prompt breaks.
 
 | | adds |
 |---|---|
-| Meridian UI 1.5.0 or newer, or Prisma UI 1.5.1 or newer | the dashboard. In Skyrim VR, Prisma UI |
+| Meridian UI 1.5.0 or newer, Magelight UI 0.30.5 or newer (comes with SeverActions 4.2.0), or Prisma UI 1.5.1 or newer | the dashboard. In Skyrim VR, Magelight UI or Prisma UI |
 | SeverActions | follower detection, including for companions you already know. From **3.9.11** it detects this mod and steps its own Intimacy & Consent section aside, so nobody is handed two ideas of how receptive they are. From **4.0.1** everyone you enroll gets this mod's Relationships bio blocks, chosen from their character - see *Bio blocks* below |
 | OStim Community Resource | physical attraction as an input, for characters whose disposition allows it to matter |
 | OStim NG or SexLab | tier notices wait until a scene is over |
@@ -537,7 +539,18 @@ familiar:
 
 Built on [SkyrimNet](https://www.nexusmods.com/skyrimspecialedition/mods/151960)
 by MinLL. The dashboard is hosted in Meridian UI by ColdSun, whose Romantasy
-carried 1.x, or in Prisma UI. None of them is vendored here.
+carried 1.x, in Magelight UI by Severause, or in Prisma UI. Their public API
+headers are in this repository, unmodified, to build the DLL; none of their
+programs ships with this mod.
+
+## For other mod authors
+
+SKSE plugins can read each enrolled person's bond - tier, points, spark, the
+player's answer, commitment, orientation, intimacy disposition and gate, and
+when they were first seen following - and be told when any of it changes.
+Copy [`SNRelationships_API.h`](native/include/SkyrimNetRelationships/SNRelationships_API.h)
+into your project; the header says how to use it, and that file may be
+shipped with your plugin.
 
 ## License and permissions
 

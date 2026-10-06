@@ -350,11 +350,11 @@ schema:
         - DiaryGeneration
       category: "Enrollment"
 
-    # ── Dashboard (SkyrimNetRelationships.dll, and Meridian UI or Prisma UI)
+    # ── Dashboard (SkyrimNetRelationships.dll, and Meridian UI, Magelight UI or Prisma UI)
     # All three are handed to the DLL by SNRom_Bridge.ArmDashboard once per
     # bootstrap, and read by the DLL itself from settings.yaml whenever SkyrimNet
     # saves it (native/src/Settings.cpp), so a change applies in seconds with no
-    # Papyrus polling. Without Meridian UI or Prisma UI, none of them does
+    # Papyrus polling. Without Meridian UI, Magelight UI or Prisma UI, none of them does
     # anything and nothing else cares.
     #
     # type: "hotkey" HERE, where the re-read and re-author keys are plain ints,
@@ -369,7 +369,7 @@ schema:
     - name: "Dashboard Hotkey"
       path: "dashboardHotkey"
       type: "hotkey"
-      description: "Opens the Relationships dashboard: everyone you have a bond with, how deep it runs, and who they are. UNBOUND UNTIL YOU SET ONE. Pick a key nothing else in your load order uses. Press Escape in the dashboard to close it. Needs Meridian UI or Prisma UI; without either this does nothing and the rest of the mod works as before. Changing it takes effect a couple of seconds after the settings are saved - no reload needed."
+      description: "Opens the Relationships dashboard: everyone you have a bond with, how deep it runs, and who they are. UNBOUND UNTIL YOU SET ONE. Pick a key nothing else in your load order uses. Press Escape in the dashboard to close it. Needs Meridian UI, Magelight UI or Prisma UI; without any of them this does nothing and the rest of the mod works as before. Changing it takes effect a couple of seconds after the settings are saved - no reload needed."
       defaultValue: 0
       category: "Dashboard"
 

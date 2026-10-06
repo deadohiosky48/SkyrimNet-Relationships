@@ -525,7 +525,7 @@ namespace SNRom::Dashboard {
 
         void OpenUnguarded() {
             if (!g_host || !g_created) {
-                Notify("[Relationships] The dashboard needs Meridian UI or Prisma UI.");
+                Notify("[Relationships] The dashboard needs Meridian UI, Magelight UI or Prisma UI.");
                 return;
             }
 
