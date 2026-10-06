@@ -8931,27 +8931,28 @@ Int Function BioRun(Actor akActor, String[] akTitles, Int aiMode, Int aiLimitPic
     If !p || p.Length < 13
         Return 0
     EndIf
-    String who = akActor.GetDisplayName()
+    ; The name is fetched only when there is something to log: a native call
+    ; per person, and on a load with nothing to change there is nothing to say.
 
     ; ---- the traits the player's own blocks set ----
     ; A RECORDED MARRIAGE STILL OUTRANKS A DRAWN TO BLOCK, as it outranks the
     ; model: asked here, only when the block would change the orientation.
     If p[0] >= 0 && IsMarriedToPlayer(akActor) && OrientationExcludesPlayer(p[0])
-        Diag(LOG_WARN(), "Drawn To block NOT applied to " + who + \
+        Diag(LOG_WARN(), "Drawn To block NOT applied to " + akActor.GetDisplayName() + \
             " - the game records a marriage to the player, which the block contradicts. Fix the block.")
     ElseIf p[0] >= 0
         StorageUtil.SetIntValue(akActor, "SNRom_Orientation", p[0])
         StorageUtil.SetIntValue(akActor, "SNRom_OrientationKnown", p[1])
-        Diag(LOG_INFO(), "BLOCK OVERRIDE for " + who + ": orientation -> " + p[0] + " / STATED, from their own Drawn To block.")
+        Diag(LOG_INFO(), "BLOCK OVERRIDE for " + akActor.GetDisplayName() + ": orientation -> " + p[0] + " / STATED, from their own Drawn To block.")
     EndIf
     If p[2] >= 0
         StorageUtil.SetIntValue(akActor, "SNRom_Ardor", p[2])
-        Diag(LOG_INFO(), "BLOCK OVERRIDE for " + who + ": ardor -> " + SNRom_Decorators.ArdorWord(p[2]) + \
+        Diag(LOG_INFO(), "BLOCK OVERRIDE for " + akActor.GetDisplayName() + ": ardor -> " + SNRom_Decorators.ArdorWord(p[2]) + \
             ", from their own Expression block.")
     EndIf
     If p[3] >= 0
         StorageUtil.SetIntValue(akActor, "SNRom_Exclusivity", p[3])
-        Diag(LOG_INFO(), "BLOCK OVERRIDE for " + who + ": exclusivity -> " + p[3] + ", from their own Attachment block.")
+        Diag(LOG_INFO(), "BLOCK OVERRIDE for " + akActor.GetDisplayName() + ": exclusivity -> " + p[3] + ", from their own Attachment block.")
     EndIf
 
     ; ---- notes ----
@@ -8959,11 +8960,11 @@ Int Function BioRun(Actor akActor, String[] akTitles, Int aiMode, Int aiLimitPic
     Int cat = 0
     While cat < 4
         If Math.LogicalAnd(notes, Math.LeftShift(1, cat)) != 0
-            Diag(LOG_INFO(), who + ": the " + BioCatName(cat) + \
+            Diag(LOG_INFO(), akActor.GetDisplayName() + ": the " + BioCatName(cat) + \
                 " block we applied was taken off. That category is the player's now; we will not apply one there again.")
         EndIf
         If cat < 3 && Math.LogicalAnd(notes, Math.LeftShift(1, 4 + cat)) != 0
-            Diag(LOG_WARN(), who + "'s " + BioCatName(cat) + " blocks are not one of the library's answers, or two " + \
+            Diag(LOG_WARN(), akActor.GetDisplayName() + "'s " + BioCatName(cat) + " blocks are not one of the library's answers, or two " + \
                 "disagree - that trait is left as authored.")
         EndIf
         cat += 1
@@ -8994,7 +8995,7 @@ Int Function BioRun(Actor akActor, String[] akTitles, Int aiMode, Int aiLimitPic
                 done += 1
             Else
                 refused[c] = Math.LogicalOr(refused[c], Math.LeftShift(1, k))
-                Diag(LOG_WARN(), "SeverActions refused block '" + bkey + "' for " + who + \
+                Diag(LOG_WARN(), "SeverActions refused block '" + bkey + "' for " + akActor.GetDisplayName() + \
                     " - most likely the player deleted it from the library, which is final.")
             EndIf
         ElseIf op == 2
@@ -9023,7 +9024,7 @@ Int Function BioRun(Actor akActor, String[] akTitles, Int aiMode, Int aiLimitPic
             EndIf
             String after = BioRecGet(akActor, cat)
             If after != before[cat] && after != "-"
-                Diag(LOG_INFO(), "BIO BLOCKS (" + asWhy + ") " + who + " " + BioCatName(cat) + \
+                Diag(LOG_INFO(), "BIO BLOCKS (" + asWhy + ") " + akActor.GetDisplayName() + " " + BioCatName(cat) + \
                     ": '" + before[cat] + "' -> '" + after + "'")
             EndIf
         EndIf
