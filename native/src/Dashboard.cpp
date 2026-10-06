@@ -18,6 +18,7 @@
 // the input sink. That raced the queued close and snapshot sends.
 // ---------------------------------------------------------------------------
 
+#include "Api.h"
 #include "MagelightHost.h"
 #include "MeridianHost.h"
 #include "Model.h"
@@ -646,6 +647,14 @@ namespace SNRom::Dashboard {
         SKSE::log::info("Dashboard view created in {}, hidden until the hotkey", g_host->Name());
     }
 
+    Display::EngineFacts EngineFactsOf(std::int32_t a_formId) {
+        return FactsOf(a_formId);
+    }
+
+    std::int32_t PlayerSexNow() {
+        return PlayerSex();
+    }
+
     void Toggle() {
         if (g_host && g_created && g_host->HasFocus()) {
             Close();
@@ -696,6 +705,7 @@ namespace SNRom::Dashboard {
             Result(action.pageId, false, "A save was loaded before the game's scripts answered.");
         }
         g_noAnswerLogged = false;
+        Api::Reset();
         SKSE::log::info("A save is loading: the dashboard's read model is cleared");
     }
 
@@ -732,6 +742,9 @@ namespace SNRom::Dashboard {
     void PushNumbers(std::int32_t a_generation, std::int32_t a_formId, const std::vector<std::int32_t>& a_values) {
         const auto push = Model::Get().PutNumbers(a_generation, a_formId, a_values);
         LogPush(push, "PutBondNumbers", a_generation);
+        if (push == Model::Push::kAccepted) {
+            Api::Changed(a_formId);
+        }
         if (push == Model::Push::kAccepted && a_generation == 0) {
             Unsolicited(a_formId);
         }
@@ -751,11 +764,16 @@ namespace SNRom::Dashboard {
     }
 
     void PushFacts(std::int32_t a_generation, Display::BatchFacts a_facts) {
-        LogPush(Model::Get().PutFacts(a_generation, std::move(a_facts)), "PutRefreshFacts", a_generation);
+        const auto push = Model::Get().PutFacts(a_generation, std::move(a_facts));
+        LogPush(push, "PutRefreshFacts", a_generation);
+        if (push == Model::Push::kAccepted) {
+            Api::ChangedAll();
+        }
     }
 
     void DropBond(std::int32_t a_formId) {
         Model::Get().Drop(a_formId);
+        Api::Changed(a_formId);
         QueueSnapshot();
     }
 
@@ -764,6 +782,9 @@ namespace SNRom::Dashboard {
         if (!done.accepted) {
             SKSE::log::debug("RefreshDone for refresh {} ignored: not the one outstanding", a_generation);
             return;
+        }
+        if (done.dropped > 0) {
+            Api::ChangedAll();  // people no longer on the roster leave the read API too
         }
         SKSE::GetTaskInterface()->AddTask([done = std::move(done), a_generation]() {
             g_noAnswerLogged = false;

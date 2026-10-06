@@ -345,6 +345,17 @@ namespace SNRom::Model {
         return it->second.numbers;
     }
 
+    std::vector<std::int32_t> ReadModel::FormIds() const {
+        const std::scoped_lock    lock{ m_lock };
+        std::vector<std::int32_t> ids;
+        for (const auto& [id, row] : m_rows) {
+            if (row.numbers) {
+                ids.push_back(id);
+            }
+        }
+        return ids;
+    }
+
     void ReadModel::Drop(std::int32_t a_formId) {
         const std::scoped_lock lock{ m_lock };
         m_rows.erase(a_formId);

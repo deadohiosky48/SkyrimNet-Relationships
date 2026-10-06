@@ -18,7 +18,8 @@ namespace SNRom::Natives {
     //   7  AppendLog: the mod's own log files, written natively and in order
     //   8  BioPlan: one person's Relationships bio blocks, decided natively
     //   9  UuidHex: a decimal SkyrimNet UUID as the hex GetActorByUUID wants
-    inline constexpr std::int32_t kVersion = 9;
+    //  10  ApiLoaded, and PutBondNumbers takes 25 numbers: the read API (Api.h)
+    inline constexpr std::int32_t kVersion = 10;
 
     // Registers the natives declared in src/scripts/SNRom_Native.psc.
     void Register(const SKSE::PapyrusInterface* a_papyrus);

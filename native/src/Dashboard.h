@@ -43,6 +43,11 @@ namespace SNRom::Dashboard {
     // batch APIs (MARAS, SeverActions) and the kin guard.
     void PushFacts(std::int32_t a_generation, Display::BatchFacts a_facts);
     void DropBond(std::int32_t a_formId);
+
+    // What the engine says about one actor, and the player's sex, as the
+    // snapshot reads them. Main thread. Shared with the read API (Api.cpp).
+    Display::EngineFacts EngineFactsOf(std::int32_t a_formId);
+    std::int32_t         PlayerSexNow();
     // a_status is "ok", or "not ready: <why>".
     void RefreshDone(std::int32_t a_generation, std::int32_t a_count, std::string a_status);
 

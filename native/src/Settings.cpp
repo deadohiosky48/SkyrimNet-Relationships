@@ -5,6 +5,7 @@
 #include "Dashboard.h"
 #include "Hotkey.h"
 
+#include <atomic>
 #include <charconv>
 #include <chrono>
 #include <filesystem>
@@ -45,6 +46,10 @@ namespace SNRom::Settings {
         constexpr std::string_view kDeveloper = "dashboardDeveloperView";
         constexpr std::string_view kScale = "dashboardScale";
         constexpr std::string_view kTextSize = "dashboardTextSize";
+        constexpr std::string_view kAttractionBypassRatio = "attractionBypassRatio";
+
+        // Read by the API on the game thread, written by Apply on the game thread.
+        std::atomic<float> g_attractionBypassRatio{ 1.5f };
         // The crosshair keys, in Values' order: re-read, re-author, enroll.
         constexpr std::array<std::string_view, 3> kCrosshairKey{ "rereadKey", "reauthorKey", "enrollKey" };
         constexpr std::array<std::string_view, 3> kCrosshairModifier{ "rereadKeyModifier", "reauthorKeyModifier",
@@ -222,6 +227,9 @@ namespace SNRom::Settings {
         // Applying, on the main thread.
         // ------------------------------------------------------------------
         void Apply(const Values& a_values) {
+            if (a_values.attractionBypassRatio) {
+                g_attractionBypassRatio = *a_values.attractionBypassRatio;
+            }
             if (a_values.developer) {
                 Dashboard::SetDeveloperView(*a_values.developer);
             }
@@ -385,7 +393,7 @@ namespace SNRom::Settings {
             const auto key = Trim(line.substr(0, colon));
             const auto crosshair = CrosshairSetting(key);
             if (!crosshair && key != kHotkey && key != kModifier && key != kDeveloper && key != kScale &&
-                key != kTextSize) {
+                key != kTextSize && key != kAttractionBypassRatio) {
                 continue;
             }
             const auto value = Scalar(Trim(line.substr(colon + 1)));
@@ -434,6 +442,17 @@ namespace SNRom::Settings {
                     values.complaints.push_back(std::format(
                         "{} '{}' is not true or false, so the developer view stays as it is", key, *value));
                 }
+            } else if (key == kAttractionBypassRatio) {
+                float ratio = 0.0f;
+                const auto* last = value->data() + value->size();
+                const auto [end, error] = std::from_chars(value->data(), last, ratio);
+                if (error == std::errc{} && end == last && ratio > 0.0f) {
+                    values.attractionBypassRatio = ratio;
+                } else {
+                    values.complaints.push_back(std::format(
+                        "{} '{}' is not a positive number, so the intimacy gate keeps {}", key, *value,
+                        g_attractionBypassRatio.load()));
+                }
             } else if (key == kScale) {
                 values.scale = ScaleFromName(*value);
                 if (!values.scale) {
@@ -449,6 +468,10 @@ namespace SNRom::Settings {
             }
         }
         return values;
+    }
+
+    float AttractionBypassRatio() {
+        return g_attractionBypassRatio.load();
     }
 
     std::optional<std::int32_t> ScaleFromName(std::string_view a_name) {

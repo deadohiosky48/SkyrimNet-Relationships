@@ -2,6 +2,7 @@
 
 #include "PCH.h"
 
+#include "Api.h"
 #include "BioPlan.h"
 #include "Dashboard.h"
 #include "History.h"
@@ -251,6 +252,12 @@ namespace SNRom::Natives {
             }
         }
 
+        // VERSION 10. WP-A: Papyrus has published everyone after a load (the
+        // read API, Api.h). Only posts a task.
+        void ApiLoaded(RE::StaticFunctionTag*, std::int32_t a_count) {
+            Api::Loaded(a_count);
+        }
+
         std::vector<RE::Actor*> ObserversNear(RE::StaticFunctionTag*, float a_range) {
             std::vector<RE::Actor*> out;
             static RE::TESFaction* bond = nullptr;
@@ -314,10 +321,11 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("AppendLog", kScript, AppendLog, true);
             a_vm->RegisterFunction("BioPlan", kScript, BioPlan, true);
             a_vm->RegisterFunction("UuidHex", kScript, UuidHex, true);
+            a_vm->RegisterFunction("ApiLoaded", kScript, ApiLoaded, true);
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
                             "PutBondNumbers, PutBondText, DropBond, FormIdOf, PutPlaythrough, PutRefreshFacts, "
                             "RefreshDone, ActionArgs, ActionDone, CheckBond, RecordChange, Announce, ObserversNear, AppendLog, "
-                            "BioPlan, UuidHex",
+                            "BioPlan, UuidHex, ApiLoaded",
                             kScript, kVersion);
             return true;
         });

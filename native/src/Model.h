@@ -69,6 +69,11 @@ namespace SNRom::Model {
         kOrientation,       // StorageUtil Int SNRom_Orientation: 0 none, 1 men, 2 women, 3 both
         kOrientationBasis,  // StorageUtil Int SNRom_OrientationKnown: 0-2
         kPlayerKin,         // SNRom_Decorators.IsPlayerKin (StorageUtil), 0/1
+        // 2.1 (WP-A), for the read API (Api.cpp); appended, so the order above holds.
+        kFirstSeenFollowing,  // StorageUtil Float SNRom_FirstSeenFollowing, minutes or -1
+        kPhysMinTier,         // StorageUtil Int SNRom_PhysMinTier, raw (-1 NEVER .. 4)
+        kAttrBypass,          // StorageUtil Int SNRom_PhysAttrBypass, 0/1
+        kAttractionMilli,     // StorageUtil Float SNRom_AttractionRatio x 1000
         kNumberCount
     };
 
@@ -217,6 +222,8 @@ namespace SNRom::Model {
         Display::BatchFacts Facts() const;
         // One row's numbers, if it has any (the display check reads them).
         std::optional<Numbers> NumbersOf(std::int32_t a_formId) const;
+        // Every row that has numbers (the read API's roster).
+        std::vector<std::int32_t> FormIds() const;
         void Drop(std::int32_t a_formId);
         Finished Finish(std::int32_t a_generation, std::int32_t a_count, std::string_view a_status,
                         Clock::time_point a_now);

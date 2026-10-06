@@ -30,6 +30,9 @@ namespace SNRom::Settings {
         std::optional<bool>         developer;  // dashboardDeveloperView
         std::optional<std::int32_t> scale;      // dashboardScale, as ScaleFromName reads it
         std::optional<std::int32_t> textSize;   // dashboardTextSize, as TextSizeFromName reads it
+        // attractionBypassRatio (2.1, WP-A): the intimacy gate's attraction
+        // bar, which the read API works out natively (Api.cpp).
+        std::optional<float>        attractionBypassRatio;
 
         // The crosshair keys (Hotkey.h), re-read, re-author and enroll in that
         // order: rereadKey, reauthorKey, enrollKey, each a virtual key, and
@@ -48,9 +51,12 @@ namespace SNRom::Settings {
             for (std::size_t i = 0; i < 3; ++i) {
                 keys = keys || crosshairKey[i] || crosshairModifier[i];
             }
-            return keys || hotkey || modifier || developer || scale || textSize;
+            return keys || hotkey || modifier || developer || scale || textSize || attractionBypassRatio;
         }
     };
+
+    // attractionBypassRatio as the file last said, or its manifest default (1.5).
+    float AttractionBypassRatio();
 
     // The parser on its own: flat `key: value` lines, as SkyrimNet writes them.
     Values Parse(std::string_view a_text);
