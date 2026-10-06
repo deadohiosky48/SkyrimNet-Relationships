@@ -23,7 +23,7 @@ cmake_minimum_required(VERSION 3.21)
 set(VCPKG_TARGET_TRIPLET "x64-windows-static-md" CACHE STRING "")
 set(VCPKG_OVERLAY_TRIPLETS "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE STRING "")
 
-project(SkyrimNetRelationships VERSION 2.0.1 LANGUAGES CXX)
+project(SkyrimNetRelationships VERSION 2.1.0 LANGUAGES CXX)
 
 set(CommonLibPath "extern/CommonLibSSE-NG")
 set(CommonLibName "CommonLibSSE")
