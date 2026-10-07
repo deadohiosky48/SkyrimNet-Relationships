@@ -9016,6 +9016,27 @@ Function ScanConversations()
     EndIf
 EndFunction
 
+Function DevShiftPoints(Int aiFormId, Int aiDelta)
+    { DEV TOOL, for the web API (two Int arguments: the reference's FormID as a
+      signed decimal, as Actor.GetFormID gives it, and the change). Moves an
+      enrolled person's points through ApplyDepth, so every rule a real change
+      meets applies: the floor, the consent hold, both factions, the tier
+      notice, a romance ending below Stranger, and a history row of kind
+      "dev" (developer view only). For testing the negative tiers before
+      anything in play can reach them (2.2, WP-N). }
+    Actor who = Game.GetForm(aiFormId) as Actor
+    If who == None || !IsEnrolled(who)
+        Diag(LOG_WARN(), "DevShiftPoints: " + aiFormId + " is not an enrolled actor - nothing changed.")
+        Return
+    EndIf
+    Int was = PointsOf(who)
+    Int rc = ApplyDepth(who, aiDelta, "Developer tool: shifted by " + aiDelta, True, "dev")
+    Diag(LOG_INFO(), "DevShiftPoints: " + who.GetDisplayName() + " " + was + " -> " + PointsOf(who) + \
+        " pts, tier " + TierOf(who) + " (" + TierName(TierOf(who)) + "), rc " + rc + \
+        ". SNRom_Bond rank " + who.GetFactionRank(_bond) + ", SNRom_Enmity rank " + who.GetFactionRank(_enmity) + \
+        ", sparked " + SNRom_Decorators.IsSparked(who) + ".")
+EndFunction
+
 Function ExplainTalkEnroll(String asUuid)
     { DEV TOOL, for the web API (one string argument: a SkyrimNet UUID, as the
       event record and snrom_met_scan print it). Logs whether talking would

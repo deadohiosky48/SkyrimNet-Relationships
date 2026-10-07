@@ -167,7 +167,8 @@
     spark: { label: "Something shifted", player: "plain" },
     released: { label: "Counted at last", player: "plain" },
     withheld: { label: "Held back short of Lover, until you answer", player: "dev" },
-    ceiling: { label: "Held at the Lover line", player: "dev" }
+    ceiling: { label: "Held at the Lover line", player: "dev" },
+    dev: { label: "Set by a developer tool", player: "dev" }
   };
 
   // Lowercased first: Papyrus keeps one copy of each string whatever its case,
