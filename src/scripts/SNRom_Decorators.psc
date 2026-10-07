@@ -137,6 +137,13 @@ String Function PhysicalOk(Actor akActor) Global
     Int tier = -1
     If SNRom_Bridge.IsEnrolled(akActor)
         tier = SNRom_Bridge.TierOf(akActor)
+        ; CLOSED BELOW STRANGER, whatever the disposition (2.2, WP-N). Said
+        ; here rather than left to the comparison below: a CASUAL minimum of 0
+        ; would refuse tier -1 anyway, but the banked-points path after it
+        ; must never reopen it.
+        If tier < 0
+            Return "false"
+        EndIf
     EndIf
     If tier >= minTier
         Return "true"
@@ -518,6 +525,11 @@ String Function GetRomance(Actor akActor) Global
     Int pts = SNRom_Bridge.PointsOf(akActor)
     Int tier = SNRom_Bridge.TierForPoints(pts)
     Int toNext = ((tier + 1) * 500) - pts
+    If tier < 0
+        ; Below Stranger the rung above starts 499 short of its 500s (2.2):
+        ; Stranger at -499, Disliked at -999, Resentful at -1499.
+        toNext = ((tier + 1) * 500) - 499 - pts
+    EndIf
     ; Explicit booleans, never inlined JsonBool. An inlined call produced the
     ; Papyrus literal "False" in the authoring context on 2026-08-06, which is
     ; not valid JSON - and here the consequence would be worse and quieter:

@@ -27,6 +27,14 @@ Scriptname SNRom_Bridge extends Quest
 ; reads bond state without Papyrus: action eligibility, the optional Baka
 ; tier gates, vanilla conditions and native plugins (design 6.6 a, 8.1).
 Faction  _bond
+; SNRom_Enmity, SNRom_Integration.esl 0xD64 (2.2, WP-N): the negative tiers, as
+; rank 1 Disliked, 2 Resentful, 3 Enemy; not a member at tier 0 or above.
+; SNRom_Bond's rank cannot carry them: in Skyrim rank -1 means "not in the
+; faction", and SNRom_Bond membership is enrollment. So SNRom_Bond stays 0-5
+; (0 for anyone at or below Stranger) and its readers never see a value they
+; were not promised. None with an ESL older than 2.2: the tiers still work,
+; only this faction is not written.
+Faction  _enmity
 ; THE DASHBOARD'S VIEW OF THIS SESSION (SkyrimNetRelationships.dll, natives v3).
 ; Cached by ArmDashboard at every bootstrap, and the store pair again by the two
 ; store repairs, because the refresh handler must not call SkyrimNet's API: the
@@ -240,6 +248,12 @@ Function Bootstrap(Bool abForce = False)
         Return
     EndIf
 
+    _enmity = ResolveEnmityFaction()
+    If _enmity == None
+        Diag(LOG_WARN(), "SNRom_Enmity unresolved - SNRom_Integration.esl is older than these scripts. " + \
+            "Negative tiers still work; only the faction that publishes them is not written.")
+    EndIf
+
     _ready = True
     ; THE POINTS ARE OURS. A save that has not been brought over yet is, once,
     ; on its own stack: from Romantasy if it is installed, from nothing if it
@@ -331,6 +345,11 @@ Faction Function ResolveBondFaction() Global
     { SNRom_Bond, from our own ESL by its plugin-local FormID; SKSE handles
       the ESL indirection, as it did for ROM_RomanceLevel for a year. }
     Return Game.GetFormFromFile(0x00000D63, "SNRom_Integration.esl") as Faction
+EndFunction
+
+Faction Function ResolveEnmityFaction() Global
+    { SNRom_Enmity (2.2), beside SNRom_Bond in our own ESL. }
+    Return Game.GetFormFromFile(0x00000D64, "SNRom_Integration.esl") as Faction
 EndFunction
 
 Faction Function RomantasyFaction() Global
@@ -1252,11 +1271,21 @@ Int Function DEPTH_WITHHELD() Global
 EndFunction
 
 Int Function TierForPoints(Int aiPoints) Global
-    { The tier, 0 Stranger to 5 Spouse, from points. Romantasy's own level
-      is exactly this plus one (LevelNumberForPoints in its
-      RomanceManager.cpp: 500 points a rung), so every "GetLevel - 1" the
-      mod used to write is this function now. }
-    If aiPoints >= 2500
+    { The tier, -3 Enemy to 5 Spouse, from points. 500 points a rung, as
+      Romantasy's level was (LevelNumberForPoints in its RomanceManager.cpp).
+
+      BELOW ZERO (2.2, WP-N), MIRRORED. Stranger is the neutral band from
+      -499 to 499: Disliked starts at -500, as Acquaintance starts at 500, so
+      one slight against someone just met never makes them dislike the
+      player. Resentful from -1000, Enemy from -1500 to the floor
+      (POINTS_FLOOR, -2000). }
+    If aiPoints <= -1500
+        Return -3
+    ElseIf aiPoints <= -1000
+        Return -2
+    ElseIf aiPoints <= -500
+        Return -1
+    ElseIf aiPoints >= 2500
         Return 5
     ElseIf aiPoints >= 2000
         Return 4
@@ -1285,8 +1314,22 @@ String Function TierName(Int aiTier) Global
         Return "Friend"
     ElseIf aiTier == 1
         Return "Acquaintance"
+    ElseIf aiTier == -1
+        Return "Disliked"
+    ElseIf aiTier == -2
+        Return "Resentful"
+    ElseIf aiTier <= -3
+        Return "Enemy"
     EndIf
     Return "Stranger"
+EndFunction
+
+Int Function POINTS_FLOOR() Global
+    { The lowest a bond goes (2.2, WP-N): the bottom of Enemy, 500 below where
+      it starts, as every rung is 500 wide. Further harm is recorded in the
+      history but moves nothing. Until 2.2 the floor was 0, as Romantasy
+      clamped it, and someone the player had wronged read as a Stranger. }
+    Return -2000
 EndFunction
 
 Int Function TierOf(Actor akActor) Global
@@ -1343,7 +1386,34 @@ Function SyncBondRank(Actor akActor)
       a write and its stamp (SetFactionRank waits a frame). Only for the
       enrolled: membership is enrollment, and SetFactionRank would add them. }
     If _bond != None && IsEnrolled(akActor)
-        akActor.SetFactionRank(_bond, TierOf(akActor))
+        Int tier = TierOf(akActor)
+        akActor.SetFactionRank(_bond, BondRankFor(tier))
+        SyncEnmity(akActor, tier)
+    EndIf
+EndFunction
+
+Int Function BondRankFor(Int aiTier) Global
+    { SNRom_Bond's rank for a tier: the tier, never below 0 (see _enmity). }
+    If aiTier < 0
+        Return 0
+    EndIf
+    Return aiTier
+EndFunction
+
+Function SyncEnmity(Actor akActor, Int aiTier)
+    { SNRom_Enmity follows the negative tiers: rank 1-3 below Stranger, out of
+      the faction otherwise. Asks before it writes, so a bond that never goes
+      below zero costs one read. }
+    If _enmity == None || akActor == None
+        Return
+    EndIf
+    If aiTier < 0
+        If !akActor.IsInFaction(_enmity)
+            akActor.AddToFaction(_enmity)
+        EndIf
+        akActor.SetFactionRank(_enmity, -aiTier)
+    ElseIf akActor.IsInFaction(_enmity)
+        akActor.RemoveFromFaction(_enmity)
     EndIf
 EndFunction
 
@@ -1367,10 +1437,16 @@ Function AnnounceTier(Actor akActor, Int aiFrom, Int aiTo, String asKind, String
     String name = akActor.GetDisplayName()
     String tier = ShownTierName(akActor, aiTo)
     String text = ""
+    ; Below Stranger (2.2, WP-N) a bond does not deepen or cool: it sours,
+    ; and climbing back is ill feeling easing, not closeness growing.
     If asKind == "seed"
         text = "Your history with " + name + " reads as " + tier
+    ElseIf aiTo > aiFrom && aiFrom < 0
+        text = name + "'s ill feeling toward you eased: " + tier
     ElseIf aiTo > aiFrom
         text = "Your bond with " + name + " deepened: " + tier
+    ElseIf aiTo < 0
+        text = "Your bond with " + name + " soured: " + tier
     Else
         text = "Your bond with " + name + " cooled: " + tier
     EndIf
@@ -1472,7 +1548,9 @@ Function JoinBondFaction(Actor akActor)
         Return
     EndIf
     akActor.AddToFaction(_bond)
-    akActor.SetFactionRank(_bond, TierOf(akActor))
+    Int tier = TierOf(akActor)
+    akActor.SetFactionRank(_bond, BondRankFor(tier))
+    SyncEnmity(akActor, tier)
 EndFunction
 
 Bool Function ImportPoints(Actor akActor, String asWhen)
@@ -1596,11 +1674,12 @@ Int Function ApplyDepth(Actor akActor, Int aiDelta, String asReason, Bool abShow
     If aiDelta == 0
         Return 1
     EndIf
-    ; Never below zero, as Romantasy clamped (max(0, points + delta)).
+    ; Never below the floor (2.2, WP-N). Until 2.2 the floor was 0, as
+    ; Romantasy clamped (max(0, points + delta)).
     Int was = StorageUtil.GetIntValue(akActor, "SNRom_Points", 0)
     Int now = was + aiDelta
-    If now < 0
-        now = 0
+    If now < POINTS_FLOOR()
+        now = POINTS_FLOOR()
     EndIf
     StorePoints(akActor, now)
     SyncBondRank(akActor)
@@ -1610,6 +1689,14 @@ Int Function ApplyDepth(Actor akActor, Int aiDelta, String asReason, Bool abShow
         Int toTier = TierForPoints(now)
         If abShowLevelUp && fromTier != toTier
             AnnounceTier(akActor, fromTier, toTier, asKind, asReason)
+        EndIf
+        ; A ROMANCE DOES NOT SURVIVE DISLIKE (2.2, WP-N). Crossing below
+        ; Stranger ends it, by the same path as RomanceEndIt. EndRomance's own
+        ; cap only ever lowers, so from here it writes nothing back, and this
+        ; cannot recurse. A marriage MARAS recorded stays a fact; only the
+        ; romance on our ladder ends.
+        If toTier < 0 && fromTier >= 0 && SNRom_Decorators.IsSparked(akActor)
+            EndRomance(akActor, "It fell below Stranger: " + asReason)
         EndIf
     EndIf
     Return 1
@@ -3375,6 +3462,9 @@ Function UnenrollActor(Actor akActor)
     StorageUtil.UnsetIntValue(akActor, "SNRom_AutoEnrolled")
     If _bond != None
         akActor.RemoveFromFaction(_bond)
+    EndIf
+    If _enmity != None
+        akActor.RemoveFromFaction(_enmity)
     EndIf
     StorageUtil.UnsetFloatValue(akActor, "SNRom_FirstSeenFollowing")
     ApiTouch(akActor)
@@ -7410,6 +7500,9 @@ Bool Function SparkCandidate(Actor akActor, Float afNow, Float afCooldown)
     If SNRom_Decorators.IsSparked(akActor)
         Return False                            ; once only, ever
     EndIf
+    If TierOf(akActor) < 0
+        Return False                            ; nobody falls for someone they dislike (2.2)
+    EndIf
     ; Alive and near the player already: akActor comes from Observers. This
     ; asked IsFollowing until 2.0; anyone enrolled can spark (design 3.2).
 
@@ -7585,6 +7678,11 @@ Function RequestSparkNow(Actor akActor)
         Return
     EndIf
     If SNRom_Decorators.IsSparked(akActor) || SparkDecided(akActor)
+        Return
+    EndIf
+    If TierOf(akActor) < 0
+        Diag(LOG_INFO(), "Spark read for " + akActor.GetDisplayName() + " not asked - " + \
+            TierName(TierOf(akActor)) + ", below Stranger.")
         Return
     EndIf
     If !akActor.Is3DLoaded()

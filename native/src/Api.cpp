@@ -54,6 +54,10 @@ namespace SNRom::Api {
             if (minTier < 0) {
                 return false;
             }
+            // Closed below Stranger, attraction or not (2.2, WP-N).
+            if (n[Model::kTier] < 0) {
+                return false;
+            }
             const auto rank = n[Model::kIntimacy];
             if (rank >= 1) {
                 if (n[Model::kSparked] != 1 && a_commitment < 2) {
@@ -96,7 +100,9 @@ namespace SNRom::Api {
             P::Values v{};
             v.size = sizeof(P::Values);
             v.formId = a_formId;
-            v.tier = n[Model::kTier];
+            // 0-5, as the header promises: a reader may look names up by
+            // tier. Below Stranger (2.2) points go negative and tier reads 0.
+            v.tier = std::clamp(n[Model::kTier], 0, 5);
             v.points = n[Model::kPoints];
             v.sparked = n[Model::kSparked];
             v.stance = n[Model::kStance];
