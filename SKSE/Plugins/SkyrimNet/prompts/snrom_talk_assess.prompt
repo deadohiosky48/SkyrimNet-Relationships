@@ -57,6 +57,42 @@ Desire is read the same way. If their profile says how readily desire comes to t
 IT CAN GO BACKWARD
 A conversation can cost {{ player.name }} ground. Dismissal, a promise broken, a line crossed, being talked past, being treated as owned. If {{ npc_name }} came out of this worse disposed toward {{ player.name }}, say so — a record where nothing ever goes wrong is not a record of a relationship.
 
+{# BETRAYAL, 2.2 (WP-N). The one answer that can take a bond below Stranger in
+   a single step, so: judged against THEM (the author, 2026-10-06: how
+   devastating an act is depends on the person - cheating on someone who
+   expected loyalty, or tricking them out of their home, as Viola was), only
+   what they know, and the act must be quoted (ACT, below). Papyrus has it
+   checked by a second call before it costs anything. No example of a
+   betrayal here: an illustration is copied back as the answer. #}
+SOMETIMES IT IS BROKEN
+Rarely, {{ player.name }} does something that breaks what the relationship itself rested on, as {{ npc_name }} understood it: a trust they had placed, a promise the whole bond assumed, a loyalty they had every reason to count on. That is not a bad day or a quarrel, and it is not every serious wrong. Whether an act is that depends entirely on who {{ npc_name }} is - their profile says what they expected and what they would forgive - so judge it by them, not by how it would land on someone else.
+
+It counts only if {{ npc_name }} knows: they saw it, were part of it, or were told. And you must be able to quote it from what is below. A betrayal you would have to infer is not one to answer.
+
+{# BETRAYAL, 2.2 (WP-N). The one answer that can take a bond below Stranger in
+   a single step, so: judged against THEM (the author, 2026-10-06: how
+   devastating an act is depends on the person - cheating on someone who
+   expected loyalty, or tricking them out of their home, as Viola was), only
+   what they know, and the act must be quoted (ACT, below). Papyrus has it
+   checked by a second call before it costs anything. No example of a
+   betrayal here: an illustration is copied back as the answer. #}
+SOMETIMES IT IS BROKEN
+Rarely, {{ player.name }} does something that breaks what the relationship itself rested on, as {{ npc_name }} understood it: a trust they had placed, a promise the whole bond assumed, a loyalty they had every reason to count on. That is not a bad day or a quarrel, and it is not every serious wrong. Whether an act is that depends entirely on who {{ npc_name }} is - their profile says what they expected and what they would forgive - so judge it by them, not by how it would land on someone else.
+
+It counts only if {{ npc_name }} knows: they saw it, were part of it, or were told. And you must be able to quote it from what is below. A betrayal you would have to infer is not one to answer.
+
+{# BETRAYAL, 2.2 (WP-N). The one answer that can take a bond below Stranger in
+   a single step, so: judged against THEM (the author, 2026-10-06: how
+   devastating an act is depends on the person - cheating on someone who
+   expected loyalty, or tricking them out of their home, as Viola was), only
+   what they know, and the act must be quoted (ACT, below). Papyrus has it
+   checked by a second call before it costs anything. No example of a
+   betrayal here: an illustration is copied back as the answer. #}
+SOMETIMES IT IS BROKEN
+Rarely, {{ player.name }} does something that breaks what the relationship itself rested on, as {{ npc_name }} understood it: a trust they had placed, a promise the whole bond assumed, a loyalty they had every reason to count on. That is not a bad day or a quarrel, and it is not every serious wrong. Whether an act is that depends entirely on who {{ npc_name }} is - their profile says what they expected and what they would forgive - so judge it by them, not by how it would land on someone else.
+
+It counts only if {{ npc_name }} knows: they saw it, were part of it, or were told. And you must be able to quote it from what is below. A betrayal you would have to infer is not one to answer.
+
 THE ONE THING THAT IS ALWAYS LARGE
 If the two of them, in this conversation, explicitly and mutually agreed to become something they were not before — named it aloud, both of them, and neither was merely going along — that is the largest answer and you should not hesitate to give it. Two people deciding out loud to be partners is not a small event and must not be scored like one.
 
@@ -302,8 +338,9 @@ WEIGHT — how far this moved them:
 - `REAL` — something that mattered. Vulnerability offered or met, a kindness that cost {{ player.name }} something, a moment they will think about later.
 - `MAJOR` — the terms between them changed. A boundary moved, something was confessed, something was forgiven that did not have to be.
 - `LANDMARK` — they explicitly and mutually decided to be something new to each other. Rare, and never merely implied.
+- `BETRAYAL` — {{ player.name }} broke what the relationship rested on, as described above, and {{ npc_name }} knows it. The rarest answer here.
 
-DIRECTION — `TOWARD` if it drew them closer, `AWAY` if it cost {{ player.name }} ground. Use `TOWARD` when the weight is `NOTHING`.
+DIRECTION — `TOWARD` if it drew them closer, `AWAY` if it cost {{ player.name }} ground. Use `TOWARD` when the weight is `NOTHING`, and `AWAY` for `BETRAYAL`.
 
 
 This is the distinction that matters most in the two answers above, and getting it wrong in either direction breaks something.
@@ -353,8 +390,9 @@ Its "What You Know About" section is generated from a counter of interactions, n
 Answer in exactly this form and nothing else:
 
 NAME: {{ npc_name }}
-WEIGHT: <NOTHING|SMALL|REAL|MAJOR|LANDMARK>
+WEIGHT: <NOTHING|SMALL|REAL|MAJOR|LANDMARK|BETRAYAL>
 LANDMARK_KIND: <COUPLE|MARRIAGE>   <- omit unless WEIGHT is `LANDMARK`. `COUPLE` if what they named aloud was becoming partners. `MARRIAGE` if what they named was marrying - proposing, accepting, or both plainly committing to it. Answer truthfully; nothing about the score depends on which you pick.
 ADDRESS: <NONE, unless one of them explicitly set or changed what {{ npc_name }} calls {{ player.name }} in the exchange above>
 DIRECTION: <TOWARD|AWAY>
+ACT: <omit unless WEIGHT is `BETRAYAL`. The words from the record above that show what {{ player.name }} did, copied as they appear.>
 WHAT: <if not NOTHING, one sentence in their voice naming the specific thing above that did it — spoken, remembered or written, whichever actually carries it. If NOTHING, write NONE.>

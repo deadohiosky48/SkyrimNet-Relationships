@@ -1121,7 +1121,7 @@ Function MarkMoment(Actor akActor, Int aiMagnitude, String asReason, String asAc
     ElseIf clamped < -cap
         clamped = -cap
     EndIf
-    Int magnitude = ScaleAward(clamped)
+    Int magnitude = ClimbRate(akActor, ScaleAward(clamped))
 
     ; EARNED: the consent gate inside ApplyDepth may withhold it.
     Int result = ApplyDepth(akActor, magnitude, asReason, True, "moment")
@@ -7150,7 +7150,7 @@ Event OnTalkAssessed(String asResponse, Int aiSuccess)
         Diag(LOG_INFO(), "Talk verdict for " + asked + ": '" + weightWord + "' - no award")
         Return
     EndIf
-
+    Bool betrayal = SNRom_Decorators.Upper(SNRom_Decorators.Trim(weightWord)) == "BETRAYAL"
     ; WHAT is the last field, so its absence is also the truncation guard. An
     ; award with nothing to point at is exactly the one not to make.
     String what = SNRom_Decorators.FieldValue(asResponse, "WHAT:")
@@ -7223,6 +7223,24 @@ Event OnTalkAssessed(String asResponse, Int aiSuccess)
     ; Downgraded to MAJOR rather than discarded, because the moment DID happen and
     ; refusing it outright would teach the player their evening did not count.
     ; They can reach Lover and mean it again; the second time it pays in full.
+    ; A BETRAYAL IS NEVER PAID ON ONE READING (2.2, WP-N). It must quote the
+    ; act, and a second call (ConfirmHarm) checks that quote against the
+    ; record and the person before anything is written. Without a quote, or
+    ; with a check already out, it counts as the serious wrong it at least
+    ; was: MAJOR, away.
+    If betrayal
+        String act = SNRom_Decorators.FieldValue(asResponse, "ACT:")
+        If act == "" || SNRom_Decorators.Upper(act) == "NONE"
+            Diag(LOG_WARN(), "Talk verdict for " + asked + ": BETRAYAL with no act quoted - " + \
+                "counted as MAJOR, away. " + what)
+            ApplyTalkAward(who, -SNRom_Decorators.WeightToPoints("MAJOR"), "MAJOR", what)
+            Return
+        EndIf
+        If !ConfirmHarm(who, act, what)
+            ApplyTalkAward(who, -SNRom_Decorators.WeightToPoints("MAJOR"), "MAJOR", what)
+        EndIf
+        Return
+    EndIf
     String landKind = SNRom_Decorators.Upper(SNRom_Decorators.Trim(\
         SNRom_Decorators.FieldValue(asResponse, "LANDMARK_KIND:")))
     If SNRom_Decorators.Upper(weightWord) == "LANDMARK" && landKind == "MARRIAGE"
@@ -7240,6 +7258,82 @@ Event OnTalkAssessed(String asResponse, Int aiSuccess)
     ApplyTalkAward(who, points, weightWord, what)
 EndEvent
 
+; ===========================================================================
+; THE SECOND LOOK AT A BETRAYAL (2.2, WP-N). One at a time; the talk verdict
+; that asked for it has already returned, so it holds no other slot.
+; ===========================================================================
+Actor  _harmActor
+String _harmName
+String _harmWhat
+Float  _harmPendingAt
+
+Bool Function ConfirmHarm(Actor akActor, String asAct, String asWhat)
+    { Sends snrom_harm_confirm for a BETRAYAL verdict. False when it could not
+      be sent (one already out, or the call failed), and the caller counts
+      the harm as MAJOR instead: a real wrong, never the largest cost on one
+      reading. }
+    If _harmActor != None && !SlotStale(_harmPendingAt)
+        Diag(LOG_INFO(), "Betrayal for " + akActor.GetDisplayName() + " not checked - a check for " + \
+            _harmName + " is still out. Counted as MAJOR, away.")
+        Return False
+    EndIf
+    _harmActor = akActor
+    _harmName = akActor.GetDisplayName()
+    _harmWhat = asWhat
+    _harmPendingAt = Utility.GetCurrentRealTime()
+    String ctx = "{\"npc_name\":\"" + SNRom_Decorators.JsonEscape(_harmName) + "\"" + \
+        ",\"npc_formid\":" + akActor.GetFormID() + \
+        ",\"harm_act\":\"" + SNRom_Decorators.JsonEscape(asAct) + "\"" + \
+        ",\"harm_what\":\"" + SNRom_Decorators.JsonEscape(asWhat) + "\"}"
+    Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_harm_confirm", VariantName(), ctx, \
+        Self, "SNRom_Bridge", "OnHarmConfirmed")
+    Diag(LOG_INFO(), "Betrayal for " + _harmName + " sent for a second look (rc=" + rc + "). Act quoted: " + asAct)
+    If rc != 1
+        _harmActor = None
+        Return False
+    EndIf
+    Return True
+EndFunction
+
+Event OnHarmConfirmed(String asResponse, Int aiSuccess)
+    { The second look's answer. BETRAYAL pays the landing; WOUND pays MAJOR,
+      away; NONE pays nothing. A failed or garbled answer counts as WOUND:
+      the first reading found a real wrong, and only the largest cost needed
+      the second. }
+    Actor who = _harmActor
+    String asked = _harmName
+    String what = _harmWhat
+    _harmActor = None
+    If who == None
+        Return
+    EndIf
+    String verdict = ""
+    If aiSuccess == 1
+        String echoed = SNRom_Decorators.NameCore(SNRom_Decorators.FieldValue(asResponse, "NAME:"))
+        If echoed != "" && echoed != SNRom_Decorators.NameCore(asked)
+            Diag(LOG_ERROR(), "Betrayal check echo mismatch: asked about '" + asked + "', answered as '" + \
+                echoed + "'. Counted as MAJOR, away.")
+        Else
+            verdict = SNRom_Decorators.Upper(SNRom_Decorators.Trim(SNRom_Decorators.FieldValue(asResponse, "VERDICT:")))
+        EndIf
+    EndIf
+    String why = SNRom_Decorators.FieldValue(asResponse, "WHY:")
+    If verdict == "BETRAYAL"
+        Diag(LOG_INFO(), "Betrayal for " + asked + " CONFIRMED: " + why)
+        ApplyTalkAward(who, SNRom_Decorators.WeightToPoints("BETRAYAL"), "BETRAYAL", what)
+    ElseIf verdict == "NONE"
+        Diag(LOG_INFO(), "Betrayal for " + asked + " NOT FOUND on a second look - nothing paid: " + why)
+    Else
+        If verdict != "WOUND"
+            Diag(LOG_WARN(), "Betrayal check for " + asked + " gave no usable verdict ('" + verdict + \
+                "', success " + aiSuccess + ") - counted as MAJOR, away.")
+        Else
+            Diag(LOG_INFO(), "Betrayal for " + asked + " judged a WOUND on a second look: " + why)
+        EndIf
+        ApplyTalkAward(who, -SNRom_Decorators.WeightToPoints("MAJOR"), "MAJOR", what)
+    EndIf
+EndEvent
+
 Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asWhat)
     { Pacing lives HERE, not in the prompt. The model judges what happened;
       Papyrus decides how fast a relationship is allowed to move. }
@@ -7255,9 +7349,16 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
     ; and the older LANDMARK + DIRECTION:AWAY combination that has always been
     ; possible. Checking the sign rather than the word catches both, and catches
     ; any future signed weight for free.
+    Bool betrayal = w == "BETRAYAL"
     Bool rupture  = (w == "RUPTURE") || (w == "LANDMARK" && points < 0)
     Bool landmark = (w == "LANDMARK") && !rupture
-    Bool defining = landmark || rupture
+    Bool defining = landmark || rupture || betrayal
+    ; A BETRAYAL HAS ITS OWN COOLDOWN (2.2): sharing LANDMARK's would turn a
+    ; betrayal two days after a wedding into a mere wrong.
+    String coolKey = "SNRom_LastLandmark"
+    If betrayal
+        coolKey = "SNRom_LastBetrayal"
+    EndIf
     Float now = Utility.GetCurrentGameTime()
 
     ; -- A STATE CANNOT BE ENTERED TWICE -------------------------------------
@@ -7299,23 +7400,24 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
         ; enthusiastic conversations in an afternoon would carry someone from
         ; Stranger most of the way to Confidant.
         Float lmCool = SkyrimNetApi.GetConfigFloat(CFG(), "talkLandmarkDays", 3.0)
-        If (now - StorageUtil.GetFloatValue(akActor, "SNRom_LastLandmark", -999.0)) < lmCool
+        If (now - StorageUtil.GetFloatValue(akActor, coolKey, -999.0)) < lmCool
             Diag(LOG_INFO(), "Defining moment (" + w + ") for " + akActor.GetDisplayName() + \
                 " downgraded - one was recorded within the last " + lmCool + " days")
             ; Downgrade toward the ORDINARY weight in the same direction. A
             ; second rupture inside the window is still a bad conversation; it
             ; must not silently become a POSITIVE 120 the way it would if both
             ; branches downgraded to MAJOR.
-            If rupture
+            If rupture || betrayal
                 points = -SNRom_Decorators.WeightToPoints("MAJOR")
             Else
                 points = SNRom_Decorators.WeightToPoints("MAJOR")
             EndIf
             landmark = False
             rupture  = False
+            betrayal = False
             defining = False
         Else
-            StorageUtil.SetFloatValue(akActor, "SNRom_LastLandmark", now)
+            StorageUtil.SetFloatValue(akActor, coolKey, now)
             If landmark && commitState > 0
                 StorageUtil.SetIntValue(akActor, "SNRom_LandmarkState", commitState)
             EndIf
@@ -7340,6 +7442,16 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
     ; same number of awards a day at every setting, each worth proportionally
     ; more or less. That is what one lever is supposed to mean.
     Int awarded = ScaleAward(points)
+    ; A BETRAYAL LANDS, IT IS NOT A SIZE (2.2, WP-N). How far it falls is set
+    ; by how close they were, and Bond Pace does not shrink it: pace is how
+    ; fast a bond is EARNED, and this is the bond being broken.
+    If betrayal
+        awarded = BetrayalLanding(PointsOf(akActor)) - PointsOf(akActor)
+        If awarded > 0
+            awarded = 0
+        EndIf
+    EndIf
+    awarded = ClimbRate(akActor, awarded)
 
     ; Daily budget, so ordinary conversation cannot be farmed. Landmarks are
     ; deliberately exempt: the whole point is that the day two people decide
@@ -7402,7 +7514,7 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
         ; so Haelga's lost 350 would ALSO have downgraded her next genuine
         ; landmark to MAJOR, for an award that never existed.
         If defining
-            StorageUtil.UnsetFloatValue(akActor, "SNRom_LastLandmark")
+            StorageUtil.UnsetFloatValue(akActor, coolKey)
             ; And the state latch, for the same reason - a refused award must not
             ; consume the one landmark this transition is allowed.
             StorageUtil.UnsetIntValue(akActor, "SNRom_LandmarkState")
@@ -7452,6 +7564,49 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
             akActor, Game.GetPlayer())
         EndRomance(akActor, asWhat)
     EndIf
+
+    ; A BETRAYAL ends a romance by itself: it always lands below Stranger,
+    ; and ApplyDepth ends a romance that falls there. What is recorded here
+    ; is the event, so it is part of what they remember.
+    If betrayal
+        SkyrimNetApi.RegisterPersistentEvent(akActor.GetDisplayName() + " feels betrayed by " + \
+            Game.GetPlayer().GetDisplayName() + ". " + asWhat, akActor, Game.GetPlayer())
+    EndIf
+EndFunction
+
+Int Function BetrayalLanding(Int aiPoints) Global
+    { Where a BETRAYAL leaves a bond (2.2, WP-N): -(500 + half of whatever
+      positive standing they had), never below the floor. The closer they
+      were, the deeper the cut: a Stranger lands at -500 (Disliked), a Friend
+      at 1200 at -1100 (Resentful), a Confidant at 1800 at -1400 (Resentful),
+      a Lover at 2200 at -1600 and a Spouse at 2700 at -1850 (both Enemy).
+      Someone already below Stranger falls 500 further. The one number to tune
+      after play. }
+    Int landing = -500
+    If aiPoints > 0
+        landing = -500 - (aiPoints / 2)
+    ElseIf aiPoints < 0
+        landing = aiPoints - 500
+    EndIf
+    If landing < POINTS_FLOOR()
+        landing = POINTS_FLOOR()
+    EndIf
+    Return landing
+EndFunction
+
+Int Function ClimbRate(Actor akActor, Int aiAwarded) Global
+    { TRUST COMES BACK SLOWER THAN IT WENT (2.2, WP-N). An earned gain while
+      the bond is below zero counts at half, after Bond Pace, never less than
+      1 so it always registers. Earned awards only - talk and moments; a seed,
+      a release from the hold and a developer tool are not earnings. }
+    If aiAwarded <= 0 || PointsOf(akActor) >= 0
+        Return aiAwarded
+    EndIf
+    Int half = aiAwarded / 2
+    If half < 1
+        half = 1
+    EndIf
+    Return half
 EndFunction
 
 Function AssessNextSpark()

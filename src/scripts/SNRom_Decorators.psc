@@ -831,6 +831,11 @@ Int Function WeightToPoints(String asWord) Global
         Return -40
     ElseIf w == "RUPTURE"
         Return -350
+    ; BETRAYAL (2.2, WP-N) is not a fixed size: it lands the bond at a point
+    ; set by how close they were (SNRom_Bridge.BetrayalLanding). -500 is its
+    ; least, for someone who was a Stranger, and keeps it non-zero here.
+    ElseIf w == "BETRAYAL"
+        Return -500
     EndIf
     Return 0
 EndFunction
