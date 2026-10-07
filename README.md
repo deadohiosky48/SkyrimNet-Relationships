@@ -341,6 +341,12 @@ is actually established; a guess stays a guess. Children get none.
 - Ours **follow the character**: when someone changes over time, the block
   changes with them. Re-authoring someone takes ours off first, so the old
   answer is not read back as yours, then puts the new ones on.
+- **Deleting one of ours from SeverActions' page hides it**, from everyone,
+  and the mod tells you so when the game loads. Get it back from **Hidden**,
+  under the page's categories. While any are hidden, nobody's blocks are
+  judged taken off. If you deleted them on 2.1.0, restore them, then run
+  **Give everyone our bio blocks again** from the dashboard's *Playthrough
+  repairs*: 2.1.0 read the deletion as you taking each one off.
 
 To apply blocks only by hand, turn off **Assign Relationships Bio Blocks**
 under *Enrollment*. The libraries stay in SeverActions' page either way.
