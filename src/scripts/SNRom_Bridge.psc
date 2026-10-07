@@ -1498,8 +1498,11 @@ String Function ThoughtHint(String asKind, Bool abUp, String asReason)
       heart; a spark has its own thought (ApplySpark); a marriage is its own
       event. No tier names - those are the player's bookkeeping, not how
       anyone thinks of someone. }
+    ; A DEVELOPER TOOL'S CHANGE IS NOT AN EVENT IN THEIR LIFE (2.2). The
+    ; thought would be kept in their memories - "what did it: Developer tool:
+    ; shifted by -900" - long after the test is over.
     If asKind == "seed" || asKind == "import" || asKind == "spark" || asKind == "married" || \
-       asKind == "ceiling"
+       asKind == "ceiling" || asKind == "dev"
         Return ""
     EndIf
     String player = Game.GetPlayer().GetDisplayName()
@@ -9035,6 +9038,107 @@ Function DevShiftPoints(Int aiFormId, Int aiDelta)
         " pts, tier " + TierOf(who) + " (" + TierName(TierOf(who)) + "), rc " + rc + \
         ". SNRom_Bond rank " + who.GetFactionRank(_bond) + ", SNRom_Enmity rank " + who.GetFactionRank(_enmity) + \
         ", sparked " + SNRom_Decorators.IsSparked(who) + ".")
+EndFunction
+
+Function DevSaveBond(Int aiFormId)
+    { DEV TOOL (web API, one Int: the FormID as a signed decimal). Keeps a copy
+      of one person's points and romance state beside them, for DevRestoreBond
+      to put back after a test that ends their romance (2.2, WP-N). Saving
+      again replaces the copy. Changes nothing else. }
+    Actor who = Game.GetForm(aiFormId) as Actor
+    If who == None || !IsEnrolled(who)
+        Diag(LOG_WARN(), "DevSaveBond: " + aiFormId + " is not an enrolled actor - nothing saved.")
+        Return
+    EndIf
+    String[] ints = DevBondInts()
+    Int i = 0
+    While i < ints.Length
+        Int v = -99999
+        If StorageUtil.HasIntValue(who, ints[i])
+            v = StorageUtil.GetIntValue(who, ints[i])
+        EndIf
+        StorageUtil.SetIntValue(who, "SNRom_DevSaved_" + ints[i], v)
+        i += 1
+    EndWhile
+    String[] floats = DevBondFloats()
+    i = 0
+    While i < floats.Length
+        Float f = -99999.0
+        If StorageUtil.HasFloatValue(who, floats[i])
+            f = StorageUtil.GetFloatValue(who, floats[i])
+        EndIf
+        StorageUtil.SetFloatValue(who, "SNRom_DevSaved_" + floats[i], f)
+        i += 1
+    EndWhile
+    StorageUtil.SetIntValue(who, "SNRom_DevSaved_Points", PointsOf(who))
+    StorageUtil.SetIntValue(who, "SNRom_DevSaved", 1)
+    Diag(LOG_INFO(), "DevSaveBond: " + who.GetDisplayName() + " saved at " + PointsOf(who) + " pts, sparked " + \
+        StorageUtil.GetIntValue(who, "SNRom_Sparked", 0) + ", stance " + StorageUtil.GetIntValue(who, "SNRom_PlayerStance", 0) + ".")
+EndFunction
+
+Function DevRestoreBond(Int aiFormId)
+    { DEV TOOL (web API, one Int). Puts back what DevSaveBond kept: the
+      romance state first, then the points through ApplyDepth (kind "dev", no
+      notice), so the consent hold sees the restored answer, not the ended
+      one. Then clears the copy. }
+    Actor who = Game.GetForm(aiFormId) as Actor
+    If who == None || StorageUtil.GetIntValue(who, "SNRom_DevSaved", 0) != 1
+        Diag(LOG_WARN(), "DevRestoreBond: nothing saved for " + aiFormId + " - nothing changed.")
+        Return
+    EndIf
+    String[] ints = DevBondInts()
+    Int i = 0
+    While i < ints.Length
+        Int v = StorageUtil.GetIntValue(who, "SNRom_DevSaved_" + ints[i], -99999)
+        If v == -99999
+            StorageUtil.UnsetIntValue(who, ints[i])
+        Else
+            StorageUtil.SetIntValue(who, ints[i], v)
+        EndIf
+        StorageUtil.UnsetIntValue(who, "SNRom_DevSaved_" + ints[i])
+        i += 1
+    EndWhile
+    String[] floats = DevBondFloats()
+    i = 0
+    While i < floats.Length
+        Float f = StorageUtil.GetFloatValue(who, "SNRom_DevSaved_" + floats[i], -99999.0)
+        If f == -99999.0
+            StorageUtil.UnsetFloatValue(who, floats[i])
+        Else
+            StorageUtil.SetFloatValue(who, floats[i], f)
+        EndIf
+        StorageUtil.UnsetFloatValue(who, "SNRom_DevSaved_" + floats[i])
+        i += 1
+    EndWhile
+    Int target = StorageUtil.GetIntValue(who, "SNRom_DevSaved_Points", PointsOf(who))
+    Int rc = ApplyDepth(who, target - PointsOf(who), "Developer tool: restored", False, "dev")
+    StorageUtil.UnsetIntValue(who, "SNRom_DevSaved_Points")
+    StorageUtil.UnsetIntValue(who, "SNRom_DevSaved")
+    ApiTouch(who)
+    Diag(LOG_INFO(), "DevRestoreBond: " + who.GetDisplayName() + " back at " + PointsOf(who) + " pts (rc " + rc + \
+        "), tier " + TierOf(who) + ", sparked " + StorageUtil.GetIntValue(who, "SNRom_Sparked", 0) + \
+        ", stance " + StorageUtil.GetIntValue(who, "SNRom_PlayerStance", 0) + ", SNRom_Bond rank " + \
+        who.GetFactionRank(_bond) + ", SNRom_Enmity rank " + who.GetFactionRank(_enmity) + ".")
+EndFunction
+
+String[] Function DevBondInts() Global
+    { What EndRomance changes, as Ints, for DevSaveBond. }
+    String[] k = new String[4]
+    k[0] = "SNRom_Sparked"
+    k[1] = "SNRom_PlayerStance"
+    k[2] = "SNRom_AskPending"
+    k[3] = "SNRom_SeedRomantic"
+    Return k
+EndFunction
+
+String[] Function DevBondFloats() Global
+    { What EndRomance changes, as Floats, for DevSaveBond. }
+    String[] k = new String[4]
+    k[0] = "SNRom_SparkedAt"
+    k[1] = "SNRom_EndedAt"
+    k[2] = "SNRom_LastSparkCheck"
+    k[3] = "SNRom_EnrolledAt"
+    Return k
 EndFunction
 
 Function ExplainTalkEnroll(String asUuid)
