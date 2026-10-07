@@ -6201,7 +6201,8 @@ Event OnDashboardAction(String asEventName, String asOp, Float afRequestId, Form
         SNRom_Native.ActionDone(requestId, False, "That is a developer tool, and the developer view is off.")
         Return
     EndIf
-    Bool forPlaythrough = asOp == "StartFreshStore" || asOp == "AdoptLegacyStore" || asOp == "CheckDisplay"
+    Bool forPlaythrough = asOp == "StartFreshStore" || asOp == "AdoptLegacyStore" || asOp == "CheckDisplay" || \
+        asOp == "RestoreOurBioBlocks"
     If !forPlaythrough && who == None
         SNRom_Native.ActionDone(requestId, False, "They could not be found in the game right now.")
         Return
@@ -6256,6 +6257,8 @@ Event OnDashboardAction(String asEventName, String asOp, Float afRequestId, Form
     ElseIf asOp == "AdoptLegacyStore"
         AdoptLegacyStore()
         answer = "This playthrough is back on the main store."
+    ElseIf asOp == "RestoreOurBioBlocks"
+        answer = RestoreOurBioBlocks()
     ElseIf asOp == "RequestSparkNow"
         RequestSparkNow(who)
         answer = "Asked the spark assessor about " + whoName + ". It declines on its own if they " + \
@@ -9200,6 +9203,62 @@ Function SyncAfterAuthoring(Actor akActor, String asLimitPicks)
     SyncOurBlocks(akActor, picks, "after authoring")
 EndFunction
 
+String Function RestoreOurBioBlocks()
+    { PLAYTHROUGH REPAIR (2.1.1, dashboard "Give everyone our bio blocks
+      again"). Forgets every "the player took ours off" we recorded, then lets
+      the walk fill the categories that are empty. For players whose library
+      was missing our blocks on a load before 2.1.1, when every one of them was
+      recorded as taken off. A category holding any block, theirs or ours, is
+      left alone; one the player emptied on purpose gets ours again, which the
+      confirmation says. Refused while SeverActions still hides any of ours.
+      Returns the line the dashboard shows. }
+    If _bioApi != 1
+        Return "SeverActions' Bio Blocks are not available in this game, so there is nothing to restore."
+    EndIf
+    If !_bioLibraryWhole
+        Int still = SNRom_SABio.LibrarySize() - SNRom_SABio.DefineAll()
+        _bioLibraryWhole = still <= 0
+        If !_bioLibraryWhole
+            Return "SeverActions still hides " + still + " of our bio blocks. Restore them on its Bio Blocks page, " + \
+                "under Hidden, then run this again."
+        EndIf
+    EndIf
+    Int count = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int people = 0
+    Int cleared = 0
+    Int applied = 0
+    Int flags = BioFlags(True)
+    Int mode = Math.LogicalOr(BIO_ENFORCE(), BIO_SYNC())
+    Int i = 0
+    While i < count
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None && !a.IsDead() && IsEnrolled(a)
+            Int here = 0
+            Int cat = 0
+            While cat < 4
+                If StorageUtil.GetIntValue(a, "SNRom_BioOurs_" + cat, 0) < 0
+                    StorageUtil.UnsetIntValue(a, "SNRom_BioOurs_" + cat)
+                    here += 1
+                EndIf
+                cat += 1
+            EndWhile
+            If here > 0
+                people += 1
+                cleared += here
+                applied += BioRun(a, SNRom_SABio.AssignedTitles(a), mode, -1, "restored by the repair", flags)
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    Diag(LOG_INFO(), "Bio block repair: forgot " + cleared + " taken-off record(s) on " + people + \
+        " people; applied " + applied + " of ours where the category was empty.")
+    If cleared == 0
+        Return "Nobody had a bio block recorded as taken off. Nothing changed."
+    EndIf
+    Return "Forgot " + cleared + " taken-off record(s) on " + people + " people, and applied " + applied + \
+        " of our blocks where the category was empty."
+EndFunction
+
 Function BioBlocksOnLoad()
     { Every game load. Offers both libraries (new text reaches players this
       way), then walks the roster once:
@@ -9230,7 +9289,26 @@ Function BioBlocksOnLoad()
     EndIf
     _bioApi = 1
     Int defined = SNRom_SABio.DefineAll()
-    Diag(LOG_INFO(), "Bio blocks: SeverActions accepted " + defined + " of 81 (any missing were deleted by the player, which is final).")
+    Int offered = SNRom_SABio.LibrarySize()
+    _bioLibraryWhole = defined >= offered
+    If _bioLibraryWhole
+        Diag(LOG_INFO(), "Bio blocks: SeverActions accepted all " + defined + " of ours.")
+    Else
+        ; A DELETED BLOCK IS HIDDEN, NOT GONE. Until 2.1.1 this line called it
+        ; final, and the walk below read every hidden block as the player
+        ; taking it off each NPC - recorded for good, so restoring the library
+        ; brought nothing back to anyone (a VR player, 2026-10-07).
+        Diag(LOG_WARN(), "Bio blocks: SeverActions accepted " + defined + " of our " + offered + ". The rest are " + \
+            "hidden on its Bio Blocks page (deleting a block there hides it). Until they are restored from its " + \
+            "Hidden list, nobody's blocks are judged taken off, and none are applied.")
+        String hint = "Relationships: " + (offered - defined) + " of its bio blocks are hidden in SeverActions. " + \
+            "Restore them from the Bio Blocks page, under Hidden."
+        If _dashNatives >= 5
+            SNRom_Native.Announce(hint)
+        Else
+            Debug.Notification(hint)
+        EndIf
+    EndIf
 
     _bioWalkPending = False
     If !BioStoreLooksLoaded()
@@ -9315,6 +9393,13 @@ Int Function BioRun(Actor akActor, String[] akTitles, Int aiMode, Int aiLimitPic
       Writes and SeverActions calls happen only for what changes. }
     If akActor == None || _dashNatives < 8
         Return 0
+    EndIf
+    ; NOT WITH A LIBRARY MISSING BLOCKS (2.1.1). The sync step is the one that
+    ; records "the player took ours off" when one of ours is missing from a
+    ; person, and a block the player hid in SeverActions is missing from
+    ; everyone. Drift, re-authoring and the load walk all come through here.
+    If !_bioLibraryWhole && Math.LogicalAnd(aiMode, BIO_SYNC()) != 0
+        aiMode -= BIO_SYNC()
     EndIf
     Int[] p = SNRom_Native.BioPlan(akActor, akTitles, BioState(akActor, aiMode, aiLimitPicks, aiFlags))
     If !p || p.Length < 13
@@ -9444,6 +9529,13 @@ Int Function BioRun(Actor akActor, String[] akTitles, Int aiMode, Int aiLimitPic
 EndFunction
 
 Bool _bioWalkPending = False
+; WHETHER SEVERACTIONS HOLDS ALL OF OUR BLOCKS THIS SESSION (2.1.1). False when
+; it accepted fewer than we offered at load: the player deleted some on its
+; Bio Blocks page, which HIDES them (Define refuses them, and they leave every
+; NPC) until restored from its Hidden list. While False, a block of ours
+; missing from an NPC is the library's doing, not the player's choice about
+; that NPC, and BioRun must not record the category as theirs.
+Bool _bioLibraryWhole = True
 
 Bool Function BioStoreLooksLoaded()
     { NEVER JUDGE FROM AN EMPTY STORE. If SeverActions' per-save assignments

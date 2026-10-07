@@ -16,6 +16,11 @@ Int Function Version() Global
     Return SeverActionsNativeExt2.BioApi_Version()
 EndFunction
 
+Int Function LibrarySize() Global
+    { How many blocks DefineAll offers (generated with the library). }
+    Return SNRom_SABioLib.LibrarySize()
+EndFunction
+
 Int Function DefineAll() Global
     { Offers both libraries. Called on every game load: a Define that changes
       nothing writes nothing, and this is how new block text reaches players. }

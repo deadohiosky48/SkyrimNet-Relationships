@@ -113,6 +113,9 @@ namespace SNRom::Dashboard {
             Op{ "UnenrollActor", "SNRom_Bridge.UnenrollActor(Actor)", OpScope::kBond },
             Op{ "StartFreshStore", "SNRom_Bridge.StartFreshStore()", OpScope::kPlaythrough },
             Op{ "AdoptLegacyStore", "SNRom_Bridge.AdoptLegacyStore()", OpScope::kPlaythrough },
+            // 2.1.1: blocks the player hid in SeverActions were read as taken
+            // off everyone; this forgets those records.
+            Op{ "RestoreOurBioBlocks", "SNRom_Bridge.RestoreOurBioBlocks()", OpScope::kPlaythrough },
             // WP7: the crosshair target at the last open, enrolled by hand.
             Op{ "EnrollActor", "SNRom_Bridge.EnrollByHand(Actor)", OpScope::kCrosshair, false,
                 "their character has been written" },

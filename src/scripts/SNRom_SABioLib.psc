@@ -197,3 +197,8 @@ Int Function DefineArousal() Global
         "Something from before that surfaces uninvited - a touch, a word or a place that recalls it.\n\n**Characteristics**\n\n- Can go cold without warning, and may not say why\n- Patience and a way out do more than any reassurance", "Arousal: Cooled By")
     Return n
 EndFunction
+
+Int Function LibrarySize() Global
+    { How many blocks DefineRelationships and DefineArousal offer. }
+    Return 81
+EndFunction

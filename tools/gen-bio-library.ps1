@@ -92,6 +92,13 @@ $text.Add('')
 (Emit-Library $rel 'DefineRelationships' "The $($rel.Count) Relationships blocks: Attachment, Expression, Drawn To, Limits") | ForEach-Object { $text.Add($_) }
 $text.Add('')
 (Emit-Library $aro 'DefineArousal' "The $($aro.Count) Arousal blocks. Offered only; this mod never applies them") | ForEach-Object { $text.Add($_) }
+$text.Add('')
+# How many DefineAll offers, so the bridge can tell when SeverActions accepted
+# fewer: blocks the player hid, which must not read as blocks taken off (2.1.1).
+$text.Add('Int Function LibrarySize() Global')
+$text.Add("    { How many blocks DefineRelationships and DefineArousal offer. }")
+$text.Add("    Return $($rel.Count + $aro.Count)")
+$text.Add('EndFunction')
 
 $utf8NoBom = New-Object Text.UTF8Encoding($false)
 [IO.File]::WriteAllText($out, (($text -join "`r`n") + "`r`n"), $utf8NoBom)

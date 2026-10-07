@@ -98,6 +98,16 @@
       needsNearby: false,
       confirm: "This playthrough claims the main store. If another playthrough owns it, that one will get a store of its own the next time it loads."
     },
+    {
+      op: "RestoreOurBioBlocks",
+      scope: "playthrough",
+      calls: "SNRom_Bridge.RestoreOurBioBlocks()",
+      label: "Give everyone our bio blocks again",
+      help: "For a game where Relationships' bio blocks were deleted in SeverActions and then restored: until 2.1.1 everyone who carried one was recorded as having it taken off, so nobody got it back. Restore the blocks on SeverActions' Bio Blocks page (Hidden) first.",
+      needs: null,
+      needsNearby: false,
+      confirm: "Every category where a Relationships block was recorded as taken off gets ours again, if it is empty. Blocks you chose yourself stay. A category you emptied on purpose gets ours back too; take it off again in SeverActions if you meant it."
+    },
 
     // Developer tools. They exist and dispatch the same way, but each bypasses a
     // gate that is the design (their own doc comments say so), so they appear
