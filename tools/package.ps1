@@ -479,7 +479,14 @@ try {
     # "SkyrimNet.Relationships-0.9.0.zip" - a name neither this script nor anyone
     # reading it chose. Picking the separator here keeps the published filename
     # identical to the built one.
-    $zip = Join-Path $OutDir "SkyrimNet-Relationships-$Version.zip"
+    #
+    # "Relationships", NOT "SkyrimNet-Relationships" (2.2, the author,
+    # 2026-10-07). MO2 takes a mod's default name from the archive name up to
+    # the first hyphen, so players importing "SkyrimNet-Relationships-2.1.0.zip"
+    # were offered "SkyrimNet" - and accepting it overwrote SkyrimNet itself.
+    # The mod's name has no hyphen in it now; the only one is before the
+    # version, where MO2 is meant to split.
+    $zip = Join-Path $OutDir "Relationships-$Version.zip"
     if (Test-Path $zip) { Remove-Item $zip -Force }
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -CompressionLevel Optimal
 
