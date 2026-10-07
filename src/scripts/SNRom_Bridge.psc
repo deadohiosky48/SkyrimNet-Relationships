@@ -1386,9 +1386,24 @@ Function SyncBondRank(Actor akActor)
       a write and its stamp (SetFactionRank waits a frame). Only for the
       enrolled: membership is enrollment, and SetFactionRank would add them. }
     If _bond != None && IsEnrolled(akActor)
+        ; READ AGAIN AFTER WRITING. SetFactionRank waits a frame, so two
+        ; changes to one person close together each set the ranks from the
+        ; tier they saw, and the slower one can land last with a stale tier
+        ; (seen 2026-10-07: tier -1 with SNRom_Enmity at 2, after five changes
+        ; ran at once). Whoever writes last checks the tier is still the one it
+        ; wrote, and writes again if not.
         Int tier = TierOf(akActor)
-        akActor.SetFactionRank(_bond, BondRankFor(tier))
-        SyncEnmity(akActor, tier)
+        Int tries = 0
+        While tries < 3
+            akActor.SetFactionRank(_bond, BondRankFor(tier))
+            SyncEnmity(akActor, tier)
+            Int now = TierOf(akActor)
+            If now == tier
+                Return
+            EndIf
+            tier = now
+            tries += 1
+        EndWhile
     EndIf
 EndFunction
 
@@ -1441,7 +1456,10 @@ Function AnnounceTier(Actor akActor, Int aiFrom, Int aiTo, String asKind, String
     ; and climbing back is ill feeling easing, not closeness growing.
     If asKind == "seed"
         text = "Your history with " + name + " reads as " + tier
-    ElseIf aiTo > aiFrom && aiFrom < 0
+    ElseIf aiTo > aiFrom && aiFrom < 0 && aiTo <= 0
+        ; Only while it stays at or below Stranger: a climb that carries past
+        ; it deepened (Iddra, Disliked to Lover in one step, read "eased:
+        ; Ally" in testing, 2026-10-07).
         text = name + "'s ill feeling toward you eased: " + tier
     ElseIf aiTo > aiFrom
         text = "Your bond with " + name + " deepened: " + tier
