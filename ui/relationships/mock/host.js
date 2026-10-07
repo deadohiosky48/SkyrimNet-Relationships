@@ -169,6 +169,10 @@
         later(80, pushSnapshot);
         return [true, "Adopted the main store. Authored characters are visible again."];
       },
+      // 2.1.1. Papyrus answers with counts; the mock has no bio blocks.
+      RestoreOurBioBlocks: function () {
+        return [true, "Forgot 3 taken-off record(s) on 2 people, and applied 3 of our blocks where the category was empty."];
+      },
       // The DLL answers this one at once; the count arrives as a notice.
       CheckDisplay: function () {
         var n = state.bonds.length;
