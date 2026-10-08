@@ -328,7 +328,14 @@ one. What they said aloud is what they were willing to risk saying; people go va
 and non-committal exactly when something matters and they do not yet know it is
 returned. A hedge spoken and a certainty written privately are the same feeling.
 
-Weigh only what appears above. Do not score a conversation you did not read, and do not score something between {{ player.name }} and a third person — other people appear in their profile and memories, and what passed between those two is not what passed between {{ npc_name }} and {{ player.name }}.
+{# THEIR REACTION IS THEIRS, 2.2 (2026-10-08). The third-person rule below
+   was there so a romance with someone else is not scored as one with this
+   person. It also threw away Jordis's anger at how the player spoke of the
+   women of the household - "Pack your things", "control yourself" - because
+   the words she reacted to were addressed to Silana. What someone does with
+   others is not scored as between these two; how THIS person took it, to the
+   player's face or in their own account, is. #}
+Weigh only what appears above. Do not score a conversation you did not read. What {{ player.name }} did with or to someone else is not scored as if it had happened between {{ npc_name }} and {{ player.name }} — other people appear in their profile and memories, and what passed between those two is theirs. **But how {{ npc_name }} took it is theirs to be judged on:** what they said to {{ player.name }} about it, and what they kept or wrote about it. Someone who watched {{ player.name }} behave badly toward another person, and came away thinking less of {{ player.name }}, has moved.
 
 **A line where {{ npc_name }} addresses someone by name who is not {{ player.name }} is not part of this conversation, whoever it is labeled as being spoken to.** When several people stand close together their words get attributed to the wrong listener, and a reply they made to a companion can arrive here looking like it was said to {{ player.name }}. Judge it by who they are plainly talking to, not by the label.
 

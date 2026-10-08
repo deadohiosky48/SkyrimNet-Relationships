@@ -6971,6 +6971,7 @@ Function AssessNextTalk()
     If !_ready
         Return
     EndIf
+    RetryHarmCheck()
     If SkyrimNetApi.GetConfigBool(CFG(), "talkEnabled", True) == False
         Return
     EndIf
@@ -7265,7 +7266,17 @@ EndEvent
 Actor  _harmActor
 String _harmName
 String _harmWhat
+String _harmAct
 Float  _harmPendingAt
+Bool   _harmIsRetry
+; ONE CHECK WAITING TO BE ASKED AGAIN (the author, 2026-10-08: "retry later
+; when warranted"). A check that never reached the model - the backend was
+; down, or another check was out - is asked again on the next talk tick,
+; once. Only a second failure counts it as MAJOR, away. Not kept in the
+; save: one lost to a reload pays nothing.
+Actor  _harmRetryActor
+String _harmRetryAct
+String _harmRetryWhat
 
 Bool Function ConfirmHarm(Actor akActor, String asAct, String asWhat)
     { Sends snrom_harm_confirm for a BETRAYAL verdict. False when it could not
@@ -7273,13 +7284,16 @@ Bool Function ConfirmHarm(Actor akActor, String asAct, String asWhat)
       the harm as MAJOR instead: a real wrong, never the largest cost on one
       reading. }
     If _harmActor != None && !SlotStale(_harmPendingAt)
-        Diag(LOG_INFO(), "Betrayal for " + akActor.GetDisplayName() + " not checked - a check for " + \
-            _harmName + " is still out. Counted as MAJOR, away.")
-        Return False
+        Return QueueHarmRetry(akActor, asAct, asWhat, "a check for " + _harmName + " is still out")
     EndIf
     _harmActor = akActor
     _harmName = akActor.GetDisplayName()
     _harmWhat = asWhat
+    _harmAct = asAct
+    _harmIsRetry = akActor == _harmRetryActor
+    If _harmIsRetry
+        _harmRetryActor = None
+    EndIf
     _harmPendingAt = Utility.GetCurrentRealTime()
     String ctx = "{\"npc_name\":\"" + SNRom_Decorators.JsonEscape(_harmName) + "\"" + \
         ",\"npc_formid\":" + akActor.GetFormID() + \
@@ -7290,9 +7304,42 @@ Bool Function ConfirmHarm(Actor akActor, String asAct, String asWhat)
     Diag(LOG_INFO(), "Betrayal for " + _harmName + " sent for a second look (rc=" + rc + "). Act quoted: " + asAct)
     If rc != 1
         _harmActor = None
+        If !_harmIsRetry
+            Return QueueHarmRetry(akActor, asAct, asWhat, "the call could not be sent")
+        EndIf
         Return False
     EndIf
     Return True
+EndFunction
+
+Bool Function QueueHarmRetry(Actor akActor, String asAct, String asWhat, String asWhy)
+    { Holds a betrayal check to be asked again on the next talk tick. True
+      when it is held (nothing is paid yet); False when the one slot is taken
+      by someone else, and the caller counts it as MAJOR, away. }
+    If _harmRetryActor != None && _harmRetryActor != akActor
+        Diag(LOG_INFO(), "Betrayal for " + akActor.GetDisplayName() + " not checked - " + asWhy + \
+            ", and another check is already waiting. Counted as MAJOR, away.")
+        Return False
+    EndIf
+    _harmRetryActor = akActor
+    _harmRetryAct = asAct
+    _harmRetryWhat = asWhat
+    Diag(LOG_INFO(), "Betrayal check for " + akActor.GetDisplayName() + " held for the next talk tick - " + asWhy + ".")
+    Return True
+EndFunction
+
+Function RetryHarmCheck()
+    { The talk tick's first step: asks a held betrayal check again, when no
+      other is out. A second failure counts it as MAJOR, away. }
+    If _harmRetryActor == None || (_harmActor != None && !SlotStale(_harmPendingAt))
+        Return
+    EndIf
+    Actor who = _harmRetryActor
+    If !ConfirmHarm(who, _harmRetryAct, _harmRetryWhat)
+        _harmRetryActor = None
+        Diag(LOG_WARN(), "Betrayal check for " + who.GetDisplayName() + " failed twice - counted as MAJOR, away.")
+        ApplyTalkAward(who, -SNRom_Decorators.WeightToPoints("MAJOR"), "MAJOR", _harmRetryWhat)
+    EndIf
 EndFunction
 
 Event OnHarmConfirmed(String asResponse, Int aiSuccess)
@@ -7303,9 +7350,19 @@ Event OnHarmConfirmed(String asResponse, Int aiSuccess)
     Actor who = _harmActor
     String asked = _harmName
     String what = _harmWhat
+    String act = _harmAct
+    Bool wasRetry = _harmIsRetry
     _harmActor = None
     If who == None
         Return
+    EndIf
+    ; NO ANSWER AT ALL is the backend, not a judgement (2026-10-08: every call
+    ; failed while the model server was off, and this charged -120). Asked
+    ; again once; a second failure is a serious wrong, as before.
+    If aiSuccess != 1 && !wasRetry
+        If QueueHarmRetry(who, act, what, "the model did not answer")
+            Return
+        EndIf
     EndIf
     String verdict = ""
     If aiSuccess == 1
@@ -7535,7 +7592,10 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
     ; REPORT BOTH. The weight the assessor chose is diagnostically useful and so
     ; is the number that landed; showing only one of them is how this was missed.
     String paceNote = ""
-    If awarded != points
+    If betrayal
+        paceNote = " - lands at " + PointsOf(akActor) + " (" + TierName(TierOf(akActor)) + \
+            "), by how close they were; Bond Pace does not apply"
+    ElseIf awarded != points
         paceNote = " -> " + awarded + " applied (Bond Pace: " + \
             SkyrimNetApi.GetConfigString(CFG(), "bondPace", "Normal") + ")"
     EndIf
