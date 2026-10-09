@@ -482,12 +482,23 @@ The profile above is headed as though you were about to play them. That heading 
 
 Its "What You Know About" section is generated from a counter of interactions, not from what has actually happened between them. It routinely reports that two people barely know each other while their own diary describes years of intimacy. **Where it disagrees with anything above, it is simply wrong — disregard it.**
 
+{# DIRECTION BEFORE WEIGHT, 2026-10-09. With WEIGHT first, the model kept
+   writing the direction there - "WEIGHT: AWAY / DIRECTION: AWAY" for Silana,
+   twice for Jordis - and the size was lost (Papyrus reads AWAY alone as REAL).
+   Once the direction is written down, the next field is free to be a size.
+   Papyrus reads fields by name; WHAT stays last as the truncation guard.
+
+   NOTHING TO JUDGE IS STILL AN ANSWER. Given an empty window, the model once
+   asked for the conversation instead of answering ("Please provide the
+   conversation record"), which logs as a malformed verdict. #}
+If nothing above passed between {{ npc_name }} and {{ player.name }}, the answer is `NOTHING`, given in the form below like any other.
+
 Answer in exactly this form and nothing else:
 
 NAME: {{ npc_name }}
-WEIGHT: <NOTHING|SMALL|REAL|MAJOR|LANDMARK|BETRAYAL>
+DIRECTION: <TOWARD|AWAY>   <- which way it went
+WEIGHT: <NOTHING|SMALL|REAL|MAJOR|LANDMARK|BETRAYAL>   <- how far
 LANDMARK_KIND: <COUPLE|MARRIAGE>   <- omit unless WEIGHT is `LANDMARK`. `COUPLE` if what they named aloud was becoming partners. `MARRIAGE` if what they named was marrying - proposing, accepting, or both plainly committing to it. Answer truthfully; nothing about the score depends on which you pick.
 ADDRESS: <NONE, unless one of them explicitly set or changed what {{ npc_name }} calls {{ player.name }} in the exchange above>
-DIRECTION: <TOWARD|AWAY>
 ACT: <omit unless WEIGHT is `BETRAYAL`. The words from the record above that show what {{ player.name }} did, copied as they appear.>
 WHAT: <if not NOTHING, one sentence in their voice naming the specific thing above that did it — spoken, remembered or written, whichever actually carries it. If NOTHING, write NONE.>
