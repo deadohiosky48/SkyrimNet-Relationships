@@ -2413,6 +2413,19 @@ Function EndRomance(Actor akActor, String asReason)
     StorageUtil.SetFloatValue(akActor, "SNRom_EnrolledAt", Utility.GetCurrentGameTime())
 
     Int had = PointsOf(akActor)
+    ; WHAT IT WAS BEFORE THE BREAKUP, for a betrayal judged on the same
+    ; encounter (2.2, the author, 2026-10-09). Silana ended it in the
+    ; conversation, which capped her at Confidant, and the betrayal the
+    ; assessor found in that same conversation then landed from 1500, not
+    ; 3390: Resentful instead of Enemy, because she reacted first.
+    ; BetrayalLanding's caller reads this once.
+    If had > 0
+        StorageUtil.SetIntValue(akActor, "SNRom_EndedFromPoints", had)
+    EndIf
+    ; AND THE CHECK COMES NOW, not at the next turn of the talk timer: the
+    ; author wants a betrayal's full consequence when the encounter ends. A
+    ; talk award that ends a romance clears this itself (ApplyTalkAward).
+    StorageUtil.SetIntValue(akActor, "SNRom_TalkSoon", 1)
     Int drop = ENDED_CAP() - had
     If drop < 0
         If ApplyDepth(akActor, ScaleAward(drop), asReason, True, "ended") > 0
@@ -7057,6 +7070,9 @@ Bool Function TalkCandidate(Actor akActor, Float afNow, Float afCooldown)
     ; Alive, loaded and near the player already: akActor comes from Observers.
     ; This asked IsFollowing until 2.0 - a gate that was only ever Romantasy's
     ; (design 3.2), and that left a non-follower's conversations unscored.
+    If StorageUtil.GetIntValue(akActor, "SNRom_TalkSoon", 0) == 1
+        Return True                             ; a breakup asked for it now (EndRomance)
+    EndIf
     Return (afNow - StorageUtil.GetFloatValue(akActor, "SNRom_LastTalkCheck", 0.0)) >= afCooldown
 EndFunction
 
@@ -7106,6 +7122,7 @@ Function AssessTalk(Actor akActor, Float afSince = 0.0)
     _talkActor = akActor
     _talkName  = akActor.GetDisplayName()
     _talkPendingAt = Utility.GetCurrentRealTime()
+    StorageUtil.UnsetIntValue(akActor, "SNRom_TalkSoon")
     ; Her ardor and her authored WHY both go in, because the judgment is
     ; explicitly "how far did this move HER" rather than "was this a nice
     ; conversation". Without them the same exchange scores identically for
@@ -7529,7 +7546,17 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
     ; by how close they were, and Bond Pace does not shrink it: pace is how
     ; fast a bond is EARNED, and this is the bond being broken.
     If betrayal
-        awarded = BetrayalLanding(PointsOf(akActor)) - PointsOf(akActor)
+        Int base = PointsOf(akActor)
+        ; From before a breakup in the same encounter, if there was one
+        ; (EndRomance): within a game day, and read once.
+        Int before = StorageUtil.GetIntValue(akActor, "SNRom_EndedFromPoints", 0)
+        If before > base && (now - StorageUtil.GetFloatValue(akActor, "SNRom_EndedAt", -999.0)) <= 1.0
+            Diag(LOG_INFO(), "Betrayal for " + akActor.GetDisplayName() + " measured from " + before + \
+                " pts, their standing before the breakup in the same encounter (now " + base + ").")
+            base = before
+        EndIf
+        StorageUtil.UnsetIntValue(akActor, "SNRom_EndedFromPoints")
+        awarded = BetrayalLanding(base) - PointsOf(akActor)
         If awarded > 0
             awarded = 0
         EndIf
@@ -7658,6 +7685,8 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
         SkyrimNetApi.RegisterPersistentEvent(akActor.GetDisplayName() + " feels betrayed by " + \
             Game.GetPlayer().GetDisplayName() + ". " + asWhat, akActor, Game.GetPlayer())
     EndIf
+    ; This award WAS the check: a romance it ended must not ask for another.
+    StorageUtil.UnsetIntValue(akActor, "SNRom_TalkSoon")
 EndFunction
 
 Int Function BetrayalLanding(Int aiPoints) Global
