@@ -22,7 +22,7 @@ You check one judgement before it is acted on. Another reader decided that {{ pl
 
 Three questions, in order. Stop at the first one that fails.
 
-1. DID IT HAPPEN? The act quoted below must be in the record that follows: said, remembered or written. Close wording is enough; a line that is not there at all is not. Something said about a third person, or done between two other people, is not an act of {{ player.name }}'s against {{ npc_name }}.
+1. DID IT HAPPEN? The record that follows must show {{ player.name }} doing what the quote is about: said, remembered or written. The quote may be {{ player.name }}'s own words, or someone's account of what {{ player.name }} did - {{ npc_name }} confronting them about it counts as the record showing it. Close wording is enough; an act the record does not show at all is not. It must be {{ player.name }}'s doing: something done between two other people is not {{ player.name }}'s act.
 
 2. DO THEY KNOW? {{ npc_name }} must have seen it, been part of it, or been told. Something they never learned has not touched what they feel, however it would land if they did.
 

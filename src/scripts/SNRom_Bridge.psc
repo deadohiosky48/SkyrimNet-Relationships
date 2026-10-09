@@ -7144,6 +7144,32 @@ Event OnTalkAssessed(String asResponse, Int aiSuccess)
 
     String weightWord = SNRom_Decorators.FieldValue(asResponse, "WEIGHT:")
     Int points = SNRom_Decorators.WeightToPoints(weightWord)
+    ; THE DIRECTION WORD IN THE WEIGHT FIELD (2026-10-09). Small models merge
+    ; two fields that must agree: Silana's verdict came back WEIGHT: AWAY, with
+    ; an ACT and no DIRECTION, twice, and scored nothing. It is read, not
+    ; dropped, and never larger than the evidence: AWAY with a quoted act goes
+    ; to the betrayal check, which can only confirm or scale down; AWAY alone
+    ; is REAL, away; TOWARD alone is SMALL.
+    If points == 0
+        String dirWord = SNRom_Decorators.Upper(SNRom_Decorators.Trim(weightWord))
+        If dirWord == "AWAY" || dirWord == "TOWARD"
+            String quoted = SNRom_Decorators.FieldValue(asResponse, "ACT:")
+            Bool hasAct = quoted != "" && SNRom_Decorators.Upper(quoted) != "NONE"
+            If dirWord == "AWAY" && hasAct
+                weightWord = "BETRAYAL"
+            ElseIf dirWord == "AWAY"
+                weightWord = "REAL"
+            Else
+                weightWord = "SMALL"
+            EndIf
+            points = SNRom_Decorators.WeightToPoints(weightWord)
+            If dirWord == "AWAY" && points > 0
+                points = -points
+            EndIf
+            Diag(LOG_WARN(), "Talk verdict for " + asked + " put '" + dirWord + "' in WEIGHT - read as " + \
+                weightWord + ", " + dirWord + ".")
+        EndIf
+    EndIf
     If points == 0
         ; NOTHING is the expected answer most of the time, and it still gets a
         ; line. A verdict that leaves no trace cannot be distinguished from an

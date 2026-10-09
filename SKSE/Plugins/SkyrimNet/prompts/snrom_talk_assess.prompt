@@ -347,7 +347,11 @@ WEIGHT — how far this moved them:
 - `LANDMARK` — they explicitly and mutually decided to be something new to each other. Rare, and never merely implied.
 - `BETRAYAL` — {{ player.name }} broke what the relationship rested on, as described above, and {{ npc_name }} knows it. The rarest answer here.
 
-DIRECTION — `TOWARD` if it drew them closer, `AWAY` if it cost {{ player.name }} ground. Use `TOWARD` when the weight is `NOTHING`, and `AWAY` for `BETRAYAL`.
+{# NO DIRECTION IS NAMED FOR BETRAYAL, 2026-10-09. Step 2 added "and AWAY for
+   BETRAYAL" here, and the model merged the two fields: twice it answered
+   WEIGHT: AWAY with an ACT and no DIRECTION line for Silana, and the bond
+   moved nothing. Papyrus never reads DIRECTION for BETRAYAL. #}
+DIRECTION — `TOWARD` if it drew them closer, `AWAY` if it cost {{ player.name }} ground. Use `TOWARD` when the weight is `NOTHING`.
 
 
 This is the distinction that matters most in the two answers above, and getting it wrong in either direction breaks something.
