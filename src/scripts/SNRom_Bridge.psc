@@ -7627,8 +7627,10 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
     ; corrected, so there is no false LOVER splash and no phantom tier event.
     ;
     ; EARNED, so the consent gate inside ApplyDepth decides the withhold.
+    _awarding = akActor
     Int result = ApplyDepth(akActor, awarded, asWhat, True, "talk")
     If result == DEPTH_WITHHELD()
+        _awarding = None
         Ledger(akActor, "withheld", "", awarded, 1, asWhat)
         Return
     EndIf
@@ -7654,6 +7656,7 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
         Diag(LOG_ERROR(), "Could not write " + awarded + " pts for " + \
             akActor.GetDisplayName() + " - their points are not ours yet and could not be " + \
             "brought over from Romantasy (see the line above). Award LOST, no ledger row written.")
+        _awarding = None
         Return
     EndIf
     Ledger(akActor, "talk", "", awarded, 1, asWhat)
@@ -7702,6 +7705,27 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
     EndIf
     ; This award WAS the check: a romance it ended must not ask for another.
     StorageUtil.UnsetIntValue(akActor, "SNRom_TalkSoon")
+    _awarding = None
+
+    ; WHOEVER WAS THERE IS JUDGED TOO (2.2, 2026-10-09). A large swing in one
+    ; bond happened in front of people: Vivienne and Sebione stood by while
+    ; Silana's betrayal played out, and nothing brought their checks forward.
+    ; Their checks read what they heard (WHAT THEY OVERHEARD) and may well
+    ; answer NOTHING; the point is that they are asked.
+    If betrayal || rupture || landmark || awarded >= 120 || awarded <= -120
+        String why = "they were there when " + akActor.GetDisplayName() + "'s bond moved " + awarded
+        Int n = 0
+        If _observers
+            n = _observers.Length
+        EndIf
+        Int i = 0
+        While i < n
+            If _observers[i] != None && _observers[i] != akActor
+                AssessSoon(_observers[i], why)
+            EndIf
+            i += 1
+        EndWhile
+    EndIf
 EndFunction
 
 Int Function BetrayalLanding(Int aiPoints) Global
@@ -9243,6 +9267,9 @@ Function AssessSoon(Actor akActor, String asReason)
     If StorageUtil.GetIntValue(akActor, "SNRom_TalkSoon", 0) == 1
         Return
     EndIf
+    If akActor == _awarding
+        Return                                  ; their check is writing this very change
+    EndIf
     StorageUtil.SetIntValue(akActor, "SNRom_TalkSoon", 1)
     Diag(LOG_INFO(), "Conversation check for " + akActor.GetDisplayName() + " brought forward: " + asReason + ".")
     BringTickForward()
@@ -10201,6 +10228,10 @@ EndFunction
 Bool _bioWalkPending = False
 ; The next tick was pulled in for a brought-forward check (AssessSoon).
 Bool _tickEarly = False
+; Whoever ApplyTalkAward is writing right now: a romance its own change ends
+; must not ask for another check (it logged "brought forward" for Silana from
+; inside the check that ended it, 2026-10-09).
+Actor _awarding = None
 ; WHETHER SEVERACTIONS HOLDS ALL OF OUR BLOCKS THIS SESSION (2.1.1). False when
 ; it accepted fewer than we offered at load: the player deleted some on its
 ; Bio Blocks page, which HIDES them (Define refuses them, and they leave every
