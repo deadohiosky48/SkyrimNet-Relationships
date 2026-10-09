@@ -6968,8 +6968,14 @@ Event OnUpdateGameTime()
     AssessNextDrift()
     ; Re-arm unconditionally, including on every early return inside the
     ; assessors. A timer that stops when there is nothing to do never starts
-    ; again when there is.
-    RegisterForSingleUpdateGameTime(AssessIntervalHours())
+    ; again when there is. Early again while anyone near is still waiting for
+    ; a brought-forward check (AssessSoon), one check a tick.
+    _tickEarly = AnyAssessSoonNear()
+    If _tickEarly
+        RegisterForSingleUpdateGameTime(ASSESS_SOON_HOURS())
+    Else
+        RegisterForSingleUpdateGameTime(AssessIntervalHours())
+    EndIf
 EndEvent
 
 ; ===========================================================================
@@ -9238,7 +9244,45 @@ Function AssessSoon(Actor akActor, String asReason)
         Return
     EndIf
     StorageUtil.SetIntValue(akActor, "SNRom_TalkSoon", 1)
-    Diag(LOG_INFO(), "Conversation check for " + akActor.GetDisplayName() + " brought forward to the next tick: " + asReason + ".")
+    Diag(LOG_INFO(), "Conversation check for " + akActor.GetDisplayName() + " brought forward: " + asReason + ".")
+    BringTickForward()
+EndFunction
+
+Float Function ASSESS_SOON_HOURS() Global
+    { How soon the tick comes after AssessSoon: long enough for the
+      conversation that prompted it to finish, short enough to feel
+      immediate - about 45 real seconds at the default timescale. }
+    Return 0.25
+EndFunction
+
+Function BringTickForward()
+    { THE TICK ITSELF IS EVERY assessIntervalHours (2 by default), so
+      moving someone to its front still waited up to two game hours. Pulls
+      the next tick in to ASSESS_SOON_HOURS, once; OnUpdateGameTime keeps it
+      early while anyone near is still waiting (AnyAssessSoonNear). }
+    If _tickEarly
+        Return
+    EndIf
+    _tickEarly = True
+    RegisterForSingleUpdateGameTime(ASSESS_SOON_HOURS())
+EndFunction
+
+Bool Function AnyAssessSoonNear()
+    { Someone near the player still waiting for a brought-forward check.
+      Someone who is not near holds nothing early: they are checked when
+      they are next near, at the ordinary pace. }
+    Int n = 0
+    If _observers
+        n = _observers.Length
+    EndIf
+    Int i = 0
+    While i < n
+        If _observers[i] != None && StorageUtil.GetIntValue(_observers[i], "SNRom_TalkSoon", 0) == 1
+            Return True
+        EndIf
+        i += 1
+    EndWhile
+    Return False
 EndFunction
 
 Event OnAssessSoonEvent(String asEventName, String asReason, Float afNumArg, Form akSender)
@@ -10155,6 +10199,8 @@ Int Function BioRun(Actor akActor, String[] akTitles, Int aiMode, Int aiLimitPic
 EndFunction
 
 Bool _bioWalkPending = False
+; The next tick was pulled in for a brought-forward check (AssessSoon).
+Bool _tickEarly = False
 ; WHETHER SEVERACTIONS HOLDS ALL OF OUR BLOCKS THIS SESSION (2.1.1). False when
 ; it accepted fewer than we offered at load: the player deleted some on its
 ; Bio Blocks page, which HIDES them (Define refuses them, and they leave every
