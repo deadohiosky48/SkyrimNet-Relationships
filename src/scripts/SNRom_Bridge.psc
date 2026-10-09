@@ -400,6 +400,8 @@ Function RegisterEvents()
     RegisterForModEvent("SNRom_DashboardAction", "OnDashboardAction")
     ; The one-time points import runs on its own stack (StartPointsImport).
     RegisterForModEvent("SNRom_ImportPoints", "OnImportPoints")
+    ; 2.2: any mod can ask for someone's conversation check now (AssessSoon).
+    RegisterForModEvent("SNRom_AssessSoon", "OnAssessSoonEvent")
     ; A held tier notice the player can now see (AnnounceTier, Notices.h).
     RegisterForModEvent("SNRom_ShowNotice", "OnShowNotice")
 EndFunction
@@ -1122,6 +1124,12 @@ Function MarkMoment(Actor akActor, Int aiMagnitude, String asReason, String asAc
         clamped = -cap
     EndIf
     Int magnitude = ClimbRate(akActor, ScaleAward(clamped))
+    ; A LARGE MOMENT IS A REASON TO LOOK NOW (2.2): something big enough for
+    ; the character to mark it in the conversation is big enough for the
+    ; conversation check to read it before the next turn of the timer.
+    If clamped >= 40 || clamped <= -40
+        AssessSoon(akActor, "a moment of " + clamped)
+    EndIf
 
     ; EARNED: the consent gate inside ApplyDepth may withhold it.
     Int result = ApplyDepth(akActor, magnitude, asReason, True, "moment")
@@ -2425,7 +2433,7 @@ Function EndRomance(Actor akActor, String asReason)
     ; AND THE CHECK COMES NOW, not at the next turn of the talk timer: the
     ; author wants a betrayal's full consequence when the encounter ends. A
     ; talk award that ends a romance clears this itself (ApplyTalkAward).
-    StorageUtil.SetIntValue(akActor, "SNRom_TalkSoon", 1)
+    AssessSoon(akActor, "the romance ended")
     Int drop = ENDED_CAP() - had
     If drop < 0
         If ApplyDepth(akActor, ScaleAward(drop), asReason, True, "ended") > 0
@@ -6948,6 +6956,7 @@ Event OnUpdateGameTime()
     ; because a question waiting to be asked is the most latency-sensitive thing
     ; here and it was previously waiting up to two game hours for no reason.
     ScanConversations()
+    ScanSignificantEvents()
     PumpAskQueue()
     AssessNextTalk()
     AssessNextSpark()
@@ -9212,6 +9221,112 @@ EndFunction
 ; the other person's UUID. Ids rise across the record, so SNRom_TalkScanMark
 ; is the watermark. Runs on the existing game-time tick: no timer of its own.
 ; ===========================================================================
+
+Function AssessSoon(Actor akActor, String asReason)
+    { BRING SOMEONE'S CONVERSATION CHECK FORWARD (2.2, the author, 2026-10-09:
+      "we should be free to dynamically bring anyone into the next tick if we
+      have reason to want them assessed asap"). The next talk tick picks them
+      ahead of the timer (TalkCandidate), once they are near the player.
+      Callers: EndRomance, a large moment, the event watch
+      (ScanSignificantEvents), other mods through the ModEvent
+      SNRom_AssessSoon, and the web API. Enrolled people only; asking twice
+      before the check runs is one check. }
+    If akActor == None || !IsEnrolled(akActor) || akActor.IsDead()
+        Return
+    EndIf
+    If StorageUtil.GetIntValue(akActor, "SNRom_TalkSoon", 0) == 1
+        Return
+    EndIf
+    StorageUtil.SetIntValue(akActor, "SNRom_TalkSoon", 1)
+    Diag(LOG_INFO(), "Conversation check for " + akActor.GetDisplayName() + " brought forward to the next tick: " + asReason + ".")
+EndFunction
+
+Event OnAssessSoonEvent(String asEventName, String asReason, Float afNumArg, Form akSender)
+    { SNRom_AssessSoon, for other mods: sender the Actor, strArg the reason. }
+    String why = asReason
+    If why == ""
+        why = "asked by another mod"
+    EndIf
+    AssessSoon(akSender as Actor, why)
+EndEvent
+
+Function ScanSignificantEvents()
+    { THE EVENT WATCH (2.2). Reads SkyrimNet's record for significant events
+      involving the player since the last look (snrom_event_scan), and brings
+      forward the conversation check of whoever they touched: the other party
+      when enrolled, and everyone enrolled near the player now, who saw it. A
+      death counts only when the one who died was enrolled. Starts from the
+      moment it first runs: nothing earlier is replayed. One render, no model
+      call. }
+    If !_ready || _dashNatives < 9
+        Return
+    EndIf
+    String out = SkyrimNetApi.RenderTemplate("snrom_event_scan", "", "")
+    If StringUtil.Find(out, "WINDOW") < 0
+        Diag(LOG_WARN(), "Event watch: snrom_event_scan did not render - SkyrimNet.log names the reason.")
+        Return
+    EndIf
+    Bool fresh = StorageUtil.GetIntValue(None, "SNRom_EventScanOn", 0) == 0
+    Int mark = StorageUtil.GetIntValue(None, "SNRom_EventScanMark", 0)
+    Int newMark = mark
+    Int windowOldest = 0
+    String[] lines = StringUtil.Split(out, "\n")
+    Int i = 0
+    While i < lines.Length
+        String[] f = StringUtil.Split(SNRom_Decorators.Trim(lines[i]), " ")
+        If f.Length >= 3 && f[0] == "WINDOW"
+            windowOldest = f[2] as Int
+        ElseIf f.Length >= 4
+            Int id = f[0] as Int
+            If id > newMark
+                newMark = id
+            EndIf
+            If !fresh && id > mark
+                SignificantEvent(f[1], f[2], f[3])
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    If fresh
+        If windowOldest > newMark
+            newMark = windowOldest
+        EndIf
+        StorageUtil.SetIntValue(None, "SNRom_EventScanOn", 1)
+    EndIf
+    If newMark > mark
+        StorageUtil.SetIntValue(None, "SNRom_EventScanMark", newMark)
+    EndIf
+EndFunction
+
+Function SignificantEvent(String asType, String asOrigin, String asTarget)
+    { One event from the watch: whoever it touched, and whoever saw it. }
+    Actor me = Game.GetPlayer()
+    Actor a = SkyrimNetApi.GetActorByUUID(SNRom_Native.UuidHex(asOrigin))
+    Actor b = SkyrimNetApi.GetActorByUUID(SNRom_Native.UuidHex(asTarget))
+    Actor other = a
+    If a == me
+        other = b
+    EndIf
+    If asType == "death" && (other == None || !IsEnrolled(other))
+        Return                                  ; a stranger's death is not news to anyone near
+    EndIf
+    String what = asType
+    If other != None
+        what = asType + ", " + other.GetDisplayName()
+        AssessSoon(other, "they were part of it (" + what + ")")
+    EndIf
+    Int n = 0
+    If _observers
+        n = _observers.Length
+    EndIf
+    Int i = 0
+    While i < n
+        If _observers[i] != None && _observers[i] != other
+            AssessSoon(_observers[i], "they were near when it happened (" + what + ")")
+        EndIf
+        i += 1
+    EndWhile
+EndFunction
 
 Function ScanConversations()
     { Enrolls whoever has talked with the player since the last scan, and

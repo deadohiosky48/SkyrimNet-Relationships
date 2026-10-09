@@ -1,0 +1,27 @@
+{# RENDER-ONLY. SIGNIFICANT EVENTS INVOLVING THE PLAYER (2.2, WP-N). Not sent to
+   any model: rendered from Papyrus with SkyrimNetApi.RenderTemplate by
+   SNRom_Bridge.ScanSignificantEvents, which brings the people they touch to the
+   front of the next talk tick (AssessSoon), so a large swing is judged within
+   minutes instead of at the next turn of the talk timer (the author,
+   2026-10-09: "anything that causes a relatively large swing").
+
+   One line per event since the scan's watermark: "id type originator target",
+   both as decimal UUIDs (SNRom_Native.UuidHex converts). The WINDOW line gives
+   the count and the oldest id, as snrom_met_scan's does.
+
+   THE SAME TYPES AS snrom_talk_assess's "WHAT HAPPENED". Chosen from the types
+   a live save records (2026-10-09): rare and plainly consequential. Left out on
+   purpose: deaths of anyone not enrolled (every bandit), trades and item
+   handovers, furniture, books, and our own persistent events. A death is listed
+   here whoever died; Papyrus keeps it only when the one who died is enrolled. #}
+{% set _who = [] %}
+{% set _who = append(_who, player.UUID) %}
+{% set events = get_recent_events(300, _who) %}
+WINDOW {{ length(events) }} {% if length(events) > 0 %}{{ first(events).id }}{% else %}0{% endif %}
+{% for ev in events %}
+{% if ev.originatingActor == player.UUID or ev.targetActor == player.UUID %}
+{% if ev.type == "arrest_ordered" or ev.type == "order_arrest_failed" or ev.type == "arrest_failed" or ev.type == "kidnap_failed" or ev.type == "kidnapped" or ev.type == "restrain_failed" or ev.type == "restrained" or ev.type == "brawl_challenged" or ev.type == "brawl_accepted" or ev.type == "brawl_declined" or ev.type == "brawl_ended" or ev.type == "sdb_slapped" or ev.type == "sdb_spanked" or ev.type == "baka_forced" or ev.type == "baka_execution" or ev.type == "baka_defeat" or ev.type == "baka_intimate" or ev.type == "follower_left_voluntarily" or ev.type == "death" %}
+{{ ev.id }} {{ ev.type }} {{ ev.originatingActor }} {{ ev.targetActor }}
+{% endif %}
+{% endif %}
+{% endfor %}

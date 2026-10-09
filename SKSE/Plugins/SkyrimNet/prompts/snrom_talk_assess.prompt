@@ -263,6 +263,34 @@ WHAT WAS SAID — what they were willing to say aloud, to {{ player.name }}'s fa
 Nothing has passed between them recently.
 {% endif %}
 
+{# WHAT HAPPENED, 2.2 (2026-10-09). Not everything that moves a bond is said:
+   ordering someone arrested, a slap, a brawl, someone they knew killed. These
+   come from the same record, filtered to events this person was part of or
+   present for, and to the types snrom_event_scan watches (keep the two lists
+   the same). The record gives no name for "present", so this trusts
+   get_recent_events' filter, as WHAT WAS SAID does. Placed with the speech:
+   an act is no more trustworthy than what they said about it. #}
+{% set happened = [] %}
+{% for ev in events %}
+{% if ev.type == "arrest_ordered" or ev.type == "order_arrest_failed" or ev.type == "arrest_failed" or ev.type == "kidnap_failed" or ev.type == "kidnapped" or ev.type == "restrain_failed" or ev.type == "restrained" or ev.type == "brawl_challenged" or ev.type == "brawl_accepted" or ev.type == "brawl_declined" or ev.type == "brawl_ended" or ev.type == "sdb_slapped" or ev.type == "sdb_spanked" or ev.type == "baka_forced" or ev.type == "baka_execution" or ev.type == "baka_defeat" or ev.type == "baka_intimate" or ev.type == "follower_left_voluntarily" or ev.type == "death" %}
+{% if ev.originatingActor == player.UUID or ev.targetActor == player.UUID %}
+{% if not watermarked or ev.gameTime >= npc_since_sec %}
+{% set happened = append(happened, ev) %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endfor %}
+{% if length(happened) > 0 %}
+WHAT HAPPENED — what {{ player.name }} did or had done, where {{ npc_name }} was part of it or there to see it
+{% for ev in happened %}
+{% if ev.type == "death" %}
+[{{ ev.gameTimeStr }}] {{ default(ev.data.killer, "Someone") }} killed {{ default(ev.data.victim, "someone") }}.
+{% else %}
+[{{ ev.gameTimeStr }}] {{ ev.data }}
+{% endif %}
+{% endfor %}
+{% endif %}
+
 {# Memories CANNOT be watermarked - get_relevant_memories returns no timestamp
    of any kind, only summary/details/emotion/tags/location/importanceScore. So
    they are gated INDIRECTLY: they render only when there is fresh material for
@@ -287,7 +315,7 @@ Nothing has passed between them recently.
 {% set dmarked = true %}
 {% endif %}
 {% set mem = get_relevant_memories(npc_uuid, 4) %}
-{% if mem and length(mem) > 0 and (length(said) > 0 or length(diaries) > 0) %}
+{% if mem and length(mem) > 0 and (length(said) > 0 or length(happened) > 0 or length(diaries) > 0) %}
 WHAT THEY KEPT — things they have held onto, some of them long before now. Background on them, not a record of this conversation
 {% for m in mem %}
 {# Proven-rendering form, copied from the spark assessor. Emits a bare "()"
