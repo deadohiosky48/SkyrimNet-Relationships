@@ -18,15 +18,19 @@
    handled and skips anything at or below it. A variable passed to
    RenderTemplate does not reach the template (tested), which is why the
    watermark lives in Papyrus rather than here. UUIDs are printed whole: they
-   are 64-bit and Papyrus keeps them as strings for GetActorByUUID. #}
+   are 64-bit and Papyrus keeps them as strings for GetActorByUUID.
+
+   The third field is the line's game time in seconds (2.2): Papyrus stamps
+   each enrolled speaker's last line from it, so a talk check waits until a
+   scene has gone quiet (TalkStillGoing) instead of judging half of it. #}
 {% set _who = [] %}
 {% set _who = append(_who, player.UUID) %}
 {% set events = get_recent_events(300, _who) %}
 WINDOW {{ length(events) }} {% if length(events) > 0 %}{{ first(events).id }}{% else %}0{% endif %}
 {% for ev in events %}
 {% if ev.type == "dialogue" and ev.targetActor == player.UUID and ev.originatingActor != player.UUID and ev.originatingActor != 0 %}
-{{ ev.id }} {{ ev.originatingActor }}
+{{ ev.id }} {{ ev.originatingActor }} {{ ev.gameTime }}
 {% else if (ev.type == "dialogue_player_text" or ev.type == "dialogue_player_stt") and ev.originatingActor == player.UUID and ev.targetActor != 0 and ev.targetActor != player.UUID %}
-{{ ev.id }} {{ ev.targetActor }}
+{{ ev.id }} {{ ev.targetActor }} {{ ev.gameTime }}
 {% endif %}
 {% endfor %}

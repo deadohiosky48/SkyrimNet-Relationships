@@ -7085,10 +7085,32 @@ Bool Function TalkCandidate(Actor akActor, Float afNow, Float afCooldown)
     ; Alive, loaded and near the player already: akActor comes from Observers.
     ; This asked IsFollowing until 2.0 - a gate that was only ever Romantasy's
     ; (design 3.2), and that left a non-follower's conversations unscored.
+    If TalkStillGoing(akActor, afNow)
+        Return False                            ; judged once the scene is over
+    EndIf
     If StorageUtil.GetIntValue(akActor, "SNRom_TalkSoon", 0) == 1
         Return True                             ; a breakup asked for it now (EndRomance)
     EndIf
     Return (afNow - StorageUtil.GetFloatValue(akActor, "SNRom_LastTalkCheck", 0.0)) >= afCooldown
+EndFunction
+
+Float Function TALK_QUIET_HOURS() Global
+    { How long someone must have been quiet with the player before their
+      conversation is judged: about 45 real seconds at the default timescale. }
+    Return 0.25
+EndFunction
+
+Bool Function TalkStillGoing(Actor akActor, Float afNow)
+    { A SCENE IS JUDGED WHOLE (2.2, 2026-10-10). Silana's check ran at 9:40,
+      fifteen minutes into a scene that went on long after: it saw the
+      introductions and her first rebuke, and scored that slice SMALL. The
+      rest was left for a later check that would see it without its start.
+      Judged in slices, every slice looks small. So nobody is judged while
+      they spoke with the player within TALK_QUIET_HOURS; the early tick
+      (AnyAssessSoonNear) keeps coming round until they have gone quiet.
+      SNRom_LastTalkLine is stamped by ScanConversations from the record. }
+    Float last = StorageUtil.GetFloatValue(akActor, "SNRom_LastTalkLine", 0.0)
+    Return last > 0.0 && (afNow - last) < TALK_QUIET_HOURS() / 24.0
 EndFunction
 
 Function AssessTalk(Actor akActor, Float afSince = 0.0)
@@ -9407,11 +9429,13 @@ Function ScanConversations()
     If !_ready
         Return
     EndIf
-    If !SkyrimNetApi.GetConfigBool(CFG(), "enrollByConversation", False)
+    Bool enrollOn = SkyrimNetApi.GetConfigBool(CFG(), "enrollByConversation", False)
+    If !enrollOn
         StorageUtil.UnsetIntValue(None, "SNRom_TalkScanOn")
-        Return
     EndIf
-    If _dashNatives < 9
+    If _dashNatives < 9 && !enrollOn
+        Return
+    ElseIf _dashNatives < 9
         Diag(LOG_WARN(), "Conversation enrollment needs SkyrimNetRelationships.dll from 2.1 (natives v9; this one " +             "reports v" + _dashNatives + ") - nobody is enrolled by talking.")
         Return
     EndIf
@@ -9426,6 +9450,7 @@ Function ScanConversations()
     Int windowCount = 0
     Int windowOldest = 0
     String seen = ","
+    Float nowSec = Utility.GetCurrentGameTime() * 86400.0
     Int considered = 0
     Int enrolled = 0
     String report = ""
@@ -9443,7 +9468,18 @@ Function ScanConversations()
                 If id > newMark
                     newMark = id
                 EndIf
-                If !fresh && id > mark && StringUtil.Find(seen, "," + f[1] + ",") < 0
+                ; The latest line each person spoke with the player, for
+                ; TalkStillGoing. Only the past hour is worth resolving.
+                If f.Length >= 3 && (nowSec - (f[2] as Float)) < 3600.0
+                    Actor spoke = SkyrimNetApi.GetActorByUUID(SNRom_Native.UuidHex(f[1]))
+                    Float at = (f[2] as Float) / 86400.0
+                    If spoke != None && IsEnrolled(spoke) && at > StorageUtil.GetFloatValue(spoke, "SNRom_LastTalkLine", 0.0)
+                        StorageUtil.SetFloatValue(spoke, "SNRom_LastTalkLine", at)
+                    EndIf
+                EndIf
+                If !enrollOn
+                    ; stamping only
+                ElseIf !fresh && id > mark && StringUtil.Find(seen, "," + f[1] + ",") < 0
                     seen += f[1] + ","
                     considered += 1
                     ; The record prints UUIDs in decimal; GetActorByUUID wants
@@ -9471,6 +9507,9 @@ Function ScanConversations()
         i += 1
     EndWhile
 
+    If !enrollOn
+        Return
+    EndIf
     If fresh
         If windowOldest > newMark
             newMark = windowOldest

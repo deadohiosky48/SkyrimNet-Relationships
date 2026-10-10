@@ -287,30 +287,6 @@ WHAT THEY OVERHEARD — what {{ player.name }} said to someone else while {{ npc
 {% endfor %}
 {% endif %}
 
-{# WHAT THEY OVERHEARD, 2.2 (2026-10-09). Vivienne and Sebione stood beside
-   the player while he told Silana what the women of his household were for,
-   and neither was judged: this prompt read only what passed between this
-   person and the player. What the player says to someone else in this
-   person's hearing is now shown, under the rule above - not scored as if it
-   were said to them, but how they took it is theirs. Same window, same
-   presence filter (get_recent_events) as WHAT WAS SAID. #}
-{% set overheard = [] %}
-{% for ev in events %}
-{% if existsIn(ev.data, "dialogue") and existsIn(ev.data, "listener") and ev.data.listener != "" and ev.data.listener != npc_name %}
-{% if (ev.type == "dialogue" and existsIn(ev.data, "speaker") and ev.data.speaker == player.name) or ev.type == "dialogue_player_text" or ev.type == "dialogue_player_stt" %}
-{% if not watermarked or ev.gameTime >= npc_since_sec %}
-{% set overheard = append(overheard, ev) %}
-{% endif %}
-{% endif %}
-{% endif %}
-{% endfor %}
-{% if length(overheard) > 0 %}
-WHAT THEY OVERHEARD — what {{ player.name }} said to someone else while {{ npc_name }} was there. It was not said to them: judge only how they took it
-{% for ev in overheard %}
-[{{ ev.gameTimeStr }}] {{ player.name }}, to {{ ev.data.listener }}: {{ ev.data.dialogue }}
-{% endfor %}
-{% endif %}
-
 {# WHAT HAPPENED, 2.2 (2026-10-09). Not everything that moves a bond is said:
    ordering someone arrested, a slap, a brawl, someone they knew killed. These
    come from the same record, filtered to events this person was part of or
@@ -429,7 +405,11 @@ WEIGHT — how far this moved them:
    himself" and scored NOTHING: "a sour exchange that changed nothing" and
    "couples bicker" sat beside the answer, and only the warm side had a low
    bar. She should take a dimmer view, lightly. #}
-**The same low bar holds going the other way.** If {{ npc_name }} came away thinking less of {{ player.name }} — disappointed in them, embarrassed for them, their respect a notch lower — that is at least `SMALL`, even when they still love {{ player.name }}, and even when it was not done to them. A bad mood that leaves their view of {{ player.name }} where it was is still `NOTHING`.
+**The same ladder runs the other way, rung for rung.** Even when they still love {{ player.name }}, and even when it was not done to them:
+- `SMALL` — they came away thinking a little less of {{ player.name }}: disappointed in them, embarrassed for them, their respect a notch lower.
+- `REAL` — it hurt or angered them, and it showed: they said so to {{ player.name }}'s face, or turned cold, or wrote it down as a wound.
+- `MAJOR` — it shook what they believed about {{ player.name }}. They now doubt their word or their promises, ask what they are to each other, or draw a line that was not there before.
+A bad mood that leaves their view of {{ player.name }} where it was is still `NOTHING`. Being demeaned, or watching someone else demeaned, is not a bad mood.
 
 {# NO DIRECTION IS NAMED FOR BETRAYAL, 2026-10-09. Step 2 added "and AWAY for
    BETRAYAL" here, and the model merged the two fields: twice it answered
