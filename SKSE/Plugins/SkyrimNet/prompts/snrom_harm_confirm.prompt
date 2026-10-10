@@ -13,12 +13,23 @@
    scale anything UP: the first call already judged the size, and this one
    exists only to stop an error. The answers are words; Papyrus maps them.
 
+   ASKED FROM BELOW TOO (2.2, 2026-10-10). The first call, a small model
+   choosing among eight answers, kept calling the end of Silana's marriage
+   MAJOR - a wrong, not a break - however the prompt was worded. So a MAJOR
+   loss comes here as well (harm_from "MAJOR"), with the one question this
+   call is built for: was it more? Then the answer can raise it, and only to
+   BETRAYAL; NONE and WOUND both leave the first call's MAJOR standing.
+
    Same three sources, same order, as snrom_talk_assess (dialogue, memories,
    diary, least guarded nearest the question), and the same counter to the
    profile's roleplay heading. No example of a betrayal anywhere in here: in
    this project an illustration is copied back as the answer.
    ══════════════════════════════════════════════════════════════════════════ #}
+{% if exists("harm_from") and harm_from == "MAJOR" %}
+You check one judgement before it is acted on. Another reader found that {{ player.name }} did {{ npc_name }} a serious wrong, and quoted it. The question here is whether it went further: whether, to {{ npc_name }}, it was a betrayal. A serious wrong stays a serious wrong unless all three questions below hold.
+{% else %}
 You check one judgement before it is acted on. Another reader decided that {{ player.name }} betrayed {{ npc_name }}, and quoted what they did. Acting on that changes everything between them, so it is checked first, against the record and against who {{ npc_name }} is.
+{% endif %}
 
 Three questions, in order. Stop at the first one that fails.
 

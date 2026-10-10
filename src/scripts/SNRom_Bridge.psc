@@ -6857,7 +6857,8 @@ Float Function AssessIntervalHours(Int aiNear = -1) Global
       Without aiNear (at load), the last tick's count. }
     Int followers = aiNear
     If followers < 0
-        followers = StorageUtil.GetIntValue(None, "SNRom_NearCount", 1)
+        ; A save from before 2.2 has no count yet: the fast end, not the slow.
+        followers = StorageUtil.GetIntValue(None, "SNRom_NearCount", 4)
     EndIf
     If followers < 1
         followers = 1
@@ -7083,6 +7084,20 @@ Function AssessNextTalk()
         i += 1
     EndWhile
 
+    ; WHOEVER WALKED OFF IS STILL JUDGED (2.2, 2026-10-10). Silana ended the
+    ; scene by leaving the house, and the queue serves only who is near: the
+    ; person a fight drove away was the one never judged for it. Anyone who
+    ; spoke with the player within RECENT_TALK_HOURS and has lines no check
+    ; has read stays a candidate wherever they are. Those near are judged
+    ; first; this runs only when none of them is due.
+    If pick == None
+        pick = RecentTalkerDue(now, cooldown)
+        If pick != None
+            pickSince = StorageUtil.GetFloatValue(pick, "SNRom_LastTalkCheck", 0.0)
+            Diag(LOG_INFO(), "Conversation check for " + pick.GetDisplayName() + \
+                ", who is no longer near: they spoke with you recently and that has not been judged.")
+        EndIf
+    EndIf
     If pick == None
         Return
     EndIf
@@ -7108,6 +7123,34 @@ Bool Function TalkCandidate(Actor akActor, Float afNow, Float afCooldown)
         Return True                             ; a breakup asked for it now (EndRomance)
     EndIf
     Return (afNow - StorageUtil.GetFloatValue(akActor, "SNRom_LastTalkCheck", 0.0)) >= afCooldown
+EndFunction
+
+Float Function RECENT_TALK_HOURS() Global
+    { How long someone who walked away stays owed a check for what they said. }
+    Return 6.0
+EndFunction
+
+Actor Function RecentTalkerDue(Float afNow, Float afCooldown)
+    { The first of SNRom_RecentTalkers with lines no check has read, out of the
+      quiet window and the cooldown. Drops anyone judged since their last line,
+      or whose last line is older than RECENT_TALK_HOURS. }
+    Int i = StorageUtil.FormListCount(None, "SNRom_RecentTalkers")
+    While i > 0
+        i -= 1
+        Actor a = StorageUtil.FormListGet(None, "SNRom_RecentTalkers", i) as Actor
+        Float line = 0.0
+        If a != None
+            line = StorageUtil.GetFloatValue(a, "SNRom_LastTalkLine", 0.0)
+        EndIf
+        If a == None || a.IsDead() || !IsEnrolled(a) || \
+           StorageUtil.GetFloatValue(a, "SNRom_LastTalkCheck", 0.0) >= line || \
+           (afNow - line) > RECENT_TALK_HOURS() / 24.0
+            StorageUtil.FormListRemoveAt(None, "SNRom_RecentTalkers", i)
+        ElseIf TalkCandidate(a, afNow, afCooldown)
+            Return a
+        EndIf
+    EndWhile
+    Return None
 EndFunction
 
 Float Function TALK_QUIET_HOURS() Global
@@ -7333,10 +7376,23 @@ Event OnTalkAssessed(String asResponse, Int aiSuccess)
             ApplyTalkAward(who, -SNRom_Decorators.WeightToPoints("MAJOR"), "MAJOR", what)
             Return
         EndIf
-        If !ConfirmHarm(who, act, what)
+        If !ConfirmHarm(who, act, what, "BETRAYAL")
             ApplyTalkAward(who, -SNRom_Decorators.WeightToPoints("MAJOR"), "MAJOR", what)
         EndIf
         Return
+    EndIf
+    ; A MAJOR LOSS IS ASKED WHETHER IT WAS MORE (2.2, 2026-10-10). The scorer
+    ; chooses among eight answers and settled on MAJOR for the end of Silana's
+    ; marriage four runs in a row. The betrayal check asks the one question,
+    ; and may raise it to BETRAYAL; anything else leaves the MAJOR as it was.
+    If points < 0 && SNRom_Decorators.Upper(SNRom_Decorators.Trim(weightWord)) == "MAJOR"
+        String majAct = SNRom_Decorators.FieldValue(asResponse, "ACT:")
+        If majAct == "" || SNRom_Decorators.Upper(majAct) == "NONE"
+            majAct = what
+        EndIf
+        If ConfirmHarm(who, majAct, what, "MAJOR")
+            Return                              ; OnHarmConfirmed pays it
+        EndIf
     EndIf
     String landKind = SNRom_Decorators.Upper(SNRom_Decorators.Trim(\
         SNRom_Decorators.FieldValue(asResponse, "LANDMARK_KIND:")))
@@ -7363,6 +7419,7 @@ Actor  _harmActor
 String _harmName
 String _harmWhat
 String _harmAct
+String _harmFrom
 Float  _harmPendingAt
 Bool   _harmIsRetry
 ; ONE CHECK WAITING TO BE ASKED AGAIN (the author, 2026-10-08: "retry later
@@ -7373,19 +7430,22 @@ Bool   _harmIsRetry
 Actor  _harmRetryActor
 String _harmRetryAct
 String _harmRetryWhat
+String _harmRetryFrom
 
-Bool Function ConfirmHarm(Actor akActor, String asAct, String asWhat)
-    { Sends snrom_harm_confirm for a BETRAYAL verdict. False when it could not
-      be sent (one already out, or the call failed), and the caller counts
-      the harm as MAJOR instead: a real wrong, never the largest cost on one
-      reading. }
+Bool Function ConfirmHarm(Actor akActor, String asAct, String asWhat, String asFrom)
+    { Sends snrom_harm_confirm for a BETRAYAL verdict, or for a MAJOR loss to
+      ask whether it was one (asFrom: "BETRAYAL" or "MAJOR"). False when it
+      could not be sent (one already out, or the call failed), and the caller
+      counts the harm as MAJOR instead: a real wrong, never the largest cost
+      on one reading. }
     If _harmActor != None && !SlotStale(_harmPendingAt)
-        Return QueueHarmRetry(akActor, asAct, asWhat, "a check for " + _harmName + " is still out")
+        Return QueueHarmRetry(akActor, asAct, asWhat, asFrom, "a check for " + _harmName + " is still out")
     EndIf
     _harmActor = akActor
     _harmName = akActor.GetDisplayName()
     _harmWhat = asWhat
     _harmAct = asAct
+    _harmFrom = asFrom
     _harmIsRetry = akActor == _harmRetryActor
     If _harmIsRetry
         _harmRetryActor = None
@@ -7394,21 +7454,41 @@ Bool Function ConfirmHarm(Actor akActor, String asAct, String asWhat)
     String ctx = "{\"npc_name\":\"" + SNRom_Decorators.JsonEscape(_harmName) + "\"" + \
         ",\"npc_formid\":" + akActor.GetFormID() + \
         ",\"harm_act\":\"" + SNRom_Decorators.JsonEscape(asAct) + "\"" + \
-        ",\"harm_what\":\"" + SNRom_Decorators.JsonEscape(asWhat) + "\"}"
-    Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_harm_confirm", VariantName(), ctx, \
+        ",\"harm_what\":\"" + SNRom_Decorators.JsonEscape(asWhat) + "\"" + \
+        ",\"harm_from\":\"" + asFrom + "\"}"
+    Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_harm_confirm", JudgeVariantName(), ctx, \
         Self, "SNRom_Bridge", "OnHarmConfirmed")
-    Diag(LOG_INFO(), "Betrayal for " + _harmName + " sent for a second look (rc=" + rc + "). Act quoted: " + asAct)
+    If asFrom == "MAJOR"
+        Diag(LOG_INFO(), "MAJOR away for " + _harmName + " sent to the betrayal check (rc=" + rc + \
+            ", variant " + JudgeVariantName() + "). Act quoted: " + asAct)
+    Else
+        Diag(LOG_INFO(), "Betrayal for " + _harmName + " sent for a second look (rc=" + rc + \
+            ", variant " + JudgeVariantName() + "). Act quoted: " + asAct)
+    EndIf
     If rc != 1
         _harmActor = None
         If !_harmIsRetry
-            Return QueueHarmRetry(akActor, asAct, asWhat, "the call could not be sent")
+            Return QueueHarmRetry(akActor, asAct, asWhat, asFrom, "the call could not be sent")
         EndIf
         Return False
     EndIf
     Return True
 EndFunction
 
-Bool Function QueueHarmRetry(Actor akActor, String asAct, String asWhat, String asWhy)
+String Function JudgeVariantName() Global
+    { THE BETRAYAL CHECK MAY RUN ON A STRONGER MODEL (2.2, 2026-10-10). It is
+      rare - only a BETRAYAL or MAJOR loss reaches it - and it is the call
+      that decides whether a relationship breaks, so it is the one worth
+      paying for while the routine scoring stays on a small local model.
+      snrom_judgement is declared in the manifest for that. The DEFAULT stays
+      snrom_background until it is proven that declaring a variant puts it in
+      OpenRouter.yaml: snrom_background was first hand-added there, and an
+      unknown variant answers nothing, silently. Named apart from the config
+      key for the reason VariantName gives. }
+    Return SkyrimNetApi.GetConfigString(CFG(), "llmJudgeVariant", "snrom_background")
+EndFunction
+
+Bool Function QueueHarmRetry(Actor akActor, String asAct, String asWhat, String asFrom, String asWhy)
     { Holds a betrayal check to be asked again on the next talk tick. True
       when it is held (nothing is paid yet); False when the one slot is taken
       by someone else, and the caller counts it as MAJOR, away. }
@@ -7420,6 +7500,7 @@ Bool Function QueueHarmRetry(Actor akActor, String asAct, String asWhat, String 
     _harmRetryActor = akActor
     _harmRetryAct = asAct
     _harmRetryWhat = asWhat
+    _harmRetryFrom = asFrom
     Diag(LOG_INFO(), "Betrayal check for " + akActor.GetDisplayName() + " held for the next talk tick - " + asWhy + ".")
     Return True
 EndFunction
@@ -7431,7 +7512,7 @@ Function RetryHarmCheck()
         Return
     EndIf
     Actor who = _harmRetryActor
-    If !ConfirmHarm(who, _harmRetryAct, _harmRetryWhat)
+    If !ConfirmHarm(who, _harmRetryAct, _harmRetryWhat, _harmRetryFrom)
         _harmRetryActor = None
         Diag(LOG_WARN(), "Betrayal check for " + who.GetDisplayName() + " failed twice - counted as MAJOR, away.")
         ApplyTalkAward(who, -SNRom_Decorators.WeightToPoints("MAJOR"), "MAJOR", _harmRetryWhat)
@@ -7447,6 +7528,7 @@ Event OnHarmConfirmed(String asResponse, Int aiSuccess)
     String asked = _harmName
     String what = _harmWhat
     String act = _harmAct
+    String from = _harmFrom
     Bool wasRetry = _harmIsRetry
     _harmActor = None
     If who == None
@@ -7456,7 +7538,7 @@ Event OnHarmConfirmed(String asResponse, Int aiSuccess)
     ; failed while the model server was off, and this charged -120). Asked
     ; again once; a second failure is a serious wrong, as before.
     If aiSuccess != 1 && !wasRetry
-        If QueueHarmRetry(who, act, what, "the model did not answer")
+        If QueueHarmRetry(who, act, what, from, "the model did not answer")
             Return
         EndIf
     EndIf
@@ -7474,6 +7556,11 @@ Event OnHarmConfirmed(String asResponse, Int aiSuccess)
     If verdict == "BETRAYAL"
         Diag(LOG_INFO(), "Betrayal for " + asked + " CONFIRMED: " + why)
         ApplyTalkAward(who, SNRom_Decorators.WeightToPoints("BETRAYAL"), "BETRAYAL", what)
+    ElseIf from == "MAJOR"
+        ; Asked from below: anything short of BETRAYAL leaves the MAJOR.
+        Diag(LOG_INFO(), "MAJOR away for " + asked + " was not a betrayal on a second look ('" + verdict + \
+            "') - stays MAJOR: " + why)
+        ApplyTalkAward(who, -SNRom_Decorators.WeightToPoints("MAJOR"), "MAJOR", what)
     ElseIf verdict == "NONE"
         Diag(LOG_INFO(), "Betrayal for " + asked + " NOT FOUND on a second look - nothing paid: " + why)
     Else
@@ -9527,6 +9614,7 @@ Function ScanConversations()
                     Float at = (f[2] as Float) / 86400.0
                     If spoke != None && IsEnrolled(spoke) && at > StorageUtil.GetFloatValue(spoke, "SNRom_LastTalkLine", 0.0)
                         StorageUtil.SetFloatValue(spoke, "SNRom_LastTalkLine", at)
+                        StorageUtil.FormListAdd(None, "SNRom_RecentTalkers", spoke, False)
                     EndIf
                 EndIf
                 If !enrollOn

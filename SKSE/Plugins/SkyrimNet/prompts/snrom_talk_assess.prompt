@@ -395,11 +395,7 @@ A bad mood that leaves their view of {{ player.name }} where it was is still `NO
 DIRECTION — `TOWARD` if it drew them closer, `AWAY` if it cost {{ player.name }} ground. Use `TOWARD` when the weight is `NOTHING`.
 
 
-This is the distinction that matters most in the two answers above, and getting it wrong in either direction breaks something.
-
-
-
-And most disagreements are not even that. Couples bicker. People are tired, or frightened, or wrong, and say so badly. `NOTHING` is as available on a bad day as on a good one.
+Most disagreements are not a wound. Couples bicker; people are tired, or frightened, or wrong, and say so badly. A quarrel between {{ npc_name }} and {{ player.name }} that leaves them where they were is `NOTHING`, on a bad day as on a good one. That is about the two of them disagreeing. When {{ player.name }} demeans, threatens or casts off someone - {{ npc_name }}, or anyone in front of them - and {{ npc_name }} objects, that is not bickering: it is the ladder above.
 
 **A COURTSHIP IS BUILT OUT OF `SMALL`.** Most real attraction is deniable while it is happening — a pretext to stay, a compliment aimed slightly off target, a question asked because it keeps them talking, an offer of help nobody needed. None of that survives being written down as a decisive moment, and all of it is how people actually get closer. If every deniable exchange scores `NOTHING`, the entire early arc of a romance is invisible and the player learns that what they say does not matter.
 
@@ -457,5 +453,5 @@ DIRECTION: <TOWARD|AWAY>   <- which way it went
 WEIGHT: <NOTHING|SMALL|REAL|MAJOR|LANDMARK|BETRAYAL>   <- how far
 LANDMARK_KIND: <COUPLE|MARRIAGE>   <- omit unless WEIGHT is `LANDMARK`. `COUPLE` if what they named aloud was becoming partners. `MARRIAGE` if what they named was marrying - proposing, accepting, or both plainly committing to it. Answer truthfully; nothing about the score depends on which you pick.
 ADDRESS: <NONE, unless one of them explicitly set or changed what {{ npc_name }} calls {{ player.name }} in the exchange above>
-ACT: <omit unless WEIGHT is `BETRAYAL`. The words from the record above that show what {{ player.name }} did, copied as they appear.>
+ACT: <omit unless WEIGHT is `BETRAYAL`, or `MAJOR` going `AWAY`. The words from the record above that show what {{ player.name }} did, copied as they appear.>
 WHAT: <if not NOTHING, one sentence in their voice naming the specific thing above that did it — spoken, remembered or written, whichever actually carries it. If NOTHING, write NONE.>

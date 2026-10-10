@@ -23,6 +23,12 @@ plugin:
 # changes nothing for anyone who does not touch it. Declaration shape copied
 # from the two working examples: SeverActions and IntelEngine.
 variants:
+  # snrom_judgement (2.2): the betrayal check alone - rare, and the call that
+  # decides whether a relationship breaks. Declared so it can be given a
+  # stronger model than the routine scoring; empty, it falls through like the
+  # other.
+  - name: snrom_judgement
+    description: "The betrayal check: a short second look, asked only when the conversation scoring finds a betrayal or a serious wrong, that decides whether a relationship breaks. Rare - a few calls a play session at most - so it is the one place a stronger model than the routine scoring is worth paying for. Wants the same shape as snrom_background: LOW temperature, structured output OFF, reasoning OFF."
   - name: snrom_background
     description: "Background scoring prompts — disposition authoring, conversational scoring, and romantic spark assessment. These fire on a timer rather than in live conversation, so latency does not matter, but they must produce a strict labeled format from a long prompt. Prefer LOW temperature and a generous timeout and token budget over speed; format drift and truncation are this mod's two historical failure modes. Structured outputs must be OFF - JSON mode returns quoted keys that the parser discards as truncated."
 
@@ -341,9 +347,21 @@ schema:
     - name: "LLM Variant"
       path: "llmVariant"
       type: "select"
-      description: "Which OpenRouter.yaml variant serves ALL of this mod's background LLM work - disposition authoring, conversation scoring, the romance assessment and drift reviews. MUST name a variant that exists in your config: an empty or unknown value silently returns no response. Prefer a LOW-TEMPERATURE variant. These prompts emit labeled lines that get parsed, not prose, and creative sampling is how they come back malformed - a variant tuned for diary or dialogue writing is the wrong shape even on a large model. Also wants generous max_tokens, structured output OFF and reasoning OFF. Avoid naming a variant another subsystem owns, such as DiaryGeneration or memory: retuning it for that subsystem silently retunes this one. Whichever you name may route to a paid provider depending on your OpenRouter.yaml, so if you run local models for background work, point this at one of them. Default: snrom_background, the variant this mod declares and the one shown on the Models page."
+      description: "Which OpenRouter.yaml variant serves this mod's background LLM work - disposition authoring, conversation scoring, the romance assessment and drift reviews. The betrayal check has its own, Betrayal Check Variant. MUST name a variant that exists in your config: an empty or unknown value silently returns no response. Prefer a LOW-TEMPERATURE variant. These prompts emit labeled lines that get parsed, not prose, and creative sampling is how they come back malformed - a variant tuned for diary or dialogue writing is the wrong shape even on a large model. Also wants generous max_tokens, structured output OFF and reasoning OFF. Avoid naming a variant another subsystem owns, such as DiaryGeneration or memory: retuning it for that subsystem silently retunes this one. Whichever you name may route to a paid provider depending on your OpenRouter.yaml, so if you run local models for background work, point this at one of them. Default: snrom_background, the variant this mod declares and the one shown on the Models page."
       defaultValue: "snrom_background"
       options:
+        - snrom_background
+        - CharacterProfileGeneration
+        - AgentDefault
+        - DiaryGeneration
+      category: "Enrollment"
+    - name: "Betrayal Check Variant"
+      path: "llmJudgeVariant"
+      type: "select"
+      description: "Which OpenRouter.yaml variant serves the betrayal check: the second look, asked only when the conversation scoring finds a betrayal or a serious wrong, that decides whether a relationship breaks. It is rare, so if you run a small local model for the routine work, this is the one call worth pointing at a stronger model - give snrom_judgement one on the Models page. Same rules as LLM Variant: it must exist in your config, LOW temperature, structured output OFF, reasoning OFF. Default: snrom_background, the same as everything else; switch it to snrom_judgement once that variant has a model on the Models page."
+      defaultValue: "snrom_background"
+      options:
+        - snrom_judgement
         - snrom_background
         - CharacterProfileGeneration
         - AgentDefault
