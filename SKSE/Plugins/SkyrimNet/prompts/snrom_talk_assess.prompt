@@ -69,30 +69,6 @@ Rarely, {{ player.name }} does something that breaks what the relationship itsel
 
 It counts only if {{ npc_name }} knows: they saw it, were part of it, or were told. And you must be able to quote it from what is below. A betrayal you would have to infer is not one to answer.
 
-{# BETRAYAL, 2.2 (WP-N). The one answer that can take a bond below Stranger in
-   a single step, so: judged against THEM (the author, 2026-10-06: how
-   devastating an act is depends on the person - cheating on someone who
-   expected loyalty, or tricking them out of their home, as Viola was), only
-   what they know, and the act must be quoted (ACT, below). Papyrus has it
-   checked by a second call before it costs anything. No example of a
-   betrayal here: an illustration is copied back as the answer. #}
-SOMETIMES IT IS BROKEN
-Rarely, {{ player.name }} does something that breaks what the relationship itself rested on, as {{ npc_name }} understood it: a trust they had placed, a promise the whole bond assumed, a loyalty they had every reason to count on. That is not a bad day or a quarrel, and it is not every serious wrong. Whether an act is that depends entirely on who {{ npc_name }} is - their profile says what they expected and what they would forgive - so judge it by them, not by how it would land on someone else.
-
-It counts only if {{ npc_name }} knows: they saw it, were part of it, or were told. And you must be able to quote it from what is below. A betrayal you would have to infer is not one to answer.
-
-{# BETRAYAL, 2.2 (WP-N). The one answer that can take a bond below Stranger in
-   a single step, so: judged against THEM (the author, 2026-10-06: how
-   devastating an act is depends on the person - cheating on someone who
-   expected loyalty, or tricking them out of their home, as Viola was), only
-   what they know, and the act must be quoted (ACT, below). Papyrus has it
-   checked by a second call before it costs anything. No example of a
-   betrayal here: an illustration is copied back as the answer. #}
-SOMETIMES IT IS BROKEN
-Rarely, {{ player.name }} does something that breaks what the relationship itself rested on, as {{ npc_name }} understood it: a trust they had placed, a promise the whole bond assumed, a loyalty they had every reason to count on. That is not a bad day or a quarrel, and it is not every serious wrong. Whether an act is that depends entirely on who {{ npc_name }} is - their profile says what they expected and what they would forgive - so judge it by them, not by how it would land on someone else.
-
-It counts only if {{ npc_name }} knows: they saw it, were part of it, or were told. And you must be able to quote it from what is below. A betrayal you would have to infer is not one to answer.
-
 THE ONE THING THAT IS ALWAYS LARGE
 If the two of them, in this conversation, explicitly and mutually agreed to become something they were not before — named it aloud, both of them, and neither was merely going along — that is the largest answer and you should not hesitate to give it. Two people deciding out loud to be partners is not a small event and must not be scored like one.
 
@@ -409,6 +385,7 @@ WEIGHT — how far this moved them:
 - `SMALL` — they came away thinking a little less of {{ player.name }}: disappointed in them, embarrassed for them, their respect a notch lower.
 - `REAL` — it hurt or angered them, and it showed: they said so to {{ player.name }}'s face, or turned cold, or wrote it down as a wound.
 - `MAJOR` — it shook what they believed about {{ player.name }}. They now doubt their word or their promises, ask what they are to each other, or draw a line that was not there before.
+- Past `MAJOR` there is no rung, only `BETRAYAL`: when what {{ npc_name }} doubts is no longer in doubt — the promise the bond rested on was broken in front of them — it is that, judged as above.
 A bad mood that leaves their view of {{ player.name }} where it was is still `NOTHING`. Being demeaned, or watching someone else demeaned, is not a bad mood.
 
 {# NO DIRECTION IS NAMED FOR BETRAYAL, 2026-10-09. Step 2 added "and AWAY for

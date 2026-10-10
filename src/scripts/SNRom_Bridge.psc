@@ -6824,7 +6824,7 @@ EndFunction
 ; independent timers without them stepping on each other.
 ; ===========================================================================
 
-Float Function AssessIntervalHours() Global
+Float Function AssessIntervalHours(Int aiNear = 0) Global
     { How long until the next ASSESSMENT tick. Housekeeping keeps its own,
       slower schedule - see OnUpdateGameTime.
 
@@ -6846,8 +6846,17 @@ Float Function AssessIntervalHours() Global
 
       Count comes from the sweep rather than a fresh walk, so it can be one
       housekeeping period stale. That is fine: dismissing someone should not
-      change the tick rate the instant it happens. }
+      change the tick rate the instant it happens.
+
+      OR EVERYONE NEAR (aiNear, the observers), whichever is more, from 2.2:
+      the talk assessor has served whoever can observe the player since 2.0,
+      not followers. Paced by followers alone, a scene with four enrolled
+      people and nobody following ticked every two game hours - Silana waited
+      that long with her marriage coming apart in front of her (2026-10-10). }
     Int followers = StorageUtil.GetIntValue(None, "SNRom_FollowerCount", 1)
+    If aiNear > followers
+        followers = aiNear
+    EndIf
     If followers < 1
         followers = 1
     EndIf
@@ -6973,6 +6982,8 @@ Event OnUpdateGameTime()
     _tickEarly = AnyAssessSoonNear()
     If _tickEarly
         RegisterForSingleUpdateGameTime(ASSESS_SOON_HOURS())
+    ElseIf _observers
+        RegisterForSingleUpdateGameTime(AssessIntervalHours(_observers.Length))
     Else
         RegisterForSingleUpdateGameTime(AssessIntervalHours())
     EndIf
