@@ -6824,7 +6824,7 @@ EndFunction
 ; independent timers without them stepping on each other.
 ; ===========================================================================
 
-Float Function AssessIntervalHours(Int aiNear = 0) Global
+Float Function AssessIntervalHours(Int aiNear = -1) Global
     { How long until the next ASSESSMENT tick. Housekeeping keeps its own,
       slower schedule - see OnUpdateGameTime.
 
@@ -6848,14 +6848,16 @@ Float Function AssessIntervalHours(Int aiNear = 0) Global
       housekeeping period stale. That is fine: dismissing someone should not
       change the tick rate the instant it happens.
 
-      OR EVERYONE NEAR (aiNear, the observers), whichever is more, from 2.2:
-      the talk assessor has served whoever can observe the player since 2.0,
-      not followers. Paced by followers alone, a scene with four enrolled
-      people and nobody following ticked every two game hours - Silana waited
-      that long with her marriage coming apart in front of her (2026-10-10). }
-    Int followers = StorageUtil.GetIntValue(None, "SNRom_FollowerCount", 1)
-    If aiNear > followers
-        followers = aiNear
+      BY WHO IS NEAR, NOT WHO IS FOLLOWING (2.2, 2026-10-10). The talk
+      assessor has served whoever can observe the player since 2.0, so the
+      count is the observers (aiNear), and following plays no part. Paced by
+      the sweep's follower count, a load whose first sweep ran before
+      SeverActions had restored its followers counted none, and the tick fell
+      to two game hours while Silana's marriage came apart in front of her.
+      Without aiNear (at load), the last tick's count. }
+    Int followers = aiNear
+    If followers < 0
+        followers = StorageUtil.GetIntValue(None, "SNRom_NearCount", 1)
     EndIf
     If followers < 1
         followers = 1
@@ -6982,10 +6984,13 @@ Event OnUpdateGameTime()
     _tickEarly = AnyAssessSoonNear()
     If _tickEarly
         RegisterForSingleUpdateGameTime(ASSESS_SOON_HOURS())
-    ElseIf _observers
-        RegisterForSingleUpdateGameTime(AssessIntervalHours(_observers.Length))
     Else
-        RegisterForSingleUpdateGameTime(AssessIntervalHours())
+        Int near = 0
+        If _observers
+            near = _observers.Length
+        EndIf
+        StorageUtil.SetIntValue(None, "SNRom_NearCount", near)
+        RegisterForSingleUpdateGameTime(AssessIntervalHours(near))
     EndIf
 EndEvent
 
@@ -7572,6 +7577,23 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
         EndIf
     EndIf
 
+    ; -- A HEAVY BLOW, NOT A RUN OF THEM (2.2, 2026-10-10) ---------------------
+    ; MAJOR away is the largest ordinary loss, and it can take a resentful bond
+    ; on into Enemy: mistreatment that goes on is meant to (the author: "a
+    ; person can only take so much abuse"). What it must not do is land three
+    ; times in an afternoon and make Enemy of one bad scene. So, like LANDMARK,
+    ; one a talkLandmarkDays window; inside it a MAJOR away counts as REAL.
+    If w == "MAJOR" && points < 0
+        Float majCool = SkyrimNetApi.GetConfigFloat(CFG(), "talkLandmarkDays", 3.0)
+        If (now - StorageUtil.GetFloatValue(akActor, "SNRom_LastMajorAway", -999.0)) < majCool
+            Diag(LOG_INFO(), "MAJOR away for " + akActor.GetDisplayName() + \
+                " counted as REAL - one was recorded within the last " + majCool + " days")
+            points = -SNRom_Decorators.WeightToPoints("REAL")
+        Else
+            StorageUtil.SetFloatValue(akActor, "SNRom_LastMajorAway", now)
+        EndIf
+    EndIf
+
     ; -- SCALE ONCE, HERE, AND USE THE RESULT EVERYWHERE ---------------------
     ; points is the weight the assessor chose. awarded is what actually lands.
     ; Keeping both is the fix for two bugs found together on 2026-08-27.
@@ -7763,15 +7785,28 @@ EndFunction
 
 Int Function BetrayalLanding(Int aiPoints) Global
     { Where a BETRAYAL leaves a bond (2.2, WP-N): -(500 + half of whatever
-      positive standing they had), never below the floor. The closer they
-      were, the deeper the cut: a Stranger lands at -500 (Disliked), a Friend
-      at 1200 at -1100 (Resentful), a Confidant at 1800 at -1400 (Resentful),
-      a Lover at 2200 at -1600 and a Spouse at 2700 at -1850 (both Enemy).
-      Someone already below Stranger falls 500 further. The one number to tune
-      after play. }
+      positive standing they had), never below BETRAYAL_DEEPEST from above
+      zero. The closer they were, the deeper the cut: a Stranger lands at -500
+      (Disliked), a Friend at 1200 at -1100 (Resentful), and anyone from about
+      1500 up at -1250, the middle of Resentful.
+
+      NOT ENEMY IN ONE STEP (the author, 2026-10-10). Enemy is the tier where
+      someone may act to harm the player, and other mods will read it that
+      way; one verdict, however well checked, should not carry a beloved
+      spouse there. A betrayal from someone who loved them leaves them deeply
+      hurt and wanting distance - Resentful - with room for the resentment to
+      deepen if the abuse goes on.
+
+      Someone already below Stranger falls 500 further, one tier: betrayed
+      again while resentful is the way into Enemy, as is mistreatment that
+      continues (ordinary AWAY awards, paced by the MAJOR-away cooldown and
+      the daily cap). }
     Int landing = -500
     If aiPoints > 0
         landing = -500 - (aiPoints / 2)
+        If landing < BETRAYAL_DEEPEST()
+            landing = BETRAYAL_DEEPEST()
+        EndIf
     ElseIf aiPoints < 0
         landing = aiPoints - 500
     EndIf
@@ -7779,6 +7814,12 @@ Int Function BetrayalLanding(Int aiPoints) Global
         landing = POINTS_FLOOR()
     EndIf
     Return landing
+EndFunction
+
+Int Function BETRAYAL_DEEPEST() Global
+    { The lowest a first betrayal lands from a positive standing: the middle
+      of Resentful (-1000 to -1499). }
+    Return -1250
 EndFunction
 
 Int Function ClimbRate(Actor akActor, Int aiAwarded) Global
