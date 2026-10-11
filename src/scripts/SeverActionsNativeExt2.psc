@@ -29,3 +29,14 @@ Bool Function BioApi_Exists(String asKey) Global Native
 Bool Function BioApi_Apply(Actor akActor, String asKey) Global Native
 Bool Function BioApi_Unapply(Actor akActor, String asKey) Global Native
 Bool Function BioApi_IsApplied(Actor akActor, String asKey) Global Native
+
+; v2 (SeverActions 4.3.0 ships v4): every block an NPC's bio shows, as
+; "direct|faction <TAB> tab <TAB> title [<TAB> key]".
+String[] Function BioApi_ListApplied(Actor akActor) Global Native
+; v3: one-block tabs.
+Bool Function BioApi_SetTabExclusive(String asTab, Bool abExclusive) Global Native
+Bool Function BioApi_IsTabExclusive(String asTab) Global Native
+; v4: every keyed block, "intimate|general <TAB> tab <TAB> title <TAB> key",
+; and a block's text.
+String[] Function BioApi_ListBlocks(Bool abIncludeIntimate) Global Native
+String Function BioApi_GetContent(String asKey) Global Native

@@ -325,6 +325,14 @@ schema:
       description: "Give everyone you enroll the Relationships bio blocks that match their character - Drawn To, Expression, Attachment, and up to two Limits - so you never have to apply them one by one. Chosen by the LLM when it writes the character, and kept in step as they change. Only fills a category that is empty: a block you applied yourself is never touched, and one you take off stays off. Needs SeverActions 4.0.1 or newer. Turn off to apply blocks only by hand; the blocks stay in SeverActions' Bio Blocks page either way. Default: on."
       defaultValue: true
       category: "Enrollment"
+    # 2.2: SeverActions' own blocks (Bio API v4, SeverActions 4.3.0). Read by
+    # OtherBlocksOn().
+    - name: "Choose Other Bio Blocks"
+      path: "bioBlocksOthers"
+      type: "bool"
+      description: "When the LLM writes someone's character, it may also choose a few of the other bio blocks in your SeverActions library - Adventuring Behavior first, then Sexual Behavior, Sexual Kinks, Dislikes, Religion, Phobias and Sexual Dislikes, and a Cognitive Level block only for someone of below-average wit or schooling. Usually four to six, never more than six, and only what their character supports. Never in a tab where you have put a block yourself, and one you take off stays off. Characters already written get theirs the next time they are re-read. Needs SeverActions 4.3.0 or newer and Assign Relationships Bio Blocks. Default: on."
+      defaultValue: true
+      category: "Enrollment"
 
     # ── Pacing ───────────────────────────────────────────────────────────────
     # ONE LEVER ABOVE FOURTEEN KNOBS. awardMaxPoints, talkCooldownHours,

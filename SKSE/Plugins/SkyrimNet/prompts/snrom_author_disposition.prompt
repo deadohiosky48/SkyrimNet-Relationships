@@ -326,6 +326,27 @@ Judge these from who this person actually is, reading the material above. The fo
 
 If the material is thin, answer with what is ordinary for a person like them — most people are somewhere in the middle on all of these. A wrong restrictive answer is not neutral: it permanently forecloses parts of their story, and unlike a wrong permissive one, nothing in play can ever open it back up.
 
+{# OTHER BLOCKS (2.2, SeverActions Bio API v4). The author, 2026-10-11: the
+   model may choose from the library's other keyed blocks too. other_blocks is
+   a numbered catalogue built by Papyrus (OtherBlocksCatalogue), titles only,
+   grouped by tab in the author's order of importance, already without the
+   tabs where the player put a block of their own. Answered by NUMBER: a
+   number cannot be misspelt. No example answer anywhere - a named answer
+   next to the question gets copied (snrom-prompt-lessons); Papyrus refuses a
+   run of four consecutive numbers as the list copied down. #}
+{% if exists("other_blocks") and other_blocks != "" %}
+OTHER_BLOCKS - short blocks from the player's library that every later conversation will read in {{ npc_name }}'s bio. Choose the ones that are true of this person, by number, from this list:
+{{ other_blocks }}
+How to choose:
+- The groups are in order of importance. Work down them.
+- Adventuring Behavior reinforces who they are day to day: choose one there for most people.
+- Sexual Behavior and Sexual Kinks: choose one or more from each that the material supports, including your own answers above for INTIMACY, ARDOR and EXCLUSIVITY. Nothing chosen there may contradict those answers.
+- Dislikes, Religion and Phobias: only when the profile or the deliberately established blocks above clearly say so. A guess does not belong here.
+- Sexual Dislikes: only with clear support.
+- Cognitive Level: only for someone of below-average wit or schooling for an adult. Most people get none.
+- Usually four to six in all, never more than six. Fewer is right when the material is thin. Never two that contradict each other.
+{% endif %}
+
 Answer in exactly this form and nothing else:
 
 NAME: {{ npc_name }}
@@ -337,3 +358,5 @@ EXCLUSIVITY: <UNTROUBLED|ACCEPTING|CONVENTIONAL|POSSESSIVE|CONSUMING>   <- if an
 WHY: <one short sentence, in third person, on what these say about them>
 LIMIT: <one short sentence, in third person, on a line they will not cross>
 LIMIT_BLOCKS: <NONE, or one or two of SECRET|TRUTH|BETWEEN|CRUELTY|OWNED|COMPETE, comma-separated>
+{% if exists("other_blocks") and other_blocks != "" %}OTHER_BLOCKS: <NONE, or up to six numbers from the OTHER_BLOCKS list, comma-separated>
+{% endif %}

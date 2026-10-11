@@ -402,6 +402,9 @@ Function RegisterEvents()
     RegisterForModEvent("SNRom_ImportPoints", "OnImportPoints")
     ; 2.2: any mod can ask for someone's conversation check now (AssessSoon).
     RegisterForModEvent("SNRom_AssessSoon", "OnAssessSoonEvent")
+    ; 2.2: SeverActions says when a bio block is applied or taken off (Bio API
+    ; v2). Registering needs nothing from SeverActions.
+    RegisterForModEvent("SeverActions_BioBlockChanged", "OnSABioChanged")
     ; A held tier notice the player can now see (AnnounceTier, Notices.h).
     RegisterForModEvent("SNRom_ShowNotice", "OnShowNotice")
 EndFunction
@@ -3852,6 +3855,7 @@ Function AuthorDisposition(Actor akActor)
 \
         ",\"npc_married\":" + marriedFlag + MarasContext(akActor) + \
         ",\"circle\":\"" + circleText + "\"" + \
+        ",\"other_blocks\":\"" + OtherBlocksCatalogue(akActor) + "\"" + \
         ",\"npc_bio\":\"" + b.GetRace().GetName() + ", " + \
         SNRom_Decorators.SexWord(b.GetSex()) + ", level " + akActor.GetLevel() + \
         ". Known to the Dragonborn.\"}"
@@ -8810,10 +8814,13 @@ Event OnDispositionAuthored(String asResponse, Int aiSuccess)
       preference repair started from the dashboard ends here. }
     Actor who = _pendingActor
     _limitPicks = "?"
+    _otherPicks = "?"
     DispositionAuthored(asResponse, aiSuccess)
     ; After every exit DispositionAuthored has: a success set _limitPicks from
     ; the response, a failure left it "?" (lifted limits go back on).
     SyncAfterAuthoring(who, _limitPicks)
+    ApplyOtherBlocks(who, _otherPicks)
+    _otherKeys = ""
     If _dashText
         PushBond(who, 0)
     EndIf
@@ -9102,6 +9109,7 @@ Function ApplyCharacter(Actor akActor, String asResponse)
     ; The Limits blocks this authoring picked, applied by OnDispositionAuthored
     ; once every exit has run (2.1, WP-B).
     _limitPicks = ParseLimitPicks(asResponse)
+    _otherPicks = ParseOtherPicks(asResponse)
     ; READS BACK WHAT WAS STORED rather than reporting the parsed values above.
     ; A field the response omitted is deliberately not written - see the note on
     ; absent fields - and an orientation can be REJECTED outright for a married
@@ -9173,6 +9181,7 @@ EndFunction
 ; ===========================================================================
 
 Int _bioApi = -1   ; -1 not yet checked this session, 0 unavailable, 1 SeverActions Bio Blocks API v1+
+Int _bioApiVer = 0 ; BioApi_Version() at load: 2 the public read and change event, 3 one-block tabs, 4 listing
 
 Int Function BIO_DRAWN() Global
     Return 0
@@ -10043,6 +10052,330 @@ EndFunction
 
 
 
+Event OnSABioChanged(String asEventName, String asArgs, Float afNum, Form akSender)
+    { THE PLAYER CHANGED SOMEONE'S BLOCKS (2.2, SeverActions Bio API v2). Until
+      now a block applied or taken off in play reached their traits at the next
+      load. Now the person's blocks are read again at once, as the load walk
+      reads them: a Drawn To, Expression or Attachment block of the player's
+      sets that trait, and one of ours they took off is recorded as theirs.
+
+      ONLY THE PLAYER'S CHANGES. An `api` change is any mod's, ours included,
+      and answering one with another Apply is how two mods trade blocks
+      forever (SeverActions' guide). Fields: what, who, FormID, tab, title,
+      key. }
+    If _bioApi != 1
+        Return
+    EndIf
+    String[] f = StringUtil.Split(asArgs, "\t")
+    If f.Length < 3 || f[1] != "player" || (f[0] != "applied" && f[0] != "removed")
+        Return
+    EndIf
+    Actor who = akSender as Actor
+    If who == None && f[2] != "0"
+        who = Game.GetFormEx(f[2] as Int) as Actor
+    EndIf
+    If who == None || who.IsDead() || !IsEnrolled(who)
+        Return
+    EndIf
+    Int changed = BioRun(who, SNRom_SABio.AssignedTitles(who), Math.LogicalOr(BIO_ENFORCE(), BIO_SYNC()), -1, \
+        "you changed their blocks", BioFlags(True))
+    Diag(LOG_INFO(), "Bio blocks: you " + f[0] + " a block on " + who.GetDisplayName() + \
+        " - read again now" + StringIf(changed > 0, ", and " + changed + " of ours applied or taken off", "") + ".")
+EndEvent
+
+String Function StringIf(Bool abTest, String asYes, String asNo) Global
+    If abTest
+        Return asYes
+    EndIf
+    Return asNo
+EndFunction
+
+; ===========================================================================
+; 2.2: SEVERACTIONS' OWN BLOCKS, CHOSEN BY AUTHORING (Bio API v4).
+;
+; The author, 2026-10-11: the model may choose from every keyed block in the
+; library, not only ours. Adventuring Behavior first - the strongest everyday
+; reinforcement of who someone is, so most people get one - then Sexual
+; Behavior, Sexual Kinks, Dislikes, Religion, Phobias and Sexual Dislikes;
+; Cognitive Level only for below-average wit or schooling. Four to six, never
+; more than six. Only the tabs the player has.
+;
+; THE SAME CALL AS EVERYTHING ELSE, AS LIMIT_BLOCKS IS. Authoring sees a
+; numbered catalogue (titles only, grouped by tab, in that order) and answers
+; OTHER_BLOCKS with numbers; numbers cannot be misspelt, and a title copied
+; with a typo would apply nothing.
+;
+; OURS VERSUS THE PLAYER'S, as for our own blocks. The keys we applied live in
+; the durable store (OthersOurs, ",k1,k2,"): a StorageUtil string on an actor
+; does not survive a reload. A tab holding any block we did not apply is the
+; player's and is not offered. One of ours that is no longer there was taken
+; off by the player: its tab is theirs from then on (OthersTaken).
+;
+; A RE-AUTHOR LIFTS OURS FIRST, like our own blocks, so the rewrite is not
+; steered by our last guess read back as the player's choice. A re-author
+; that does not answer OTHER_BLOCKS puts them back.
+; ===========================================================================
+
+String _otherKeys = ""   ; the catalogue sent with the authoring in flight, "|k1|k2|...", in number order
+String _otherPicks = "?" ; its OTHER_BLOCKS answer, as "|"-joined keys; "?" = none given
+
+Bool Function OtherBlocksOn()
+    Return _bioApiVer >= 4 && BioAssignOn() && SkyrimNetApi.GetConfigBool(CFG(), "bioBlocksOthers", True)
+EndFunction
+
+Int Function OtherTabRank(String asTab) Global
+    { Where a tab sits in the author's order, 1 first; 0 not offered. By what
+      the name says, since the player names tabs: SeverActions ships
+      "Adventuring Behavior", "Cognitive Level" and the rest. Ours, Arousal and
+      anything unknown (Vices and addictions, other mods' tabs) are not
+      offered. "Sexual Dislikes" before "Dislikes". }
+    String t = SNRom_Decorators.Upper(asTab)
+    If StringUtil.Find(t, "RELATIONSHIPS:") == 0 || StringUtil.Find(t, "AROUSAL:") == 0
+        Return 0
+    ElseIf StringUtil.Find(t, "ADVENTUR") >= 0
+        Return 1
+    ElseIf StringUtil.Find(t, "SEXUAL BEHAVIO") >= 0
+        Return 2
+    ElseIf StringUtil.Find(t, "KINK") >= 0
+        Return 3
+    ElseIf StringUtil.Find(t, "SEXUAL DISLIKE") >= 0
+        Return 7
+    ElseIf StringUtil.Find(t, "DISLIKE") >= 0
+        Return 4
+    ElseIf StringUtil.Find(t, "RELIGIO") >= 0
+        Return 5
+    ElseIf StringUtil.Find(t, "PHOBIA") >= 0
+        Return 6
+    ElseIf StringUtil.Find(t, "COGNITIVE") >= 0
+        Return 8
+    EndIf
+    Return 0
+EndFunction
+
+String Function OtherBlocksCatalogue(Actor akActor)
+    { The numbered catalogue for authoring, already JSON-safe (lines joined by
+      a literal backslash-n), and _otherKeys to read the answer back. "" when
+      the feature is off, nothing can be offered, or every tab is the
+      player's. Tabs the player holds a block in, or emptied of ours, are left
+      out. }
+    _otherKeys = ""
+    If akActor == None || !OtherBlocksOn()
+        Return ""
+    EndIf
+    String ours = OthersStored(akActor, "OthersOurs")
+    String taken = OthersStored(akActor, "OthersTaken")
+    String lifted = OthersStored(akActor, "OthersLifted")
+    ; THE PLAYER'S TABS: any block the bio shows that we did not apply.
+    String playerTabs = "|"
+    String[] applied = SNRom_SABio.ListApplied(akActor)
+    Int i = 0
+    While applied && i < applied.Length
+        String[] f = StringUtil.Split(applied[i], "\t")
+        If f.Length >= 3
+            String k = ""
+            If f.Length >= 4
+                k = f[3]
+            EndIf
+            If k == "" || (StringUtil.Find(ours, "," + k + ",") < 0 && StringUtil.Find(k, SNRom_SABioLib.PREFIX()) != 0)
+                playerTabs += SNRom_Decorators.Upper(f[1]) + "|"
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+
+    String[] recs = SNRom_SABio.ListBlocks()
+    Int n = 0
+    If recs
+        n = recs.Length
+    EndIf
+    String[] tabs = Utility.CreateStringArray(n)
+    String[] titles = Utility.CreateStringArray(n)
+    String[] keys = Utility.CreateStringArray(n)
+    Int[] ranks = Utility.CreateIntArray(n)
+    i = 0
+    While i < n
+        String[] g = StringUtil.Split(recs[i], "\t")
+        If g.Length >= 4
+            ranks[i] = OtherTabRank(g[1])
+            tabs[i] = g[1]
+            titles[i] = g[2]
+            keys[i] = g[3]
+            String up = SNRom_Decorators.Upper(g[1])
+            If ranks[i] > 0 && (StringUtil.Find(playerTabs, "|" + up + "|") >= 0 || \
+                    StringUtil.Find(taken, "," + up + ",") >= 0)
+                ranks[i] = 0
+            EndIf
+            ; One of ours that is gone, and not lifted by us for this re-author:
+            ; the player took it off. Its tab is theirs from now on.
+            If StringUtil.Find(ours, "," + g[3] + ",") >= 0 && StringUtil.Find(lifted, "," + g[3] + ",") < 0 && \
+                    !SNRom_SABio.IsAppliedKey(akActor, g[3])
+                OthersForget(akActor, "OthersOurs", g[3])
+                OthersRemember(akActor, "OthersTaken", up)
+                taken += up + ","
+                ranks[i] = 0
+                Diag(LOG_INFO(), akActor.GetDisplayName() + ": the block '" + g[2] + "' we chose was taken off. " + \
+                    "Its tab is yours now; we will not choose there again.")
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+
+    String out = ""
+    String keyList = "|"
+    Int num = 0
+    Int rank = 1
+    While rank <= 8
+        String lastTab = ""
+        i = 0
+        While i < n
+            If ranks[i] == rank
+                If tabs[i] != lastTab
+                    out += "\\n" + SNRom_Decorators.JsonEscape(tabs[i]) + ":\\n"
+                    lastTab = tabs[i]
+                EndIf
+                num += 1
+                out += "" + num + ". " + SNRom_Decorators.JsonEscape(titles[i]) + "\\n"
+                keyList += keys[i] + "|"
+            EndIf
+            i += 1
+        EndWhile
+        rank += 1
+    EndWhile
+    If num == 0
+        Return ""
+    EndIf
+    _otherKeys = keyList
+    Diag(LOG_DEBUG(), "Other blocks: offered " + num + " to the authoring of " + akActor.GetDisplayName())
+    Return out
+EndFunction
+
+String Function ParseOtherPicks(String asResponse)
+    { OTHER_BLOCKS as "|"-joined keys from the catalogue; "" for NONE; "?" when
+      the line is missing (a truncated answer, or nothing was offered).
+      At most six, unknown numbers dropped. A run of four or more consecutive
+      numbers is refused whole: that is the list copied down, not a choice
+      (snrom-prompt-lessons). }
+    If _otherKeys == ""
+        Return "?"
+    EndIf
+    String line = SNRom_Decorators.FieldValue(asResponse, "OTHER_BLOCKS:")
+    If line == ""
+        Return "?"
+    EndIf
+    String[] keys = StringUtil.Split(_otherKeys, "|")
+    String[] words = StringUtil.Split(line, ",")
+    String picks = "|"
+    Int got = 0
+    Int run = 1
+    Int longest = 1
+    Int prev = -9
+    Int i = 0
+    While i < words.Length && got < 6
+        Int num = SNRom_Decorators.Trim(words[i]) as Int
+        If num >= 1 && num <= keys.Length && StringUtil.Find(picks, "|" + keys[num - 1] + "|") < 0
+            picks += keys[num - 1] + "|"
+            got += 1
+            If num == prev + 1
+                run += 1
+            Else
+                run = 1
+            EndIf
+            If run > longest
+                longest = run
+            EndIf
+            prev = num
+        EndIf
+        i += 1
+    EndWhile
+    If longest >= 4
+        Diag(LOG_WARN(), "OTHER_BLOCKS '" + line + "' is a run down the list, not a choice - none applied.")
+        Return ""
+    EndIf
+    If got == 0
+        Return ""
+    EndIf
+    Return picks
+EndFunction
+
+Function ApplyOtherBlocks(Actor akActor, String asPicks)
+    { After authoring: what it chose, or, when it chose nothing at all ("?"),
+      what a re-author lifted. Each recorded as ours. }
+    If akActor == None
+        Return
+    EndIf
+    String lifted = OthersStored(akActor, "OthersLifted")
+    OthersClear(akActor, "OthersLifted")
+    If !OtherBlocksOn()
+        Return
+    EndIf
+    String[] keys
+    If asPicks == "?"
+        keys = StringUtil.Split(lifted, ",")
+    Else
+        keys = StringUtil.Split(asPicks, "|")
+    EndIf
+    String names = ""
+    Int i = 0
+    While i < keys.Length
+        If keys[i] != "" && SNRom_SABio.ApplyKey(akActor, keys[i])
+            OthersRemember(akActor, "OthersOurs", keys[i])
+            names += " " + keys[i]
+        EndIf
+        i += 1
+    EndWhile
+    If names != ""
+        Diag(LOG_INFO(), "Other blocks for " + akActor.GetDisplayName() + ":" + names)
+    EndIf
+EndFunction
+
+Function LiftOtherBlocks(Actor akActor)
+    { Before a re-author: take ours off and remember them (OthersLifted). }
+    If akActor == None || !OtherBlocksOn()
+        Return
+    EndIf
+    String[] keys = StringUtil.Split(OthersStored(akActor, "OthersOurs"), ",")
+    Int i = 0
+    While i < keys.Length
+        If keys[i] != "" && SNRom_SABio.IsAppliedKey(akActor, keys[i])
+            SNRom_SABio.UnapplyKey(akActor, keys[i])
+            OthersRemember(akActor, "OthersLifted", keys[i])
+        EndIf
+        OthersForget(akActor, "OthersOurs", keys[i])
+        i += 1
+    EndWhile
+EndFunction
+
+; ---- the durable record: ",a,b," in the text store; "," is empty ----------
+String Function OthersStored(Actor akActor, String asField)
+    String s = StoreGetText(akActor, asField)
+    If s == ""
+        Return ","
+    EndIf
+    Return s
+EndFunction
+
+Function OthersRemember(Actor akActor, String asField, String asItem)
+    String s = OthersStored(akActor, asField)
+    If asItem != "" && StringUtil.Find(s, "," + asItem + ",") < 0
+        StoreSetText(akActor, asField, s + asItem + ",")
+    EndIf
+EndFunction
+
+Function OthersForget(Actor akActor, String asField, String asItem)
+    String s = OthersStored(akActor, asField)
+    Int at = StringUtil.Find(s, "," + asItem + ",")
+    If asItem != "" && at >= 0
+        StoreSetText(akActor, asField, StringUtil.Substring(s, 0, at + 1) + \
+            StringUtil.Substring(s, at + StringUtil.GetLength(asItem) + 2))
+    EndIf
+EndFunction
+
+Function OthersClear(Actor akActor, String asField)
+    If OthersStored(akActor, asField) != ","
+        StoreSetText(akActor, asField, ",")
+    EndIf
+EndFunction
+
 Function LiftOurBlocks(Actor akActor)
     { Before a re-author: take off the blocks that are ours alone, so they do
       not steer the rewrite. The authoring prompt reads every Relationships
@@ -10055,6 +10388,7 @@ Function LiftOurBlocks(Actor akActor)
         Return
     EndIf
     BioRun(akActor, SNRom_SABio.AssignedTitles(akActor), BIO_LIFT(), -1, "re-author")
+    LiftOtherBlocks(akActor)
 EndFunction
 
 Function SyncAfterAuthoring(Actor akActor, String asLimitPicks)
@@ -10158,7 +10492,10 @@ Function BioBlocksOnLoad()
         Return
     EndIf
     _bioApi = 1
+    _bioApiVer = SNRom_SABio.Version()
     Int defined = SNRom_SABio.DefineAll()
+    ; API v3 (SeverActions 4.3.0): our one-answer tabs hold one block each.
+    SNRom_SABio.MarkOneBlockTabs()
     Int offered = SNRom_SABio.LibrarySize()
     _bioLibraryWhole = defined >= offered
     If _bioLibraryWhole
