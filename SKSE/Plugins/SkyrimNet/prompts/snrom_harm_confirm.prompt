@@ -45,13 +45,30 @@ An answer that ends a relationship needs the evidence in front of you. If you ca
 {% set npc_uuid = formid_to_uuid(npc_formid) %}
 WHO THEY ARE
 {% set profile = "" %}
+{% set sa_blocks = "" %}
 {% if npc_uuid and npc_uuid != 0 %}
-{% set profile = render_character_profile("transform", npc_uuid) %}
+{# WP-I (2.2): NOT render_character_profile("transform", ...). That fires 121
+   submodules - inventory, gold, worn equipment, skills, routine, quests - and
+   item text has reached our prompts before: Elisif's likes came back as her
+   candlesticks and garnets (snrom_author_disposition, 2026-08-04). Judging a
+   relationship needs the person: the six bio_* modes, one submodule each,
+   composed exactly as authoring and seeding do. What someone deliberately
+   established (SeverActions' bio blocks) follows, as there. A recorded
+   marriage, where this prompt needs one, is given on its own. #}
+{% set profile = render_character_profile("bio_summary", npc_uuid) + render_character_profile("bio_background", npc_uuid) + render_character_profile("bio_personality", npc_uuid) + render_character_profile("bio_aspirations", npc_uuid) + render_character_profile("bio_occupation", npc_uuid) + render_character_profile("bio_relationships", npc_uuid) %}
+{% if is_plugin_loaded("SeverActions.esp") %}
+{% set sa_blocks = custom_bio_blocks(npc_uuid) %}
+{% endif %}
 {% endif %}
 {% if profile and profile != "" %}
 {{ profile }}
 {% else %}
 {{ npc_name }} - no profile available.
+{% endif %}
+{% if sa_blocks and sa_blocks != "" %}
+
+WHAT SOMEONE DELIBERATELY ESTABLISHED ABOUT {{ npc_name }} - chosen for them on purpose; where it disagrees with the profile above, it wins
+{{ sa_blocks }}
 {% endif %}
 
 WHAT WAS SAID - between {{ npc_name }} and {{ player.name }}, most recent last
