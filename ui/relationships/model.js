@@ -102,6 +102,7 @@
       track: f.track || "all",
       state: f.state || "all",
       commitment: f.commitment || "all",
+      standing: f.standing || "all",
       text: (f.text || "").trim().toLowerCase()
     };
     var out = [];
