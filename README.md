@@ -72,8 +72,9 @@ than time — see below.
 **Scores conversation.** Talking matters. A background judge reads what actually
 passed between you and decides whether it moved anything — usually it did not.
 Anyone enrolled who is near you is judged, following you or not, and nothing is
-lost if you walk away: the next time you are around them, everything since their
-last look is read. Characters can also mark a moment themselves, mid-conversation,
+lost when either of you walks away: someone who storms off mid-argument is still
+judged on what was said, and anyone you leave behind has everything since their
+last look read the next time you are around them. Characters can also mark a moment themselves, mid-conversation,
 when something you did or said genuinely changed how they feel. Pacing lives in
 code, not in the prompt: daily caps, cooldowns, and a rarity limit on the moments
 where two people redefine what they are.
@@ -90,6 +91,22 @@ privately, as a thought of their own. Nobody nearby hears a narrator announce it
 
 **Keeps the record.** Every bond remembers what moved it and why, in that
 person's own words, saved with your game so an older save has an older history.
+
+**It can go the other way.** Below Stranger are three tiers of ill will.
+**Disliked** keeps their distance and is civil at best. **Resentful** has been
+hurt and is holding on to it: they want you kept away and will not cover for
+you. **Enemy** wishes you ill and is waiting. Most bad days cost a little, and a
+quarrel between two people who care about each other may cost nothing at all.
+Watching you mistreat someone else counts too, judged by how the person watching
+took it. What breaks a bond outright is a **betrayal** - breaking what the
+relationship itself rested on, as that person understood it - and it is checked
+a second time before it costs anything. Even then it lands at Resentful, never
+straight at Enemy: Enemy is reached by mistreatment that goes on. A romance ends
+when the bond falls below zero; a marriage stays a marriage, and they say so.
+Trust comes back at half the pace it went. Someone back at zero after being
+close reads **Estranged**, not Stranger. Nobody turns hostile or leaves your
+party because of it: a follower who resents you says they would rather not be
+there.
 
 ## The gate between friendship and romance
 
@@ -552,8 +569,11 @@ programs ships with this mod.
 ## For other mod authors
 
 SKSE plugins can read each enrolled person's bond - tier, points, spark, the
-player's answer, commitment, orientation, intimacy disposition and gate, and
-when they were first seen following - and be told when any of it changes.
+player's answer, commitment, orientation, intimacy disposition and gate, when
+they were first seen following, and from 2.2 their **standing**, the signed tier
+from -3 (Enemy) to 5 - and be told when any of it changes. The header says what
+each standing means for a mod that wants to act on it. Points can be negative
+from 2.2; `tier` stays 0 to 5.
 Copy [`SNRelationships_API.h`](native/include/SkyrimNetRelationships/SNRelationships_API.h)
 into your project; the header says how to use it, and that file may be
 shipped with your plugin.
@@ -565,7 +585,7 @@ shipped with your plugin.
 Freely permitted, no need to ask: use it, modify your own copy, and publish
 patches, add-ons or translations that *require* this mod rather than containing
 it. **Interoperating is expressly permitted and encouraged** — read its
-StorageUtil keys, its SNRom_Bond faction ranks, call its decorators, render its
+StorageUtil keys, its SNRom_Bond and SNRom_Enmity faction ranks, call its decorators, render its
 submodules, build a mod that depends on it. None of that needs permission.
 
 Ask first for: redistributing it or a substantial part of it, publishing a
