@@ -1401,6 +1401,12 @@ Function SyncBondRank(Actor akActor)
         ; ran at once). Whoever writes last checks the tier is still the one it
         ; wrote, and writes again if not.
         Int tier = TierOf(akActor)
+        ; The highest tier they ever held (2.2), so 0330 can tell a stranger
+        ; from someone who was close once (Estranged) and a grudge from a
+        ; broken bond. Starts at whatever they hold the first time this runs.
+        If tier > StorageUtil.GetIntValue(akActor, "SNRom_PeakTier", -9)
+            StorageUtil.SetIntValue(akActor, "SNRom_PeakTier", tier)
+        EndIf
         Int tries = 0
         While tries < 3
             akActor.SetFactionRank(_bond, BondRankFor(tier))

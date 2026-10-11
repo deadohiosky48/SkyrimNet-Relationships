@@ -563,7 +563,24 @@ String Function GetRomance(Actor akActor) Global
     If toNext < 0
         toNext = 0
     EndIf
+    ; WHAT THEY WERE TO EACH OTHER (2.2, WP-N), for 0330's Stranger/Estranged
+    ; and negative prose: the highest tier held, whether a romance ever ended,
+    ; and - asked only at or below Stranger, where the prose uses it - whether
+    ; the game records a marriage.
+    Int peak = StorageUtil.GetIntValue(akActor, "SNRom_PeakTier", tier)
+    If peak < tier
+        peak = tier
+    EndIf
+    Int endedFlag = 0
+    If StorageUtil.GetFloatValue(akActor, "SNRom_EndedAt", 0.0) > 0.0
+        endedFlag = 1
+    EndIf
+    Int marriedFlag = 0
+    If tier <= 0 && SNRom_Bridge.IsMarriedToPlayer(akActor)
+        marriedFlag = 1
+    EndIf
     Return "{\"enrolled\":true,\"points\":" + pts + ",\"level\":" + tier + \
+        ",\"peak\":" + peak + ",\"ended\":" + endedFlag + ",\"married\":" + marriedFlag + \
         ",\"levelName\":\"" + SNRom_Bridge.TierName(tier) + "\",\"toNext\":" + toNext + \
         ",\"ardor\":" + StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2) + \
         ",\"exclusivity\":" + StorageUtil.GetIntValue(akActor, "SNRom_Exclusivity", 50) + \
