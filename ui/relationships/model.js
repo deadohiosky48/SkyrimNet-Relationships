@@ -28,6 +28,19 @@
     var p = b.depth.points;
     var top = th.length - 1;
     var out = { pct: 1, held: false, note: "" };
+    // BELOW STRANGER (2.2, WP-N) the bar fills from the right, by how deep
+    // into the tier they are, and the note is the climb back to the next.
+    if (t < 0) {
+      var below = ladder.below || [-500, -1000, -1500];
+      var floorPts = typeof ladder.floor === "number" ? ladder.floor : -2000;
+      var ceil = below[-t - 1];
+      var bottom = -t < below.length ? below[-t] + 1 : floorPts;
+      out.below = true;
+      out.pct = Math.max(0, Math.min(1, (ceil - p) / Math.max(1, ceil - bottom)));
+      out.toNext = ceil + 1 - p;
+      out.note = L.number(out.toNext) + " to climb";
+      return out;
+    }
     if (t >= top) {
       out.note = "Top of the ladder";
       return out;
@@ -60,6 +73,9 @@
     if (f.track !== "all" && b.track !== f.track) return false;
     if (f.state !== "all" && b.state !== f.state) return false;
     if (f.commitment !== "all" && b.commitment !== f.commitment) return false;
+    if (f.standing === "good" && b.depth.tier < 1) return false;
+    if (f.standing === "none" && b.depth.tier !== 0) return false;
+    if (f.standing === "ill" && b.depth.tier >= 0) return false;
     if (f.text) {
       if (b.subject.name.toLowerCase().indexOf(f.text) < 0) return false;
     }

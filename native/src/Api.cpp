@@ -114,6 +114,8 @@ namespace SNRom::Api {
             v.intimacyRank = n[Model::kIntimacy];
             v.intimacyGate = Gate(n, applicability, commitment) ? 1 : 0;
             v.followingSinceMinutes = n[Model::kFirstSeenFollowing];
+            // 2.2 (WP-N): the signed tier, -3 Enemy to 5. tier stays 0-5.
+            v.standing = std::clamp(n[Model::kTier], -3, 5);
             return v;
         }
 
@@ -129,12 +131,13 @@ namespace SNRom::Api {
             if (a.intimacyRank != b.intimacyRank) m |= P::kIntimacyRank;
             if (a.intimacyGate != b.intimacyGate) m |= P::kIntimacyGate;
             if (a.followingSinceMinutes != b.followingSinceMinutes) m |= P::kFollowingSince;
+            if (a.standing != b.standing) m |= P::kStanding;
             return m;
         }
 
         constexpr std::uint32_t kAllValues = P::kTier | P::kPoints | P::kSparked | P::kStance | P::kRomanceEnded |
                                              P::kCommitment | P::kOrientation | P::kIntimacyRank | P::kIntimacyGate |
-                                             P::kFollowingSince;
+                                             P::kFollowingSince | P::kStanding;
 
         // Brings g_last up to date for one person and says what changed. Quiet
         // until Loaded: the load-time publish is announced once, as kReloaded.

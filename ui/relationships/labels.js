@@ -21,9 +21,23 @@
     platonic: ["Stranger", "Acquaintance", "Friend", "Confidant", "Ally", "Best Friend"]
   };
 
-  function tierName(track, tier) {
+  // BELOW STRANGER (2.2, WP-N): one ladder, whatever the track. Index is
+  // -tier - 1. And Stranger after being close reads ESTRANGED: named by
+  // history (depth.estranged), never by points.
+  var BELOW_NAMES = ["Disliked", "Resentful", "Enemy"];
+  var ESTRANGED = "Estranged";
+
+  function tierName(track, tier, estranged) {
+    if (tier < 0) return BELOW_NAMES[Math.min(BELOW_NAMES.length, -tier) - 1];
+    if (tier === 0 && estranged) return ESTRANGED;
     var names = track === "romantic" ? TIER_NAMES.romantic : TIER_NAMES.platonic;
     return names[Math.max(0, Math.min(names.length - 1, tier))];
+  }
+
+  // The class a tier's name and bar take: the track's colour, or the colour of
+  // the ill will below Stranger.
+  function tierClass(b) {
+    return b.depth.tier < 0 ? "t-below n" + (-b.depth.tier) : "t-" + b.track;
   }
 
   var TRACKS = {
@@ -224,7 +238,10 @@
 
   UI.labels = {
     TIER_NAMES: TIER_NAMES,
+    BELOW_NAMES: BELOW_NAMES,
+    ESTRANGED: ESTRANGED,
     tierName: tierName,
+    tierClass: tierClass,
     TRACKS: TRACKS,
     STATES: STATES,
     STATE_ORDER: STATE_ORDER,

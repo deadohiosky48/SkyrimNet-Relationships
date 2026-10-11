@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:snrom:dashboard:snapshot:3",
-  "title": "Relationships dashboard snapshot, version 3",
+  "$id": "urn:snrom:dashboard:snapshot:4",
+  "title": "Relationships dashboard snapshot, version 4",
   "description": "Everything the dashboard page renders, pushed to it whole by the native host (bridge.js, message kind 'snapshot'). Built by SkyrimNetRelationships.dll from its read model (design 7.3, the WP2 transport), which Papyrus fills through the SNRom_Native natives: every open refreshes the numbers, and the text arrives on the first open after a load and from its writers after that. The DLL adds settings and crosshairTarget, sends the page this, and writes the same snapshot to SkyrimNetRelationships.snapshot.json beside its log. Derived, never read back as truth: the model is cleared whenever a save loads. The page shows only part of it by default: player mode (mode.js) draws what the player could know and hides the rest behind one developer switch. Each field's description names where the value lives TODAY, in SNRom_Bridge.psc or SNRom_Decorators.psc; SNRom_Bridge.DashboardNumbers and DashboardText read them, in the order native/src/Model.h defines. 'New in phase 2' means nothing holds it yet. Game times are Utility.GetCurrentGameTime() values: game days, fractional. Form ids are Actor.GetFormID() as Papyrus returns it: a signed 32-bit int, so FF-range references are negative. A BOND IS A PAIR (design 3.3): subject and object, with the object always the player for now. Nothing here is keyed by actor alone, so NPC-to-NPC bonds need new rows, not a new shape.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "generatedAt", "roster", "playthrough", "ladder", "player", "settings", "bonds"],
   "properties": {
     "schemaVersion": {
-      "const": 3,
+      "const": 4,
       "description": "This file's version. Additive changes keep it; anything that renames, removes or re-means a field bumps it, and the page refuses a version it does not know rather than guessing. 2 added the required roster block (WP2), because a snapshot can now be sent before Papyrus has answered, and an empty roster must not be mistaken for nobody. 3 added the required settings.scale and settings.textSize, with natives v4, which hand them to the DLL."
     },
     "generatedAt": {
@@ -64,6 +64,18 @@
           "maxItems": 6,
           "items": { "type": "integer", "minimum": 0 },
           "description": "Points at which tiers 0-5 begin: [0, 500, 1000, 1500, 2000, 2500]. 500 points a tier, kept from 1.x (design 1), and SNRom_Bridge's constants CONFIDANT_MIN 1500, LOVER_MIN 2000 and SPOUSE_MIN 2500. Tier NAMES are not here: they depend on the track and live in the page (labels.js)."
+        },
+        "below": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "integer", "maximum": 0 },
+          "description": "2.2 (WP-N): points at or below which tiers -1 to -3 begin, going down: [-500, -1000, -1500]. Disliked, Resentful, Enemy; the names live in labels.js."
+        },
+        "floor": {
+          "type": "integer",
+          "maximum": 0,
+          "description": "2.2 (WP-N): the lowest a bond goes, -2000 (SNRom_Bridge.POINTS_FLOOR)."
         }
       }
     },
@@ -201,19 +213,23 @@
           "properties": {
             "points": {
               "type": "integer",
-              "minimum": 0,
-              "description": "SNRom_Bridge.DashboardPoints(subject)[0], the one accessor the dashboard reads points through. From WP4 the points are the mod's own, StorageUtil Int SNRom_Points in the co-save, read through SNRom_Bridge.PointsOf (design 6.4, 9.1)."
+              "minimum": -2000,
+              "description": "SNRom_Bridge.DashboardPoints(subject)[0], the one accessor the dashboard reads points through. From WP4 the points are the mod's own, StorageUtil Int SNRom_Points in the co-save, read through SNRom_Bridge.PointsOf (design 6.4, 9.1). Signed from 2.2 (WP-N): down to -2000."
             },
             "tier": {
               "type": "integer",
-              "minimum": 0,
+              "minimum": -3,
               "maximum": 5,
-              "description": "SNRom_Bridge.DashboardPoints(subject)[1]: derived from the points on ladder.thresholds (DashboardTier) (GetLevel is LevelNumberForPoints, 1-6), less one. Sent rather than recomputed so the page and the game can never disagree about which rung someone is on."
+              "description": "SNRom_Bridge.DashboardPoints(subject)[1]: derived from the points on ladder.thresholds (DashboardTier) (GetLevel is LevelNumberForPoints, 1-6), less one. Sent rather than recomputed so the page and the game can never disagree about which rung someone is on. Signed from 2.2 (WP-N): -1 Disliked, -2 Resentful, -3 Enemy (TierForPoints)."
             },
             "banked": {
               "type": "integer",
               "minimum": 0,
               "description": "SNRom_Bridge.DashboardPoints(subject)[2], StorageUtil Int SNRom_BankedPoints: points withheld by HoldShortOfLover while the consent question is unanswered, released whole on acceptance and discarded on a decline. Display only; the page never adds it to points."
+            },
+            "estranged": {
+              "type": "boolean",
+              "description": "2.2 (WP-N): tier 0 after being close - a romance that ended (SNRom_EndedAt) or a tier of Friend or better once held (StorageUtil Int SNRom_PeakTier). The page names tier 0 Estranged rather than Stranger. Absent reads as false."
             }
           }
         },

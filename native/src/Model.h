@@ -49,7 +49,7 @@ namespace SNRom::Model {
     // -----------------------------------------------------------------------
     enum Number : std::size_t {
         kPoints,            // DashboardPoints [0]: SNRom_Bridge.PointsOf, ours since WP4
-        kTier,              // DashboardPoints [1]: derived from the points, 0-5
+        kTier,              // DashboardPoints [1]: derived from the points, -3 to 5 (2.2)
         kBanked,            // DashboardPoints [2]: StorageUtil Int SNRom_BankedPoints
         kLastFollowingAt,   // StorageUtil Float SNRom_LastFollowingAt, minutes or -1
         kAutoEnrolled,      // StorageUtil Int SNRom_AutoEnrolled, 0/1
@@ -74,6 +74,8 @@ namespace SNRom::Model {
         kPhysMinTier,         // StorageUtil Int SNRom_PhysMinTier, raw (-1 NEVER .. 4)
         kAttrBypass,          // StorageUtil Int SNRom_PhysAttrBypass, 0/1
         kAttractionMilli,     // StorageUtil Float SNRom_AttractionRatio x 1000
+        // 2.2 (WP-N), appended.
+        kPeakTier,            // StorageUtil Int SNRom_PeakTier, -9 when never recorded
         kNumberCount
     };
 
@@ -94,11 +96,15 @@ namespace SNRom::Model {
     using Numbers = std::array<std::int32_t, kNumberCount>;
     using Texts = std::array<std::string, kTextCount>;
 
-    // 3 added settings.scale and settings.textSize.
-    inline constexpr int kSchemaVersion = 3;
+    // 3 added settings.scale and settings.textSize. 4 (2.2): signed depth
+    // (points to -2000, tier -3 to 5), depth.estranged, ladder.below/floor.
+    inline constexpr int kSchemaVersion = 4;
 
     // Where tiers 0-5 begin (snapshot.schema.json, ladder).
     inline constexpr std::array<int, 6> kThresholds{ 0, 500, 1000, 1500, 2000, 2500 };
+    // Where tiers -1 to -3 begin, going down, and the floor (2.2, WP-N).
+    inline constexpr std::array<int, 3> kBelow{ -500, -1000, -1500 };
+    inline constexpr int kFloor = -2000;
 
     // What a refresh asks Papyrus for: everything, or the numbers alone.
     enum class Scope { kFull, kNumbers };

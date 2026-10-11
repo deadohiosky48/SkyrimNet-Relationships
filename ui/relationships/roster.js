@@ -113,7 +113,7 @@
   // not, so the developer view does not move the columns either.
   function candidates(bonds, ladder) {
     var chips = function (cls, words) { return words.map(function (w) { return [cls, w]; }); };
-    var tiers = L.TIER_NAMES.romantic.concat(L.TIER_NAMES.platonic);
+    var tiers = L.TIER_NAMES.romantic.concat(L.TIER_NAMES.platonic, L.BELOW_NAMES, [L.ESTRANGED]);
     var states = L.STATE_ORDER.map(function (s) { return L.STATES[s].label; }).concat([L.STATES.courting.devoted.label]);
     var intimacy = Object.keys(L.INTIMACY).map(function (k) { return L.INTIMACY[k]; }).concat(["\u2014"]);
     var exclusivity = [0, 25, 50, 75, 100].map(function (v) { return L.exclusivityWord(v) + " 100"; }).concat(["\u2014"]);
@@ -320,11 +320,11 @@
     p.sub.className = "name-sub" + (b.following ? " tag-follow" : "");
 
     var prog = M.progress(b, this.ladder);
-    p.tier.textContent = L.tierName(b.track, b.depth.tier);
-    p.tier.className = "tier t-" + b.track;
+    p.tier.textContent = L.tierName(b.track, b.depth.tier, b.depth.estranged);
+    p.tier.className = "tier " + L.tierClass(b);
     p.pts.textContent = L.number(b.depth.points) + " · " + prog.note;
     p.fill.style.width = Math.round(prog.pct * 100) + "%";
-    p.fill.className = "fill t-" + b.track + (prog.held ? " is-held" : "");
+    p.fill.className = "fill " + L.tierClass(b) + (prog.held ? " is-held" : "");
 
     p.track.textContent = L.TRACKS[b.track].label;
     p.track.className = "chip t-" + b.track;

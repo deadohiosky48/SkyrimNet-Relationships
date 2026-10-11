@@ -6047,7 +6047,7 @@ EndFunction
 
 Int[] Function DashboardPoints(Actor akActor) Global
     { THE ONE PLACE THE DASHBOARD READS POINTS: [0] points held, [1] the tier
-      0-5 (DashboardTier), [2] points banked by the consent gate while the
+      -3 to 5 (DashboardTier), [2] points banked by the consent gate while the
       question waits.
 
       OURS FROM 1.9 (WP4): PointsOf is a StorageUtil read, so a refresh no
@@ -6064,25 +6064,11 @@ Int[] Function DashboardPoints(Actor akActor) Global
 EndFunction
 
 Int Function DashboardTier(Int aiPoints) Global
-    { The tier, 0-5, from points on the ladder the snapshot sends (thresholds
-      500 apart). Romantasy's own level is exactly this: GetLevel is
-      LevelNumberForPoints(points), 1-6, in its RomanceManager.cpp. Worked out
-      here instead of asking GetLevel because that native waits a frame, and a
-      refresh may not make a per-bond call that waits a frame (design 7.3,
-      "Measured in play"). Nobody Romantasy tracks has 0 points, which is tier
-      0 either way. }
-    If aiPoints >= 2500
-        Return 5
-    ElseIf aiPoints >= 2000
-        Return 4
-    ElseIf aiPoints >= 1500
-        Return 3
-    ElseIf aiPoints >= 1000
-        Return 2
-    ElseIf aiPoints >= 500
-        Return 1
-    EndIf
-    Return 0
+    { The tier the dashboard shows: TierForPoints, signed (2.2, WP-N), so the
+      page and the game can never disagree about which rung someone is on -
+      Disliked, Resentful and Enemy included. No frame-waiting call (design
+      7.3, "Measured in play"). }
+    Return TierForPoints(aiPoints)
 EndFunction
 
 Int Function DashMinutes(Float afGameTime) Global
@@ -6113,7 +6099,7 @@ Int[] Function DashboardNumbers(Actor akActor) Global
 
       NO SKYRIMNET CALL, NO DIAG, NO JSONUTIL: it runs inside
       OnDashboardRefresh, while the dashboard has the game paused. }
-    Int[] n = new Int[25]
+    Int[] n = new Int[26]
     Int[] pts = DashboardPoints(akActor)
     n[0] = pts[0]                                                                       ; kPoints
     n[1] = pts[1]                                                                       ; kTier
@@ -6141,6 +6127,8 @@ Int[] Function DashboardNumbers(Actor akActor) Global
     n[22] = StorageUtil.GetIntValue(akActor, "SNRom_PhysMinTier", 4)                    ; kPhysMinTier
     n[23] = StorageUtil.GetIntValue(akActor, "SNRom_PhysAttrBypass", 0)                 ; kAttrBypass
     n[24] = (StorageUtil.GetFloatValue(akActor, "SNRom_AttractionRatio", 0.0) * 1000.0) as Int ; kAttractionMilli
+    ; 2.2 (WP-N): the highest tier they ever held, for Estranged.
+    n[25] = StorageUtil.GetIntValue(akActor, "SNRom_PeakTier", -9)                      ; kPeakTier
     Return n
 EndFunction
 

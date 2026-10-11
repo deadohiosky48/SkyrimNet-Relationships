@@ -164,9 +164,14 @@ namespace SNRom::Model {
         bond["lastFollowingAt"] = GameTime(a_n[kLastFollowingAt]);
         // No join date exists yet (design 7.3): null until phase 2 stores one.
         bond["enrollment"] = { { "by", EnrolledBy(a_n) }, { "joinedAt", nullptr } };
-        bond["depth"] = { { "points", std::max(a_n[kPoints], 0) },
-                          { "tier", Clamp(a_n[kTier], 0, 5) },
-                          { "banked", std::max(a_n[kBanked], 0) } };
+        // Signed from 2.2 (WP-N): Disliked, Resentful and Enemy are -1 to -3.
+        // ESTRANGED is Stranger after being close - a romance that ended, or
+        // Friend or better once held - named by history, not by points.
+        const bool estranged = a_n[kTier] == 0 && (a_n[kEndedAt] >= 0 || a_n[kPeakTier] >= 2);
+        bond["depth"] = { { "points", Clamp(a_n[kPoints], kFloor, 1000000) },
+                          { "tier", Clamp(a_n[kTier], -3, 5) },
+                          { "banked", std::max(a_n[kBanked], 0) },
+                          { "estranged", estranged } };
         bond["track"] = Track(a_n, a_d);
         bond["state"] = State(a_n, a_d);
         bond["foreclosure"] = foreclosed ? json(kForeclosureWords[static_cast<std::size_t>(a_d.applicability)]) :
@@ -500,7 +505,7 @@ namespace SNRom::Model {
         } else {
             snap["playthrough"] = { { "id", nullptr }, { "store", nullptr }, { "storeDecision", nullptr } };
         }
-        snap["ladder"] = { { "thresholds", kThresholds } };
+        snap["ladder"] = { { "thresholds", kThresholds }, { "below", kBelow }, { "floor", kFloor } };
         snap["player"] = player;
         snap["settings"] = { { "developer", a_overlay.developer },
                              { "scale", a_overlay.scale == 0 ? json("auto") : json(a_overlay.scale) },

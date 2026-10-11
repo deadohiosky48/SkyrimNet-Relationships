@@ -35,6 +35,10 @@
 
   --platonic: #72b6cb;
   --romantic: #e68da2;
+  /* Below Stranger (2.2, WP-N): Disliked, Resentful, Enemy. */
+  --below1: #c9a46a;
+  --below2: #d97a52;
+  --below3: #d04848;
 
   --s-foreclosed: #9097a1;
   --s-unexamined: #b9b09c;
@@ -298,6 +302,14 @@ button, input, select { font: inherit; color: inherit; }
 .fill { height: 100%; width: 0; border-radius: 3px; }
 .fill.t-platonic { background: var(--platonic); }
 .fill.t-romantic { background: var(--romantic); }
+/* Below Stranger the bar fills from the right: how deep into the tier. */
+.fill.t-below { margin-left: auto; }
+.fill.t-below.n1 { background: var(--below1); }
+.fill.t-below.n2 { background: var(--below2); }
+.fill.t-below.n3 { background: var(--below3); }
+.tier.t-below.n1 { color: var(--below1); }
+.tier.t-below.n2 { color: var(--below2); }
+.tier.t-below.n3 { color: var(--below3); }
 .fill.is-held {
   background-image: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.35) 0, rgba(0, 0, 0, 0.35) 4px, transparent 4px, transparent 8px);
 }

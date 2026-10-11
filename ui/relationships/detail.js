@@ -139,12 +139,12 @@
     // Depth: the at-a-glance number, big.
     var depth = section("Depth");
     var big = el("div", "depth-big");
-    big.appendChild(el("span", "tier t-" + b.track, L.tierName(b.track, b.depth.tier)));
+    big.appendChild(el("span", "tier " + L.tierClass(b), L.tierName(b.track, b.depth.tier, b.depth.estranged)));
     big.appendChild(el("span", "pts", L.number(b.depth.points) + " points"));
     depth.appendChild(big);
     var prog = M.progress(b, snap.ladder);
     var bar = el("div", "bar");
-    var fill = el("div", "fill t-" + b.track + (prog.held ? " is-held" : ""));
+    var fill = el("div", "fill " + L.tierClass(b) + (prog.held ? " is-held" : ""));
     fill.style.width = Math.round(prog.pct * 100) + "%";
     bar.appendChild(fill);
     depth.appendChild(bar);

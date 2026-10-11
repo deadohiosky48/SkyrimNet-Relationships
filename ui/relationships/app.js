@@ -11,7 +11,7 @@
 
   // The snapshot version this page reads (snapshot.schema.json). 2 added
   // roster.status (WP2); 3 added settings.scale and settings.textSize.
-  var SCHEMA = 3;
+  var SCHEMA = 4;
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -19,7 +19,7 @@
   var openKey = null;
   var busy = {};
   var dialogReturn = null;
-  var filters = { text: "", following: "all", track: "all", state: "all", commitment: "all" };
+  var filters = { text: "", following: "all", track: "all", state: "all", commitment: "all", standing: "all" };
   var sort = "depth-desc";
 
   var roster = new UI.Roster($("roster"), { onOpen: openBond });
@@ -286,15 +286,16 @@
     filters.track = $("f-track").value;
     filters.state = $("f-state").value;
     filters.commitment = $("f-commitment").value;
+    filters.standing = $("f-standing").value;
     sort = $("f-sort").value;
     if (snap) renderRoster();
   }
   function clearFilters() {
     $("f-text").value = ""; $("f-following").value = "all"; $("f-track").value = "all"; $("f-state").value = "all";
-    $("f-commitment").value = "all";
+    $("f-commitment").value = "all"; $("f-standing").value = "all";
     readFilters();
   }
-  ["f-following", "f-track", "f-state", "f-commitment", "f-sort"].forEach(function (id) { $(id).addEventListener("change", readFilters); });
+  ["f-following", "f-track", "f-state", "f-commitment", "f-standing", "f-sort"].forEach(function (id) { $(id).addEventListener("change", readFilters); });
   $("f-text").addEventListener("input", readFilters);
   $("f-text").addEventListener("keydown", function (e) {
     if (e.key === "ArrowDown" || e.key === "Enter") { e.preventDefault(); roster.focus(); }

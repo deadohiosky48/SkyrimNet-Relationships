@@ -54,8 +54,10 @@ namespace SNREL_API {
         std::uint32_t size;             // = sizeof(Values), set by the caller
         std::uint32_t formId;           // the reference's FormID
         std::int32_t  tier;             // 0 Stranger, 1 Acquaintance, 2 Friend, 3 Confidant, 4 Lover, 5 Spouse
-                                        // (also the rank in faction SNRom_Bond, SNRom_Integration.esl 0xD63)
-        std::int32_t  points;           // the bond's points; a tier is 500
+                                        // (also the rank in faction SNRom_Bond, SNRom_Integration.esl 0xD63).
+                                        // Never below 0: someone below Stranger reads 0 here. See standing.
+        std::int32_t  points;           // the bond's points; a tier is 500. From 2.2 they can be negative,
+                                        // down to -2000: -500 and below is Disliked (see standing)
         std::int32_t  sparked;          // 1 on the romantic track, 0 platonic
         std::int32_t  stance;           // the player's answer when asked: -1 no, 0 not yet, 1 yes
         std::int32_t  romanceEnded;     // 1 when a romance between them has ended
@@ -66,6 +68,20 @@ namespace SNREL_API {
         std::int32_t  intimacyRank;     // their disposition: 0 casual, 1 romantic, 2 guarded, 3 never
         std::int32_t  intimacyGate;     // 1 when intimacy with the player is open now
         std::int32_t  followingSinceMinutes;  // first seen following, in game minutes; -1 never
+
+        // Appended in 2.2. Check size: an older DLL leaves it unwritten.
+        std::int32_t  standing;         // the signed tier, -3 to 5: 0-5 as tier, and below Stranger
+                                        //  -1 Disliked:  cold and distant. Civil when they must be, no more; avoids
+                                        //                the player, would rather not travel with them.
+                                        //  -2 Resentful: hurt and holding it. Wants the player kept away and others
+                                        //                to know what they are like; acts against them indirectly
+                                        //                (shutting them out, a word in the right ear), not with harm.
+                                        //  -3 Enemy:     wishes the player ill and is waiting for the chance. The
+                                        //                mod itself never makes them hostile; this is the tier
+                                        //                where another mod may have them act against the player.
+                                        // A first betrayal lands at -2 at most; -3 comes from mistreatment that
+                                        // continues, or a further betrayal. (Rank 1-3 in faction SNRom_Enmity,
+                                        // 0xD64, for -1 to -3.)
     };
 
     // What changed, as bits, for a listener.
@@ -80,6 +96,7 @@ namespace SNREL_API {
         kIntimacyRank    = 1u << 7,
         kIntimacyGate    = 1u << 8,
         kFollowingSince  = 1u << 9,
+        kStanding        = 1u << 10,  // 2.2: standing
         kEnrolled        = 1u << 16,  // newly enrolled (every value bit is set as well)
         kUnenrolled      = 1u << 17,  // no longer enrolled; GetValues now finds nobody
         kReloaded        = 1u << 24,  // formId 0: everyone's values are there after a load
