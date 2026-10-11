@@ -3530,6 +3530,9 @@ Function UnenrollActor(Actor akActor)
     StorageUtil.UnsetIntValue(akActor, "SNRom_EventsSinceDrift")
     StorageUtil.UnsetFloatValue(akActor, "SNRom_DriftFirstDay")
     StorageUtil.UnsetFloatValue(akActor, "SNRom_DriftLastDay")
+    StorageUtil.UnsetIntValue(akActor, "SNRom_DriftStepsIntimacy")
+    StorageUtil.UnsetIntValue(akActor, "SNRom_DriftStepsArdor")
+    StorageUtil.UnsetIntValue(akActor, "SNRom_DriftStepsExclusivity")
     Diag(LOG_INFO(), "Un-enrolled " + who + " - off the roster and out of SNRom_Bond, no longer " + \
         "assessed. Roster now " + StorageUtil.FormListCount(None, "SNRom_Roster"))
 EndFunction
@@ -3564,8 +3567,8 @@ Function ReauthorDisposition(Actor akActor)
       2. A player who has pre-seeded facts (a SeverActions custom bio block,
          say) and wants them picked up now rather than never.
 
-      NOT SAFE TO REPEAT CASUALLY: it rewrites the character fields from a
-      fresh response, discarding any drift they have accumulated. }
+      Safe to repeat from 2.2 (WP-D): the fresh response is a new baseline,
+      and the steps drift earned are applied on top (KeepDrift). }
     If akActor == None
         Return
     EndIf
@@ -8686,6 +8689,90 @@ Event OnDriftAssessed(String asResponse, Int aiSuccess)
     ApplyDrift(who, field, (toward == "OPEN"), pattern)
 EndEvent
 
+String Function DriftStepsKey(Int aiField) Global
+    If aiField == DRIFT_INTIMACY()
+        Return "SNRom_DriftStepsIntimacy"
+    ElseIf aiField == DRIFT_ARDOR()
+        Return "SNRom_DriftStepsArdor"
+    EndIf
+    Return "SNRom_DriftStepsExclusivity"
+EndFunction
+
+Function DevDriftStep(Int aiFormId, Int aiField, Int aiOpen)
+    { DEV TOOL, for the web API (three Int arguments: the reference's FormID
+      as a signed decimal, the field - 0 intimacy, 1 ardor, 2 exclusivity, as
+      DRIFT_* - and 1 to open or 0 to close). One drift step with no model
+      call, recorded like a real one, for testing KeepDrift. }
+    Actor a = Game.GetFormEx(aiFormId) as Actor
+    If a == None || !IsEnrolled(a)
+        Diag(LOG_WARN(), "DevDriftStep: no enrolled actor for " + aiFormId)
+        Return
+    EndIf
+    ApplyDrift(a, aiField, aiOpen == 1, "dev step")
+EndFunction
+
+Function KeepDrift(Actor akActor)
+    { RE-AUTHORING KEEPS DRIFT (2.2, WP-D). A re-author writes intimacy, ardor
+      and exclusivity fresh from the record, and threw away every step drift
+      had earned: Sybille, 2026-08-27, moved by a season of play and put back
+      by one hotkey. The plan's shape, from Kinship: the accumulated value is
+      the record, and the model only proposes. So what a re-author writes is
+      a new BASELINE, and the steps drift earned since enrollment
+      (SNRom_DriftSteps*, signed, OPEN positive) are applied on top, by the
+      same step sizes ApplyDrift uses, within the same ranges.
+
+      After the authored write and BEFORE EnforceBlockAnswers: a block the
+      player applied still has the last word on its field. A first authoring
+      has no steps, so this changes nothing there. Standing is points, not a
+      trait, and is not touched (plan, WP-N). }
+    Int si = StorageUtil.GetIntValue(akActor, "SNRom_DriftStepsIntimacy", 0)
+    Int sa = StorageUtil.GetIntValue(akActor, "SNRom_DriftStepsArdor", 0)
+    Int se = StorageUtil.GetIntValue(akActor, "SNRom_DriftStepsExclusivity", 0)
+    If si == 0 && sa == 0 && se == 0
+        Return
+    EndIf
+    String note = ""
+    If si != 0
+        Int tierBefore = StorageUtil.GetIntValue(akActor, "SNRom_PhysMinTier", 4)
+        Int rank = SNRom_Decorators.IntimacyRank(tierBefore) - si
+        If rank < 0
+            rank = 0
+        ElseIf rank > 3
+            rank = 3
+        EndIf
+        Int newTier = SNRom_Decorators.MinTierFromRank(rank)
+        String word = SNRom_Decorators.IntimacyWordFromTier(newTier)
+        StorageUtil.SetIntValue(akActor, "SNRom_PhysMinTier", newTier)
+        StorageUtil.SetIntValue(akActor, "SNRom_PhysAttrBypass", SNRom_Decorators.IntimacyToBypass(word))
+        note += " intimacy " + SNRom_Decorators.IntimacyWordFromTier(tierBefore) + "->" + word + " (" + si + ")"
+    EndIf
+    If sa != 0
+        Int ardor = StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2)
+        Int ardorAfter = ardor + sa
+        If ardorAfter < 0
+            ardorAfter = 0
+        ElseIf ardorAfter > 4
+            ardorAfter = 4
+        EndIf
+        StorageUtil.SetIntValue(akActor, "SNRom_Ardor", ardorAfter)
+        note += " ardor " + ardor + "->" + ardorAfter + " (" + sa + ")"
+    EndIf
+    If se != 0
+        ; OPEN is a LOWER exclusivity (see ApplyDrift).
+        Int excl = StorageUtil.GetIntValue(akActor, "SNRom_Exclusivity", 50)
+        Int exclAfter = excl - (20 * se)
+        If exclAfter < 0
+            exclAfter = 0
+        ElseIf exclAfter > 100
+            exclAfter = 100
+        EndIf
+        StorageUtil.SetIntValue(akActor, "SNRom_Exclusivity", exclAfter)
+        note += " exclusivity " + excl + "->" + exclAfter + " (" + se + ")"
+    EndIf
+    ApiTouch(akActor)
+    Diag(LOG_INFO(), "Re-authoring kept " + akActor.GetDisplayName() + "'s drift, steps since enrollment:" + note)
+EndFunction
+
 Function ApplyDrift(Actor akActor, Int aiField, Bool abOpen, String asPattern)
     { Moves ONE field by exactly ONE step, and writes what earned it.
 
@@ -8775,12 +8862,25 @@ Function ApplyDrift(Actor akActor, Int aiField, Bool abOpen, String asPattern)
 
     Diag(LOG_INFO(), "DRIFT: " + who + " " + DriftFieldName(aiField) + " " + \
         before + " -> " + after + " - " + asPattern)
+    ; THE STEP IS THE RECORD (2.2, WP-D): kept so a re-author does not throw it
+    ; away. Only a step that actually moved the value counts.
+    Int steps = StorageUtil.GetIntValue(akActor, DriftStepsKey(aiField), 0)
+    If abOpen
+        steps += 1
+    Else
+        steps -= 1
+    EndIf
+    StorageUtil.SetIntValue(akActor, DriftStepsKey(aiField), steps)
     ; Our block for this field (if it is ours alone) follows the character, or
     ; the bio and the bond prompt would contradict each other.
     SyncOurBlocks(akActor, "?", "after drift")
     ; Written into the world, because this is a person changing and the people
     ; around her should be able to refer to it. Not a persistent event for the
     ; other two - only a change she has actually lived is worth remembering.
+    ; A developer's step (DevDriftStep) is not a life lived: no memory of it.
+    If asPattern == "dev step"
+        Return
+    EndIf
     SkyrimNetApi.RegisterPersistentEvent(who + " has been changing, in a way " + \
         Game.GetPlayer().GetDisplayName() + " has had a hand in. " + asPattern, \
         akActor, Game.GetPlayer())
@@ -9102,6 +9202,9 @@ Function ApplyCharacter(Actor akActor, String asResponse)
         ": " + orientPart + \
         " intimacy='" + intimWord + "'->minTier" + minTier + "/bypass" + bypass + \
         " ardor=" + ardor + " exclusivity=" + excl)
+    ; What drift earned goes back on top of a re-author's baseline (WP-D), and
+    ; only then do the player's blocks have their say.
+    KeepDrift(akActor)
     ; Applied blocks overrule the model on the three fields they answer - after
     ; the authored write, so the log above keeps what the model said and the
     ; override lines below say what was corrected.
