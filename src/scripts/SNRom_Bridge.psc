@@ -10079,7 +10079,13 @@ Event OnSABioChanged(String asEventName, String asArgs, Float afNum, Form akSend
     EndIf
     Int changed = BioRun(who, SNRom_SABio.AssignedTitles(who), Math.LogicalOr(BIO_ENFORCE(), BIO_SYNC()), -1, \
         "you changed their blocks", BioFlags(True))
-    Diag(LOG_INFO(), "Bio blocks: you " + f[0] + " a block on " + who.GetDisplayName() + \
+    ; The verb is chosen, never echoed: Papyrus folds string literals by case,
+    ; so f[0] printed as "Removed" once that spelling existed elsewhere.
+    String did = "put a block on"
+    If f[0] == "removed"
+        did = "took a block off"
+    EndIf
+    Diag(LOG_INFO(), "Bio blocks: you " + did + " " + who.GetDisplayName() + \
         " - read again now" + StringIf(changed > 0, ", and " + changed + " of ours applied or taken off", "") + ".")
 EndEvent
 
