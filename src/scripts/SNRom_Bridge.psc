@@ -10118,6 +10118,7 @@ EndFunction
 
 String _otherKeys = ""   ; the catalogue sent with the authoring in flight, "|k1|k2|...", in number order
 String _otherPicks = "?" ; its OTHER_BLOCKS answer, as "|"-joined keys; "?" = none given
+String _otherRanks = ""  ; each catalogue entry's OtherTabRank, "|r1|r2|...", in number order
 
 Bool Function OtherBlocksOn()
     Return _bioApiVer >= 4 && BioAssignOn() && SkyrimNetApi.GetConfigBool(CFG(), "bioBlocksOthers", True)
@@ -10126,11 +10127,26 @@ EndFunction
 Int Function OtherTabRank(String asTab) Global
     { Where a tab sits in the author's order, 1 first; 0 not offered. By what
       the name says, since the player names tabs: SeverActions ships
-      "Adventuring Behavior", "Cognitive Level" and the rest. Ours, Arousal and
-      anything unknown (Vices and addictions, other mods' tabs) are not
-      offered. "Sexual Dislikes" before "Dislikes". }
+      "Adventuring Behavior", "Cognitive Level" and the rest. "Sexual
+      Dislikes" before "Dislikes".
+
+      1-9 are SeverActions' tabs and share the six. Vices and addictions sits
+      below Sexual Dislikes, rarer than all of them (the author, 2026-10-11).
+      10-12 are our own Arousal tabs - offered in the library since 2.1 and
+      never applied until now - chosen as ours, outside the six. Our
+      Relationships tabs are chosen by their own fields, and anything unknown
+      (other mods' tabs) is not offered. }
     String t = SNRom_Decorators.Upper(asTab)
-    If StringUtil.Find(t, "RELATIONSHIPS:") == 0 || StringUtil.Find(t, "AROUSAL:") == 0
+    If StringUtil.Find(t, "RELATIONSHIPS:") == 0
+        Return 0
+    ElseIf StringUtil.Find(t, "AROUSAL:") == 0
+        If StringUtil.Find(t, "APPETITE") >= 0
+            Return 10
+        ElseIf StringUtil.Find(t, "STIRRED") >= 0
+            Return 11
+        ElseIf StringUtil.Find(t, "COOLED") >= 0
+            Return 12
+        EndIf
         Return 0
     ElseIf StringUtil.Find(t, "ADVENTUR") >= 0
         Return 1
@@ -10146,10 +10162,23 @@ Int Function OtherTabRank(String asTab) Global
         Return 5
     ElseIf StringUtil.Find(t, "PHOBIA") >= 0
         Return 6
-    ElseIf StringUtil.Find(t, "COGNITIVE") >= 0
+    ElseIf StringUtil.Find(t, "VICE") >= 0 || StringUtil.Find(t, "ADDICTION") >= 0
         Return 8
+    ElseIf StringUtil.Find(t, "COGNITIVE") >= 0
+        Return 9
     EndIf
     Return 0
+EndFunction
+
+Int Function OTHER_SA_MAX() Global
+    { SeverActions' tabs, ranks 1-9: the author's "four to six", never more. }
+    Return 6
+EndFunction
+
+Int Function OTHER_AROUSAL_MAX() Global
+    { Our Arousal tabs, ranks 10-12: one Appetite (a one-block tab) and a few
+      of what stirs and cools them. }
+    Return 5
 EndFunction
 
 String Function OtherBlocksCatalogue(Actor akActor)
@@ -10176,7 +10205,7 @@ String Function OtherBlocksCatalogue(Actor akActor)
             If f.Length >= 4
                 k = f[3]
             EndIf
-            If k == "" || (StringUtil.Find(ours, "," + k + ",") < 0 && StringUtil.Find(k, SNRom_SABioLib.PREFIX()) != 0)
+            If k == "" || StringUtil.Find(ours, "," + k + ",") < 0
                 playerTabs += SNRom_Decorators.Upper(f[1]) + "|"
             EndIf
         EndIf
@@ -10222,9 +10251,10 @@ String Function OtherBlocksCatalogue(Actor akActor)
 
     String out = ""
     String keyList = "|"
+    String rankList = "|"
     Int num = 0
     Int rank = 1
-    While rank <= 8
+    While rank <= 12
         String lastTab = ""
         i = 0
         While i < n
@@ -10236,6 +10266,7 @@ String Function OtherBlocksCatalogue(Actor akActor)
                 num += 1
                 out += "" + num + ". " + SNRom_Decorators.JsonEscape(titles[i]) + "\\n"
                 keyList += keys[i] + "|"
+                rankList += ranks[i] + "|"
             EndIf
             i += 1
         EndWhile
@@ -10245,6 +10276,7 @@ String Function OtherBlocksCatalogue(Actor akActor)
         Return ""
     EndIf
     _otherKeys = keyList
+    _otherRanks = rankList
     Diag(LOG_DEBUG(), "Other blocks: offered " + num + " to the authoring of " + akActor.GetDisplayName())
     Return out
 EndFunction
@@ -10252,7 +10284,8 @@ EndFunction
 String Function ParseOtherPicks(String asResponse)
     { OTHER_BLOCKS as "|"-joined keys from the catalogue; "" for NONE; "?" when
       the line is missing (a truncated answer, or nothing was offered).
-      At most six, unknown numbers dropped. A run of four or more consecutive
+      At most six from SeverActions' tabs and five from our Arousal tabs,
+      unknown numbers dropped. A run of four or more consecutive
       numbers is refused whole: that is the list copied down, not a choice
       (snrom-prompt-lessons). }
     If _otherKeys == ""
@@ -10263,18 +10296,31 @@ String Function ParseOtherPicks(String asResponse)
         Return "?"
     EndIf
     String[] keys = StringUtil.Split(_otherKeys, "|")
+    String[] rk = StringUtil.Split(_otherRanks, "|")
     String[] words = StringUtil.Split(line, ",")
     String picks = "|"
     Int got = 0
+    Int gotSA = 0
+    Int gotAro = 0
     Int run = 1
     Int longest = 1
     Int prev = -9
     Int i = 0
-    While i < words.Length && got < 6
+    While i < words.Length
         Int num = SNRom_Decorators.Trim(words[i]) as Int
-        If num >= 1 && num <= keys.Length && StringUtil.Find(picks, "|" + keys[num - 1] + "|") < 0
+        Int r = 0
+        If num >= 1 && num <= rk.Length
+            r = rk[num - 1] as Int
+        EndIf
+        Bool room = (r >= 1 && r <= 9 && gotSA < OTHER_SA_MAX()) || (r >= 10 && gotAro < OTHER_AROUSAL_MAX())
+        If room && num <= keys.Length && StringUtil.Find(picks, "|" + keys[num - 1] + "|") < 0
             picks += keys[num - 1] + "|"
             got += 1
+            If r >= 10
+                gotAro += 1
+            Else
+                gotSA += 1
+            EndIf
             If num == prev + 1
                 run += 1
             Else

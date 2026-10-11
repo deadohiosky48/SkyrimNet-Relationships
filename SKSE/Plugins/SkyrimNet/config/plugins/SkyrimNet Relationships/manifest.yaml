@@ -330,7 +330,7 @@ schema:
     - name: "Choose Other Bio Blocks"
       path: "bioBlocksOthers"
       type: "bool"
-      description: "When the LLM writes someone's character, it may also choose a few of the other bio blocks in your SeverActions library - Adventuring Behavior first, then Sexual Behavior, Sexual Kinks, Dislikes, Religion, Phobias and Sexual Dislikes, and a Cognitive Level block only for someone of below-average wit or schooling. Usually four to six, never more than six, and only what their character supports. Never in a tab where you have put a block yourself, and one you take off stays off. Characters already written get theirs the next time they are re-read. Needs SeverActions 4.3.0 or newer and Assign Relationships Bio Blocks. Default: on."
+      description: "When the LLM writes someone's character, it may also choose a few of the other bio blocks in your SeverActions library - Adventuring Behavior first, then Sexual Behavior, Sexual Kinks, Dislikes, Religion, Phobias and Sexual Dislikes, Vices and addictions more rarely still, and a Cognitive Level block only for someone of below-average wit or schooling. Usually four to six, never more than six, and only what their character supports. It also chooses from this mod's own Arousal blocks: an Appetite for most people, and a few of what stirs and cools them where their character shows it. Never in a tab where you have put a block yourself, and one you take off stays off. Characters already written get theirs the next time they are re-read. Needs SeverActions 4.3.0 or newer and Assign Relationships Bio Blocks. Default: on."
       defaultValue: true
       category: "Enrollment"
 
