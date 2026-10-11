@@ -206,7 +206,7 @@ Changes take effect a couple of seconds after you save the settings — no reloa
 | **Dashboard Hotkey** | open or close the dashboard |
 | **Enroll Hotkey** | start a bond with them, following you or not |
 | **Re-Read Hotkey** | read their standing again from the record as it now stands |
-| **Re-Author Hotkey** | write their character again from scratch — no undo |
+| **Re-Author Hotkey** | write their character again, keeping how they've changed in play — no undo |
 
 The three crosshair keys do nothing during an OStim or SexLab scene or a
 conversation, where the crosshair rests on a partner or a speaker and scene
@@ -352,9 +352,10 @@ is actually established; a guess stays a guess. Children get none.
   yourself is never touched.
 - **Take one of ours off and it stays off** - that tab is yours for that
   person from then on.
-- A block **you** apply settles its trait outright, from the next load or the
-  next time they are authored, whichever comes first, and change over time
-  stops moving that trait.
+- A block **you** apply settles its trait outright, and change over time
+  stops moving that trait. On SeverActions **4.3.0 or newer** that happens the
+  moment you apply it; on older versions, from the next load or the next time
+  they are authored.
 - Ours **follow the character**: when someone changes over time, the block
   changes with them. Re-authoring someone takes ours off first, so the old
   answer is not read back as yours, then puts the new ones on.
@@ -368,18 +369,22 @@ is actually established; a guess stays a guess. Children get none.
 To apply blocks only by hand, turn off **Assign Relationships Bio Blocks**
 under *Enrollment*. The libraries stay in SeverActions' page either way.
 
-Apply **one** block each from Attachment, Expression and Drawn To. Each is a
-single value; two from the same tab contradict each other, so neither wins and
-the trait is read from the bio instead. A recorded marriage still outranks a
-Drawn To block. Limits can take several.
+Attachment, Expression and Drawn To take **one** block each. On SeverActions
+4.3.0 or newer the tabs enforce it: applying a second replaces the first. On
+older versions, apply one yourself; two from the same tab contradict each
+other, so neither wins and the trait is read from the bio instead. A recorded
+marriage still outranks a Drawn To block. Limits can take several.
 
 **Balance matters more than restraint.** Blocks describing physical taste say
 nothing about how someone expresses feeling, so a character carrying twenty of
 those and none of these leaves the emotional questions to be answered from
 whatever else is lying around - and what is lying around is the physical.
 
-**Arousal** - a second library, describing desire rather than disposition. It
-is offered in SeverActions' page and **never applied for you**:
+**Arousal** - a second library, describing desire rather than disposition. On
+SeverActions 4.3.0 or newer it's **chosen for you** when someone's character is
+written (see below), by the same rules as the rest - never over a block you
+put there yourself. On older versions it's offered in the page for you to
+apply:
 
 | tab | what it describes |
 |---|---|
@@ -396,6 +401,17 @@ is never read as falling:** it can lead a casual character to bed; it never
 makes anyone fall in love with you. Keep them consistent with the rest of a
 character's blocks - someone carrying SeverActions' *Shy* or *Reserved* is more
 likely *Slow to Kindle* than *Easily Stirred*.
+
+**SeverActions' own blocks.** On SeverActions **4.3.0 or newer**, writing
+someone's character also picks a few blocks from the rest of your library:
+Adventuring Behavior first, then Sexual Behavior and Kinks, and Dislikes,
+Religion, Phobias, Sexual Dislikes and Vices only when their character clearly
+shows it. Cognitive Level is only for someone a bit slow or unschooled. Usually
+four to six, never more than six, plus an Appetite and a few Stirred By and
+Cooled By from our Arousal library. Same rules as ours: never in a tab where
+you've put something yourself, and anything you take off stays off. People
+already written get theirs the next time they're re-authored. Turn it off with
+**Choose Other Bio Blocks** under *Enrollment*.
 
 **On an older SeverActions** (before 4.0.1) nothing is offered or applied, and
 the libraries can still be imported by hand. Its import window takes **pasted
@@ -501,10 +517,11 @@ enroll them by hand:
 ```
 
 **An authored character reads wrong.** Point at them and press the **Re-Author
-Hotkey**, or use **Re-author their character** on their card. It throws away the
-character on file, including everything that has drifted over a long
-acquaintance, and there is no undo — the old one is written to the mod's log
-first, so a mistaken press is legible afterwards. **Reach for this rather than
+Hotkey**, or use **Re-author their character** on their card. It writes their
+character again from scratch, then puts back the ways they've changed through
+play since 2.2 (anything that drifted before 2.2 wasn't recorded, so that part
+is lost). There is no undo — the old one is written to the mod's log first, so
+a mistaken press is legible afterwards. **Reach for this rather than
 the re-read when the problem is the person, not the progress** — a devoted
 companion who still refuses to share you, or whose stated reasons are about
 someone they are not. By hand:
