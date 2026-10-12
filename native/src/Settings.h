@@ -33,6 +33,8 @@ namespace SNRom::Settings {
         // attractionBypassRatio (2.1, WP-A): the intimacy gate's attraction
         // bar, which the read API works out natively (Api.cpp).
         std::optional<float>        attractionBypassRatio;
+        // outputLanguage (2.3, WP-L): "Game", or a language named in English.
+        std::optional<std::string>  language;
 
         // The crosshair keys (Hotkey.h), re-read, re-author and enroll in that
         // order: rereadKey, reauthorKey, enrollKey, each a virtual key, and

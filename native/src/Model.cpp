@@ -1,6 +1,7 @@
 #include "Model.h"
 
 #include "History.h"
+#include "L10n.h"
 
 #include <algorithm>
 #include <format>
@@ -507,7 +508,11 @@ namespace SNRom::Model {
         }
         snap["ladder"] = { { "thresholds", kThresholds }, { "below", kBelow }, { "floor", kFloor } };
         snap["player"] = player;
-        snap["settings"] = { { "developer", a_overlay.developer },
+        // The words (2.3, WP-L): the language's code, and its table for the
+        // page's t() - empty for English, whose words are in the page.
+        snap["strings"] = L10n::Table();
+        snap["settings"] = { { "language", L10n::Code() },
+                             { "developer", a_overlay.developer },
                              { "scale", a_overlay.scale == 0 ? json("auto") : json(a_overlay.scale) },
                              { "textSize", a_overlay.textSize == 2 ? "larger" :
                                            a_overlay.textSize == 1 ? "large" :

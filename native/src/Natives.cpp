@@ -3,6 +3,7 @@
 #include "PCH.h"
 
 #include "Api.h"
+#include "L10n.h"
 #include "BioPlan.h"
 #include "Dashboard.h"
 #include "History.h"
@@ -179,6 +180,14 @@ namespace SNRom::Natives {
             Notices::Post(std::move(a_text));
         }
 
+        // v11 (2.3, WP-L): the player's words in the player's language
+        // (L10n.h). a_english is the text when this language has none; {0}
+        // and {1} are filled from the two arguments either way.
+        std::string Text(RE::StaticFunctionTag*, std::string a_key, std::string a_english, std::string a_arg0,
+                         std::string a_arg1) {
+            return L10n::Text(a_key, a_english, a_arg0, a_arg1);
+        }
+
         // The display check, one bond at a time (SNRom_Bridge.CheckDashboardDisplay).
         // NOT callable from tasklets: it reads the engine, so it waits for the
         // main thread. That costs a frame per bond, which this tool pays on
@@ -321,6 +330,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("CheckBond", kScript, CheckBond);  // main thread: see above
             a_vm->RegisterFunction("RecordChange", kScript, RecordChange, true);
             a_vm->RegisterFunction("Announce", kScript, Announce, true);
+            a_vm->RegisterFunction("Text", kScript, Text, true);
             a_vm->RegisterFunction("ObserversNear", kScript, ObserversNear);  // main thread: see above
             a_vm->RegisterFunction("AppendLog", kScript, AppendLog, true);
             a_vm->RegisterFunction("BioPlan", kScript, BioPlan, true);
@@ -330,7 +340,7 @@ namespace SNRom::Natives {
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
                             "PutBondNumbers, PutBondText, DropBond, FormIdOf, PutPlaythrough, PutRefreshFacts, "
                             "RefreshDone, ActionArgs, ActionDone, CheckBond, RecordChange, Announce, ObserversNear, AppendLog, "
-                            "BioPlan, UuidHex, ApiLoaded, ApiSelfTest",
+                            "BioPlan, UuidHex, ApiLoaded, ApiSelfTest, Text",
                             kScript, kVersion);
             return true;
         });

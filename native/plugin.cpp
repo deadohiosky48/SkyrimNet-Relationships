@@ -3,6 +3,7 @@
 #include "src/Dashboard.h"
 #include "src/History.h"
 #include "src/Hotkey.h"
+#include "src/L10n.h"
 #include "src/Natives.h"
 #include "src/Notices.h"
 #include "src/Settings.h"
@@ -40,6 +41,9 @@ namespace {
         // its first look applies the saved settings before any save loads.
         case SKSE::MessagingInterface::kDataLoaded:
             SNRom::Dashboard::OnDataLoaded();
+            // The game's language until settings.yaml says otherwise: a
+            // settings file saved before 2.3 has no outputLanguage.
+            SNRom::L10n::SetLanguage("Game");
             SNRom::Settings::StartWatching();
             SNRom::Notices::Start();
             break;

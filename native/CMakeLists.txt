@@ -87,6 +87,7 @@ set(SOURCES
     src/MagelightHost.cpp
     src/MeridianHost.cpp
     src/Model.cpp
+    src/L10n.cpp
     src/Natives.cpp
     src/Notices.cpp
     src/PrismaHost.cpp

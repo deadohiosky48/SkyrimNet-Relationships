@@ -2,6 +2,8 @@
 
 #include "PCH.h"
 
+#include "L10n.h"
+
 #include "Dashboard.h"
 #include "Hotkey.h"
 
@@ -47,6 +49,7 @@ namespace SNRom::Settings {
         constexpr std::string_view kScale = "dashboardScale";
         constexpr std::string_view kTextSize = "dashboardTextSize";
         constexpr std::string_view kAttractionBypassRatio = "attractionBypassRatio";
+        constexpr std::string_view kLanguage = "outputLanguage";
 
         // Read by the API on the game thread, written by Apply on the game thread.
         std::atomic<float> g_attractionBypassRatio{ 1.5f };
@@ -233,6 +236,9 @@ namespace SNRom::Settings {
             if (a_values.developer) {
                 Dashboard::SetDeveloperView(*a_values.developer);
             }
+            // The words the player reads (L10n.h). Absent from a file saved
+            // before 2.3, which means the game's language.
+            L10n::SetLanguage(a_values.language.value_or("Game"));
             if (a_values.scale || a_values.textSize) {
                 Dashboard::SetDisplay(a_values.scale, a_values.textSize);
             }
@@ -393,7 +399,7 @@ namespace SNRom::Settings {
             const auto key = Trim(line.substr(0, colon));
             const auto crosshair = CrosshairSetting(key);
             if (!crosshair && key != kHotkey && key != kModifier && key != kDeveloper && key != kScale &&
-                key != kTextSize && key != kAttractionBypassRatio) {
+                key != kTextSize && key != kAttractionBypassRatio && key != kLanguage) {
                 continue;
             }
             const auto value = Scalar(Trim(line.substr(colon + 1)));
@@ -453,6 +459,8 @@ namespace SNRom::Settings {
                         "{} '{}' is not a positive number, so the intimacy gate keeps {}", key, *value,
                         g_attractionBypassRatio.load()));
                 }
+            } else if (key == kLanguage) {
+                values.language = std::string(*value);
             } else if (key == kScale) {
                 values.scale = ScaleFromName(*value);
                 if (!values.scale) {
