@@ -1469,23 +1469,23 @@ Function AnnounceTier(Actor akActor, Int aiFrom, Int aiTo, String asKind, String
       The tier is named on the track the player is shown (ShownTierName), so
       a feeling nobody has spoken is not announced as one. }
     String name = akActor.GetDisplayName()
-    String tier = ShownTierName(akActor, aiTo)
+    String tier = TierWord(ShownTierName(akActor, aiTo))
     String text = ""
     ; Below Stranger (2.2, WP-N) a bond does not deepen or cool: it sours,
     ; and climbing back is ill feeling easing, not closeness growing.
     If asKind == "seed"
-        text = "Your history with " + name + " reads as " + tier
+        text = Tr("notice.seeded", "Your history with {0} reads as {1}", name, tier)
     ElseIf aiTo > aiFrom && aiFrom < 0 && aiTo <= 0
         ; Only while it stays at or below Stranger: a climb that carries past
         ; it deepened (Iddra, Disliked to Lover in one step, read "eased:
         ; Ally" in testing, 2026-10-07).
-        text = name + "'s ill feeling toward you eased: " + tier
+        text = Tr("notice.eased", "{0}'s ill feeling toward you eased: {1}", name, tier)
     ElseIf aiTo > aiFrom
-        text = "Your bond with " + name + " deepened: " + tier
+        text = Tr("notice.deepened", "Your bond with {0} deepened: {1}", name, tier)
     ElseIf aiTo < 0
-        text = "Your bond with " + name + " soured: " + tier
+        text = Tr("notice.soured", "Your bond with {0} soured: {1}", name, tier)
     Else
-        text = "Your bond with " + name + " cooled: " + tier
+        text = Tr("notice.cooled", "Your bond with {0} cooled: {1}", name, tier)
     EndIf
     If _dashNatives >= 5
         SNRom_Native.Announce(text)
@@ -1503,6 +1503,53 @@ Function AnnounceTier(Actor akActor, Int aiFrom, Int aiTo, String asKind, String
     ; QUIET: with logNotifications on, a loud line would put the notice on
     ; screen at once, through the mirror, and the hold would be for nothing.
     Diag(LOG_INFO(), "Tier " + aiFrom + " -> " + aiTo + " for " + name + " (" + asKind + "): '" + text + "'", True)
+EndFunction
+
+String Function Tr(String asKey, String asEnglish, String a0 = "", String a1 = "") Global
+    { THE PLAYER'S WORDS IN THE PLAYER'S LANGUAGE (2.3, WP-L). The text for a
+      key from the DLL's table for the Language setting (native/src/L10n.h),
+      or asEnglish when there is none; the placeholders 0 and 1, in braces,
+      filled from a0 and a1.
+      Only for what the player READS - notices, answers to a keypress, the
+      question box. What the model reads (thoughts, memory events, prompt
+      context) stays English, as SkyrimNet's own records do.
+
+      tools/gen-l10n.ps1 finds every Tr call's key and English and writes them to
+      l10n/en.json, the translators' template, so keep both literals on the
+      same line as the call. An older DLL (before natives v11) has no table:
+      the English is filled here instead. }
+    If SNRom_Native.Version() >= 11
+        Return SNRom_Native.Text(asKey, asEnglish, a0, a1)
+    EndIf
+    String s = SNRom_Decorators.ReplaceAll(asEnglish, "{0}", a0)
+    Return SNRom_Decorators.ReplaceAll(s, "{1}", a1)
+EndFunction
+
+String Function TierWord(String asName) Global
+    { A tier's name as the player reads it (Tr). The English name stays the
+      log's and the prompts'. }
+    If asName == "Spouse"
+        Return Tr("tier.spouse", "Spouse")
+    ElseIf asName == "Lover"
+        Return Tr("tier.lover", "Lover")
+    ElseIf asName == "Confidant"
+        Return Tr("tier.confidant", "Confidant")
+    ElseIf asName == "Friend"
+        Return Tr("tier.friend", "Friend")
+    ElseIf asName == "Acquaintance"
+        Return Tr("tier.acquaintance", "Acquaintance")
+    ElseIf asName == "Best Friend"
+        Return Tr("tier.bestFriend", "Best Friend")
+    ElseIf asName == "Ally"
+        Return Tr("tier.ally", "Ally")
+    ElseIf asName == "Disliked"
+        Return Tr("tier.disliked", "Disliked")
+    ElseIf asName == "Resentful"
+        Return Tr("tier.resentful", "Resentful")
+    ElseIf asName == "Enemy"
+        Return Tr("tier.enemy", "Enemy")
+    EndIf
+    Return Tr("tier.stranger", "Stranger")
 EndFunction
 
 String Function ShownTierName(Actor akActor, Int aiTier)
@@ -1848,7 +1895,7 @@ Function ImportEveryone()
             " skipped (no longer in the game). To bring Romantasy's points over instead, load a save " + \
             "from before this one with Romantasy installed.")
         If brought > 0
-            Say("Romantasy isn't installed, so " + brought + " companions start over and are re-read from their history.")
+            Say(Tr("say.importNoRomantasy", "Romantasy isn't installed, so {0} companions start over and are re-read from their history.", brought as String))
         EndIf
         Return
     EndIf
@@ -1857,9 +1904,9 @@ Function ImportEveryone()
         "anyone enrolled later is brought over at their first change.")
     If brought > 0
         If before
-            Say("An older save: brought " + total + " companions over from Romantasy, from this save's own points.")
+            Say(Tr("say.importOlder", "An older save: brought {0} companions over from Romantasy, from this save's own points.", total as String))
         Else
-            Say("Brought " + total + " companions over from Romantasy.")
+            Say(Tr("say.imported", "Brought {0} companions over from Romantasy.", total as String))
         EndIf
     EndIf
 EndFunction
@@ -2341,13 +2388,12 @@ Function AskTheQuestion(Actor akActor)
     ; into two blocks, and Skyrim's message box wrapped each of them on its own
     ; while most of the box width sat unused - it read as cramped text in a wide
     ; frame. The engine wraps well enough on its own; let it.
-    String body = who + " has asked where the two of you stand. " + \
-        "Whatever you answer, you will have answered it plainly."
+    String body = Tr("ask.body", "{0} has asked where the two of you stand. Whatever you answer, you will have answered it plainly.", who)
 
     Int answer = SNRom_Choice.AskNow(body, \
-        "Tell them you feel the same", \
-        "Tell them you do not feel that way", \
-        "Say nothing of it for now")
+        Tr("ask.accept", "Tell them you feel the same"), \
+        Tr("ask.decline", "Tell them you do not feel that way"), \
+        Tr("ask.defer", "Say nothing of it for now"))
 
     If answer == SNRom_Choice.ANSWER_ACCEPT()
         AcceptRomance(akActor)
@@ -4072,13 +4118,12 @@ Function OpenPendingBox()
     ; into two blocks, and Skyrim's message box wrapped each of them on its own
     ; while most of the box width sat unused - it read as cramped text in a wide
     ; frame. The engine wraps well enough on its own; let it.
-    String body = who + " has asked where the two of you stand. " + \
-        "Whatever you answer, you will have answered it plainly."
+    String body = Tr("ask.body", "{0} has asked where the two of you stand. Whatever you answer, you will have answered it plainly.", who)
 
     Int id = SNRom_Choice.Open(body, \
-        "Tell them you feel the same", \
-        "Tell them you do not feel that way", \
-        "Say nothing of it for now")
+        Tr("ask.accept", "Tell them you feel the same"), \
+        Tr("ask.decline", "Tell them you do not feel that way"), \
+        Tr("ask.defer", "Say nothing of it for now"))
     If id == 0
         _boxPending = None
         Diag(LOG_WARN(), "Could not open the question for " + who + \
@@ -5267,7 +5312,7 @@ Function CheckContentLoaded(Bool abSettled = False)
         "(Beta 25) or newer, which reads it from SkyrimNet's external plugin folder; " + \
         "older builds cannot see it at all. On 0.25.0 or newer, reinstalling this mod " + \
         "is the usual fix.")
-    Say("SkyrimNet is not loading Relationships' content - it needs SkyrimNet Beta 25 or newer. See the log.")
+    Say(Tr("say.contentMissing", "SkyrimNet is not loading Relationships' content - it needs SkyrimNet Beta 25 or newer. See the log."))
 EndFunction
 
 Function SweepLoverCeiling()
@@ -5572,7 +5617,7 @@ Function AssessSeed(Actor akActor)
         ; hotkey path the player pressed a key and would otherwise be told
         ; nothing at all, which is indistinguishable from a dead keybind.
         If _seedByHand
-            Say("Could not reach the model to re-read " + _seedName + ".")
+            Say(Tr("say.rereadNoModel", "Could not reach the model to re-read {0}.", _seedName))
             _seedByHand = False
         EndIf
         _seedActor = None
@@ -5654,7 +5699,7 @@ Function SeedAssessed(String asResponse, Int aiSuccess)
         Diag(LOG_WARN(), "Seed assessment for " + asked + " failed or returned " + \
             "nothing - falling back to rank and rapport alone.")
         If announce
-            Say("The re-read of " + asked + " came back empty. Fell back to rank and rapport.")
+            Say(Tr("say.rereadEmpty", "The re-read of {0} came back empty. Fell back to rank and rapport.", asked))
         EndIf
         If who != None
             SeedActor(who)
@@ -5666,7 +5711,7 @@ Function SeedAssessed(String asResponse, Int aiSuccess)
         Diag(LOG_ERROR(), "Seed echo mismatch: asked about " + asked + ", answered as " + \
             echoed + ". Discarded.")
         If announce
-            Say("The answer for " + asked + " came back about " + echoed + " - discarded.")
+            Say(Tr("say.rereadWrongName", "The answer for {0} came back about {1} - discarded.", asked, echoed))
         EndIf
         Return
     EndIf
@@ -5852,7 +5897,7 @@ Event OnHotkey(String asEventName, String asKey, Float afNumArg, Form akSender)
         ; every press. A second press inside the minute is refused, out loud.
         If who != None && Utility.GetCurrentRealTime() - StorageUtil.GetFloatValue(who, "SNRom_ReauthorKeyAt", -1000.0) < 60.0 && \
            Utility.GetCurrentRealTime() >= StorageUtil.GetFloatValue(who, "SNRom_ReauthorKeyAt", -1000.0)
-            Say(who.GetDisplayName() + " was re-authored less than a minute ago. Press again later if you mean it.")
+            Say(Tr("say.reauthorTooSoon", "{0} was re-authored less than a minute ago. Press again later if you mean it.", who.GetDisplayName()))
             Return
         EndIf
         If who != None
@@ -5864,7 +5909,7 @@ Event OnHotkey(String asEventName, String asKey, Float afNumArg, Form akSender)
         If refused != ""
             Say(refused)
         Else
-            Say(who.GetDisplayName() + " is enrolled. Their character is being written.")
+            Say(Tr("say.enrolled", "{0} is enrolled. Their character is being written.", who.GetDisplayName()))
         EndIf
     EndIf
 EndEvent
@@ -5974,7 +6019,7 @@ Function ArmDashboard()
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll did not load. Relationships 2.0 needs it: " + \
             "check that it is installed, with SKSE and Address Library for this game version.", True)
         Say("SkyrimNetRelationships.dll did not load - no dashboard, hotkeys or bond history. " + \
-            "Check SKSE and Address Library for this game version.")
+            "Check SKSE and Address Library for this game version.")   ; no DLL, so no table to read
         Return
     EndIf
     ; OLDER DLL, NEWER SCRIPTS. Version 1's SetDashboardHotkey took the key
@@ -5987,7 +6032,7 @@ Function ArmDashboard()
     If natives < 7
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
             ", these need v7). Install the DLL from the same release.", True)
-        Say("SkyrimNetRelationships.dll is older than the scripts - install both from the same release.")
+        Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5
         Return
@@ -6029,7 +6074,7 @@ Function ArmDashboard()
         ; would open the dashboard without the modifier the player chose.
         Diag(LOG_WARN(), "Dashboard hotkey NOT bound: modifier '" + modName + "' is not one of the " + \
             "options. Choose one under Dashboard in the settings panel.")
-        Say("That dashboard modifier can't be used - choose another in the settings.")
+        Say(Tr("say.badModifier", "That dashboard modifier can't be used - choose another in the settings."))
     Else
         ; REFUSED, NOT GUESSED. The DLL found no keyboard scan code for this key
         ; and bound nothing; binding the nearest number is how End became H.
@@ -6039,7 +6084,7 @@ Function ArmDashboard()
         ; press it; a refusal only in the log reads as a key that does nothing.
         ; Every bootstrap while it stays set, which is the same as saying it
         ; still does not work.
-        Say("That dashboard key can't be used - choose another in the settings.")
+        Say(Tr("say.badKey", "That dashboard key can't be used - choose another in the settings."))
     EndIf
 EndFunction
 
@@ -6559,20 +6604,20 @@ Function ReseedUnderCrosshair(Actor akTarget)
       open. The asynchronous answer arrives in OnSeedAssessed, which announces
       all four of its outcomes when the request came from here. }
     If !_ready
-        Say("Not ready - Relationships has not started this session.")
+        Say(Tr("say.notReady", "Not ready - Relationships has not started this session."))
         Return
     EndIf
     Actor who = akTarget
     If who == None
-        Say("Point at someone first.")
+        Say(Tr("say.pointFirst", "Point at someone first."))
         Return
     EndIf
     If who == Game.GetPlayer()
-        Say("That is you.")
+        Say(Tr("say.thatIsYou", "That is you."))
         Return
     EndIf
     If who.IsDead()
-        Say(who.GetDisplayName() + " is dead.")
+        Say(Tr("say.dead", "{0} is dead.", who.GetDisplayName()))
         Return
     EndIf
     If !IsEnrolled(who)
@@ -6589,7 +6634,7 @@ Function ReseedUnderCrosshair(Actor akTarget)
         Return
     EndIf
     If SeedReadInFlight()
-        Say("Still reading the record for " + _seedName + " - try again in a moment.")
+        Say(Tr("say.rereadBusy", "Still reading the record for {0} - try again in a moment.", _seedName))
         Return
     EndIf
     ; SET BEFORE THE DISPATCH, because AssessSeed reports its own refusal and
@@ -6597,7 +6642,7 @@ Function ReseedUnderCrosshair(Actor akTarget)
     ; OnSeedAssessed and on a refused dispatch, so it cannot leak into the next
     ; automatic seed and make it noisy.
     _seedByHand = True
-    Say("Re-reading the record for " + who.GetDisplayName() + "...")
+    Say(Tr("say.rereading", "Re-reading the record for {0}...", who.GetDisplayName()))
     ReseedActor(who)
 EndFunction
 
@@ -6642,20 +6687,20 @@ Function ReauthorUnderCrosshair(Actor akTarget)
       hand, which is the difference between a bad afternoon and a lost
       character. }
     If !_ready
-        Say("Not ready - Relationships has not started this session.")
+        Say(Tr("say.notReady", "Not ready - Relationships has not started this session."))
         Return
     EndIf
     Actor who = akTarget
     If who == None
-        Say("Point at someone first.")
+        Say(Tr("say.pointFirst", "Point at someone first."))
         Return
     EndIf
     If who == Game.GetPlayer()
-        Say("That is you.")
+        Say(Tr("say.thatIsYou", "That is you."))
         Return
     EndIf
     If who.IsDead()
-        Say(who.GetDisplayName() + " is dead.")
+        Say(Tr("say.dead", "{0} is dead.", who.GetDisplayName()))
         Return
     EndIf
     ; ACCEPTS OURS-THIS-SESSION, unlike the re-read above, and the asymmetry is
@@ -6674,11 +6719,11 @@ Function ReauthorUnderCrosshair(Actor akTarget)
     ; LLM call to overwrite the answer the first one is still fetching. The
     ; player pressing twice means "did that work?", not "do it twice".
     If _pendingActor == who
-        Say("Already re-authoring " + who.GetDisplayName() + " - the answer takes a few seconds.")
+        Say(Tr("say.reauthorBusy", "Already re-authoring {0} - the answer takes a few seconds.", who.GetDisplayName()))
         Return
     EndIf
     If StorageUtil.FormListFind(None, "SNRom_AuthorQueue", who) >= 0
-        Say(who.GetDisplayName() + " is already queued for re-authoring.")
+        Say(Tr("say.reauthorQueued", "{0} is already queued for re-authoring.", who.GetDisplayName()))
         Return
     EndIf
     ; LLM AUTHORING TURNED OFF MAKES THIS KEY MEANINGLESS, and caught here
@@ -6689,7 +6734,7 @@ Function ReauthorUnderCrosshair(Actor akTarget)
     ; not have. Refusing up front names the actual cause, which is a setting
     ; they can change.
     If SkyrimNetApi.GetConfigBool(CFG(), "enrollmentLlmPreferences", True) == False
-        Say("LLM-authored personalities are switched off in the settings - there is nothing to re-author with.")
+        Say(Tr("say.authoringOff", "LLM-authored personalities are switched off in the settings - there is nothing to re-author with."))
         Return
     EndIf
     ; THE RECORD OF WHAT IS BEING DISCARDED, written before the dispatch so it
@@ -6721,9 +6766,9 @@ Function ReauthorUnderCrosshair(Actor akTarget)
     ; pass never reached. The two cases are indistinguishable from the outside
     ; otherwise, and the destructive-sounding one is the one people hesitate on.
     If oldWhy == "" && StorageUtil.GetIntValue(who, "SNRom_DispositionAuthored", 0) != 1
-        Say("Authoring " + who.GetDisplayName() + " for the first time...")
+        Say(Tr("say.authoringFirst", "Authoring {0} for the first time...", who.GetDisplayName()))
     Else
-        Say("Re-authoring " + who.GetDisplayName() + " - old character discarded...")
+        Say(Tr("say.reauthoring", "Re-authoring {0} - old character discarded...", who.GetDisplayName()))
     EndIf
     ; PER-ACTOR, NOT A SCRIPT VARIABLE, for the reason ReauthorCharacter states
     ; about its own flag: authoring QUEUES, so a single Bool would be read by
@@ -10717,8 +10762,7 @@ Function BioBlocksOnLoad()
         Diag(LOG_WARN(), "Bio blocks: SeverActions accepted " + defined + " of our " + offered + ". The rest are " + \
             "hidden on its Bio Blocks page (deleting a block there hides it). Until they are restored from its " + \
             "Hidden list, nobody's blocks are judged taken off, and none are applied.")
-        String hint = "Relationships: " + (offered - defined) + " of its bio blocks are hidden in SeverActions. " + \
-            "Restore them from the Bio Blocks page, under Hidden."
+        String hint = Tr("notice.blocksHidden", "Relationships: {0} of its bio blocks are hidden in SeverActions. Restore them from the Bio Blocks page, under Hidden.", (offered - defined) as String)
         If _dashNatives >= 5
             SNRom_Native.Announce(hint)
         Else

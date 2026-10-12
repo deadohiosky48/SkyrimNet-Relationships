@@ -139,6 +139,11 @@ Function RecordChange(Actor akActor, String asKind, Int aiDelta, Int aiTotal, St
  SNRom_Bridge.RecordHistory.}
 
 Function Announce(String asText) Global Native
+
+; v11 (2.3, WP-L): the player's words in the player's language. asEnglish is
+; the text when this language has none; {0} and {1} are filled from a0 and a1
+; either way. Reached through SNRom_Bridge.Tr, which checks Version() first.
+String Function Text(String asKey, String asEnglish, String a0, String a1) Global Native
 {VERSION 5. A tier change's notice, worded by SNRom_Bridge.AnnounceTier. The
  DLL holds it until the player is out of combat, out of an OStim or SexLab
  scene and not paused, then sends the ModEvent SNRom_ShowNotice with the
