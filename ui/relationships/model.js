@@ -38,11 +38,11 @@
       out.below = true;
       out.pct = Math.max(0, Math.min(1, (ceil - p) / Math.max(1, ceil - bottom)));
       out.toNext = ceil + 1 - p;
-      out.note = L.number(out.toNext) + " to climb";
+      out.note = UI.t("progress.toClimb", "{0} to climb", L.number(out.toNext));
       return out;
     }
     if (t >= top) {
-      out.note = "Top of the ladder";
+      out.note = UI.t("progress.top", "Top of the ladder");
       return out;
     }
     var floor = th[t], next = th[t + 1];
@@ -54,15 +54,15 @@
     var loverLine = th[4];
     var atLine = p >= loverLine - 1 || b.depth.banked > 0;
     if (!reveal) {
-      out.note = L.number(out.toNext) + " to next";
+      out.note = UI.t("progress.toNext", "{0} to next", L.number(out.toNext));
     } else if (atLine && b.state === "unexamined") {
       out.held = true;
-      out.note = "Held until judged";
+      out.note = UI.t("progress.heldJudged", "Held until judged");
     } else if (atLine && b.state === "interested" && b.stance === "unanswered") {
       out.held = true;
-      out.note = b.askPending ? "Held: question owed" : "Held: question unanswered";
+      out.note = b.askPending ? UI.t("progress.heldOwed", "Held: question owed") : UI.t("progress.heldUnanswered", "Held: question unanswered");
     } else {
-      out.note = L.number(out.toNext) + " to next";
+      out.note = UI.t("progress.toNext", "{0} to next", L.number(out.toNext));
     }
     return out;
   }

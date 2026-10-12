@@ -19,18 +19,24 @@
 
   var FIELD = { intimacy: 0, ardor: 1, exclusivity: 2 };
 
-  var ACTIONS = [
+  var t = UI.t;
+  var ACTIONS = [];
+
+  // IN THE PLAYER'S LANGUAGE (2.3, WP-L): every word through t (labels.js),
+  // and the list rebuilt in place by relabel() when the language changes, so
+  // what holds it reads the new words. `calls` stays as written: it names code.
+  function build() { fill([
     {
       op: "ReseedActor",
       scope: "bond",
       calls: "SNRom_Bridge.ReseedActor(Actor)",
-      label: "Re-read their standing",
-      help: "Reads their record again and tops their standing up to what it now supports. It can raise them, never lower them.",
+      label: t("action.reseedActor.label", "Re-read their standing"),
+      help: t("action.reseedActor.help", "Reads their record again and tops their standing up to what it now supports. It can raise them, never lower them."),
       // No follow requirement from 1.9 (WP4): the points are the mod's own,
       // and a re-read of someone not following used to change nothing
       // (Erdi, 2026-09-29). Ours land wherever
       // they are, so it works for anyone, like the re-author.
-      needs: "Nothing: works wherever they are.",
+      needs: t("action.reseedActor.needs", "Nothing: works wherever they are."),
       needsNearby: false,
       needsFollowing: false,
       confirm: null
@@ -39,21 +45,21 @@
       op: "ReauthorCharacter",
       scope: "bond",
       calls: "SNRom_Bridge.ReauthorCharacter(Actor)",
-      label: "Re-author their character",
-      help: "Writes who they are again from the record: orientation, intimacy, ardor, exclusivity, Why and Limit. What they call you is kept.",
+      label: t("action.reauthorCharacter.label", "Re-author their character"),
+      help: t("action.reauthorCharacter.help", "Writes who they are again from the record: orientation, intimacy, ardor, exclusivity, Why and Limit. What they call you is kept."),
       // Reads by character, not by what is in front of the player; only the
       // crosshair hotkey needs them present (design 12, decided 2026-09-29).
-      needs: "Nothing: works wherever they are.",
+      needs: t("action.reauthorCharacter.needs", "Nothing: works wherever they are."),
       needsNearby: false,
-      confirm: "This throws away the character on file, including everything that has drifted over your time together. The old one is written to the log, but there is no undo."
+      confirm: t("action.reauthorCharacter.confirm", "Their character is written again from the record. How they have changed through play since 2.2 is kept; the old one is written to the log, but there is no undo.")
     },
     {
       op: "SetCharacterField",
       scope: "bond",
       calls: "SNRom_Bridge.SetCharacterField(Actor, Int field, Int value)",
-      label: "Correct one trait",
-      help: "Writes one trait directly, with no LLM involved. For a single wrong field when the rest are right.",
-      needs: "Nothing: works wherever they are.",
+      label: t("action.setCharacterField.label", "Correct one trait"),
+      help: t("action.setCharacterField.help", "Writes one trait directly, with no LLM involved. For a single wrong field when the rest are right."),
+      needs: t("action.setCharacterField.needs", "Nothing: works wherever they are."),
       needsNearby: false,
       confirm: null,
       form: "traitField"
@@ -62,19 +68,19 @@
       op: "UnenrollActor",
       scope: "bond",
       calls: "SNRom_Bridge.UnenrollActor(Actor)",
-      label: "Remove from roster",
-      help: "For someone enrolled by mistake. They come off the roster and nothing assesses them from then on.",
-      needs: "Nothing: works wherever they are.",
+      label: t("action.unenrollActor.label", "Remove from roster"),
+      help: t("action.unenrollActor.help", "For someone enrolled by mistake. They come off the roster and nothing assesses them from then on."),
+      needs: t("action.unenrollActor.needs", "Nothing: works wherever they are."),
       needsNearby: false,
-      confirm: "They come off the roster and stop being assessed. This is not a reset: what is already stored about them stays."
+      confirm: t("action.unenrollActor.confirm", "They come off the roster and stop being assessed. This is not a reset: what is already stored about them stays.")
     },
     {
       op: "EnrollActor",
       scope: "crosshair",
       calls: "SNRom_Bridge.EnrollByHand(Actor)",
-      label: "Enroll",
-      help: "Starts a bond with the person you were looking at when you opened this, following you or not. Their character is written and their record read over the next few minutes.",
-      needs: "They were under your crosshair when the dashboard opened.",
+      label: t("action.enrollActor.label", "Enroll"),
+      help: t("action.enrollActor.help", "Starts a bond with the person you were looking at when you opened this, following you or not. Their character is written and their record read over the next few minutes."),
+      needs: t("action.enrollActor.needs", "They were under your crosshair when the dashboard opened."),
       needsNearby: false,
       confirm: null
     },
@@ -82,31 +88,31 @@
       op: "StartFreshStore",
       scope: "playthrough",
       calls: "SNRom_Bridge.StartFreshStore()",
-      label: "Give this playthrough its own store",
-      help: "For a new game that inherited another playthrough's characters. Nothing is deleted; the other store stays on disk.",
+      label: t("action.startFreshStore.label", "Give this playthrough its own store"),
+      help: t("action.startFreshStore.help", "For a new game that inherited another playthrough's characters. Nothing is deleted; the other store stays on disk."),
       needs: null,
       needsNearby: false,
-      confirm: "Everyone in this playthrough starts reading from a new, empty store. The store you leave is untouched, and 'Return to the main store' undoes this."
+      confirm: t("action.startFreshStore.confirm", "Everyone in this playthrough starts reading from a new, empty store. The store you leave is untouched, and 'Return to the main store' undoes this.")
     },
     {
       op: "AdoptLegacyStore",
       scope: "playthrough",
       calls: "SNRom_Bridge.AdoptLegacyStore()",
-      label: "Return to the main store",
-      help: "Reattaches this playthrough to the original store and claims it. Undoes the action above.",
+      label: t("action.adoptLegacyStore.label", "Return to the main store"),
+      help: t("action.adoptLegacyStore.help", "Reattaches this playthrough to the original store and claims it. Undoes the action above."),
       needs: null,
       needsNearby: false,
-      confirm: "This playthrough claims the main store. If another playthrough owns it, that one will get a store of its own the next time it loads."
+      confirm: t("action.adoptLegacyStore.confirm", "This playthrough claims the main store. If another playthrough owns it, that one will get a store of its own the next time it loads.")
     },
     {
       op: "RestoreOurBioBlocks",
       scope: "playthrough",
       calls: "SNRom_Bridge.RestoreOurBioBlocks()",
-      label: "Give everyone our bio blocks again",
-      help: "For a game where Relationships' bio blocks were deleted in SeverActions and then restored: until 2.1.1 everyone who carried one was recorded as having it taken off, so nobody got it back. Restore the blocks on SeverActions' Bio Blocks page (Hidden) first.",
+      label: t("action.restoreOurBioBlocks.label", "Give everyone our bio blocks again"),
+      help: t("action.restoreOurBioBlocks.help", "For a game where Relationships' bio blocks were deleted in SeverActions and then restored: until 2.1.1 everyone who carried one was recorded as having it taken off, so nobody got it back. Restore the blocks on SeverActions' Bio Blocks page (Hidden) first."),
       needs: null,
       needsNearby: false,
-      confirm: "Every category where a Relationships block was recorded as taken off gets ours again, if it is empty. Blocks you chose yourself stay. A category you emptied on purpose gets ours back too; take it off again in SeverActions if you meant it."
+      confirm: t("action.restoreOurBioBlocks.confirm", "Every category where a Relationships block was recorded as taken off gets ours again, if it is empty. Blocks you chose yourself stay. A category you emptied on purpose gets ours back too; take it off again in SeverActions if you meant it.")
     },
 
     // Developer tools. They exist and dispatch the same way, but each bypasses a
@@ -117,9 +123,9 @@
       op: "RequestSparkNow",
       scope: "bond",
       calls: "SNRom_Bridge.RequestSparkNow(Actor)",
-      label: "Ask the spark assessor now",
-      help: "Judges them out of turn instead of waiting for the tenure gate. It does not set a spark; the assessor still decides.",
-      needs: "They must be near you, with no spark verdict yet.",
+      label: t("action.requestSparkNow.label", "Ask the spark assessor now"),
+      help: t("action.requestSparkNow.help", "Judges them out of turn instead of waiting for the tenure gate. It does not set a spark; the assessor still decides."),
+      needs: t("action.requestSparkNow.needs", "They must be near you, with no spark verdict yet."),
       needsNearby: true,
       confirm: null,
       developer: true
@@ -128,19 +134,19 @@
       op: "UnsparkActor",
       scope: "bond",
       calls: "SNRom_Bridge.UnsparkActor(Actor)",
-      label: "Return to the platonic ladder",
-      help: "Clears a spark that should not have happened, keeping every point.",
+      label: t("action.unsparkActor.label", "Return to the platonic ladder"),
+      help: t("action.unsparkActor.help", "Clears a spark that should not have happened, keeping every point."),
       needs: null,
       needsNearby: false,
-      confirm: "Their spark is cleared and the spark tenure gate starts again from now.",
+      confirm: t("action.unsparkActor.confirm", "Their spark is cleared and the spark tenure gate starts again from now."),
       developer: true
     },
     {
       op: "ForceDriftReview",
       scope: "bond",
       calls: "SNRom_Bridge.ForceDriftReview(Actor, Int field)",
-      label: "Force a drift review",
-      help: "Reviews one trait now, bypassing both drift gates. A quiet history should come back NO.",
+      label: t("action.forceDriftReview.label", "Force a drift review"),
+      help: t("action.forceDriftReview.help", "Reviews one trait now, bypassing both drift gates. A quiet history should come back NO."),
       needs: null,
       needsNearby: false,
       confirm: null,
@@ -154,15 +160,17 @@
       op: "CheckDisplay",
       scope: "playthrough",
       calls: "SNRom_Bridge.CheckDashboardDisplay()",
-      label: "Check the display against the rules",
-      help: "Runs the real IsFollowing, CommitmentState and RomanceApplicability for every bond and compares what the dashboard shows. Slow on purpose: about a minute with 120 bonds. Disagreements go to SkyrimNetRelationships.log.",
+      label: t("action.checkDisplay.label", "Check the display against the rules"),
+      help: t("action.checkDisplay.help", "Runs the real IsFollowing, CommitmentState and RomanceApplicability for every bond and compares what the dashboard shows. Slow on purpose: about a minute with 120 bonds. Disagreements go to SkyrimNetRelationships.log."),
       needs: null,
       needsNearby: false,
-      confirm: "This takes about a minute with 120 bonds, and the game's scripts are busy until it is done.",
+      confirm: t("action.checkDisplay.confirm", "This takes about a minute with 120 bonds, and the game's scripts are busy until it is done."),
       developer: true
     }
 
-  ];
+  ]); }
+  function fill(list) { ACTIONS.length = 0; list.forEach(function (a) { ACTIONS.push(a); }); }
+  build();
 
   // A player's actions for a scope. Developer tools are never among them:
   // they have their own labelled place (developerTools, below), so a player
@@ -184,5 +192,5 @@
     return null;
   }
 
-  UI.actions = { ACTIONS: ACTIONS, FIELD: FIELD, available: available, developerTools: developerTools, byOp: byOp };
+  UI.actions = { ACTIONS: ACTIONS, FIELD: FIELD, available: available, developerTools: developerTools, byOp: byOp, relabel: build };
 })(window.SNRomUI = window.SNRomUI || {});

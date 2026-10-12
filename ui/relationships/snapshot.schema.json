@@ -89,6 +89,10 @@
       "required": ["developer", "scale", "textSize"],
       "description": "Player settings the page needs: SkyrimNet plugin settings, handed to SkyrimNetRelationships.dll by SNRom_Bridge.ArmDashboard at every bootstrap and by the DLL's own settings watcher when they are saved, and sent here by the DLL.",
       "properties": {
+        "language": {
+          "type": "string",
+          "description": "2.3 (WP-L): the language the player reads, as a code (en, de, fr, es, it, pl, ru, cs, ja, zh), from the outputLanguage setting through native/src/L10n.h. Absent from a DLL before 2.3, which is English."
+        },
         "developer": {
           "type": "boolean",
           "description": "The developer view (design 7.6), from the SkyrimNet setting dashboardDeveloperView, handed to the DLL by SNRom_Native.SetDeveloperView at bootstrap and by its settings watcher when the setting is saved. True shows what characters have not said, and the developer tools. mode.js turns it on when this is true, or when its own constant or ?developer=1 in a browser says so; it never turns it off against either."
@@ -121,6 +125,11 @@
     "crosshairTarget": {
       "anyOf": [{ "$ref": "#/$defs/crosshairTarget" }, { "type": "null" }],
       "description": "Who the player was looking at when the dashboard opened. Optional: absent or null when nobody was. New in 2.0: SkyrimNetRelationships.dll reads the crosshair (CrosshairPickData's active target) BEFORE the view opens, because the view pauses the game and covers the crosshair (design 3.2, dashboard route). It sends a living, loaded actor other than the player, or null."
+    },
+    "strings": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "2.3 (WP-L): the player's words in settings.language, key to text, from SKSE/Plugins/SkyrimNet Relationships/l10n/<code>.json. Empty for English and for a missing or broken file: labels.js falls back to the English written in the page. tools/gen-l10n.ps1 lists every key in l10n/en.json."
     },
     "bonds": {
       "type": "array",

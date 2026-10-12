@@ -10,6 +10,7 @@
   var L = UI.labels;
   var M = UI.model;
   var A = UI.actions;
+  var t = UI.t;
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -52,27 +53,27 @@
     this.bond = null;
     this.root.innerHTML = "";
     this.root.className = "detail is-summary";
-    this.root.setAttribute("aria-label", "Roster at a glance");
+    this.root.setAttribute("aria-label", t("detail.summary.aria", "Roster at a glance"));
     var head = el("div", "detail-head");
     var h = el("div");
-    h.appendChild(el("h2", null, "At a glance"));
-    h.appendChild(el("p", "detail-meta", "Select someone to see where they stand and why."));
+    h.appendChild(el("h2", null, t("detail.summary.title", "At a glance")));
+    h.appendChild(el("p", "detail-meta", t("detail.summary.hint", "Select someone to see where they stand and why.")));
     head.appendChild(h);
     this.root.appendChild(head);
     var scroll = el("div", "detail-scroll");
     var c = M.counts(snap.bonds);
 
-    var tracks = section("Tracks");
+    var tracks = section(t("detail.tracks", "Tracks"));
     [["platonic", c.platonic], ["romantic", c.romantic]].forEach(function (t) {
       var r = el("div", "legend-row");
       r.appendChild(el("span", "n", String(t[1])));
       r.appendChild(chip("t-" + t[0], L.TRACKS[t[0]].label));
-      r.appendChild(el("p", null, t[0] === "romantic" ? "Mutual: they asked, and you said yes." : "Everyone else, however deep."));
+      r.appendChild(el("p", null, t[0] === "romantic" ? UI.t("detail.tracks.romantic", "Mutual: they asked, and you said yes.") : UI.t("detail.tracks.platonic", "Everyone else, however deep.")));
       tracks.appendChild(r);
     });
     scroll.appendChild(tracks);
 
-    var states = section("States");
+    var states = section(t("detail.states", "States"));
     var shownStates = UI.mode.shownStates(L.STATE_ORDER);
     var unspoken = c.total;
     shownStates.forEach(function (s) {
@@ -88,7 +89,7 @@
     if (!UI.mode.developer) {
       var r = el("div", "legend-row");
       r.appendChild(el("span", "n", String(unspoken)));
-      r.appendChild(el("p", null, "Nothing said between you either way."));
+      r.appendChild(el("p", null, t("detail.states.unspoken", "Nothing said between you either way.")));
       states.appendChild(r);
     }
     scroll.appendChild(states);
@@ -110,7 +111,7 @@
     this.bond = b;
     this.root.innerHTML = "";
     this.root.className = "detail";
-    this.root.setAttribute("aria-label", "Details: " + b.subject.name);
+    this.root.setAttribute("aria-label", t("detail.aria", "Details: {0}", b.subject.name));
 
     // Head
     var head = el("div", "detail-head");
@@ -118,8 +119,8 @@
     h.appendChild(el("h2", null, b.subject.name));
     var meta = el("p", "detail-meta");
     var bits = [];
-    if (b.following) bits.push("Following you");
-    bits.push(b.nearby ? "Near you" : "Elsewhere");
+    if (b.following) bits.push(t("detail.following", "Following you"));
+    bits.push(b.nearby ? t("detail.near", "Near you") : t("detail.elsewhere", "Elsewhere"));
     meta.appendChild(document.createTextNode(bits.join(" · ") + " · "));
     meta.appendChild(el("code", null, L.hexId(b.subject.formId)));
     h.appendChild(meta);
@@ -127,8 +128,8 @@
     var close = el("button", "icon-btn", "×");
     close.type = "button";
     close.id = "detail-close";
-    close.title = "Back to the roster (Esc)";
-    close.setAttribute("aria-label", "Close details");
+    close.title = t("detail.close.title", "Back to the roster (Esc)");
+    close.setAttribute("aria-label", t("detail.close.aria", "Close details"));
     close.addEventListener("click", function () { self.onClose(); });
     head.appendChild(close);
     this.root.appendChild(head);
@@ -137,10 +138,10 @@
     this.scroller = scroll;
 
     // Depth: the at-a-glance number, big.
-    var depth = section("Depth");
+    var depth = section(t("detail.depth", "Depth"));
     var big = el("div", "depth-big");
     big.appendChild(el("span", "tier " + L.tierClass(b), L.tierName(b.track, b.depth.tier, b.depth.estranged)));
-    big.appendChild(el("span", "pts", L.number(b.depth.points) + " points"));
+    big.appendChild(el("span", "pts", t("detail.points", "{0} points", L.number(b.depth.points))));
     depth.appendChild(big);
     var prog = M.progress(b, snap.ladder);
     var bar = el("div", "bar");
@@ -150,14 +151,13 @@
     depth.appendChild(bar);
     depth.appendChild(el("p", "depth-note", prog.note));
     if (UI.mode.developer && b.depth.banked > 0) {
-      depth.appendChild(el("p", "depth-note", L.number(b.depth.banked) +
-        " more points are held back until you answer their question. A yes releases all of them."));
+      depth.appendChild(el("p", "depth-note", t("detail.banked", "{0} more points are held back until you answer their question. A yes releases all of them.", L.number(b.depth.banked))));
     }
     // WHAT MOVED IT: the last several changes, newest first, as the roster's
     // line shows the newest (labels.js, CHANGE, for what a player sees).
     var changes = L.visibleChanges(b.history, UI.mode.developer);
     if (changes.length) {
-      depth.appendChild(el("h4", "sub-head", "What moved it"));
+      depth.appendChild(el("h4", "sub-head", t("detail.whatMoved", "What moved it")));
       var list = el("ol", "change-list");
       changes.forEach(function (e) {
         var li = el("li", "change");
@@ -172,7 +172,7 @@
       });
       depth.appendChild(list);
     } else {
-      depth.appendChild(el("p", "depth-note", "No changes recorded yet."));
+      depth.appendChild(el("p", "depth-note", t("detail.noChanges", "No changes recorded yet.")));
     }
     scroll.appendChild(depth);
 
@@ -181,38 +181,38 @@
     // are not drawn at all: each is something the character has not said
     // (mode.js). A declined or courting chip already says what the player
     // answered.
-    var kind = section("The bond");
+    var kind = section(t("detail.bond", "The bond"));
     var dl = el("dl");
     var trackLine = el("span");
     trackLine.appendChild(chip("t-" + b.track, L.TRACKS[b.track].label));
-    kv(dl, "Track", trackLine);
+    kv(dl, t("detail.track", "Track"), trackLine);
     var shown = UI.mode.shownState(b);
     if (shown) {
       var stateLine = el("span");
       stateLine.appendChild(chip("s-" + shown, L.stateLabel(shown, b)));
       if (shown === "foreclosed") stateLine.appendChild(document.createTextNode("  " + L.FORECLOSURE[b.foreclosure]));
-      kv(dl, "State", stateLine);
+      kv(dl, t("detail.state", "State"), stateLine);
     }
     kind.appendChild(dl);
     if (shown) kind.appendChild(el("p", "blurb", L.stateBlurb(shown, b)));
     var dl2 = el("dl");
     if (b.state !== "foreclosed") {
       if (UI.mode.developer) {
-        kv(dl2, "Your answer", L.STANCE[b.stance]);
-        if (b.askPending) kv(dl2, "Question", "Owed. They will raise it themselves, in person.");
+        kv(dl2, t("detail.yourAnswer", "Your answer"), L.STANCE[b.stance]);
+        if (b.askPending) kv(dl2, t("detail.question", "Question"), t("detail.question.owed", "Owed. They will raise it themselves, in person."));
         var spark = b.spark.sparked
-          ? "Sparked" + (b.spark.sparkedAt !== null ? " on " + L.gameDay(b.spark.sparkedAt) : "")
-          : (b.spark.decided ? "Judged: nothing romantic" : "Not judged yet");
-        kv(dl2, "Spark", spark);
+          ? (b.spark.sparkedAt !== null ? t("detail.spark.on", "Sparked on {0}", L.gameDay(b.spark.sparkedAt)) : t("detail.spark.yes", "Sparked"))
+          : (b.spark.decided ? t("detail.spark.no", "Judged: nothing romantic") : t("detail.spark.notYet", "Not judged yet"));
+        kv(dl2, t("detail.spark", "Spark"), spark);
       }
-      if (b.commitment !== "none") kv(dl2, "Commitment", L.COMMITMENT[b.commitment]);
+      if (b.commitment !== "none") kv(dl2, t("detail.commitment", "Commitment"), L.COMMITMENT[b.commitment]);
     }
     kind.appendChild(dl2);
     scroll.appendChild(kind);
 
     // Character: the traits in words, then the prose.
-    var ch = section("Who they are");
-    var t = b.traits;
+    var ch = section(t("detail.whoTheyAre", "Who they are"));
+    var tr = b.traits;
     var traits = el("div", "traits");
     function box(k, v) {
       var d = el("div", "trait-box");
@@ -221,47 +221,48 @@
       traits.appendChild(d);
     }
     if (b.state !== "foreclosed") {
-      box("Intimacy", L.INTIMACY[t.intimacy]);
-      box("Ardor", L.ARDOR[t.ardor] + " (" + t.ardor + " of 4)");
-      box("Exclusivity", L.exclusivityWord(t.exclusivity) + " (" + t.exclusivity + " of 100)");
-      box("Drawn to", L.ORIENTATION[t.orientation] + (t.orientationBasis === "known" ? "" : " (" + t.orientationBasis + ")"));
+      box(UI.t("trait.intimacy", "Intimacy"), L.INTIMACY[tr.intimacy]);
+      box(UI.t("trait.ardor", "Ardor"), UI.t("trait.ardor.value", "{0} ({1} of 4)", L.ARDOR[tr.ardor], tr.ardor));
+      box(UI.t("trait.exclusivity", "Exclusivity"), UI.t("trait.exclusivity.value", "{0} ({1} of 100)", L.exclusivityWord(tr.exclusivity), tr.exclusivity));
+      box(UI.t("trait.drawnTo", "Drawn to"), L.ORIENTATION[tr.orientation] + (tr.orientationBasis === "known" ? "" :
+        " (" + (tr.orientationBasis === "inferred" ? UI.t("trait.basis.inferred", "inferred") : UI.t("trait.basis.unknown", "unknown")) + ")"));
     } else {
-      box("Ardor", L.ARDOR[t.ardor] + " (" + t.ardor + " of 4)");
+      box(UI.t("trait.ardor", "Ardor"), UI.t("trait.ardor.value", "{0} ({1} of 4)", L.ARDOR[tr.ardor], tr.ardor));
     }
     ch.appendChild(traits);
-    if (!t.authored) ch.appendChild(el("p", "trait-note", "Not authored yet. These are defaults until their character is written."));
+    if (!tr.authored) ch.appendChild(el("p", "trait-note", UI.t("trait.notAuthored", "Not authored yet. These are defaults until their character is written.")));
     // "Calls you" is prose.address (decided 2026-09-30): the label changes,
     // the data does not. Its hint says what the line is, since unlike Why and
     // Limit it is not authored but kept: the talk assessment owns it, and
     // authoring takes one only if a model volunteers it (ApplyProse).
-    [["Why", b.prose.why], ["Limit", b.prose.limit],
-     ["Calls you", b.prose.address, "What they call you, saved so they don't forget it, and changed only when a conversation changes it."]]
+    [[UI.t("prose.why", "Why"), b.prose.why], [UI.t("prose.limit", "Limit"), b.prose.limit],
+     [UI.t("prose.callsYou", "Calls you"), b.prose.address, UI.t("prose.callsYou.hint", "What they call you, saved so they don't forget it, and changed only when a conversation changes it.")]]
       .forEach(function (pr) {
         var d = el("div", "prose");
         d.appendChild(el("span", "k", pr[0]));
         if (pr[2]) d.appendChild(el("span", "prose-hint", pr[2]));
-        d.appendChild(pr[1] ? el("p", null, pr[1]) : el("p", "is-missing", "Not written yet."));
+        d.appendChild(pr[1] ? el("p", null, pr[1]) : el("p", "is-missing", UI.t("prose.missing", "Not written yet.")));
         ch.appendChild(d);
       });
     scroll.appendChild(ch);
 
     // On the roster
-    var ros = section("On your roster");
+    var ros = section(t("detail.roster", "On your roster"));
     var dl3 = el("dl");
-    var joined = b.enrollment.joinedAt === null ? "Before join dates were kept" :
+    var joined = b.enrollment.joinedAt === null ? t("detail.joined.unknown", "Before join dates were kept") :
       L.gameDay(b.enrollment.joinedAt) + " (" + L.daysAgo(b.enrollment.joinedAt, snap.generatedAt) + ")";
-    kv(dl3, "Joined", joined);
-    kv(dl3, "Enrolled", L.ENROLLED_BY[b.enrollment.by]);
+    kv(dl3, t("detail.joined", "Joined"), joined);
+    kv(dl3, t("detail.enrolled", "Enrolled"), L.ENROLLED_BY[b.enrollment.by]);
     if (!b.following) {
-      kv(dl3, "Last following", b.lastFollowingAt === null ? "Never" :
+      kv(dl3, t("detail.lastFollowing", "Last following"), b.lastFollowingAt === null ? t("detail.never", "Never") :
         L.gameDay(b.lastFollowingAt) + " (" + L.daysAgo(b.lastFollowingAt, snap.generatedAt) + ")");
     }
-    kv(dl3, "Starting standing", b.seeded ? "Read from the record" : "Not read yet");
+    kv(dl3, t("detail.seeded", "Starting standing"), b.seeded ? t("detail.seeded.yes", "Read from the record") : t("detail.seeded.no", "Not read yet"));
     ros.appendChild(dl3);
     scroll.appendChild(ros);
 
     // Actions
-    var acts = section("Repairs");
+    var acts = section(t("detail.repairs", "Repairs"));
     A.available("bond").forEach(function (a) { acts.appendChild(self.actionBlock(a, b, busy)); });
     scroll.appendChild(acts);
 
@@ -269,9 +270,9 @@
     // Only in the developer view; the list is empty otherwise.
     var tools = A.developerTools("bond");
     if (tools.length) {
-      var dev = section("Developer tools");
+      var dev = section(t("detail.devTools", "Developer tools"));
       dev.className += " sec-dev";
-      dev.appendChild(el("p", "act-needs", "Shown because the developer view is on. For looking under the hood; a player never needs them."));
+      dev.appendChild(el("p", "act-needs", t("detail.devTools.note", "Shown because the developer view is on. For looking under the hood; a player never needs them.")));
       tools.forEach(function (a) { dev.appendChild(self.actionBlock(a, b, busy)); });
       scroll.appendChild(dev);
     }
@@ -291,8 +292,8 @@
     var row = el("div", "act-row");
     // Why the button cannot be pressed, if it cannot. Papyrus refuses with a
     // reason as well, in case the game has moved on since the snapshot.
-    var blocked = a.needsFollowing && !b.following ? b.subject.name + " is not travelling with you. " + a.needs :
-      a.needsNearby && !b.nearby ? b.subject.name + " is not near you. " + a.needs : null;
+    var blocked = a.needsFollowing && !b.following ? t("act.notFollowing", "{0} is not travelling with you.", b.subject.name) + " " + a.needs :
+      a.needsNearby && !b.nearby ? t("act.notNear", "{0} is not near you.", b.subject.name) + " " + a.needs : null;
     var btn = el("button", "btn" + (a.confirm ? " btn-danger" : ""), a.label);
     btn.type = "button";
     btn.setAttribute("data-op", a.op);
@@ -303,8 +304,8 @@
       var form = el("div", "act-form");
       var field = el("select");
       field.id = "trait-field";
-      field.setAttribute("aria-label", "Trait to correct");
-      [["intimacy", "Intimacy"], ["ardor", "Ardor"], ["exclusivity", "Exclusivity"]].forEach(function (f) {
+      field.setAttribute("aria-label", t("act.traitToCorrect", "Trait to correct"));
+      [["intimacy", t("trait.intimacy", "Intimacy")], ["ardor", t("trait.ardor", "Ardor")], ["exclusivity", t("trait.exclusivity", "Exclusivity")]].forEach(function (f) {
         var o = el("option", null, f[1]); o.value = f[0]; field.appendChild(o);
       });
       var value = el("span");
@@ -316,13 +317,13 @@
           var inp = el("input");
           inp.type = "number"; inp.min = "0"; inp.max = "100"; inp.step = "5";
           inp.value = String(b.traits.exclusivity);
-          inp.setAttribute("aria-label", "Exclusivity, 0 to 100");
+          inp.setAttribute("aria-label", t("act.exclusivityRange", "Exclusivity, 0 to 100"));
           value.appendChild(inp);
           readValue = function () { return Math.max(0, Math.min(100, parseInt(inp.value, 10) || 0)); };
         } else {
           var sel = el("select");
-          sel.setAttribute("aria-label", f === "ardor" ? "Ardor" : "Intimacy");
-          var words = f === "ardor" ? L.ARDOR : ["Casual", "Romantic", "Guarded", "Never"];
+          sel.setAttribute("aria-label", f === "ardor" ? t("trait.ardor", "Ardor") : t("trait.intimacy", "Intimacy"));
+          var words = f === "ardor" ? L.ARDOR : [L.INTIMACY.casual, L.INTIMACY.romantic, L.INTIMACY.guarded, L.INTIMACY.never];
           var cur = f === "ardor" ? b.traits.ardor : ["casual", "romantic", "guarded", "never"].indexOf(b.traits.intimacy);
           words.forEach(function (w, i) { var o = el("option", null, w); o.value = String(i); if (i === cur) o.selected = true; sel.appendChild(o); });
           value.appendChild(sel);
@@ -334,7 +335,7 @@
       renderValue();
       form.appendChild(field);
       form.appendChild(value);
-      btn.textContent = "Write";
+      btn.textContent = t("act.write", "Write");
       btn.addEventListener("click", function () {
         self.onAction(a, b, [A.FIELD[field.value], readValue()], btn);
       });

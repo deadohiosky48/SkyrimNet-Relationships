@@ -21,6 +21,22 @@
   var COLUMNS = [["c-name", "Name", "name"], ["c-depth", "Depth", "depth"], ["c-track", "Track", "track"],
     ["c-state", "State", "state"], ["c-com", "Commitment", "com"], ["c-int", "Intimacy", "int"], ["c-ard", "Ardor", "ard"],
     ["c-exc", "Exclusivity", "exc"], ["c-ori", "Drawn to", "ori"]];
+  // A column's header in the player's language (labels.js, t), read each time
+  // so a language change reaches it.
+  function colLabel(col) {
+    var t = UI.t;
+    switch (col[2]) {
+      case "name": return t("col.name", "Name");
+      case "depth": return t("col.depth", "Depth");
+      case "track": return t("col.track", "Track");
+      case "state": return t("col.state", "State");
+      case "com": return t("col.commitment", "Commitment");
+      case "int": return t("trait.intimacy", "Intimacy");
+      case "ard": return t("trait.ardor", "Ardor");
+      case "exc": return t("trait.exclusivity", "Exclusivity");
+      default: return t("trait.drawnTo", "Drawn to");
+    }
+  }
   // .cols in style.css: the gap between columns and the padding either side,
   // in rem. Spacing, so not multiplied by the text size.
   var COL_GAP_REM = 0.75;
@@ -60,7 +76,7 @@
     var self = this;
     var head = el("div", "cols roster-head");
     head.setAttribute("aria-hidden", "true");
-    COLUMNS.forEach(function (c) { head.appendChild(el("div", c[0], c[1])); });
+    this.headCells = COLUMNS.map(function (c) { var cell = el("div", c[0], colLabel(c)); head.appendChild(cell); return cell; });
     this.probe = el("div", "fit-probe");
     this.probe.setAttribute("aria-hidden", "true");
 
@@ -68,7 +84,7 @@
     this.viewport.id = "roster-list";
     this.viewport.tabIndex = 0;
     this.viewport.setAttribute("role", "listbox");
-    this.viewport.setAttribute("aria-label", "Roster");
+    this.viewport.setAttribute("aria-label", UI.t("roster.aria", "Roster"));
     this.spacer = el("div", "spacer");
     this.viewport.appendChild(this.spacer);
     this.empty = el("div", "empty");
@@ -92,6 +108,13 @@
     this.measure();
   };
 
+  // The language changed (labels.setStrings): the header's words, and the
+  // columns sized again to the new words.
+  Roster.prototype.relabel = function () {
+    (this.headCells || []).forEach(function (cell, i) { cell.textContent = colLabel(COLUMNS[i]); });
+    this.viewport.setAttribute("aria-label", UI.t("roster.aria", "Roster"));
+  };
+
   // The row height display.js set, in px.
   Roster.prototype.measure = function () {
     var v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--row-h"));
@@ -113,11 +136,11 @@
   // not, so the developer view does not move the columns either.
   function candidates(bonds, ladder) {
     var chips = function (cls, words) { return words.map(function (w) { return [cls, w]; }); };
-    var tiers = L.TIER_NAMES.romantic.concat(L.TIER_NAMES.platonic, L.BELOW_NAMES, [L.ESTRANGED]);
+    var tiers = L.TIER_NAMES.romantic.concat(L.TIER_NAMES.platonic, L.BELOW_NAMES, [L.ESTRANGED.word]);
     var states = L.STATE_ORDER.map(function (s) { return L.STATES[s].label; }).concat([L.STATES.courting.devoted.label]);
     var intimacy = Object.keys(L.INTIMACY).map(function (k) { return L.INTIMACY[k]; }).concat(["\u2014"]);
     var exclusivity = [0, 25, 50, 75, 100].map(function (v) { return L.exclusivityWord(v) + " 100"; }).concat(["\u2014"]);
-    var orientation = ["Unknown", "\u2014"].concat(Object.keys(L.ORIENTATION).map(function (k) {
+    var orientation = [L.orientationChip({ orientationBasis: "unknown" }).text, "\u2014"].concat(Object.keys(L.ORIENTATION).map(function (k) {
       return L.orientationChip({ orientationBasis: "inferred", orientation: k }).text;
     }));
     var names = longest(bonds.map(function (b) { return b.subject.name; }));
@@ -125,7 +148,7 @@
       return L.number(b.depth.points) + " \u00b7 " + M.progress(b, ladder).note;
     })) : [];
     return {
-      name: chips("name", names).concat(chips("name-sub", ["Following", "Enrolled by you"])),
+      name: chips("name", names).concat(chips("name-sub", [UI.t("roster.following", "Following"), UI.t("roster.enrolledByYou", "Enrolled by you")])),
       tier: chips("tier", tiers),
       pts: chips("pts", pts),
       track: chips("chip", [L.TRACKS.platonic.label, L.TRACKS.romantic.label]),
@@ -168,7 +191,7 @@
     var heads = {};
     COLUMNS.forEach(function (col) {
       var g = el("div", "fit-col");
-      g.appendChild(el("div", "roster-head", col[1]));
+      g.appendChild(el("div", "roster-head", colLabel(col)));
       probe.appendChild(g);
       heads[col[2]] = g;
     });
@@ -316,7 +339,7 @@
     row.setAttribute("aria-selected", isOpen ? "true" : "false");
 
     p.nm.textContent = b.subject.name;
-    p.sub.textContent = b.following ? "Following" : (b.enrollment.by === "player" ? "Enrolled by you" : "");
+    p.sub.textContent = b.following ? UI.t("roster.following", "Following") : (b.enrollment.by === "player" ? UI.t("roster.enrolledByYou", "Enrolled by you") : "");
     p.sub.className = "name-sub" + (b.following ? " tag-follow" : "");
 
     var prog = M.progress(b, this.ladder);
@@ -354,16 +377,17 @@
 
     var t = b.traits;
     var dflt = t.authored ? "" : " is-default";
-    var dfltHint = t.authored ? "" : "Not authored yet: this is the default, not a judgement.";
+    var dfltHint = t.authored ? "" : UI.t("roster.default.hint", "Not authored yet: this is the default, not a judgement.");
+    var naHint = UI.t("roster.na.hint", "Not on the romantic axis");
     // Foreclosed pairs are never on the romantic axis (design 5.2): no
     // intimacy, exclusivity or orientation for them, only how they show what
     // they feel.
     var romanticAxis = b.state !== "foreclosed";
-    setChip(p.intimacy, romanticAxis ? L.INTIMACY[t.intimacy] : "—", romanticAxis ? dflt : " is-na", romanticAxis ? dfltHint : "Not on the romantic axis");
+    setChip(p.intimacy, romanticAxis ? L.INTIMACY[t.intimacy] : "—", romanticAxis ? dflt : " is-na", romanticAxis ? dfltHint : naHint);
     setChip(p.ardor, L.ARDOR[t.ardor], dflt, dfltHint);
-    setChip(p.exclusivity, romanticAxis ? L.exclusivityWord(t.exclusivity) + " " + t.exclusivity : "—", romanticAxis ? dflt : " is-na", romanticAxis ? dfltHint : "Not on the romantic axis");
+    setChip(p.exclusivity, romanticAxis ? L.exclusivityWord(t.exclusivity) + " " + t.exclusivity : "—", romanticAxis ? dflt : " is-na", romanticAxis ? dfltHint : naHint);
     var o = L.orientationChip(t);
-    setChip(p.orientation, romanticAxis ? o.text : "—", romanticAxis ? dflt : " is-na", romanticAxis ? (dfltHint || o.hint) : "Not on the romantic axis");
+    setChip(p.orientation, romanticAxis ? o.text : "—", romanticAxis ? dflt : " is-na", romanticAxis ? (dfltHint || o.hint) : naHint);
   };
 
   function setChip(chip, text, extra, hint) {

@@ -60,6 +60,27 @@
     root.style.setProperty("--panel-max", (natural + max + PANEL_BORDER) + "px");
   }
 
+  var t = UI.t;
+
+  // THE PAGE'S FIXED TEXT in the player's language (2.3, WP-L). index.html
+  // marks it: data-t="key" for an element's text, data-t-title,
+  // data-t-placeholder and data-t-aria-label for those attributes. The
+  // English written there is kept (data-en...) as the fallback, so switching
+  // back to English restores it.
+  function applyStaticText() {
+    function each(sel, fn) { Array.prototype.forEach.call(document.querySelectorAll(sel), fn); }
+    each("[data-t]", function (e) {
+      if (!e.hasAttribute("data-en")) e.setAttribute("data-en", e.textContent);
+      e.textContent = t(e.getAttribute("data-t"), e.getAttribute("data-en"));
+    });
+    ["title", "placeholder", "aria-label"].forEach(function (attr) {
+      each("[data-t-" + attr + "]", function (e) {
+        if (!e.hasAttribute("data-en-" + attr)) e.setAttribute("data-en-" + attr, e.getAttribute(attr) || "");
+        e.setAttribute(attr, t(e.getAttribute("data-t-" + attr), e.getAttribute("data-en-" + attr)));
+      });
+    });
+  }
+
   function wide() { return !document.documentElement.classList.contains("is-narrow"); }
 
   // The scale or the text size moved (a snapshot, or Auto and a resize): the
@@ -73,11 +94,15 @@
   // ---------------------------------------------------------------- snapshot
   snrom.on("snapshot", function (s) {
     if (!s || s.schemaVersion !== SCHEMA) {
-      $("summary").textContent = "This dashboard reads snapshot version " + SCHEMA + "; the game sent " +
-        (s ? s.schemaVersion : "nothing") + ". Update the mod so both halves match.";
+      $("summary").textContent = t("app.schemaMismatch", "This dashboard reads snapshot version {0}; the game sent {1}. Update the mod so both halves match.",
+        SCHEMA, s ? s.schemaVersion : t("app.schemaNothing", "nothing"));
       return;
     }
     snap = s;
+    // The player's language rides in every snapshot too (2.3, WP-L): when its
+    // table changed, the words drawn once - the page's fixed text, the state
+    // filter, the roster's header, the badge - are drawn again.
+    if (L.setStrings(s.strings)) { A.relabel(); applyStaticText(); buildStateFilter(); roster.relabel(); renderBadge(true); }
     // The game's developer setting rides in every snapshot (mode.js). When it
     // flips, what depends on it is rebuilt before anything is drawn with it.
     if (UI.mode.apply(s)) { buildStateFilter(); renderBadge(); }
@@ -100,19 +125,20 @@
   function rosterStatus() {
     var r = snap.roster, some = snap.bonds.length > 0;
     if (r.status === "reading") {
-      return some ? { line: "Refreshing from the game\u2026", warn: false } :
-        { line: "Reading your roster from the game\u2026", warn: false, summary: "Reading your roster from the game\u2026",
-          title: "Reading the roster", body: "The game is sending it now. It appears here as soon as it arrives." };
+      var reading = t("status.reading", "Reading your roster from the game\u2026");
+      return some ? { line: t("status.refreshing", "Refreshing from the game\u2026"), warn: false } :
+        { line: reading, warn: false, summary: reading,
+          title: t("status.reading.title", "Reading the roster"), body: t("status.reading.body", "The game is sending it now. It appears here as soon as it arrives.") };
     }
     if (r.status === "not ready") {
-      var why = r.message || "The game did not say why.";
-      return { line: "Relationships isn't ready: " + why, warn: true, summary: "Relationships isn't ready.",
-        title: "Relationships isn't ready", body: why };
+      var why = r.message || t("status.notReady.noReason", "The game did not say why.");
+      return { line: t("status.notReady.line", "Relationships isn't ready: {0}", why), warn: true, summary: t("status.notReady.summary", "Relationships isn't ready."),
+        title: t("status.notReady.title", "Relationships isn't ready"), body: why };
     }
     if (r.status === "no answer") {
-      return { line: "The game's scripts haven't answered yet, so this may be out of date. It updates when they do.", warn: true,
-        summary: "No answer from the game yet.", title: "No answer from the game yet",
-        body: "Its scripts may be running behind. Your roster appears here when they answer." };
+      return { line: t("status.noAnswer.line", "The game's scripts haven't answered yet, so this may be out of date. It updates when they do."), warn: true,
+        summary: t("status.noAnswer.summary", "No answer from the game yet."), title: t("status.noAnswer.title", "No answer from the game yet"),
+        body: t("status.noAnswer.body", "Its scripts may be running behind. Your roster appears here when they answer.") };
     }
     return null;
   }
@@ -134,9 +160,9 @@
     layout();
     var c = M.counts(snap.bonds);
     var st = rosterStatus();
-    $("summary").textContent = c.total === 0 ? (st ? st.summary : "Nobody on your roster yet.") :
-      c.total + " on your roster · " + c.following + " following you · " +
-      c.romantic + " romantic, " + c.platonic + " platonic";
+    $("summary").textContent = c.total === 0 ? (st ? st.summary : t("app.nobody", "Nobody on your roster yet.")) :
+      t("app.summary.roster", "{0} on your roster", c.total) + " · " + t("app.summary.following", "{0} following you", c.following) + " · " +
+      t("app.summary.tracks", "{0} romantic, {1} platonic", c.romantic, c.platonic);
     renderRosterStatus(c.total === 0 ? null : st);
     renderCrosshair();
     renderRoster();
@@ -151,59 +177,63 @@
   function renderRoster() {
     var rows = M.view(snap.bonds, filters, sort);
     roster.setNow(snap.generatedAt);
-    $("count").textContent = rows.length === snap.bonds.length ? rows.length + " shown" :
-      rows.length + " of " + snap.bonds.length + " shown";
+    $("count").textContent = rows.length === snap.bonds.length ? t("app.count.all", "{0} shown", rows.length) :
+      t("app.count.some", "{0} of {1} shown", rows.length, snap.bonds.length);
     var emptyHtml;
     var st = rosterStatus();
     if (!snap.bonds.length && st) {
       emptyHtml = "<h2>" + escapeHtml(st.title) + "</h2><p>" + escapeHtml(st.body) + "</p>";
     } else if (!snap.bonds.length) {
-      emptyHtml = "<h2>Nobody on your roster yet</h2><p>Followers join automatically once they have travelled " +
-        "with you a little while. Anyone else joins when you choose: look at them, open this dashboard, and enroll them.</p>";
+      emptyHtml = "<h2>" + escapeHtml(t("app.empty.title", "Nobody on your roster yet")) + "</h2><p>" +
+        escapeHtml(t("app.empty.body", "Followers join automatically once they have travelled with you a little while. Anyone else joins when you choose: look at them, open this dashboard, and enroll them.")) + "</p>";
     } else {
-      emptyHtml = "<h2>Nobody matches</h2><p>No one on your roster fits these filters.</p>";
+      emptyHtml = "<h2>" + escapeHtml(t("app.noMatch.title", "Nobody matches")) + "</h2><p>" + escapeHtml(t("app.noMatch.body", "No one on your roster fits these filters.")) + "</p>";
     }
     roster.setData(rows, snap.ladder, emptyHtml);
   }
 
   function renderCrosshair() {
-    var t = snap.crosshairTarget;
+    var ct = snap.crosshairTarget;
     var box = $("crosshair");
-    if (!t) { box.hidden = true; return; }
+    if (!ct) { box.hidden = true; return; }
     box.hidden = false;
     var text = $("crosshair-text");
     var btn = $("crosshair-btn");
     text.innerHTML = "";
-    text.appendChild(document.createTextNode("You were looking at "));
+    // The sentence is translated whole and the name set in bold where {0}
+    // stands, since another language may put the name elsewhere.
+    var sentence = ct.enrolled === null ? t("crosshair.looking", "You were looking at {0}.") :
+      ct.enrolled ? t("crosshair.onRoster", "You were looking at {0}, who is on your roster.") :
+      t("crosshair.notOnRoster", "You were looking at {0}, who is not on your roster.");
+    var parts = sentence.split("{0}");
+    text.appendChild(document.createTextNode(parts[0]));
     var strong = document.createElement("strong");
-    strong.textContent = t.name;
+    strong.textContent = ct.name;
     text.appendChild(strong);
-    if (t.enrolled === null) {
+    text.appendChild(document.createTextNode(parts.slice(1).join("{0}")));
+    if (ct.enrolled === null) {
       // The sender cannot tell (the DLL's own snapshot, before WP2): name them
       // and offer nothing, rather than guess which button is right.
-      text.appendChild(document.createTextNode("."));
       btn.hidden = true;
       return;
     }
     btn.hidden = false;
-    if (t.enrolled) {
-      text.appendChild(document.createTextNode(", who is on your roster."));
-      btn.textContent = "Show " + t.name;
+    if (ct.enrolled) {
+      btn.textContent = t("crosshair.show", "Show {0}", ct.name);
       btn.className = "btn";
       btn.removeAttribute("data-op");
       btn.onclick = function () {
-        var b = findBondBySubject(t.formId);
+        var b = findBondBySubject(ct.formId);
         if (!b) return;
         clearFilters();
         openBond(b);
         roster.revealKey(M.bondKey(b));
       };
     } else {
-      text.appendChild(document.createTextNode(", who is not on your roster."));
-      btn.textContent = "Enroll " + t.name;
+      btn.textContent = t("crosshair.enroll", "Enroll {0}", ct.name);
       btn.className = "btn btn-accent";
       btn.setAttribute("data-op", "EnrollActor");
-      btn.onclick = function () { runAction(A.byOp("EnrollActor"), null, [], btn, t); };
+      btn.onclick = function () { runAction(A.byOp("EnrollActor"), null, [], btn, ct); };
     }
     btn.disabled = !!busy.EnrollActor;
   }
@@ -213,15 +243,16 @@
     var line = $("store");
     line.innerHTML = "";
     if (p.store === null) {
-      line.appendChild(document.createTextNode("Store: not reported yet"));
+      line.appendChild(document.createTextNode(t("store.notReported", "Store: not reported yet")));
       return;
     }
-    line.appendChild(document.createTextNode("Store: "));
+    line.appendChild(document.createTextNode(t("store.label", "Store:") + " "));
     var code = document.createElement("code");
     code.textContent = p.store;
     line.appendChild(code);
-    var what = { legacy: " (this playthrough owns the main store)", own: " (this playthrough's own store)", undecided: " (not yet assigned to this playthrough)" };
-    line.appendChild(document.createTextNode(what[p.storeDecision] || ""));
+    var what = { legacy: t("store.legacy", "this playthrough owns the main store"), own: t("store.own", "this playthrough's own store"),
+      undecided: t("store.undecided", "not yet assigned to this playthrough") };
+    line.appendChild(document.createTextNode(what[p.storeDecision] ? " (" + what[p.storeDecision] + ")" : ""));
   }
 
   function findBond(key) {
@@ -318,7 +349,7 @@
       delete busy[a.op];
       refreshBusy();
       if (a.op === "EnrollActor" && snap) renderCrosshair();
-      toast(r.message || (r.ok ? a.label + (who ? ": " + who : "") + " sent." : a.label + " failed."), r.ok ? "info" : "error");
+      toast(r.message || (r.ok ? t("act.sent", "{0} sent.", a.label + (who ? ": " + who : "")) : t("act.failed", "{0} failed.", a.label)), r.ok ? "info" : "error");
     });
   }
 
@@ -336,6 +367,7 @@
   // ---------------------------------------------------------------- dialogs
   function openDialog(title, bodyNodes, buttons, returnFocus) {
     dialogReturn = returnFocus || document.activeElement;
+    $("dialog").removeAttribute("data-kind");
     $("dialog-title").textContent = title;
     var body = $("dialog-body");
     body.innerHTML = "";
@@ -374,7 +406,7 @@
   function confirmThen(a, who, go, btn) {
     // Cancel is first, so Enter on a freshly opened dialog does nothing harmful.
     openDialog(a.label + (who ? ": " + who : "") + "?", [para(a.confirm), para("→ " + a.calls, "act-calls")], [
-      { label: "Cancel", id: "dialog-cancel", run: closeDialog },
+      { label: t("dialog.cancel", "Cancel"), id: "dialog-cancel", run: closeDialog },
       { label: a.label, id: "dialog-confirm", cls: "btn-danger", run: function () { closeDialog(); go(); } }
     ], btn);
   }
@@ -404,7 +436,7 @@
       row.appendChild(b);
       wrap.appendChild(row);
       wrap.appendChild(para("→ " + a.calls, "act-calls"));
-      if (current) wrap.appendChild(para("Already the case for this playthrough.", "act-needs"));
+      if (current) wrap.appendChild(para(t("act.alreadyTheCase", "Already the case for this playthrough."), "act-needs"));
       list.appendChild(wrap);
     });
     return list;
@@ -413,10 +445,10 @@
   // The store repairs, where players find them. Never a developer tool.
   $("repairs-btn").addEventListener("click", function () {
     if (!snap) return;
-    openDialog("Playthrough repairs", [
-      para("For the playthrough as a whole, not one person. The two store repairs are safe to undo: neither deletes anything."),
+    openDialog(t("repairs.title", "Playthrough repairs"), [
+      para(t("repairs.intro", "For the playthrough as a whole, not one person. The two store repairs are safe to undo: neither deletes anything.")),
       actionList(A.available("playthrough"), $("repairs-btn"))
-    ], [{ label: "Close", id: "dialog-cancel", run: closeDialog }], $("repairs-btn"));
+    ], [{ label: t("dialog.close", "Close"), id: "dialog-cancel", run: closeDialog }], $("repairs-btn"));
   });
 
   // The developer tools that are not about one person. The button exists only
@@ -424,10 +456,11 @@
   // detail, under Developer tools.
   $("devtools-btn").addEventListener("click", function () {
     if (!snap || !UI.mode.developer) return;
-    openDialog("Developer tools", [
-      para("Shown because the developer view is on. For looking under the hood; a player never needs them. The tools for one person are in their detail, under Developer tools."),
+    openDialog(t("devtools.title", "Developer tools"), [
+      para(t("devtools.intro", "Shown because the developer view is on. For looking under the hood; a player never needs them. The tools for one person are in their detail, under Developer tools.")),
       actionList(A.developerTools("playthrough"), $("devtools-btn"))
-    ], [{ label: "Close", id: "dialog-cancel", run: closeDialog }], $("devtools-btn"));
+    ], [{ label: t("dialog.close", "Close"), id: "dialog-cancel", run: closeDialog }], $("devtools-btn"));
+    $("dialog").setAttribute("data-kind", "devtools");
   });
 
   // Tab stays inside an open dialog.
@@ -484,15 +517,16 @@
   // ---------------------------------------------------------------- start
   // Developer mode says so on screen, so a screenshot of it is never mistaken
   // for what a player sees.
-  function renderBadge() {
+  function renderBadge(relabel) {
     $("devtools-btn").hidden = !UI.mode.developer;
-    if (!UI.mode.developer && !$("dialog").hidden && $("dialog-title").textContent === "Developer tools") closeDialog();
+    if (!UI.mode.developer && !$("dialog").hidden && $("dialog").getAttribute("data-kind") === "devtools") closeDialog();
     var badge = $("dev-badge");
+    if (relabel && badge) badge.textContent = t("app.devBadge", "Developer view: shows what characters have not said");
     if (UI.mode.developer && !badge) {
       badge = document.createElement("span");
       badge.className = "dev-badge";
       badge.id = "dev-badge";
-      badge.textContent = "Developer view: shows what characters have not said";
+      badge.textContent = t("app.devBadge", "Developer view: shows what characters have not said");
       $("panel").querySelector(".head-title").appendChild(badge);
     } else if (!UI.mode.developer && badge) {
       badge.parentNode.removeChild(badge);
@@ -500,7 +534,7 @@
   }
   renderBadge();
   layout();
-  $("summary").textContent = "Waiting for the game…";
+  $("summary").textContent = t("app.waiting", "Waiting for the game…");
   snrom.request("snapshot", {}).then(function (r) {
     if (!r.ok && r.message) toast(r.message, "error");
   });

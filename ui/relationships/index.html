@@ -13,9 +13,9 @@
   <header class="head">
     <div class="head-title">
       <h1>Relationships</h1>
-      <p class="head-sub" id="summary" aria-live="polite">Waiting for the game&hellip;</p>
+      <p class="head-sub" id="summary" aria-live="polite" data-t="app.waiting">Waiting for the game&hellip;</p>
     </div>
-    <button type="button" class="icon-btn" id="close-btn" title="Close (Esc)" aria-label="Close the dashboard">&times;</button>
+    <button type="button" class="icon-btn" id="close-btn" title="Close (Esc)" data-t-title="app.close.title" aria-label="Close the dashboard" data-t-aria-label="app.close.aria">&times;</button>
   </header>
 
   <!-- How current the roster is (snapshot.roster, WP2). Hidden when it is. -->
@@ -28,71 +28,71 @@
 
   <div class="toolbar" role="search">
     <label class="field field-grow">
-      <span class="field-label">Find</span>
-      <input type="text" id="f-text" placeholder="Name" autocomplete="off" spellcheck="false">
+      <span class="field-label" data-t="filter.find">Find</span>
+      <input type="text" id="f-text" placeholder="Name" data-t-placeholder="filter.find.placeholder" autocomplete="off" spellcheck="false">
     </label>
     <label class="field">
-      <span class="field-label">Following</span>
+      <span class="field-label" data-t="filter.following">Following</span>
       <select id="f-following">
-        <option value="all">Anyone</option>
-        <option value="yes">Following</option>
-        <option value="no">Not following</option>
+        <option value="all" data-t="filter.anyone">Anyone</option>
+        <option value="yes" data-t="roster.following">Following</option>
+        <option value="no" data-t="filter.notFollowing">Not following</option>
       </select>
     </label>
     <label class="field">
-      <span class="field-label">Track</span>
+      <span class="field-label" data-t="col.track">Track</span>
       <select id="f-track">
-        <option value="all">Both</option>
-        <option value="platonic">Platonic</option>
-        <option value="romantic">Romantic</option>
+        <option value="all" data-t="filter.both">Both</option>
+        <option value="platonic" data-t="track.platonic">Platonic</option>
+        <option value="romantic" data-t="track.romantic">Romantic</option>
       </select>
     </label>
     <label class="field">
-      <span class="field-label">State</span>
-      <select id="f-state"><option value="all">Any</option></select>
+      <span class="field-label" data-t="col.state">State</span>
+      <select id="f-state"><option value="all" data-t="filter.any">Any</option></select>
     </label>
     <label class="field">
-      <span class="field-label">Commitment</span>
+      <span class="field-label" data-t="col.commitment">Commitment</span>
       <select id="f-commitment">
-        <option value="all">Any</option>
-        <option value="married">Married</option>
-        <option value="engaged">Engaged</option>
-        <option value="candidate">Marriage candidate</option>
-        <option value="none">None recorded</option>
+        <option value="all" data-t="filter.any">Any</option>
+        <option value="married" data-t="commitment.married">Married</option>
+        <option value="engaged" data-t="commitment.engaged">Engaged</option>
+        <option value="candidate" data-t="commitment.candidate">Marriage candidate</option>
+        <option value="none" data-t="commitment.none">None recorded</option>
       </select>
     </label>
     <label class="field">
-      <span class="field-label">Standing</span>
+      <span class="field-label" data-t="filter.standing">Standing</span>
       <select id="f-standing">
-        <option value="all">Any</option>
-        <option value="good">Good will</option>
-        <option value="none">Neither</option>
-        <option value="ill">Ill will</option>
+        <option value="all" data-t="filter.any">Any</option>
+        <option value="good" data-t="filter.goodWill">Good will</option>
+        <option value="none" data-t="filter.neither">Neither</option>
+        <option value="ill" data-t="filter.illWill">Ill will</option>
       </select>
     </label>
     <label class="field">
-      <span class="field-label">Sort</span>
+      <span class="field-label" data-t="filter.sort">Sort</span>
       <select id="f-sort">
-        <option value="depth-desc">Deepest first</option>
-        <option value="depth-asc">Shallowest first</option>
-        <option value="name-asc">Name, A to Z</option>
-        <option value="name-desc">Name, Z to A</option>
+        <option value="depth-desc" data-t="sort.deepest">Deepest first</option>
+        <option value="depth-asc" data-t="sort.shallowest">Shallowest first</option>
+        <option value="name-asc" data-t="sort.nameAsc">Name, A to Z</option>
+        <option value="name-desc" data-t="sort.nameDesc">Name, Z to A</option>
       </select>
     </label>
     <p class="toolbar-count" id="count" aria-live="polite"></p>
   </div>
 
   <main class="body" id="body">
-    <section class="roster" id="roster" aria-label="Roster"></section>
-    <aside class="detail" id="detail" aria-label="Details" hidden></aside>
+    <section class="roster" id="roster" aria-label="Roster" data-t-aria-label="roster.aria"></section>
+    <aside class="detail" id="detail" aria-label="Details" data-t-aria-label="detail.panel.aria" hidden></aside>
   </main>
 
   <footer class="foot">
     <p class="foot-store" id="store"></p>
-    <button type="button" class="btn btn-quiet" id="repairs-btn">Playthrough repairs&hellip;</button>
+    <button type="button" class="btn btn-quiet" id="repairs-btn" data-t="app.repairs.button">Playthrough repairs&hellip;</button>
     <!-- Only in the developer view (app.js, renderBadge). -->
-    <button type="button" class="btn btn-quiet btn-dev" id="devtools-btn" hidden>Developer tools&hellip;</button>
-    <p class="foot-hint"><kbd>&uarr;</kbd><kbd>&darr;</kbd> move &middot; <kbd>Enter</kbd> open &middot; <kbd>Esc</kbd> back or close</p>
+    <button type="button" class="btn btn-quiet btn-dev" id="devtools-btn" data-t="app.devtools.button" hidden>Developer tools&hellip;</button>
+    <p class="foot-hint"><kbd>&uarr;</kbd><kbd>&darr;</kbd> <span data-t="hint.move">move</span> &middot; <kbd>Enter</kbd> <span data-t="hint.open">open</span> &middot; <kbd>Esc</kbd> <span data-t="hint.back">back or close</span></p>
   </footer>
 </div>
 
