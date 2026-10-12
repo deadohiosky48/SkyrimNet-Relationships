@@ -39,8 +39,10 @@ $keys = @{}
 function Emit-Library($blocks, [string]$fn, [string]$what) {
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add("Int Function $fn() Global")
-    $lines.Add("    { $what. Returns how many SeverActions accepted. }")
+    $lines.Add("    { $what. Returns how many SeverActions accepted. In the player's")
+    $lines.Add("      language from SeverActions' Bio API v2 (2.3, WP-L): see BTr. }")
     $lines.Add('    Int n = 0')
+    $lines.Add('    Bool tr = Translating()')
     foreach ($b in $blocks) {
         $k = [string]$b.key
         if ($k -notmatch '^[a-z0-9_\-.]{1,64}$') { throw "Bad key '$k' on block $($b.id)" }
@@ -51,8 +53,12 @@ function Emit-Library($blocks, [string]$fn, [string]$what) {
         }
         if ([Text.Encoding]::UTF8.GetByteCount($b.title) -gt 80) { throw "Title of '$k' is over 80 bytes" }
         if ([Text.Encoding]::UTF8.GetByteCount($b.content) -gt 2000) { throw "Content of '$k' is over 2000 bytes" }
-        $lines.Add('    n += Def(' + (Papyrus-String $k) + ', ' + (Papyrus-String $b.title) + ', \')
-        $lines.Add('        ' + (Papyrus-String $b.content) + ', ' + (Papyrus-String $b.tab) + ')')
+        # One translatable string per line: tools\gen-l10n.ps1 reads the key
+        # and the English from the BTr call's own line.
+        $lines.Add('    n += Def(' + (Papyrus-String $k) + ', \')
+        $lines.Add('        BTr(tr, ' + (Papyrus-String "bio.$k.title") + ', ' + (Papyrus-String $b.title) + '), \')
+        $lines.Add('        BTr(tr, ' + (Papyrus-String "bio.$k.content") + ', ' + (Papyrus-String $b.content) + '), \')
+        $lines.Add('        ' + (Papyrus-String $b.tab) + ')')
     }
     $lines.Add('    Return n')
     $lines.Add('EndFunction')
@@ -80,6 +86,26 @@ $text.Add('String Function PREFIX() Global')
 $text.Add('    Return "deadohiosky48.relationships:"')
 $text.Add('EndFunction')
 $text.Add('')
+$text.Add('Bool Function Translating() Global')
+$text.Add('    { IN THE PLAYER''S LANGUAGE ONLY WHERE A BLOCK IS KNOWN BY ITS KEY (2.3,')
+$text.Add('      WP-L). Our blocks are recognised on a person by key from the')
+$text.Add('      SeverActions Bio API v2 (SNRom_SABio.AssignedTitles maps a key back to its English')
+$text.Add('      title for the DLL). Before v2 only titles can be read, and a translated')
+$text.Add('      title would not be recognised as ours: English there. }')
+$text.Add('    Return SeverActionsNativeExt2.BioApi_Version() >= 2')
+$text.Add('EndFunction')
+$text.Add('')
+$text.Add('String Function BTr(Bool abOn, String asKey, String asEnglish) Global')
+$text.Add('    { A block''s title or text in the player''s language (SNRom_Bridge.Tr),')
+$text.Add('      when abOn; the English otherwise. Keys are bio.<local key>.title and')
+$text.Add('      .content in l10n/<code>.json. The tab is never translated: SeverActions')
+$text.Add('      keeps a block in the tab it was created in, whatever a later Define says. }')
+$text.Add('    If abOn')
+$text.Add('        Return SNRom_Bridge.Tr(asKey, asEnglish)')
+$text.Add('    EndIf')
+$text.Add('    Return asEnglish')
+$text.Add('EndFunction')
+$text.Add('')
 $text.Add('Int Function Def(String asKey, String asTitle, String asContent, String asTab) Global')
 $text.Add('    { One block. False means SeverActions refused the key, or the player')
 $text.Add('      deleted this block, which is final: Define never brings it back. }')
@@ -95,6 +121,22 @@ $text.Add('')
 $text.Add('')
 # How many DefineAll offers, so the bridge can tell when SeverActions accepted
 # fewer: blocks the player hid, which must not read as blocks taken off (2.1.1).
+# The English title for each of our Relationships blocks, by local key: the DLL
+# reads our blocks by their English titles (BioLibrary.inl), so a translated
+# title is mapped back through its key (SNRom_SABio.AssignedTitles).
+$text.Add('String Function EnglishTitle(String asLocalKey) Global')
+$text.Add('    { Our Relationships block''s English title, by local key; "" for any other. }')
+$first = $true
+foreach ($b in $rel) {
+    $kw = 'ElseIf'
+    if ($first) { $kw = 'If'; $first = $false }
+    $text.Add("    $kw asLocalKey == " + (Papyrus-String $b.key))
+    $text.Add('        Return ' + (Papyrus-String $b.title))
+}
+$text.Add('    EndIf')
+$text.Add('    Return ""')
+$text.Add('EndFunction')
+$text.Add('')
 $text.Add('Int Function LibrarySize() Global')
 $text.Add("    { How many blocks DefineRelationships and DefineArousal offer. }")
 $text.Add("    Return $($rel.Count + $aro.Count)")

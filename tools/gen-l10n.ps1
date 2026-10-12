@@ -33,7 +33,9 @@ $clashes = New-Object System.Collections.Generic.List[string]
 function Unescape([string]$s, [string]$kind) {
     if ($kind -eq 'html') { return [System.Net.WebUtility]::HtmlDecode($s) }
     $s = [regex]::Replace($s, '\\u([0-9a-fA-F]{4})', { param($m) [string][char][Convert]::ToInt32($m.Groups[1].Value, 16) })
-    return $s.Replace('\"', '"').Replace("\'", "'").Replace('\\', '\')
+    # One pass, so an escaped backslash before an n stays a backslash and an n.
+    return [regex]::Replace($s, '\\(.)', { param($m)
+        switch ($m.Groups[1].Value) { 'n' { "`n" } 't' { "`t" } default { $m.Groups[1].Value } } })
 }
 
 function Add([string]$key, [string]$english, [string]$file) {
@@ -49,7 +51,7 @@ function Add([string]$key, [string]$english, [string]$file) {
 
 $str = '"((?:[^"\\]|\\.)*)"'
 $sources = @(
-    @{ Dir = 'src\scripts';       Filter = '*.psc';  Kind = 'psc';  Pattern = 'Tr\("([^"]+)",\s*' + $str },
+    @{ Dir = 'src\scripts';       Filter = '*.psc';  Kind = 'psc';  Pattern = '(?<![\w.])B?Tr\((?:\w+,\s*)?"([^"]+)",\s*' + $str },
     @{ Dir = 'ui\relationships';  Filter = '*.js';   Kind = 'js';   Pattern = '(?<![\w.$])(?:UI\.)?t\("([^"]+)",\s*' + $str },
     @{ Dir = 'native\src';        Filter = '*.cpp';  Kind = 'cpp';  Pattern = 'L10n::Text\("([^"]+)",\s*' + $str }
 )

@@ -1518,7 +1518,10 @@ String Function Tr(String asKey, String asEnglish, String a0 = "", String a1 = "
       l10n/en.json, the translators' template, so keep both literals on the
       same line as the call. An older DLL (before natives v11) has no table:
       the English is filled here instead. }
-    If SNRom_Native.Version() >= 11
+    ; SNRom_Native.Version waits a frame (it is not callable from a tasklet):
+    ; the bootstrap keeps its answer in SNRom_NativesV instead, so a library
+    ; of 162 block texts does not cost 162 frames.
+    If StorageUtil.GetIntValue(None, "SNRom_NativesV", 0) >= 11
         Return SNRom_Native.Text(asKey, asEnglish, a0, a1)
     EndIf
     String s = SNRom_Decorators.ReplaceAll(asEnglish, "{0}", a0)
@@ -6010,6 +6013,7 @@ Function ArmDashboard()
     ; Zeroed first, so every call site's gate reads "no" until the checks below
     ; say otherwise - including in a save made with a DLL that is gone now.
     _dashNatives = 0
+    StorageUtil.SetIntValue(None, "SNRom_NativesV", 0)
     ; THE DLL IS REQUIRED FROM 2.0 (design 6.7): the dashboard, the hotkeys,
     ; the held tier notices, the bond history and who-is-near all live in it.
     ; Without it the mod still scores and gates - every native has a Papyrus
@@ -6038,6 +6042,7 @@ Function ArmDashboard()
         Return
     EndIf
     _dashNatives = natives
+    StorageUtil.SetIntValue(None, "SNRom_NativesV", natives)   ; for Tr, which is Global
     ; READ NOW, WHILE SKYRIMNET ANSWERS. The refresh runs while the dashboard
     ; has the game paused and may not ask it anything; see OnDashboardRefresh.
     ; A kin-guard setting changed mid-session reaches the dashboard's

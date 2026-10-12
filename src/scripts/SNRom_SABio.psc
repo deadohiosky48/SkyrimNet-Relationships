@@ -56,15 +56,50 @@ String[] Function AssignedTitles(Actor akActor) Global
         n = recs.Length
     EndIf
     String[] titles = Utility.CreateStringArray(n)
+    String ours = SNRom_SABioLib.PREFIX()
     Int i = 0
     While i < n
         String[] f = StringUtil.Split(recs[i], "\t")
         If f.Length >= 3
             titles[i] = f[2]
+            ; IN WHATEVER LANGUAGE THE TITLE IS (2.3, WP-L). The DLL knows our
+            ; blocks by their English titles (BioLibrary.inl). One of ours is
+            ; known by its key, so it goes back as its English title; a block
+            ; of the player's in one of our tabs is known by its tab, so it gets
+            ; that category's English prefix and counts as the player's answer
+            ; there, as an English one of theirs always has.
+            If f.Length >= 4 && StringUtil.Find(f[3], ours) == 0
+                String english = SNRom_SABioLib.EnglishTitle(StringUtil.Substring(f[3], StringUtil.GetLength(ours)))
+                If english != ""
+                    titles[i] = english
+                EndIf
+            Else
+                titles[i] = InOurCategory(f[1], f[2])
+            EndIf
         EndIf
         i += 1
     EndWhile
     Return titles
+EndFunction
+
+String Function InOurCategory(String asTab, String asTitle) Global
+    { A title of the player's own in one of our four tabs, with that
+      category's English prefix (BioLibrary.inl, kPrefix) if it lacks it;
+      any other title as it is. }
+    String prefix = ""
+    If asTab == "Relationships: Drawn To"
+        prefix = "Drawn To:"
+    ElseIf asTab == "Relationships: Expression"
+        prefix = "Expression:"
+    ElseIf asTab == "Relationships: Attachment"
+        prefix = "Attachment:"
+    ElseIf asTab == "Relationships: Limits"
+        prefix = "Limit:"
+    EndIf
+    If prefix == "" || StringUtil.Find(asTitle, prefix) == 0
+        Return asTitle
+    EndIf
+    Return prefix + " " + asTitle
 EndFunction
 
 String[] Function ListApplied(Actor akActor) Global
