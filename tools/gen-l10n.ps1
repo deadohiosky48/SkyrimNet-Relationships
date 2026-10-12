@@ -84,7 +84,7 @@ if ($clashes.Count) {
     throw "One key, two English texts - give one of them its own key:`n$($clashes -join "`n")"
 }
 
-$sorted = [ordered]@{ '_about' = 'Relationships, English. Copy to <code>.json (de, fr, es, it, pl, ru, cs, ja, zh), translate the values, keep the keys and every {0} and {1}. Keys starting with _ are ignored.' }
+$sorted = [ordered]@{ '_about' = 'Relationships, English. Copy to <code>.json (ar, cs, de, es, fr, he, hi, hu, it, ja, ko, nl, pl, pt, ru, tr, zh), translate the values, keep the keys and every {0} and {1}. Keys starting with _ are ignored.' }
 foreach ($k in ($found.Keys | Sort-Object)) { $sorted[$k] = $found[$k] }
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 $json = $sorted | ConvertTo-Json -Depth 3

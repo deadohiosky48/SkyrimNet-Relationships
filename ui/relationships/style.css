@@ -50,8 +50,11 @@
 
   --t: 1;         /* the text size; display.js sets it */
   --row-h: 56px;  /* display.js sets it, in px, for roster.js to read */
-  --serif: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Times New Roman", serif;
-  --sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  /* Latin first; then Windows' own fonts for the scripts the languages need
+     (2.3): Chinese, Japanese, Korean, Devanagari. Segoe UI already carries
+     Arabic, Hebrew, Greek and Cyrillic. */
+  --serif: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Times New Roman", "Nirmala UI", "Microsoft YaHei UI", "Yu Gothic UI", "Malgun Gothic", serif;
+  --sans: "Segoe UI", "Helvetica Neue", Arial, "Nirmala UI", "Microsoft YaHei UI", "Yu Gothic UI", "Malgun Gothic", sans-serif;
   --mono: Consolas, "Courier New", monospace;
   font-size: 16px; /* the scale; display.js sets it */
 }
@@ -568,3 +571,21 @@ kbd {
 .picker-item[aria-selected="true"] { color: var(--accent); }
 .picker-item.is-active { background: var(--surface-hi); }
 .picker-item[disabled] { color: var(--faint); cursor: default; }
+
+/* RIGHT TO LEFT (2.3): Arabic and Hebrew (app.js, applyLanguage). The layout
+   is flex, which mirrors itself; these are the rules written with a physical
+   side, turned round. */
+[dir="rtl"] .row-last {
+  left: 1.25rem;
+  right: calc(1.25rem + var(--w-name, calc(11rem * var(--t))) + 0.75rem);
+}
+[dir="rtl"] .row-last .delta,
+[dir="rtl"] .row-last .when { margin-right: 0; margin-left: 0.45em; }
+[dir="rtl"] .fill.t-below { margin-left: 0; margin-right: auto; }
+[dir="rtl"] .foot-hint { margin-left: 0 !important; margin-right: auto !important; }
+[dir="rtl"] .detail { border-left: none; border-right: 1px solid var(--line); }
+[dir="rtl"] .is-narrow .detail { right: auto; left: 0; }
+[dir="rtl"] .toast { border-left: 1px solid var(--line); border-right: 3px solid var(--platonic); }
+[dir="rtl"] .toast.is-error { border-left-color: var(--line); border-right-color: var(--danger); }
+[dir="rtl"] .toast.is-warn { border-left-color: var(--line); border-right-color: var(--s-interested); }
+[dir="rtl"] .field select { padding-right: 0; padding-left: 0.3rem; }

@@ -67,6 +67,16 @@
   // data-t-placeholder and data-t-aria-label for those attributes. The
   // English written there is kept (data-en...) as the fallback, so switching
   // back to English restores it.
+  // The page's language and direction (2.3): Arabic and Hebrew read right to
+  // left, and the layout is flex throughout, so dir="rtl" mirrors it.
+  function applyLanguage(code) {
+    var lang = typeof code === "string" && code ? code : "en";
+    var root = document.documentElement;
+    if (root.getAttribute("lang") !== lang) root.setAttribute("lang", lang);
+    var dir = lang === "ar" || lang === "he" ? "rtl" : "ltr";
+    if (root.getAttribute("dir") !== dir) root.setAttribute("dir", dir);
+  }
+
   function applyStaticText() {
     function each(sel, fn) { Array.prototype.forEach.call(document.querySelectorAll(sel), fn); }
     each("[data-t]", function (e) {
@@ -102,6 +112,7 @@
     // The player's language rides in every snapshot too (2.3, WP-L): when its
     // table changed, the words drawn once - the page's fixed text, the state
     // filter, the roster's header, the badge - are drawn again.
+    applyLanguage(s.settings && s.settings.language);
     if (L.setStrings(s.strings)) { A.relabel(); applyStaticText(); buildStateFilter(); roster.relabel(); renderBadge(true); }
     // The game's developer setting rides in every snapshot (mode.js). When it
     // flips, what depends on it is rebuilt before anything is drawn with it.

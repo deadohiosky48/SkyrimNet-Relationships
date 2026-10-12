@@ -29,10 +29,15 @@ namespace SNRom::L10n {
         // A language's name, in English as the setting offers it or in capitals
         // as Skyrim's sLanguage writes it, to its code.
         std::string CodeFor(std::string_view a_name) {
+            // SkyrimNet's plugin publishing form's languages (2.3), in English
+            // as the setting offers them; Skyrim's own sLanguage values are
+            // the same words in capitals.
             static const std::pair<std::string_view, std::string_view> kNames[] = {
-                { "english", "en" }, { "german", "de" }, { "french", "fr" },   { "spanish", "es" },
-                { "italian", "it" }, { "polish", "pl" }, { "russian", "ru" },  { "czech", "cs" },
-                { "japanese", "ja" }, { "chinese", "zh" },
+                { "english", "en" },  { "arabic", "ar" },    { "chinese", "zh" },  { "czech", "cs" },
+                { "dutch", "nl" },    { "french", "fr" },    { "german", "de" },   { "hebrew", "he" },
+                { "hindi", "hi" },    { "hungarian", "hu" }, { "italian", "it" },  { "japanese", "ja" },
+                { "korean", "ko" },   { "polish", "pl" },    { "portuguese", "pt" }, { "russian", "ru" },
+                { "spanish", "es" },  { "turkish", "tr" },
             };
             const auto lower = Lower(a_name);
             for (const auto& [name, code] : kNames) {

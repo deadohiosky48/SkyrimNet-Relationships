@@ -361,15 +361,23 @@ schema:
       options:
         - Game
         - English
-        - German
-        - French
-        - Spanish
-        - Italian
-        - Polish
-        - Russian
-        - Czech
-        - Japanese
+        - Arabic
         - Chinese
+        - Czech
+        - Dutch
+        - French
+        - German
+        - Hebrew
+        - Hindi
+        - Hungarian
+        - Italian
+        - Japanese
+        - Korean
+        - Polish
+        - Portuguese
+        - Russian
+        - Spanish
+        - Turkish
       category: "Enrollment"
     - name: "LLM Variant"
       path: "llmVariant"
