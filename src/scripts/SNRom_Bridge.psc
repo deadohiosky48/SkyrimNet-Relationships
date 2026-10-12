@@ -328,6 +328,8 @@ Function Bootstrap(Bool abForce = False)
     ; was when it ended. SweepFollowers runs at the end of this function and
     ; refreshes it before the tick after that.
     RegisterForSingleUpdateGameTime(AssessIntervalHours())
+    Diag(LOG_INFO(), "Writing for the player in " + TextLanguageName() + \
+        " (game language '" + Utility.GetINIString("sLanguage:General") + "').")
     Diag(LOG_INFO(), "Bridge ready. SNRom_Bond resolved. Assessing every " + \
         AssessIntervalHours() + "h, housekeeping every " + SparkIntervalHours() + "h.")
     ; Catch up immediately rather than waiting a game hour or two. This is the
@@ -3861,7 +3863,7 @@ Function AuthorDisposition(Actor akActor)
         ",\"other_blocks\":\"" + OtherBlocksCatalogue(akActor) + "\"" + \
         ",\"npc_bio\":\"" + b.GetRace().GetName() + ", " + \
         SNRom_Decorators.SexWord(b.GetSex()) + ", level " + akActor.GetLevel() + \
-        ". Known to the Dragonborn.\"}"
+        ". Known to the Dragonborn.\"" + LanguageContext() + "}"
 
     Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_author_disposition", VariantName(), ctx, \
         Self, "SNRom_Bridge", "OnDispositionAuthored")   ; this script IS the quest
@@ -5560,7 +5562,7 @@ Function AssessSeed(Actor akActor)
     String ctx = "{\"npc_name\":\"" + _seedName + "\"" + \
         ",\"npc_formid\":" + akActor.GetFormID() + \
         ",\"npc_bio\":\"" + Escape(akActor.GetActorBase().GetRace().GetName()) + ", known to the Dragonborn\"" + \
-        ",\"npc_prior\":\"" + Escape(prior) + "\"" + MarasContext(akActor) + "}"
+        ",\"npc_prior\":\"" + Escape(prior) + "\"" + MarasContext(akActor) + LanguageContext() + "}"
     Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_seed_assess", VariantName(), ctx, \
         Self, "SNRom_Bridge", "OnSeedAssessed")
     Diag(LOG_INFO(), "Seed assessment sent for " + _seedName + " (rc=" + rc + ")")
@@ -7229,7 +7231,7 @@ Function AssessTalk(Actor akActor, Float afSince = 0.0)
         ",\"npc_ardor\":\"" + SNRom_Decorators.ArdorWord(StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2)) + "\"" + \
         ",\"npc_why\":\"" + SNRom_Decorators.JsonEscape(StoreGetText(akActor, "Why")) + "\"" + \
         ",\"npc_since_sec\":" + sinceSec + \
-        ",\"npc_since_hours\":" + sinceHours + MarasContext(akActor) + "}"
+        ",\"npc_since_hours\":" + sinceHours + MarasContext(akActor) + LanguageContext() + "}"
     Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_talk_assess", VariantName(), ctx, \
         Self, "SNRom_Bridge", "OnTalkAssessed")
     ; Log the SEND, not just the failure. Logging only failures made a
@@ -7474,6 +7476,58 @@ Bool Function ConfirmHarm(Actor akActor, String asAct, String asWhat, String asF
         Return False
     EndIf
     Return True
+EndFunction
+
+String Function TextLanguageName() Global
+    { THE LANGUAGE THE MODEL WRITES IN FOR THE PLAYER (2.3, L10n). Our prompts
+      stay English - they are tuned in English, and the answer keywords our
+      scripts parse must stay English - but the free text a player reads (a
+      character's WHY and LIMIT, what moved a bond, a drift's pattern) comes
+      out in their language, as SkyrimNet's own dialogue does through its
+      Universal Translator speech pattern.
+
+      "Game" (the default) follows Skyrim's own language, sLanguage in
+      Skyrim.ini, as SeverActions' _nativeLang "auto" does. Returns an English
+      name for the prompt ("German"), "English" when unknown.
+
+      NAMED APART FROM THE CONFIG KEY: Papyrus interns strings by case, and a
+      function called OutputLanguage would fold the literal "outputLanguage"
+      onto itself and break the YAML lookup (see VariantName). }
+    String pick = SkyrimNetApi.GetConfigString(CFG(), "outputLanguage", "Game")
+    If pick != "" && pick != "Game"
+        Return pick
+    EndIf
+    String code = SNRom_Decorators.Upper(Utility.GetINIString("sLanguage:General"))
+    If code == "GERMAN"
+        Return "German"
+    ElseIf code == "FRENCH"
+        Return "French"
+    ElseIf code == "SPANISH"
+        Return "Spanish"
+    ElseIf code == "ITALIAN"
+        Return "Italian"
+    ElseIf code == "POLISH"
+        Return "Polish"
+    ElseIf code == "RUSSIAN"
+        Return "Russian"
+    ElseIf code == "CZECH"
+        Return "Czech"
+    ElseIf code == "JAPANESE"
+        Return "Japanese"
+    ElseIf code == "CHINESE"
+        Return "Chinese"
+    EndIf
+    Return "English"
+EndFunction
+
+String Function LanguageContext() Global
+    { The language for a request's context JSON: "" for English, so an
+      English game sends exactly what it always sent. }
+    String lang = TextLanguageName()
+    If lang == "English"
+        Return ""
+    EndIf
+    Return ",\"out_language\":\"" + SNRom_Decorators.JsonEscape(lang) + "\""
 EndFunction
 
 String Function JudgeVariantName() Global
@@ -8059,7 +8113,7 @@ Function AssessSpark(Actor akActor)
     ; of differently hard - the opposite of the point.
     String ctx = "{\"npc_name\":\"" + _sparkName + "\"" + \
         ",\"npc_formid\":" + akActor.GetFormID() + \
-        ",\"npc_ardor\":\"" + SNRom_Decorators.ArdorWord(StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2)) + "\"" + MarasContext(akActor) + "}"
+        ",\"npc_ardor\":\"" + SNRom_Decorators.ArdorWord(StorageUtil.GetIntValue(akActor, "SNRom_Ardor", 2)) + "\"" + MarasContext(akActor) + LanguageContext() + "}"
     Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_spark_assess", VariantName(), ctx, \
         Self, "SNRom_Bridge", "OnSparkAssessed")
     Diag(LOG_INFO(), "Spark assessment sent for " + _sparkName + " (rc=" + rc + ")")
@@ -8582,7 +8636,7 @@ Function AssessDrift(Actor akActor)
         ",\"drift_field\":\"" + DriftFieldName(_driftField) + "\"" + \
         ",\"drift_current\":\"" + Escape(current) + "\"" + \
         ",\"drift_days\":" + DriftDays() + \
-        ",\"npc_why\":\"" + Escape(StoreGetText(akActor, "Why")) + "\"" + MarasContext(akActor) + "}"
+        ",\"npc_why\":\"" + Escape(StoreGetText(akActor, "Why")) + "\"" + MarasContext(akActor) + LanguageContext() + "}"
 
     Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_disposition_drift", VariantName(), ctx, \
         Self, "SNRom_Bridge", "OnDriftAssessed")

@@ -475,6 +475,12 @@ Its "What You Know About" section is generated from a counter of interactions, n
    conversation record"), which logs as a malformed verdict. #}
 If nothing above passed between {{ npc_name }} and {{ player.name }}, the answer is `NOTHING`, given in the form below like any other.
 
+{# LANGUAGE (2.3, L10n): the player reads these fields, so they are written in
+   the player's language; the game reads everything else, so it stays as
+   shown. out_language is absent for English (LanguageContext). #}
+{% if exists("out_language") and out_language != "" %}
+LANGUAGE: write WHAT in {{ out_language }}. Everything else in your answer - every field name and every capitalised answer word - stays exactly as shown, in English: the game reads them.
+{% endif %}
 Answer in exactly this form and nothing else:
 
 NAME: {{ npc_name }}

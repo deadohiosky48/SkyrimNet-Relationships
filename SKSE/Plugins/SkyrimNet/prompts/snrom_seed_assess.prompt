@@ -176,6 +176,12 @@ WHAT OTHER SYSTEMS ALREADY RECORD
 {{ npc_prior }}
 {% endif %}
 
+{# LANGUAGE (2.3, L10n): the player reads these fields, so they are written in
+   the player's language; the game reads everything else, so it stays as
+   shown. out_language is absent for English (LanguageContext). #}
+{% if exists("out_language") and out_language != "" %}
+LANGUAGE: write BECAUSE in {{ out_language }}. Everything else in your answer - every field name and every capitalised answer word - stays exactly as shown, in English: the game reads them.
+{% endif %}
 Answer in exactly this form and nothing else. Copy the NAME and KNOWN lines exactly as written:
 
 NAME: {{ npc_name }}

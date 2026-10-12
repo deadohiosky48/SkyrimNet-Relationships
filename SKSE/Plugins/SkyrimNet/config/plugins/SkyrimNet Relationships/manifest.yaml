@@ -352,6 +352,25 @@ schema:
         - Normal
         - Fast
       category: "Pacing"
+    # 2.3 (L10n). Read by SNRom_Bridge.TextLanguageName().
+    - name: "Language"
+      path: "outputLanguage"
+      type: "select"
+      description: "The language this mod's characters and records are written in: why someone is the way they are, the line they will not cross, and what moved a bond, as you read them in the dashboard and as characters carry them. Game language follows your Skyrim's own language. Pick one to write in a different language from your game - for example if SkyrimNet's Universal Translator has your characters speaking German in an English Skyrim. Dialogue itself is SkyrimNet's and follows its own settings. Characters already written keep their old wording until they are re-authored. Default: Game language."
+      defaultValue: "Game"
+      options:
+        - Game
+        - English
+        - German
+        - French
+        - Spanish
+        - Italian
+        - Polish
+        - Russian
+        - Czech
+        - Japanese
+        - Chinese
+      category: "Enrollment"
     - name: "LLM Variant"
       path: "llmVariant"
       type: "select"

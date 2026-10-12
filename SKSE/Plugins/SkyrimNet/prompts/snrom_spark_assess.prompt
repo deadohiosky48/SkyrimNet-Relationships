@@ -245,6 +245,12 @@ The profile above is headed as though you were about to play them. That heading 
 
 Its "What You Know About" section is generated from a counter of interactions, not from what has actually happened between them. It routinely reports that two people barely know each other while their own diary describes years of intimacy. **Where it disagrees with anything above, it is simply wrong — disregard it.**
 
+{# LANGUAGE (2.3, L10n): the player reads these fields, so they are written in
+   the player's language; the game reads everything else, so it stays as
+   shown. out_language is absent for English (LanguageContext). #}
+{% if exists("out_language") and out_language != "" %}
+LANGUAGE: write MOMENT in {{ out_language }}. Everything else in your answer - every field name and every capitalised answer word - stays exactly as shown, in English: the game reads them.
+{% endif %}
 Answer in exactly this form and nothing else:
 
 NAME: {{ npc_name }}
