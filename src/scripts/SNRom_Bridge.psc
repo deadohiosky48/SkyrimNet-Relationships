@@ -1201,6 +1201,10 @@ Function MarkMoment(Actor akActor, Int aiMagnitude, String asReason, String asAc
     ; conversation check to read it before the next turn of the timer.
     If clamped >= 40 || clamped <= -40
         AssessSoon(akActor, "a moment of " + clamped)
+    ElseIf COOLDOWN_DIAG() && (clamped >= 25 || clamped <= -25)
+        ; WP-C: the near misses - Silana's -35 never brought her forward.
+        Diag(LOG_INFO(), "[cooldown] A moment of " + clamped + " for " + akActor.GetDisplayName() + \
+            " is under the bar of 40, so their conversation check is not brought forward.")
     EndIf
 
     ; EARNED: the consent gate inside ApplyDepth may withhold it.
@@ -7195,6 +7199,7 @@ Function AssessNextTalk()
     Actor pick = None
     Float pickSince = 0.0
     Float bestWait = -1.0
+    CooldownDayRollover(now)
     While i < n
         Actor a = _observers[i]
         If a != None && TalkCandidate(a, now, cooldown)
@@ -7204,6 +7209,8 @@ Function AssessNextTalk()
                 pick      = a
                 pickSince = last
             EndIf
+        ElseIf a != None
+            NoteCooldownHold(a, now, cooldown)
         EndIf
         i += 1
     EndWhile
@@ -7233,7 +7240,115 @@ Function AssessNextTalk()
     StorageUtil.SetFloatValue(pick, "SNRom_LastTalkCheck", now)
     Diag(LOG_DEBUG(), "Talk queue: picked " + pick.GetDisplayName() + \
         " after " + (bestWait * 24.0) + " game hours waiting")
+    NoteCooldownRun(pick, now, pickSince)
     AssessTalk(pick, pickSince)
+EndFunction
+
+; ---------------------------------------------------------------------------
+; COOLDOWN DIAGNOSTICS (2.4, WP-C). PRE-RELEASE. The author's call, 2026-10-11:
+; leave talkCooldownHours (3) alone, play with it, revisit - and 2.4 adds what
+; the revisit needs. Someone checked shortly before a scene is not judged until
+; the cooldown runs out, unless a swing of 40 or more brings them forward; at
+; timescale 10 three game hours are 18 real minutes. These lines say, per
+; scene, who waited, why, and how long in game and real time, and once a game
+; day how the day went. COOLDOWN_DIAG() turns the per-scene lines off before
+; release; the daily summary stays.
+; ---------------------------------------------------------------------------
+
+Bool Function COOLDOWN_DIAG() Global
+    { True while 2.4 is in pre-release testing. Set False before shipping. }
+    Return True
+EndFunction
+
+Float Function RealMinutes(Float afGameHours) Global
+    { Game hours as real minutes at the player's timescale, read live. }
+    GlobalVariable ts = Game.GetForm(0x0000003A) as GlobalVariable
+    Float v = 20.0
+    If ts != None && ts.GetValue() > 0.0
+        v = ts.GetValue()
+    EndIf
+    Return afGameHours * 60.0 / v
+EndFunction
+
+String Function GameAndReal(Float afGameHours) Global
+    Return (((afGameHours * 10.0) as Int) as Float / 10.0) + " game h (" + \
+        (RealMinutes(afGameHours) as Int) + " real min)"
+EndFunction
+
+Function NoteCooldownHold(Actor akActor, Float afNow, Float afCooldown)
+    { Someone near, with lines no check has read, whose scene is over, held only
+      by the cooldown. Logged once per scene; counted for the daily summary. }
+    Float line  = StorageUtil.GetFloatValue(akActor, "SNRom_LastTalkLine", 0.0)
+    Float check = StorageUtil.GetFloatValue(akActor, "SNRom_LastTalkCheck", 0.0)
+    If line <= check || TalkStillGoing(akActor, afNow)
+        Return                                  ; nothing unread, or still talking
+    EndIf
+    Float sceneAt = StorageUtil.GetFloatValue(akActor, "SNRom_SceneStart", line)
+    If StorageUtil.GetFloatValue(akActor, "SNRom_CoolNoted", -1.0) == sceneAt
+        Return                                  ; this scene already logged
+    EndIf
+    StorageUtil.SetFloatValue(akActor, "SNRom_CoolNoted", sceneAt)
+    StorageUtil.AdjustIntValue(None, "SNRom_CoolDeferredToday", 1)
+    If !COOLDOWN_DIAG()
+        Return
+    EndIf
+    Float since = (afNow - check) * 24.0
+    Float freeIn = (afCooldown - (afNow - check)) * 24.0
+    Diag(LOG_INFO(), "[cooldown] " + akActor.GetDisplayName() + "'s scene is over and unjudged, held by " + \
+        "the cooldown: last check " + GameAndReal(since) + " ago, scene began " + \
+        GameAndReal((afNow - sceneAt) * 24.0) + " ago, free in " + GameAndReal(freeIn) + ". Not brought " + \
+        "forward (no moment of 40 or more, no breakup, no event).")
+EndFunction
+
+Function NoteCooldownRun(Actor akActor, Float afNow, Float afSince)
+    { A check that is running: how long its scene waited to be judged. }
+    StorageUtil.AdjustIntValue(None, "SNRom_CoolRunToday", 1)
+    Float line  = StorageUtil.GetFloatValue(akActor, "SNRom_LastTalkLine", 0.0)
+    If line <= afSince
+        Return                                  ; nothing said since the last check
+    EndIf
+    Float sceneAt = StorageUtil.GetFloatValue(akActor, "SNRom_SceneStart", line)
+    Float waited = (afNow - line) * 24.0
+    If waited > StorageUtil.GetFloatValue(None, "SNRom_CoolLongestToday", 0.0)
+        StorageUtil.SetFloatValue(None, "SNRom_CoolLongestToday", waited)
+        StorageUtil.SetStringValue(None, "SNRom_CoolLongestWho", akActor.GetDisplayName())
+    EndIf
+    If COOLDOWN_DIAG()
+        String why = "on the timer"
+        If StorageUtil.GetIntValue(akActor, "SNRom_TalkSoon", 0) == 1
+            why = "brought forward"
+        EndIf
+        Diag(LOG_INFO(), "[cooldown] Judging " + akActor.GetDisplayName() + " (" + why + "): the scene " + \
+            "began " + GameAndReal((afNow - sceneAt) * 24.0) + " ago and its last line was " + \
+            GameAndReal(waited) + " ago.")
+    EndIf
+EndFunction
+
+Function CooldownDayRollover(Float afNow)
+    { Once a game day: how the day's conversation checks went. Kept after
+      release - it is one line a day and answers "do scenes wait?" at once. }
+    Int day = afNow as Int
+    Int was = StorageUtil.GetIntValue(None, "SNRom_CoolDay", -1)
+    If was == day
+        Return
+    EndIf
+    StorageUtil.SetIntValue(None, "SNRom_CoolDay", day)
+    If was >= 0
+        Int ran = StorageUtil.GetIntValue(None, "SNRom_CoolRunToday", 0)
+        Int held = StorageUtil.GetIntValue(None, "SNRom_CoolDeferredToday", 0)
+        Float longest = StorageUtil.GetFloatValue(None, "SNRom_CoolLongestToday", 0.0)
+        String note = "Conversation checks, game day " + was + ": " + ran + " run, " + held + \
+            " scene(s) held by the cooldown"
+        If longest > 0.0
+            note = note + ", longest wait after a scene " + GameAndReal(longest) + " (" + \
+                StorageUtil.GetStringValue(None, "SNRom_CoolLongestWho", "?") + ")"
+        EndIf
+        Diag(LOG_INFO(), note + ".")
+    EndIf
+    StorageUtil.SetIntValue(None, "SNRom_CoolRunToday", 0)
+    StorageUtil.SetIntValue(None, "SNRom_CoolDeferredToday", 0)
+    StorageUtil.SetFloatValue(None, "SNRom_CoolLongestToday", 0.0)
+    StorageUtil.UnsetStringValue(None, "SNRom_CoolLongestWho")
 EndFunction
 
 Bool Function TalkCandidate(Actor akActor, Float afNow, Float afCooldown)
@@ -9910,6 +10025,13 @@ Function ScanConversations()
                     Actor spoke = SkyrimNetApi.GetActorByUUID(SNRom_Native.UuidHex(f[1]))
                     Float at = (f[2] as Float) / 86400.0
                     If spoke != None && IsEnrolled(spoke) && at > StorageUtil.GetFloatValue(spoke, "SNRom_LastTalkLine", 0.0)
+                        ; THE SCENE'S FIRST LINE (2.4, WP-C): the first line
+                        ; no check has read yet, so the cooldown diagnostics
+                        ; can say how long a scene waited to be judged.
+                        If StorageUtil.GetFloatValue(spoke, "SNRom_LastTalkLine", 0.0) <= \
+                           StorageUtil.GetFloatValue(spoke, "SNRom_LastTalkCheck", 0.0)
+                            StorageUtil.SetFloatValue(spoke, "SNRom_SceneStart", at)
+                        EndIf
                         StorageUtil.SetFloatValue(spoke, "SNRom_LastTalkLine", at)
                         StorageUtil.FormListAdd(None, "SNRom_RecentTalkers", spoke, False)
                     EndIf
