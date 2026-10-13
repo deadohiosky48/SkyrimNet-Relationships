@@ -84,9 +84,13 @@ EndFunction
 Float Function PaceMultiplier() Global
     { The one lever, resolved from the named speed the player picked.
 
-      THREE SPEEDS, NOT FIVE. A first cut deliberately: half, normal, double is
-      easy to hold in your head and easy to judge from play. Finer strata are a
-      later decision, and only worth making once these three have been felt.
+      FIVE SPEEDS FROM 2.4. 1.1.2 shipped half, normal and double as a first
+      cut, to be widened once they had been felt. A player at timescale 10
+      found Fast not fast enough: his game day lasts twice as long in real
+      time, and everything here is counted in game days. Very Slow and Very
+      Fast are a quarter and four times. Timescale is deliberately NOT read
+      into this: game time is the story's clock, and the player chooses how
+      long a bond should take in it (TimeScaleNote logs what theirs means).
 
       NAMED SPEEDS, NOT A NUMBER. Players understand "relationships take about
       twice as long"; nobody understands 0.5. The select carries the words and
@@ -100,8 +104,60 @@ Float Function PaceMultiplier() Global
         Return 0.5
     ElseIf w == "FAST"
         Return 2.0
+    ElseIf w == "VERY SLOW"
+        Return 0.25
+    ElseIf w == "VERY FAST"
+        Return 4.0
     EndIf
     Return 1.0
+EndFunction
+
+String Function TimeScaleNote() Global
+    { What the player's timescale means for pacing, for the load log (2.4).
+
+      Everything here counts game days: the daily conversation budget, the talk
+      cooldown, spark tenure. At the default timescale (20) a game day is 72
+      real minutes; at 10 it is 2.4 hours, so the same budget is spread over
+      twice the real time and bonds feel half as fast. Pace is never adjusted
+      for this - game time is the story's clock - but the log says so, and
+      which Bond Pace would roughly restore the default's real-time feel.
+      TimeScale is Skyrim.esm's global 0x3A, read live: other mods change it. }
+    GlobalVariable ts = Game.GetForm(0x0000003A) as GlobalVariable
+    If ts == None || ts.GetValue() <= 0.0
+        Return "Timescale unreadable - pacing notes skipped."
+    EndIf
+    Float v = ts.GetValue()
+    Float dayMinutes = 1440.0 / v
+    String feel = "Normal"
+    Float ratio = 20.0 / v
+    If ratio >= 3.0
+        feel = "Very Fast"
+    ElseIf ratio >= 1.5
+        feel = "Fast"
+    ElseIf ratio <= 0.35
+        feel = "Very Slow"
+    ElseIf ratio <= 0.7
+        feel = "Slow"
+    EndIf
+    String note = "TimeScale " + (v as Int) + ": a game day is " + (dayMinutes as Int) + \
+        " real minutes (72 at the default 20). Bond Pace is " + \
+        SkyrimNetApi.GetConfigString(CFG(), "bondPace", "Normal") + "."
+    If feel != "Normal"
+        note = note + " Bond Pace " + feel + " would roughly match the default's real-time pace."
+    EndIf
+    Return note
+EndFunction
+
+Int Function ONE_TIER() Global
+    { The most any single award may move a bond, at any pace (2.4). }
+    Return 500
+EndFunction
+
+Int Function ScaleBudget(Int aiPoints) Global
+    { The pace multiplier on a BUDGET - the daily conversation cap - rather
+      than an award. Kept apart from ScaleAward from 2.4, because an award is
+      held to one tier and a budget must not be: Very Fast's day is 800. }
+    Return (aiPoints * PaceMultiplier()) as Int
 EndFunction
 
 Int Function ScaleAward(Int aiPoints) Global
@@ -124,7 +180,12 @@ Int Function ScaleAward(Int aiPoints) Global
       a SMALL award of 10 becomes 2 and an award of 1 becomes 0 - the axis stops
       registering entirely and the player learns their behaviour does not matter.
       Any non-zero award stays non-zero and keeps its sign. Better to move the
-      needle by one than not at all; that is the entire reason this exists. }
+      needle by one than not at all; that is the entire reason this exists.
+
+      ONE TIER AT MOST, AT ANY PACE (2.4, the author's call). Very Fast makes a
+      LANDMARK 1400, and landmarks skip the daily budget: one conversation would
+      jump nearly three tiers. No single award moves more than ONE_TIER. At Slow
+      and Normal nothing reaches it; Fast's landmark is trimmed from 700. }
     If aiPoints == 0
         Return 0
     EndIf
@@ -138,6 +199,11 @@ Int Function ScaleAward(Int aiPoints) Global
             Return 1
         EndIf
         Return -1
+    EndIf
+    If scaled > ONE_TIER()
+        Return ONE_TIER()
+    ElseIf scaled < -ONE_TIER()
+        Return -ONE_TIER()
     EndIf
     Return scaled
 EndFunction
@@ -332,6 +398,7 @@ Function Bootstrap(Bool abForce = False)
         " (game language '" + Utility.GetINIString("sLanguage:General") + "').")
     Diag(LOG_INFO(), "Bridge ready. SNRom_Bond resolved. Assessing every " + \
         AssessIntervalHours() + "h, housekeeping every " + SparkIntervalHours() + "h.")
+    Diag(LOG_INFO(), TimeScaleNote())
     ; Catch up immediately rather than waiting a game hour or two. This is the
     ; path that finds followers SeverActions never announces.
     SweepFollowers()
@@ -2271,7 +2338,10 @@ Function DeclineRomance(Actor akActor)
             FRIEND_MID() + ", so depth is unchanged.")
         Return
     EndIf
-    If ApplyDepth(akActor, ScaleAward(drop), "Turned down", True, "declined") > 0
+    ; A REFUSAL LANDS, IT IS NOT A SIZE (2.4, the author's call): never scaled
+    ; by pace, like a betrayal. Scaled, Fast doubled the fall (2400 landed at
+    ; 100, not 1250) and Very Fast could land a "no" at Enemy.
+    If ApplyDepth(akActor, drop, "Turned down", True, "declined") > 0
         Ledger(akActor, "declined", "", drop, 1, "Turned down")
         Diag(LOG_INFO(), "Turned down " + who + ": " + had + " -> " + PointsOf(akActor) + \
             " pts, tier " + TierOf(akActor) + ". She keeps the spark and everything " + \
@@ -2496,7 +2566,8 @@ Function EndRomance(Actor akActor, String asReason)
     AssessSoon(akActor, "the romance ended")
     Int drop = ENDED_CAP() - had
     If drop < 0
-        If ApplyDepth(akActor, ScaleAward(drop), asReason, True, "ended") > 0
+        ; A BREAKUP LANDS AT ENDED_CAP at every pace (2.4), as a refusal does.
+        If ApplyDepth(akActor, drop, asReason, True, "ended") > 0
             Ledger(akActor, "end", "", drop, 1, asReason)
             Diag(LOG_INFO(), "Romance ended for " + who + ": " + had + " -> " + \
                 PointsOf(akActor) + " pts, tier " + TierOf(akActor) + \
@@ -7850,7 +7921,7 @@ Function ApplyTalkAward(Actor akActor, Int aiPoints, String asWeight, String asW
         ; touching the cap and a talkative day hits the ceiling three times sooner,
         ; so "Much Faster" would quietly become "Normal, but earlier" with nothing
         ; saying so. Scaling it keeps the setting honest in both directions.
-        Int cap = ScaleAward(SkyrimNetApi.GetConfigInt(CFG(), "talkDailyCap", 200))
+        Int cap = ScaleBudget(SkyrimNetApi.GetConfigInt(CFG(), "talkDailyCap", 200))
         Int day = now as Int
         If StorageUtil.GetIntValue(akActor, "SNRom_TalkDay", -1) != day
             StorageUtil.SetIntValue(akActor, "SNRom_TalkDay", day)

@@ -427,10 +427,13 @@ folder; the libraries live in `library/`.)
 Everything is tunable from SkyrimNet's settings page. A tier is 500 points and
 Spouse is 2,500, and the defaults are calibrated so that nothing moves quickly.
 
-**Bond Pace** is the setting most people will want. Slow, Normal or Fast, under
-*Pacing* — roughly twice as long, as-is, or roughly half. It multiplies what is
-earned in both directions, so on Slow a misstep also costs less, and it never
-changes where a relationship can end up: only how long the road is. Finer knobs
+**Bond Pace** is the setting most people will want. Very Slow, Slow, Normal,
+Fast or Very Fast, under *Pacing* — roughly four times as long, twice, as-is,
+half, or a quarter. No single award moves a bond more than one tier at any
+pace, and a refusal, a breakup or a betrayal lands in the same place at every
+pace. It multiplies what is earned in both directions, so on Slow a misstep
+also costs less, and it never changes where a relationship can end up: only how
+long the road is. Finer knobs
 sit underneath it and all of them still work; this moves them together.
 
 Notable knobs: how much conversation can move a bond in a day, how long between
@@ -512,6 +515,13 @@ LLM backend, or that a model preset was applied in the SkyrimNet UI and dropped
 this mod's `snrom_background` variant. The DLL keeps its own log as
 `SkyrimNetRelationships.log` beside SKSE's logs, in
 `My Games\Skyrim Special Edition\SKSE\`.
+
+**Bonds feel slow.** Everything here is counted in game days, so a lowered
+timescale stretches it: at timescale 10 a game day lasts 2.4 real hours instead
+of 72 minutes, and the same day's worth of bond is spread over twice the real
+time. Raise **Bond Pace** (Fast roughly matches the default at timescale 10;
+Very Fast is there for lower). The log's load line says what your timescale
+means and which pace would match it.
 
 **"SkyrimNetRelationships.dll did not load."** Check that SKSE and Address
 Library are installed for your game version, and that the DLL is in

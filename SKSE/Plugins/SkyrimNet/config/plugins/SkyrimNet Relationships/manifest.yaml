@@ -345,12 +345,14 @@ schema:
     - name: "Bond Pace"
       path: "bondPace"
       type: "select"
-      description: "How quickly bonds move. Slow takes about twice as long, Fast about half. This multiplies points EARNED - conversation, authored moments, the spark beat and setbacks - in both directions, so Slow also makes mistakes cost less. It does NOT change the distance: a tier is always 500 points, so this changes how long the same journey takes, never where it ends. Two things are deliberately never scaled: points held back at Lover and handed back when the question is answered (scaling one side of that round trip would destroy points you watched accrue), and the seed for a relationship that already existed before this mod was installed. On Slow, any award that would round away to nothing is kept at a single point instead - seeing the needle move a little is the point of it. Default: Normal."
+      description: "How quickly bonds move. Slow takes about twice as long and Very Slow four times; Fast about half, Very Fast a quarter. Everything here is counted in game days, so if you have lowered Skyrim's timescale (a game day lasting longer in real time), bonds feel slower too: at timescale 10, Fast roughly matches the default. No single award moves a bond more than one tier at any pace. This multiplies points EARNED - conversation, authored moments, the spark beat and setbacks - in both directions, so Slow also makes mistakes cost less. It does NOT change the distance: a tier is always 500 points, so this changes how long the same journey takes, never where it ends. Never scaled: points held back at Lover and handed back when the question is answered (scaling one side of that round trip would destroy points you watched accrue), the seed for a relationship that already existed before this mod was installed, and where a refusal, a breakup or a betrayal lands. On Slow, any award that would round away to nothing is kept at a single point instead - seeing the needle move a little is the point of it. Default: Normal."
       defaultValue: "Normal"
       options:
+        - Very Slow
         - Slow
         - Normal
         - Fast
+        - Very Fast
       category: "Pacing"
     # 2.3 (L10n). Read by SNRom_Bridge.TextLanguageName().
     - name: "Language"
