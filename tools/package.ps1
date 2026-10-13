@@ -327,19 +327,12 @@ try {
     }
     if (Get-ChildItem $stage -Recurse -Filter '*.pdb' -File) { throw "A .pdb is staged. Never ship one." }
 
-    # --- 4. optional extras: DELIBERATELY NOT SHIPPED -----------------------
-    # optional\baka-tier-gates\ holds modified copies of Baka's own action files.
-    # They are not in this archive and should not be added to it.
-    #
-    # They are someone else's content, and installing them means overwriting that
-    # mod's files - a decision a player must make deliberately rather than one
-    # they inherit by installing this. Shipping them even as inert files under
-    # Optional\ still puts another author's work in our archive.
-    #
-    # They remain in the repository, where anyone who wants them can read what
-    # they change and apply it knowingly. A proper opt-in belongs in an installer
-    # rather than a runtime setting: SkyrimNet reads action YAML from disk, so no
-    # config toggle in this mod can enable or disable another mod's file.
+    # --- 4. other mods' files: NEVER SHIPPED ------------------------------
+    # This archive carries only our own content. Patches to another mod's files
+    # (2.4 removed the last, gates for Baka's actions on Romantasy's faction)
+    # are a player's deliberate choice, made in an installer, never something
+    # inherited by installing this: SkyrimNet reads action YAML from disk, so no
+    # setting of ours can enable or disable another mod's file.
 
     # --- 5. source, for anyone who wants to patch this ---------------------
     # ONLY OURS. src\scripts also holds SkyrimNetApi.psc and MARAS.psc, which
