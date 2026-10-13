@@ -453,6 +453,17 @@ for your answer: someone who has reached the point of asking is held below the
 threshold until you answer. Everything held is returned in full the moment you
 say yes.
 
+**Language**, under *Enrollment*, sets the language Relationships speaks:
+the dashboard, notices, the question and your answers, the bio blocks it gives
+characters, and everything the model writes for you to read - why someone feels
+as they do, their limit, what happened between you. *Game* follows Skyrim's own
+language setting; or pick one of the eighteen SkyrimNet lists: English,
+Arabic, Chinese, Czech, Dutch, French, German, Hebrew, Hindi, Hungarian,
+Italian, Japanese, Korean, Polish, Portuguese, Russian, Spanish and Turkish.
+Arabic and Hebrew turn the dashboard right to left. Changing it takes effect at
+once; what was already written stays in the language it was written in until
+it is written again.
+
 The setting that matters most to whether the mod works at all is **LLM
 Variant**, which chooses the model serving every background assessment this mod
 makes. See [Diary entries, and which model sees what](docs/DIARY_AND_LLM_ROUTING.md)
@@ -473,6 +484,12 @@ Known limitations, honestly:
 - **A small background model can garble a sentence.** Each character's WHY and
   LIMIT are written by the model you point LLM Variant at; a small local model
   occasionally repeats a word. Re-authoring rewrites them.
+- **The translations are drafts.** Every language but English was translated
+  by machine and has not yet been read by a native speaker. Corrections are
+  welcome as issues or comments; each is a single file under
+  `SKSE/Plugins/SkyrimNet Relationships/l10n/`. Skyrim's own notice font may
+  not draw every script, so a notice can show boxes where the dashboard shows
+  the words.
 - **Uninstalling does not fully reverse it.** What this mod writes lives in the
   save and its co-save. Removing the mod stops anything new from happening; it
   does not return a save to the state it was in before.
