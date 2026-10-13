@@ -200,7 +200,8 @@ namespace SNRom::Model {
         // authored yet either.
         bond["prose"] = { { "why", a_text ? (*a_text)[kWhy] : "" },
                           { "limit", a_text ? (*a_text)[kLimit] : "" },
-                          { "address", a_text ? (*a_text)[kAddress] : "" } };
+                          { "address", a_text ? (*a_text)[kAddress] : "" },
+                          { "playerSays", a_text ? (*a_text)[kPlayerSays] : "" } };
         // From the co-save, not from a push: the history is the DLL's own
         // (History.h), so every snapshot has it as of now.
         bond["history"] = History::Recent(a_formId);
@@ -440,6 +441,15 @@ namespace SNRom::Model {
             return std::nullopt;
         }
         return it->second.args;
+    }
+
+    std::optional<std::string> ReadModel::TextFor(std::int32_t a_requestId) const {
+        const std::scoped_lock lock{ m_lock };
+        const auto             it = m_actions.find(a_requestId);
+        if (it == m_actions.end()) {
+            return std::nullopt;
+        }
+        return it->second.text;
     }
 
     std::optional<Action> ReadModel::TakeAction(std::int32_t a_requestId) {

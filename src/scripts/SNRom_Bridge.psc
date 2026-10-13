@@ -5702,6 +5702,36 @@ String Function KnownScan(Actor akActor)
     Return SNRom_Decorators.Trim(StringUtil.Substring(out, at, 200))
 EndFunction
 
+Function SetPlayerHistory(Actor akActor, String asText)
+    { THE PLAYER'S OWN WORD (2.4, WP-T, the author's idea): their history with
+      this person before anything was recorded - "Sapphire and Haruk have been
+      off-and-on lovers for years". Kept in the store beside WHY, LIMIT and
+      ADDRESS. A seed read takes it as fact, including how long they have known
+      each other (PLAYER_STATED lifts the time limit); it never seeds above
+      DEVOTED, never skips the consent question, never sets a marriage. Empty
+      clears it. Setting it re-reads their record at once, which is the point
+      of writing it. }
+    If akActor == None
+        Return
+    EndIf
+    String text = SNRom_Decorators.Trim(asText)
+    If StringUtil.GetLength(text) > 400
+        text = StringUtil.Substring(text, 0, 400)
+    EndIf
+    If text == ""
+        JsonUtil.UnsetStringValue(StoreFile(), StoreKey(akActor, "History"))
+        JsonUtil.Save(StoreFile())
+        Diag(LOG_INFO(), "History with you cleared for " + akActor.GetDisplayName() + ".")
+    Else
+        StoreSetText(akActor, "History", text)
+        Diag(LOG_INFO(), "History with you set for " + akActor.GetDisplayName() + ": " + text)
+    EndIf
+    PushBondText(akActor)
+    If text != "" && IsEnrolled(akActor) && !SeedReadInFlight()
+        ReseedActor(akActor)
+    EndIf
+EndFunction
+
 String Function KnownBucket(Float afDays) Global
     If afDays <= 2.0
         Return "TODAY_OR_YESTERDAY"
@@ -5719,7 +5749,7 @@ String Function TimeKnown(Actor akActor, String asWhy)
       DAYS, WEEKS (the short caps, only when proven), MONTHS_OR_MORE, and
       UNPROVEN and PLAYER_STATED, which apply no time limit. }
     String who = akActor.GetDisplayName()
-    If StorageUtil.GetStringValue(akActor, "SNRom_PlayerHistory", "") != ""
+    If StoreGetText(akActor, "History") != ""
         Diag(LOG_INFO(), "Time known for " + who + " (" + asWhy + "): PLAYER_STATED - you wrote their history " + \
             "with you, so no time limit applies.")
         Return "PLAYER_STATED"
@@ -5847,7 +5877,7 @@ Function AssessSeed(Actor akActor)
     ; is told, so the prose and KnownCap agree. The player's own word goes in
     ; too, as evidence.
     _seedKnown = TimeKnown(akActor, "seed read")
-    String history = StorageUtil.GetStringValue(akActor, "SNRom_PlayerHistory", "")
+    String history = StoreGetText(akActor, "History")
     String ctx = "{\"npc_name\":\"" + _seedName + "\"" + \
         ",\"npc_formid\":" + akActor.GetFormID() + \
         ",\"npc_bio\":\"" + Escape(akActor.GetActorBase().GetRace().GetName()) + ", known to the Dragonborn\"" + \
@@ -6282,9 +6312,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 7
+    If natives < 12
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v7). Install the DLL from the same release.", True)
+            ", these need v12). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5
@@ -6457,10 +6487,11 @@ String[] Function DashboardText(Actor akActor, String asStoreName) Global
       into Relationships (the author, 2026-09-30); phase 5's own preferences,
       against our vocabulary, are the ones the dashboard will show. }
     Int id = SNRom_Native.FormIdOf(akActor)
-    String[] t = new String[3]
+    String[] t = new String[4]
     t[0] = StoreGetText(akActor, "Why", asStoreName, id)
     t[1] = StoreGetText(akActor, "Limit", asStoreName, id)
     t[2] = StoreGetText(akActor, "Address", asStoreName, id)
+    t[3] = StoreGetText(akActor, "History", asStoreName, id)   ; 2.4, WP-T
     Return t
 EndFunction
 
@@ -6672,6 +6703,14 @@ Event OnDashboardAction(String asEventName, String asOp, Float afRequestId, Form
         EndIf
         SetCharacterField(who, fieldArgs[0], fieldArgs[1])
         answer = "Corrected one of " + whoName + "'s traits."
+    ElseIf asOp == "SetPlayerHistory"
+        String history = SNRom_Native.ActionText(requestId)
+        SetPlayerHistory(who, history)
+        If SNRom_Decorators.Trim(history) == ""
+            answer = Tr("act.historyCleared", "Cleared your history with {0}.", whoName)
+        Else
+            answer = Tr("act.historySaved", "Saved your history with {0}. Their record is being read again with it.", whoName)
+        EndIf
     ElseIf asOp == "EnrollActor"
         String refused = EnrollByHand(who)
         If refused != ""

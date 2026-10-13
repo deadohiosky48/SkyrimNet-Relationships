@@ -237,6 +237,8 @@
     // authoring takes one only if a model volunteers it (ApplyProse).
     [[UI.t("prose.why", "Why"), b.prose.why], [UI.t("prose.limit", "Limit"), b.prose.limit],
      [UI.t("prose.callsYou", "Calls you"), b.prose.address, UI.t("prose.callsYou.hint", "What they call you, saved so they don't forget it, and changed only when a conversation changes it.")]]
+      .concat(b.prose.playerSays ? [[UI.t("prose.playerSays", "Your history together"), b.prose.playerSays,
+        UI.t("prose.playerSays.hint", "In your own words. Their record is read with it as fact. Change it under Repairs.")]] : [])
       .forEach(function (pr) {
         var d = el("div", "prose");
         d.appendChild(el("span", "k", pr[0]));
@@ -343,6 +345,25 @@
       wrap.appendChild(row);
       form.appendChild(btn);
       wrap.appendChild(form);
+    } else if (a.form === "historyText") {
+      // THE PLAYER'S OWN ACCOUNT (2.4, WP-T): one line of their history with
+      // this person, which a seed read takes as fact. Saved empty, it clears.
+      var hform = el("div", "act-form act-form-text");
+      var ta = el("textarea");
+      ta.id = "history-text";
+      ta.maxLength = 400;
+      ta.rows = 3;
+      ta.value = b.prose.playerSays || "";
+      ta.setAttribute("aria-label", a.label);
+      ta.placeholder = t("act.history.placeholder", "For example: {0} and I have been on-and-off lovers for years.", b.subject.name);
+      btn.textContent = t("act.save", "Save");
+      btn.addEventListener("click", function () { self.onAction(a, b, { text: ta.value }, btn); });
+      row.appendChild(el("strong", null, a.label));
+      wrap.appendChild(row);
+      hform.appendChild(ta);
+      hform.appendChild(btn);
+      wrap.appendChild(hform);
+      wrap.appendChild(el("p", "act-help", a.help));
     } else {
       btn.addEventListener("click", function () { self.onAction(a, b, [], btn); });
       row.appendChild(el("span", "act-help", a.help));

@@ -60,6 +60,7 @@ namespace SNRom::Dashboard {
 
     // A page action's Int arguments, for SNRom_Bridge.OnDashboardAction.
     std::vector<std::int32_t> ActionArgs(std::int32_t a_requestId);
+    std::string               ActionText(std::int32_t a_requestId);
     // Papyrus's answer to a page action. A long-running one says "started",
     // and its LLM callback's push is its end.
     void ActionDone(std::int32_t a_requestId, bool a_ok, std::string a_message);

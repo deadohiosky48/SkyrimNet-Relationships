@@ -101,6 +101,9 @@ namespace SNRom::Dashboard {
             // real answer follows as a notice. For work that outlasts the
             // page's own wait for a result.
             std::string_view answerAtOnce = {};
+            // Takes one String from the page's "text" (2.4): SetPlayerHistory.
+            // Papyrus reads it through SNRom_Native.ActionText.
+            bool takesText = false;
         };
 
         constexpr std::array kOps{
@@ -111,6 +114,9 @@ namespace SNRom::Dashboard {
             Op{ "SetCharacterField", "SNRom_Bridge.SetCharacterField(Actor, Int, Int)", OpScope::kBond, false, {}, 2,
                 2 },
             Op{ "UnenrollActor", "SNRom_Bridge.UnenrollActor(Actor)", OpScope::kBond },
+            // 2.4, WP-T: the player's own account of their history together.
+            Op{ "SetPlayerHistory", "SNRom_Bridge.SetPlayerHistory(Actor, String)", OpScope::kBond, false, {}, 0, 0,
+                true, {}, true },
             Op{ "StartFreshStore", "SNRom_Bridge.StartFreshStore()", OpScope::kPlaythrough },
             Op{ "AdoptLegacyStore", "SNRom_Bridge.AdoptLegacyStore()", OpScope::kPlaythrough },
             // 2.1.1: blocks the player hid in SeverActions were read as taken
@@ -433,6 +439,20 @@ namespace SNRom::Dashboard {
                 return;
             }
 
+            // THE ONE STRING, for an op that takes one. Capped: Papyrus caps it
+            // again, at 400 characters, and a page can be edited.
+            std::string text;
+            if (entry->takesText) {
+                const auto textIt = a_payload.find("text");
+                if (textIt != a_payload.end() && !textIt->is_null()) {
+                    if (!textIt->is_string() || textIt->get_ref<const std::string&>().size() > 2000) {
+                        Result(a_pageId, false, "The dashboard sent text the game could not read.");
+                        return;
+                    }
+                    text = textIt->get<std::string>();
+                }
+            }
+
             // THE ACTOR TRAVELS AS THE EVENT'S SENDER FORM, not as a form id in
             // a string, so Papyrus receives an Actor and resolves nothing.
             RE::Actor*   actor = nullptr;
@@ -468,6 +488,7 @@ namespace SNRom::Dashboard {
             action.op = std::string(entry->op);
             action.subject = subject;
             action.args = std::move(args);
+            action.text = std::move(text);
             action.longRunning = !entry->finished.empty();
             action.pageAnswered = !entry->answerAtOnce.empty();
             const auto requestId = Model::Get().AddAction(std::move(action));
@@ -845,6 +866,10 @@ namespace SNRom::Dashboard {
 
     std::vector<std::int32_t> ActionArgs(std::int32_t a_requestId) {
         return Model::Get().ArgsFor(a_requestId).value_or(std::vector<std::int32_t>{});
+    }
+
+    std::string ActionText(std::int32_t a_requestId) {
+        return Model::Get().TextFor(a_requestId).value_or(std::string{});
     }
 
     void ActionDone(std::int32_t a_requestId, bool a_ok, std::string a_message) {

@@ -19,7 +19,9 @@ Int Function Version() Global Native
    7  AppendLog
    8  BioPlan
    9  UuidHex
-  10  ApiLoaded; PutBondNumbers takes 25 numbers}
+  10  ApiLoaded; PutBondNumbers takes 25 numbers
+  11  Text (2.3)
+  12  ActionText; PutBondText takes 4 strings (2.4)}
 
 Bool Function SetDashboardHotkey(Int aiVirtualKey, Int aiModifierVirtualKey) Global Native
 {Binds the dashboard key. aiVirtualKey is a Windows VIRTUAL-KEY code, which is
@@ -115,6 +117,11 @@ Function RefreshDone(Int aiGeneration, Int aiCount, String asStatus) Global Nati
 Int[] Function ActionArgs(Int aiRequestId) Global Native
 {The Int arguments the page sent with request aiRequestId, in order: a trait
  and a value for SetCharacterField, a field for ForceDriftReview. Empty for
+ any other op, or a request the DLL no longer holds.}
+
+String Function ActionText(Int aiRequestId) Global Native
+{VERSION 12 (2.4). The one String the page sent with request aiRequestId, for
+ an op that takes one: the player's account for SetPlayerHistory. Empty for
  any other op, or a request the DLL no longer holds.}
 
 Function ActionDone(Int aiRequestId, Bool abOk, String asMessage) Global Native

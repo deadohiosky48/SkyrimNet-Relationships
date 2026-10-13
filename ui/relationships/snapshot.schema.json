@@ -318,12 +318,13 @@
         "prose": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["why", "limit", "address"],
+          "required": ["why", "limit", "address", "playerSays"],
           "description": "The authored lines, shown in the detail view only. Per-playthrough JsonUtil store, file StoreFile(), keys '<formId>.Why', '<formId>.Limit', '<formId>.Address' with the form id in decimal (SNRom_Bridge.StoreKey). Empty string when absent: ApplyProse never writes a blank, so empty means 'never authored', not 'authored as nothing'.",
           "properties": {
             "why": { "type": "string", "description": "WHY: one sentence on what their disposition says about them." },
             "limit": { "type": "string", "description": "LIMIT: one line they will not cross, whatever they feel." },
-            "address": { "type": "string", "description": "ADDRESS: how they address the player." }
+            "address": { "type": "string", "description": "ADDRESS: how they address the player." },
+            "playerSays": { "type": "string", "description": "2.4 (WP-T): the player's own account of their history with this person, written on the dashboard (SetPlayerHistory), store key '<formId>.History'. A seed read takes it as fact. Empty when the player has written none." }
           }
         },
         "history": {

@@ -90,6 +90,7 @@ namespace SNRom::Model {
         kWhy,      // store key <formId>.Why
         kLimit,    // store key <formId>.Limit
         kAddress,  // store key <formId>.Address
+        kPlayerSays,  // store key <formId>.History: the player's own account (2.4, WP-T)
         kTextCount
     };
 
@@ -148,6 +149,7 @@ namespace SNRom::Model {
         std::string               op;
         std::int32_t              subject = 0;  // form id; 0 for a playthrough action
         std::vector<std::int32_t> args;
+        std::string               text;  // the one String argument, for ops that take one (2.4)
         bool                      longRunning = false;
         bool                      pageAnswered = false;  // the page was already told it timed out
     };
@@ -247,6 +249,7 @@ namespace SNRom::Model {
         // Records it and returns its request id.
         std::int32_t AddAction(Action a_action);
         std::optional<std::vector<std::int32_t>> ArgsFor(std::int32_t a_requestId) const;
+        std::optional<std::string>               TextFor(std::int32_t a_requestId) const;
         std::optional<Action> TakeAction(std::int32_t a_requestId);
         // The page is told it timed out; the action stays, for a late ActionDone.
         std::optional<Action> MarkUnanswered(std::int32_t a_requestId);

@@ -356,7 +356,10 @@
     busy[a.op] = true;
     if (a.op === "EnrollActor") $("crosshair-btn").disabled = true;
     refreshBusy();
-    snrom.request("action", { op: a.op, subject: subject, args: args }).then(function (r) {
+    // An op that takes text (2.4: SetPlayerHistory) passes { text: ... }.
+    var payload = args && !Array.isArray(args) && typeof args.text === "string" ?
+      { op: a.op, subject: subject, args: [], text: args.text } : { op: a.op, subject: subject, args: args };
+    snrom.request("action", payload).then(function (r) {
       delete busy[a.op];
       refreshBusy();
       if (a.op === "EnrollActor" && snap) renderCrosshair();

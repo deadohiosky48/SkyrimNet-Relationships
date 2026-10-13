@@ -444,6 +444,12 @@ button, input, select { font: inherit; color: inherit; }
   height: calc(2rem * var(--t)); padding: 0 0.45rem; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-2);
 }
 .act-form input { width: calc(5rem * var(--t)); }
+/* 2.4, WP-T: the player's own account, a few lines of free text. */
+.act-form-text { align-items: flex-end; }
+.act-form-text textarea {
+  flex: 1 1 16rem; min-width: 0; padding: 0.4rem 0.45rem; border: 1px solid var(--line); border-radius: 5px;
+  background: var(--surface-2); color: var(--text); font: inherit; resize: vertical;
+}
 
 .legend-row { display: flex; gap: 0.75rem; align-items: baseline; margin: 0.45rem 0; }
 .legend-row .chip { flex: 0 0 auto; }

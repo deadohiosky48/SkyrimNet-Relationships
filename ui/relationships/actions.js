@@ -65,6 +65,17 @@
       form: "traitField"
     },
     {
+      op: "SetPlayerHistory",
+      scope: "bond",
+      calls: "SNRom_Bridge.SetPlayerHistory(Actor, String)",
+      label: t("action.setPlayerHistory.label", "Your history with them"),
+      help: t("action.setPlayerHistory.help", "For a relationship that began before Relationships was watching. Write it in a sentence or two; their record is read again at once, taking your words as fact, including how long you have known each other. It never makes them your lover or spouse on its own. Save it empty to clear it."),
+      needs: t("action.setPlayerHistory.needs", "Nothing: works wherever they are."),
+      needsNearby: false,
+      confirm: null,
+      form: "historyText"
+    },
+    {
       op: "UnenrollActor",
       scope: "bond",
       calls: "SNRom_Bridge.UnenrollActor(Actor)",

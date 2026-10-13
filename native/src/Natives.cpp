@@ -157,6 +157,11 @@ namespace SNRom::Natives {
             return Dashboard::ActionArgs(a_requestId);
         }
 
+        // VERSION 12. The one String an op takes (2.4: SetPlayerHistory).
+        std::string ActionText(RE::StaticFunctionTag*, std::int32_t a_requestId) {
+            return Dashboard::ActionText(a_requestId);
+        }
+
         void ActionDone(RE::StaticFunctionTag*, std::int32_t a_requestId, bool a_ok, std::string a_message) {
             Dashboard::ActionDone(a_requestId, a_ok, std::move(a_message));
         }
@@ -326,6 +331,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("PutRefreshFacts", kScript, PutRefreshFacts, true);
             a_vm->RegisterFunction("RefreshDone", kScript, RefreshDone, true);
             a_vm->RegisterFunction("ActionArgs", kScript, ActionArgs, true);
+            a_vm->RegisterFunction("ActionText", kScript, ActionText, true);
             a_vm->RegisterFunction("ActionDone", kScript, ActionDone, true);
             a_vm->RegisterFunction("CheckBond", kScript, CheckBond);  // main thread: see above
             a_vm->RegisterFunction("RecordChange", kScript, RecordChange, true);
@@ -340,7 +346,7 @@ namespace SNRom::Natives {
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
                             "PutBondNumbers, PutBondText, DropBond, FormIdOf, PutPlaythrough, PutRefreshFacts, "
                             "RefreshDone, ActionArgs, ActionDone, CheckBond, RecordChange, Announce, ObserversNear, AppendLog, "
-                            "BioPlan, UuidHex, ApiLoaded, ApiSelfTest, Text",
+                            "BioPlan, UuidHex, ApiLoaded, ApiSelfTest, Text, ActionText",
                             kScript, kVersion);
             return true;
         });
