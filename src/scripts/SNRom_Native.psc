@@ -21,7 +21,7 @@ Int Function Version() Global Native
    9  UuidHex
   10  ApiLoaded; PutBondNumbers takes 25 numbers
   11  Text (2.3)
-  12  ActionText; PutBondText takes 4 strings (2.4)}
+  12  ActionText, AnnounceKey; PutBondText takes 4 strings (2.4)}
 
 Bool Function SetDashboardHotkey(Int aiVirtualKey, Int aiModifierVirtualKey) Global Native
 {Binds the dashboard key. aiVirtualKey is a Windows VIRTUAL-KEY code, which is
@@ -155,6 +155,13 @@ String Function Text(String asKey, String asEnglish, String a0, String a1) Globa
  DLL holds it until the player is out of combat, out of an OStim or SexLab
  scene and not paused, then sends the ModEvent SNRom_ShowNotice with the
  text, which SNRom_Bridge.OnShowNotice shows.}
+
+Function AnnounceKey(String asKey, String asEnglish, String a0, String a1Key, String a1) Global Native
+{VERSION 12 (2.4, WP-N). Announce, worded when SHOWN rather than when posted,
+ so a notice held while the game is paused follows a change of language.
+ asEnglish is the text when the language has none. The first placeholder is
+ a0; the second is a1, or, when a1Key is set, that key's text (a tier's name)
+ with a1 as its English.}
 
 Actor[] Function ObserversNear(Float afRange) Global Native
 {VERSION 6. Every enrolled character - in SNRom_Bond - whom the game keeps

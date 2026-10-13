@@ -25,6 +25,13 @@ namespace SNRom::Notices {
     // From the Announce native, on a VM thread.
     void Post(std::string a_text);
 
+    // 2.4 (WP-N): worded when shown, through L10n, so a held notice follows a
+    // language change. a_english is the text when the language has none;
+    // {0} is a_arg0; {1} is a_arg1, or, when a_arg1Key is set, that key's
+    // text (a tier's name) with a_arg1 as its English.
+    void PostKeyed(std::string a_key, std::string a_english, std::string a_arg0, std::string a_arg1Key,
+                   std::string a_arg1);
+
     // The player is in an OStim or SexLab scene (their scene factions).
     // Main thread. Also asked by the crosshair hotkeys (Hotkey.cpp).
     bool PlayerInScene();

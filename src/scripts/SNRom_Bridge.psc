@@ -1557,28 +1557,35 @@ Function AnnounceTier(Actor akActor, Int aiFrom, Int aiTo, String asKind, String
       The tier is named on the track the player is shown (ShownTierName), so
       a feeling nobody has spoken is not announced as one. }
     String name = akActor.GetDisplayName()
-    String tier = TierWord(ShownTierName(akActor, aiTo))
-    String text = ""
+    String tierName = ShownTierName(akActor, aiTo)
+    ; KEY AND ENGLISH, NOT FINISHED WORDS (2.4, WP-N): the DLL words the notice
+    ; when it SHOWS it, so one held while the game is paused follows a change
+    ; of language (seen: German after a switch to Arabic).
+    String pair = ""
     ; Below Stranger (2.2, WP-N) a bond does not deepen or cool: it sours,
     ; and climbing back is ill feeling easing, not closeness growing.
     If asKind == "seed"
-        text = Tr("notice.seeded", "Your history with {0} reads as {1}", name, tier)
+        pair = Tk("notice.seeded", "Your history with {0} reads as {1}")
     ElseIf aiTo > aiFrom && aiFrom < 0 && aiTo <= 0
         ; Only while it stays at or below Stranger: a climb that carries past
         ; it deepened (Iddra, Disliked to Lover in one step, read "eased:
         ; Ally" in testing, 2026-10-07).
-        text = Tr("notice.eased", "{0}'s ill feeling toward you eased: {1}", name, tier)
+        pair = Tk("notice.eased", "{0}'s ill feeling toward you eased: {1}")
     ElseIf aiTo > aiFrom
-        text = Tr("notice.deepened", "Your bond with {0} deepened: {1}", name, tier)
+        pair = Tk("notice.deepened", "Your bond with {0} deepened: {1}")
     ElseIf aiTo < 0
-        text = Tr("notice.soured", "Your bond with {0} soured: {1}", name, tier)
+        pair = Tk("notice.soured", "Your bond with {0} soured: {1}")
     Else
-        text = Tr("notice.cooled", "Your bond with {0} cooled: {1}", name, tier)
+        pair = Tk("notice.cooled", "Your bond with {0} cooled: {1}")
     EndIf
-    If _dashNatives >= 5
-        SNRom_Native.Announce(text)
+    String noticeKey = StringUtil.Substring(pair, 0, StringUtil.Find(pair, "|"))
+    String english = StringUtil.Substring(pair, StringUtil.Find(pair, "|") + 1)
+    If _dashNatives >= 12
+        SNRom_Native.AnnounceKey(noticeKey, english, name, TierKey(tierName), tierName)
+    ElseIf _dashNatives >= 5
+        SNRom_Native.Announce(Tr(noticeKey, english, name, TierWord(tierName)))
     Else
-        Debug.Notification(text)
+        Debug.Notification(Tr(noticeKey, english, name, TierWord(tierName)))
     EndIf
     String hint = ThoughtHint(asKind, aiTo > aiFrom, asReason)
     If hint != ""
@@ -1590,7 +1597,7 @@ Function AnnounceTier(Actor akActor, Int aiFrom, Int aiTo, String asKind, String
     EndIf
     ; QUIET: with logNotifications on, a loud line would put the notice on
     ; screen at once, through the mirror, and the hold would be for nothing.
-    Diag(LOG_INFO(), "Tier " + aiFrom + " -> " + aiTo + " for " + name + " (" + asKind + "): '" + text + "'", True)
+    Diag(LOG_INFO(), "Tier " + aiFrom + " -> " + aiTo + " for " + name + " (" + asKind + "): " + noticeKey + " " + tierName, True)
 EndFunction
 
 String Function Tr(String asKey, String asEnglish, String a0 = "", String a1 = "") Global
@@ -1614,6 +1621,39 @@ String Function Tr(String asKey, String asEnglish, String a0 = "", String a1 = "
     EndIf
     String s = SNRom_Decorators.ReplaceAll(asEnglish, "{0}", a0)
     Return SNRom_Decorators.ReplaceAll(s, "{1}", a1)
+EndFunction
+
+String Function Tk(String asKey, String asEnglish) Global
+    { A key and its English as one "key|English" string, for text worded
+      later (AnnounceKey). Named so tools/gen-l10n.ps1 collects it as it
+      collects Tr. }
+    Return asKey + "|" + asEnglish
+EndFunction
+
+String Function TierKey(String asName) Global
+    { A tier's l10n key, for a notice worded when shown (2.4, WP-N). }
+    If asName == "Spouse"
+        Return "tier.spouse"
+    ElseIf asName == "Lover"
+        Return "tier.lover"
+    ElseIf asName == "Confidant"
+        Return "tier.confidant"
+    ElseIf asName == "Friend"
+        Return "tier.friend"
+    ElseIf asName == "Acquaintance"
+        Return "tier.acquaintance"
+    ElseIf asName == "Best Friend"
+        Return "tier.bestFriend"
+    ElseIf asName == "Ally"
+        Return "tier.ally"
+    ElseIf asName == "Disliked"
+        Return "tier.disliked"
+    ElseIf asName == "Resentful"
+        Return "tier.resentful"
+    ElseIf asName == "Enemy"
+        Return "tier.enemy"
+    EndIf
+    Return "tier.stranger"
 EndFunction
 
 String Function TierWord(String asName) Global
@@ -11196,7 +11236,10 @@ Function BioBlocksOnLoad()
             "hidden on its Bio Blocks page (deleting a block there hides it). Until they are restored from its " + \
             "Hidden list, nobody's blocks are judged taken off, and none are applied.")
         String hint = Tr("notice.blocksHidden", "Relationships: {0} of its bio blocks are hidden in SeverActions. Restore them from the Bio Blocks page, under Hidden.", (offered - defined) as String)
-        If _dashNatives >= 5
+        If _dashNatives >= 12
+            SNRom_Native.AnnounceKey("notice.blocksHidden", "Relationships: {0} of its bio blocks are hidden in " + \
+                "SeverActions. Restore them from the Bio Blocks page, under Hidden.", (offered - defined) as String, "", "")
+        ElseIf _dashNatives >= 5
             SNRom_Native.Announce(hint)
         Else
             Debug.Notification(hint)

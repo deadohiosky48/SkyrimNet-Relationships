@@ -2,6 +2,8 @@
 
 #include "PCH.h"
 
+#include "L10n.h"
+
 #include <chrono>
 #include <condition_variable>
 #include <deque>
@@ -27,6 +29,22 @@ namespace SNRom::Notices {
             // The first reason it had to wait, for the log: a hold is what a
             // tester checks, and the screen alone cannot show one happened.
             const char* heldFor = nullptr;
+            // KEYED (2.4, WP-N): worded when SHOWN, in the language then in use.
+            // A notice held while the game was paused used to appear in the
+            // language it was posted in (German, after a switch to Arabic).
+            // Empty key: text is final, as before.
+            std::string key;
+            std::string arg0;
+            std::string arg1Key;
+            std::string arg1;
+
+            std::string Words() const {
+                if (key.empty()) {
+                    return text;
+                }
+                const std::string second = arg1Key.empty() ? arg1 : L10n::Text(arg1Key, arg1);
+                return L10n::Text(key, text, arg0, second);
+            }
         };
 
         std::mutex              g_lock;
@@ -89,21 +107,22 @@ namespace SNRom::Notices {
                     auto& front = g_waiting.front();
                     if (!front.heldFor) {
                         front.heldFor = why;
-                        SKSE::log::info("Tier notice held ({}): {}", why, front.text);
+                        SKSE::log::info("Tier notice held ({}): {}", why, front.Words());
                     }
                     return;
                 }
                 notice = std::move(g_waiting.front());
                 g_waiting.pop_front();
             }
+            const std::string words = notice.Words();
             if (notice.heldFor) {
                 const auto waited =
                     std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - notice.posted);
                 SKSE::log::info("Tier notice shown after {} s, held first for: {}", waited.count(), notice.heldFor);
             } else {
-                SKSE::log::info("Tier notice shown: {}", notice.text);
+                SKSE::log::info("Tier notice shown: {}", words);
             }
-            SKSE::ModCallbackEvent event{ "SNRom_ShowNotice", RE::BSFixedString(notice.text), 0.0f, nullptr };
+            SKSE::ModCallbackEvent event{ "SNRom_ShowNotice", RE::BSFixedString(words), 0.0f, nullptr };
             if (auto* source = SKSE::GetModCallbackEventSource()) {
                 source->SendEvent(&event);
             }
@@ -162,6 +181,26 @@ namespace SNRom::Notices {
         {
             const std::scoped_lock lock{ g_lock };
             g_waiting.push_back(Notice{ std::move(a_text), std::chrono::steady_clock::now() });
+            while (g_waiting.size() > kMaxWaiting) {
+                g_waiting.pop_front();
+            }
+        }
+        g_wake.notify_one();
+    }
+
+    void PostKeyed(std::string a_key, std::string a_english, std::string a_arg0, std::string a_arg1Key,
+                   std::string a_arg1) {
+        if (a_key.empty() && a_english.empty()) {
+            return;
+        }
+        {
+            const std::scoped_lock lock{ g_lock };
+            Notice notice{ std::move(a_english), std::chrono::steady_clock::now() };
+            notice.key = std::move(a_key);
+            notice.arg0 = std::move(a_arg0);
+            notice.arg1Key = std::move(a_arg1Key);
+            notice.arg1 = std::move(a_arg1);
+            g_waiting.push_back(std::move(notice));
             while (g_waiting.size() > kMaxWaiting) {
                 g_waiting.pop_front();
             }

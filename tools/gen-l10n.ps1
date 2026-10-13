@@ -51,7 +51,7 @@ function Add([string]$key, [string]$english, [string]$file) {
 
 $str = '"((?:[^"\\]|\\.)*)"'
 $sources = @(
-    @{ Dir = 'src\scripts';       Filter = '*.psc';  Kind = 'psc';  Pattern = '(?<![\w.])B?Tr\((?:\w+,\s*)?"([^"]+)",\s*' + $str },
+    @{ Dir = 'src\scripts';       Filter = '*.psc';  Kind = 'psc';  Pattern = '(?<![\w.])(?:B?Tr|Tk)\((?:\w+,\s*)?"([^"]+)",\s*' + $str },
     @{ Dir = 'ui\relationships';  Filter = '*.js';   Kind = 'js';   Pattern = '(?<![\w.$])(?:UI\.)?t\("([^"]+)",\s*' + $str },
     @{ Dir = 'native\src';        Filter = '*.cpp';  Kind = 'cpp';  Pattern = 'L10n::Text\("([^"]+)",\s*' + $str }
 )

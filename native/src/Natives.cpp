@@ -185,6 +185,13 @@ namespace SNRom::Natives {
             Notices::Post(std::move(a_text));
         }
 
+        // VERSION 12 (2.4, WP-N). A notice worded when shown, not when posted.
+        void AnnounceKey(RE::StaticFunctionTag*, std::string a_key, std::string a_english, std::string a_arg0,
+                         std::string a_arg1Key, std::string a_arg1) {
+            Notices::PostKeyed(std::move(a_key), std::move(a_english), std::move(a_arg0), std::move(a_arg1Key),
+                               std::move(a_arg1));
+        }
+
         // v11 (2.3, WP-L): the player's words in the player's language
         // (L10n.h). a_english is the text when this language has none; {0}
         // and {1} are filled from the two arguments either way.
@@ -336,6 +343,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("CheckBond", kScript, CheckBond);  // main thread: see above
             a_vm->RegisterFunction("RecordChange", kScript, RecordChange, true);
             a_vm->RegisterFunction("Announce", kScript, Announce, true);
+            a_vm->RegisterFunction("AnnounceKey", kScript, AnnounceKey, true);
             a_vm->RegisterFunction("Text", kScript, Text, true);
             a_vm->RegisterFunction("ObserversNear", kScript, ObserversNear);  // main thread: see above
             a_vm->RegisterFunction("AppendLog", kScript, AppendLog, true);
@@ -346,7 +354,7 @@ namespace SNRom::Natives {
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
                             "PutBondNumbers, PutBondText, DropBond, FormIdOf, PutPlaythrough, PutRefreshFacts, "
                             "RefreshDone, ActionArgs, ActionDone, CheckBond, RecordChange, Announce, ObserversNear, AppendLog, "
-                            "BioPlan, UuidHex, ApiLoaded, ApiSelfTest, Text, ActionText",
+                            "BioPlan, UuidHex, ApiLoaded, ApiSelfTest, Text, ActionText, AnnounceKey",
                             kScript, kVersion);
             return true;
         });
