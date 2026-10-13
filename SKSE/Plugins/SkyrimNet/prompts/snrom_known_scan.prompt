@@ -1,0 +1,47 @@
+{# RENDER-ONLY. HOW LONG THE PLAYER AND ONE PERSON HAVE KNOWN EACH OTHER (2.4, WP-T).
+   Not sent to any model. Rendered by SNRom_Bridge.KnownScan through
+   SkyrimNetApi.RenderTemplate, with npc_formid as the one variable, before a
+   seed read and before BeginSpark's tenure check. Papyrus adds what it keeps
+   itself (enrollment, the first line the conversation scan saw) and decides.
+
+   Output, one line:
+     KNOWNSCAN <now> <feedOldest> <sharedOldest> <sharedCount> <memOldest> <memCount>
+   all game times in game seconds, 0 for "none".
+
+   THE LIVE FEED. get_recent_events reads SkyrimNet's in-memory feed, not the
+   database: about the last 1,000 events, a few game days (measured
+   2026-10-13: 760 events for the player whatever the count asked, ids
+   93014-95988, 5.3 game days). Its actor filter is EITHER, so the shared
+   events are kept by hand from ev.actors. If the person's oldest shared event
+   is well after the feed's own oldest, their first meeting is inside the
+   window and that is its date. If they are there from the feed's start, their
+   history runs further back than anything a template can see.
+
+   THE OLDEST OWN MEMORY is a lower bound only: short first meetings never
+   become memories, and memories get deleted.
+
+   UUIDs come from formid_to_uuid: 19-digit literals lose precision in a
+   template and silently match nothing. npc_formid may arrive as a string. #}
+{% if exists("npc_formid") %}
+{% set snrom_uuid = formid_to_uuid(int(npc_formid)) %}
+{% set snrom_now = default(gameTimeNumeric, 0) %}
+{% set snrom_who = [] %}
+{% set snrom_who = append(snrom_who, player.UUID) %}
+{% set snrom_feed = get_recent_events(5000, snrom_who) %}
+{% set snrom_feed_oldest = 0 %}
+{% for ev in snrom_feed %}{% if ev.gameTime > 0 and (snrom_feed_oldest == 0 or ev.gameTime < snrom_feed_oldest) %}{% set snrom_feed_oldest = ev.gameTime %}{% endif %}{% endfor %}
+{% set snrom_shared_oldest = 0 %}
+{% set snrom_shared = 0 %}
+{% if snrom_uuid and snrom_uuid != 0 %}
+{% for ev in snrom_feed %}{% set snrom_both = false %}{% for a in ev.actors %}{% if a == snrom_uuid %}{% set snrom_both = true %}{% endif %}{% endfor %}{% if snrom_both and ev.gameTime > 0 %}{% set snrom_shared = snrom_shared + 1 %}{% if snrom_shared_oldest == 0 or ev.gameTime < snrom_shared_oldest %}{% set snrom_shared_oldest = ev.gameTime %}{% endif %}{% endif %}{% endfor %}
+{% set snrom_mem = get_relevant_memories(snrom_uuid, 200) %}
+{% else %}
+{% set snrom_mem = [] %}
+{% endif %}
+{% set snrom_mem_oldest = 0 %}
+{% set snrom_mem_count = 0 %}
+{% for am in snrom_mem %}{% set snrom_own = default(am.isOwn, true) %}{% set snrom_gt = default(am.memory.game_time, 0) %}{% if snrom_own and snrom_gt > 0 %}{% set snrom_mem_count = snrom_mem_count + 1 %}{% if snrom_mem_oldest == 0 or snrom_gt < snrom_mem_oldest %}{% set snrom_mem_oldest = snrom_gt %}{% endif %}{% endif %}{% endfor %}
+KNOWNSCAN {{ snrom_now }} {{ snrom_feed_oldest }} {{ snrom_shared_oldest }} {{ snrom_shared }} {{ snrom_mem_oldest }} {{ snrom_mem_count }}
+{% else %}
+KNOWNSCAN NOFORMID
+{% endif %}

@@ -524,6 +524,23 @@ Function BeginSpark(Actor akActor, String asReason)
         Diag(LOG_INFO(), "BeginSpark declined for " + akActor.GetDisplayName() +             " - not receptive, orientation mismatch, or already enrolled.")
         Return
     EndIf
+    ; TENURE, AS THE BACKGROUND SPARK CHECK HAS IT (2.4, WP-S). Silana was
+    ; enrolled and sparked six game minutes after she was recruited, while the
+    ; background check waits sparkMinDaysEnrolled. BeginSpark only ever fires
+    ; for someone not yet enrolled, so tenure has to come from history: time
+    ; known, from every source. Too soon, and the person is enrolled as anyone
+    ; else is - platonic, seeded, observed - and the spark check decides once
+    ; the time is there. Unproven or long-known history sparks as before.
+    String known = TimeKnown(akActor, "a spark begun in conversation")
+    Float minDays = SkyrimNetApi.GetConfigFloat(CFG(), "sparkMinDaysEnrolled", 2.0)
+    Bool proven = known == "TODAY_OR_YESTERDAY" || known == "DAYS" || known == "WEEKS"
+    If known == "NO_RECORD" || (proven && _knownDays < minDays)
+        Diag(LOG_INFO(), "BeginSpark for " + akActor.GetDisplayName() + " held to an ordinary enrollment: " + \
+            "known " + Days1(_knownDays) + " game days (" + known + "), under the " + minDays + \
+            " the spark check waits. It decides once that time has passed.")
+        EnrollNow(akActor, "Enrolled (a spark was asked for too soon):")
+        Return
+    EndIf
 
     StorageUtil.SetIntValue(akActor, "SNRom_Enrolled", 1)
     ApiTouch(akActor)
@@ -5548,6 +5565,12 @@ Function ReconcileMarriages()
 EndFunction
 Actor  _seedActor
 String _seedName
+; WP-T (2.4): the time-known bucket Papyrus decided at dispatch. The callback
+; uses this, not the judge's copy of it.
+String _seedKnown
+; WP-T: the longest span any source supported, in game days, from the last
+; TimeKnown call (BeginSpark's tenure check reads it).
+Float _knownDays
 ; WHEN THE PENDING READ WAS DISPATCHED, in real seconds, so a callback that
 ; never arrives cannot wedge seeding for the rest of the session. See
 ; SeedReadInFlight.
@@ -5645,6 +5668,144 @@ String Function KnownPhrase(String asKnown) Global
     EndIf
     Return "you have not known each other long"
 EndFunction
+
+; ---------------------------------------------------------------------------
+; TIME KNOWN (2.4, WP-T). A player's companion of a week and a half was capped
+; as met-yesterday: the seed dated a relationship from the oldest surviving
+; memory, which can be days or months after the first meeting (short meetings
+; never become memories; memories get deleted). Measured 2026-10-13 on the
+; development save: Silana's first shared event 240 game days ago, her oldest
+; memory 123. SkyrimNet gives a template no way to read the full event record -
+; the live feed is a few game days deep - so a short cap is now applied only
+; when it is PROVEN: the first meeting falls inside the feed, or nothing at all
+; is recorded. Everything else errs loose, as UNKNOWN always has: a dead clock
+; must not under-seed someone long known, and an eventful first day is still
+; caught, because a first day is inside the feed.
+; ---------------------------------------------------------------------------
+
+Float Function KNOWN_EDGE_HOURS() Global
+    { How far after the feed's own oldest event a person's oldest shared event
+      must be for the meeting to count as inside the window. }
+    Return 1.0
+EndFunction
+
+String Function KnownScan(Actor akActor)
+    { Renders snrom_known_scan for one person: "KNOWNSCAN now feed shared
+      nshared mem nmem", in game seconds. "" if the render failed. }
+    String out = SkyrimNetApi.RenderTemplate("snrom_known_scan", "npc_formid", akActor.GetFormID() as String)
+    Int at = StringUtil.Find(out, "KNOWNSCAN ")
+    If at < 0
+        Diag(LOG_WARN(), "Time known for " + akActor.GetDisplayName() + ": snrom_known_scan did not render (" + \
+            StringUtil.Substring(out, 0, 120) + "). Falling back to memories alone.")
+        Return ""
+    EndIf
+    Return SNRom_Decorators.Trim(StringUtil.Substring(out, at, 200))
+EndFunction
+
+String Function KnownBucket(Float afDays) Global
+    If afDays <= 2.0
+        Return "TODAY_OR_YESTERDAY"
+    ElseIf afDays <= 7.0
+        Return "DAYS"
+    ElseIf afDays <= 30.0
+        Return "WEEKS"
+    EndIf
+    Return "MONTHS_OR_MORE"
+EndFunction
+
+String Function TimeKnown(Actor akActor, String asWhy)
+    { The time-known bucket for this person, from every source, logged with
+      what each said and which decided. Buckets: NO_RECORD, TODAY_OR_YESTERDAY,
+      DAYS, WEEKS (the short caps, only when proven), MONTHS_OR_MORE, and
+      UNPROVEN and PLAYER_STATED, which apply no time limit. }
+    String who = akActor.GetDisplayName()
+    If StorageUtil.GetStringValue(akActor, "SNRom_PlayerHistory", "") != ""
+        Diag(LOG_INFO(), "Time known for " + who + " (" + asWhy + "): PLAYER_STATED - you wrote their history " + \
+            "with you, so no time limit applies.")
+        Return "PLAYER_STATED"
+    EndIf
+    Float nowDays = Utility.GetCurrentGameTime()
+    Float enrolled = StorageUtil.GetFloatValue(akActor, "SNRom_EnrolledAt", 0.0)
+    Float firstLine = StorageUtil.GetFloatValue(akActor, "SNRom_FirstLineAt", 0.0)
+    Float recDays = 0.0
+    If firstLine > 0.0
+        recDays = nowDays - firstLine
+    EndIf
+    If enrolled > 0.0 && (nowDays - enrolled) > recDays
+        recDays = nowDays - enrolled
+    EndIf
+
+    Float feedDays = 0.0
+    Float memDays = 0.0
+    Float sharedDays = 0.0
+    Int shared = 0
+    Int mems = 0
+    Bool inside = False
+    Bool scanned = False
+    String[] f = StringUtil.Split(KnownScan(akActor), " ")
+    If f.Length >= 7 && f[0] == "KNOWNSCAN"
+        scanned = True
+        Float now = f[1] as Float
+        Float feed = f[2] as Float
+        Float sharedAt = f[3] as Float
+        shared = f[4] as Int
+        Float memAt = f[5] as Float
+        mems = f[6] as Int
+        If now > 0.0
+            If feed > 0.0
+                feedDays = (now - feed) / 86400.0
+            EndIf
+            If sharedAt > 0.0
+                sharedDays = (now - sharedAt) / 86400.0
+                inside = (sharedAt - feed) > KNOWN_EDGE_HOURS() * 3600.0
+            EndIf
+            If memAt > 0.0
+                memDays = (now - memAt) / 86400.0
+            EndIf
+        EndIf
+    EndIf
+
+    ; The longest span any source supports: every one of them is a lower bound.
+    Float longest = memDays
+    If sharedDays > longest
+        longest = sharedDays
+    EndIf
+    If recDays > longest
+        longest = recDays
+    EndIf
+    _knownDays = longest
+
+    String bucket
+    String decided
+    If scanned && memDays == 0.0 && shared == 0 && firstLine == 0.0
+        bucket = "NO_RECORD"
+        decided = "nothing recorded between you"
+    ElseIf longest > 30.0
+        bucket = "MONTHS_OR_MORE"
+        decided = "a source reaches back over a month"
+    ElseIf inside
+        bucket = KnownBucket(longest)
+        decided = "you first met inside the live feed, so the date is known"
+    ElseIf !scanned
+        ; THE SCAN FAILED: behave as 2.3 did, from memories, rather than lift
+        ; every cap - but say so, every time.
+        bucket = KnownBucket(longest)
+        decided = "the scan failed, so memories and our own record decided, as in 2.3"
+    Else
+        bucket = "UNPROVEN"
+        decided = "nothing shows when you first met (no meeting inside the live feed), so no time limit"
+    EndIf
+    Diag(LOG_INFO(), "Time known for " + who + " (" + asWhy + "): " + bucket + " - " + decided + \
+        ". Feed: " + shared + " shared events, oldest " + Days1(sharedDays) + " d ago (feed reaches " + \
+        Days1(feedDays) + " d, meeting inside: " + inside + "); oldest memory " + Days1(memDays) + \
+        " d (" + mems + "); our record " + Days1(recDays) + " d.")
+    Return bucket
+EndFunction
+
+String Function Days1(Float afDays) Global
+    Return ((((afDays * 10.0) as Int) as Float) / 10.0) as String
+EndFunction
+
 Function AssessSeed(Actor akActor)
     { Read the record and say where this relationship already stands.
 
@@ -5682,10 +5843,17 @@ Function AssessSeed(Actor akActor)
     If SeverActionsPresent()
         prior = prior + ", SeverActions rapport " + SeverActionsNative.Native_GetRapport(akActor)
     EndIf
+    ; WP-T: Papyrus decides how long they have known each other and the prompt
+    ; is told, so the prose and KnownCap agree. The player's own word goes in
+    ; too, as evidence.
+    _seedKnown = TimeKnown(akActor, "seed read")
+    String history = StorageUtil.GetStringValue(akActor, "SNRom_PlayerHistory", "")
     String ctx = "{\"npc_name\":\"" + _seedName + "\"" + \
         ",\"npc_formid\":" + akActor.GetFormID() + \
         ",\"npc_bio\":\"" + Escape(akActor.GetActorBase().GetRace().GetName()) + ", known to the Dragonborn\"" + \
-        ",\"npc_prior\":\"" + Escape(prior) + "\"" + MarasContext(akActor) + LanguageContext() + "}"
+        ",\"npc_prior\":\"" + Escape(prior) + "\"" + \
+        ",\"known_bucket\":\"" + _seedKnown + "\"" + \
+        ",\"player_history\":\"" + Escape(history) + "\"" + MarasContext(akActor) + LanguageContext() + "}"
     Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_seed_assess", VariantName(), ctx, \
         Self, "SNRom_Bridge", "OnSeedAssessed")
     Diag(LOG_INFO(), "Seed assessment sent for " + _seedName + " (rc=" + rc + ")")
@@ -5804,12 +5972,18 @@ Function SeedAssessed(String asResponse, Int aiSuccess)
     ; purpose: the rank/rapport floor records history the game itself kept and
     ; must stay able to lift someone past a cautious or time-limited read.
     Int readRaw = byRead
-    String known = SNRom_Decorators.Upper(SNRom_Decorators.Trim(SNRom_Decorators.FieldValue(asResponse, "KNOWN:")))
+    ; WP-T: the bucket Papyrus decided at dispatch wins; the judge's copy is
+    ; the fallback for a read sent before 2.4 loaded.
+    String known = _seedKnown
+    _seedKnown = ""
+    If known == ""
+        known = SNRom_Decorators.Upper(SNRom_Decorators.Trim(SNRom_Decorators.FieldValue(asResponse, "KNOWN:")))
+    EndIf
     Bool married = IsMarriedToPlayer(who)
     Int timeCap = 0
     If !married && SkyrimNetApi.GetConfigBool(CFG(), "seedTimeLimit", True)
         timeCap = KnownCap(known)
-        If timeCap == 0 && known != "MONTHS_OR_MORE"
+        If timeCap == 0 && known != "MONTHS_OR_MORE" && known != "UNPROVEN" && known != "PLAYER_STATED"
             Diag(LOG_WARN(), "Seed read for " + asked + " carried no usable time known (KNOWN: '" + \
                 known + "') - no time limit applied.")
         EndIf
@@ -10031,6 +10205,12 @@ Function ScanConversations()
                         If StorageUtil.GetFloatValue(spoke, "SNRom_LastTalkLine", 0.0) <= \
                            StorageUtil.GetFloatValue(spoke, "SNRom_LastTalkCheck", 0.0)
                             StorageUtil.SetFloatValue(spoke, "SNRom_SceneStart", at)
+                        EndIf
+                        ; THE FIRST LINE WE EVER SAW between them (2.4, WP-T):
+                        ; our own lower bound on how long they have known each
+                        ; other, from the day this mod started watching.
+                        If StorageUtil.GetFloatValue(spoke, "SNRom_FirstLineAt", 0.0) <= 0.0
+                            StorageUtil.SetFloatValue(spoke, "SNRom_FirstLineAt", at)
                         EndIf
                         StorageUtil.SetFloatValue(spoke, "SNRom_LastTalkLine", at)
                         StorageUtil.FormListAdd(None, "SNRom_RecentTalkers", spoke, False)

@@ -52,8 +52,14 @@
 {% set snrom_allmem = get_relevant_memories(npc_uuid, 200) %}
 {% for am in snrom_allmem %}{% set snrom_own = default(am.isOwn, true) %}{% set snrom_gt = default(am.memory.game_time, 0) %}{% if snrom_own and snrom_gt > 0 %}{% if snrom_oldest == 0 or snrom_gt < snrom_oldest %}{% set snrom_oldest = snrom_gt %}{% endif %}{% endif %}{% endfor %}
 {% endif %}
+{# 2.4 (WP-T): Papyrus decides the bucket from every source (the live feed,
+   memories, its own record, the player's word - SNRom_Bridge.TimeKnown) and
+   passes it as known_bucket, so this prose and KnownCap say the same thing.
+   The memory-only computation below is the fallback for a request without it. #}
 {% set known = "UNKNOWN" %}
-{% if snrom_now > 0 and snrom_oldest > 0 %}
+{% if exists("known_bucket") and known_bucket != "" %}
+{% set known = known_bucket %}
+{% else if snrom_now > 0 and snrom_oldest > 0 %}
 {% set snrom_span = snrom_now - snrom_oldest %}
 {% if snrom_span <= 172800 %}{% set known = "TODAY_OR_YESTERDAY" %}{% else if snrom_span <= 604800 %}{% set known = "DAYS" %}{% else if snrom_span <= 2592000 %}{% set known = "WEEKS" %}{% else %}{% set known = "MONTHS_OR_MORE" %}{% endif %}
 {% else if snrom_now > 0 %}
@@ -102,8 +108,15 @@ WHAT THE WORLD ACTUALLY RECORDS
 {{ npc_name }} and {{ player.name }} have known each other a few weeks - less than a month. This is recorded, not claimed.
 {% else if known == "MONTHS_OR_MORE" %}
 {{ npc_name }} and {{ player.name }} have known each other for more than a month.
+{% else if known == "UNPROVEN" %}
+{{ npc_name }} and {{ player.name }} have history together, but the record does not reach back to when they first met, so how long they have known each other is not known. Judge how far along they are from what passed between them, with no allowance for time either way.
+{% else if known == "PLAYER_STATED" %}
+{{ player.name }} has told us their history with {{ npc_name }} in their own words, below. Take it as fact.
 {% else if known == "NO_RECORD" %}
 Nothing whatsoever is recorded between {{ npc_name }} and {{ player.name }}: no memories, no diary. Anything below describes {{ npc_name }}'s own life and standing, not a history with {{ player.name }}. With no shared history on record, the answer is `STRANGER`.
+{% endif %}
+{% if exists("player_history") and player_history != "" %}
+IN {{ player.name }}'S OWN WORDS, about their history with {{ npc_name }} before any of this was recorded: "{{ player_history }}". This is the player's statement of fact about their own game. Believe it, including how long they have known each other, and let it weigh as heavily as anything in the record. It does not make them married or engaged unless it says so and the line below agrees.
 {% endif %}
 {% if npc_married == 1 %}
 {{ npc_name }} and {{ player.name }} ARE married. This is recorded, not claimed.
