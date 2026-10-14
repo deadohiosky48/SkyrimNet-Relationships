@@ -15,9 +15,10 @@
    overheard), lines between NPCs, thoughts and narration.
 
    Event ids rise across the whole record, so Papyrus keeps the last one it
-   handled and skips anything at or below it. A variable passed to
-   RenderTemplate does not reach the template (tested), which is why the
-   watermark lives in Papyrus rather than here. UUIDs are printed whole: they
+   handled and skips anything at or below it. The watermark lives in Papyrus
+   because a variable passed to RenderTemplate did not reach the template when
+   this was written; on SkyrimNet 0.26 one does (snrom_known_scan, measured
+   2026-10-14). UUIDs are printed whole: they
    are 64-bit and Papyrus keeps them as strings for GetActorByUUID.
 
    The third field is the line's game time in seconds (2.2): Papyrus stamps

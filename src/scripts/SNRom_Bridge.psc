@@ -530,14 +530,13 @@ Function BeginSpark(Actor akActor, String asReason)
     ; for someone not yet enrolled, so tenure has to come from history: time
     ; known, from every source. Too soon, and the person is enrolled as anyone
     ; else is - platonic, seeded, observed - and the spark check decides once
-    ; the time is there. Unproven or long-known history sparks as before.
+    ; the time is there. Only NO_RECORD proves too soon today (TimeKnown says
+    ; why the live feed cannot); unproven or long-known history sparks as before.
     String known = TimeKnown(akActor, "a spark begun in conversation")
-    Float minDays = SkyrimNetApi.GetConfigFloat(CFG(), "sparkMinDaysEnrolled", 2.0)
-    Bool proven = known == "TODAY_OR_YESTERDAY" || known == "DAYS" || known == "WEEKS"
-    If known == "NO_RECORD" || (proven && _knownDays < minDays)
+    If known == "NO_RECORD"
         Diag(LOG_INFO(), "BeginSpark for " + akActor.GetDisplayName() + " held to an ordinary enrollment: " + \
-            "known " + Days1(_knownDays) + " game days (" + known + "), under the " + minDays + \
-            " the spark check waits. It decides once that time has passed.")
+            "nothing is recorded between you yet. The spark check decides once " + \
+            SkyrimNetApi.GetConfigFloat(CFG(), "sparkMinDaysEnrolled", 2.0) + " game days have passed.")
         EnrollNow(akActor, "Enrolled (a spark was asked for too soon):")
         Return
     EndIf
@@ -5717,10 +5716,10 @@ EndFunction
 ; development save: Silana's first shared event 240 game days ago, her oldest
 ; memory 123. SkyrimNet gives a template no way to read the full event record -
 ; the live feed is a few game days deep - so a short cap is now applied only
-; when it is PROVEN: the first meeting falls inside the feed, or nothing at all
-; is recorded. Everything else errs loose, as UNKNOWN always has: a dead clock
-; must not under-seed someone long known, and an eventful first day is still
-; caught, because a first day is inside the feed.
+; when it is PROVEN, and the only proof a template has is that nothing at all
+; is recorded (see TimeKnown for why the feed proves nothing more). Everything
+; else errs loose, as UNKNOWN always has: a dead clock must not under-seed
+; someone long known.
 ; ---------------------------------------------------------------------------
 
 Float Function KNOWN_EDGE_HOURS() Global
@@ -5772,22 +5771,12 @@ Function SetPlayerHistory(Actor akActor, String asText)
     EndIf
 EndFunction
 
-String Function KnownBucket(Float afDays) Global
-    If afDays <= 2.0
-        Return "TODAY_OR_YESTERDAY"
-    ElseIf afDays <= 7.0
-        Return "DAYS"
-    ElseIf afDays <= 30.0
-        Return "WEEKS"
-    EndIf
-    Return "MONTHS_OR_MORE"
-EndFunction
-
 String Function TimeKnown(Actor akActor, String asWhy)
     { The time-known bucket for this person, from every source, logged with
-      what each said and which decided. Buckets: NO_RECORD, TODAY_OR_YESTERDAY,
-      DAYS, WEEKS (the short caps, only when proven), MONTHS_OR_MORE, and
-      UNPROVEN and PLAYER_STATED, which apply no time limit. }
+      what each said and which decided. Returns NO_RECORD (the one short cap),
+      MONTHS_OR_MORE, or UNPROVEN and PLAYER_STATED, which apply no time limit.
+      TODAY_OR_YESTERDAY, DAYS and WEEKS remain for a source that could prove
+      them - SkyrimNet's full event record, which a template cannot read. }
     String who = akActor.GetDisplayName()
     If StoreGetText(akActor, "History") != ""
         Diag(LOG_INFO(), "Time known for " + who + " (" + asWhy + "): PLAYER_STATED - you wrote their history " + \
@@ -5845,6 +5834,15 @@ String Function TimeKnown(Actor akActor, String asWhy)
     EndIf
     _knownDays = longest
 
+    ; NOTHING HERE PROVES A SHORT ACQUAINTANCE. "First seen inside the live
+    ; feed" was meant to: measured 2026-10-14, the feed reached 2.2 game days,
+    ; and Gwendolyn - recruited 166 days before - was first seen in it 0.13 d
+    ; ago, because she had not been near the player for the rest of it. Storjar,
+    ; a business partner of 240 days by his journal, was capped as met today by
+    ; that rule. And the memories are ranked by relevance to the current scene:
+    ; at his seed read they returned one, from the day before; an hour later,
+    ; dozens. Every source is a lower bound, so only the absence of all of them
+    ; caps anything; the rest erring loose is the rule this section began with.
     String bucket
     String decided
     If scanned && memDays == 0.0 && shared == 0 && firstLine == 0.0
@@ -5853,21 +5851,16 @@ String Function TimeKnown(Actor akActor, String asWhy)
     ElseIf longest > 30.0
         bucket = "MONTHS_OR_MORE"
         decided = "a source reaches back over a month"
-    ElseIf inside
-        bucket = KnownBucket(longest)
-        decided = "you first met inside the live feed, so the date is known"
     ElseIf !scanned
-        ; THE SCAN FAILED: behave as 2.3 did, from memories, rather than lift
-        ; every cap - but say so, every time.
-        bucket = KnownBucket(longest)
-        decided = "the scan failed, so memories and our own record decided, as in 2.3"
+        bucket = "UNPROVEN"
+        decided = "the scan failed, so nothing shows when you first met - no time limit"
     Else
         bucket = "UNPROVEN"
-        decided = "nothing shows when you first met (no meeting inside the live feed), so no time limit"
+        decided = "every source is a lower bound and none reaches a month, so no time limit"
     EndIf
     Diag(LOG_INFO(), "Time known for " + who + " (" + asWhy + "): " + bucket + " - " + decided + \
         ". Feed: " + shared + " shared events, oldest " + Days1(sharedDays) + " d ago (feed reaches " + \
-        Days1(feedDays) + " d, meeting inside: " + inside + "); oldest memory " + Days1(memDays) + \
+        Days1(feedDays) + " d, first seen inside it: " + inside + "); oldest memory " + Days1(memDays) + \
         " d (" + mems + "); our record " + Days1(recDays) + " d.")
     Return bucket
 EndFunction
@@ -10255,6 +10248,8 @@ Function ScanConversations()
     Int windowOldest = 0
     String seen = ","
     Float nowSec = Utility.GetCurrentGameTime() * 86400.0
+    Int stampMark = StorageUtil.GetIntValue(None, "SNRom_TalkStampMark", 0)
+    Int newStampMark = stampMark
     Int considered = 0
     Int enrolled = 0
     String report = ""
@@ -10273,8 +10268,17 @@ Function ScanConversations()
                     newMark = id
                 EndIf
                 ; The latest line each person spoke with the player, for
-                ; TalkStillGoing. Only the past hour is worth resolving.
-                If f.Length >= 3 && (nowSec - (f[2] as Float)) < 3600.0
+                ; TalkStillGoing. EACH LINE ONCE, BY EVENT ID (2.4): this
+                ; took only lines under a game hour old, while this scan runs
+                ; on a tick up to two game hours apart - measured 2026-10-14,
+                ; Lorna's scene was 1.7 game hours old at the next tick and was
+                ; never stamped, so nothing knew she had spoken and her scene
+                ; went unwatched. Anything older than RECENT_TALK_HOURS is
+                ; not worth resolving: nothing reads a stamp that old.
+                If id > newStampMark
+                    newStampMark = id
+                EndIf
+                If f.Length >= 3 && id > stampMark && (nowSec - (f[2] as Float)) < RECENT_TALK_HOURS() * 3600.0
                     Actor spoke = SkyrimNetApi.GetActorByUUID(SNRom_Native.UuidHex(f[1]))
                     Float at = (f[2] as Float) / 86400.0
                     If spoke != None && IsEnrolled(spoke) && at > StorageUtil.GetFloatValue(spoke, "SNRom_LastTalkLine", 0.0)
@@ -10325,6 +10329,9 @@ Function ScanConversations()
         i += 1
     EndWhile
 
+    If newStampMark > stampMark
+        StorageUtil.SetIntValue(None, "SNRom_TalkStampMark", newStampMark)
+    EndIf
     If !enrollOn
         Return
     EndIf
