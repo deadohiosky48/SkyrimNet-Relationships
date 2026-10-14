@@ -21,7 +21,8 @@ Int Function Version() Global Native
    9  UuidHex
   10  ApiLoaded; PutBondNumbers takes 25 numbers
   11  Text (2.3)
-  12  ActionText, AnnounceKey; PutBondText takes 4 strings (2.4)}
+  12  ActionText, AnnounceKey; PutBondText takes 4 strings (2.4)
+  13  KnownProof (2.4)}
 
 Bool Function SetDashboardHotkey(Int aiVirtualKey, Int aiModifierVirtualKey) Global Native
 {Binds the dashboard key. aiVirtualKey is a Windows VIRTUAL-KEY code, which is
@@ -118,6 +119,14 @@ Int[] Function ActionArgs(Int aiRequestId) Global Native
 {The Int arguments the page sent with request aiRequestId, in order: a trait
  and a value for SetCharacterField, a field for ForceDriftReview. Empty for
  any other op, or a request the DLL no longer holds.}
+
+String Function KnownProof(Actor akActor) Global Native
+{VERSION 13 (2.4). How long the player and akActor have known each other, from
+ SkyrimNet's database rather than its live feed: "KNOWNPROOF api total in2d
+ in7d in30d oldestMemory" - every event they share, how many fall within the
+ last 2, 7 and 30 game days, and the game time in seconds of akActor's oldest
+ memory (0 for none). Empty when SkyrimNet is missing, older than API 10, or
+ its database is not ready. SNRom_Bridge.TimeKnown reads it.}
 
 String Function ActionText(Int aiRequestId) Global Native
 {VERSION 12 (2.4). The one String the page sent with request aiRequestId, for

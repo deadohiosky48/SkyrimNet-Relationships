@@ -530,13 +530,16 @@ Function BeginSpark(Actor akActor, String asReason)
     ; for someone not yet enrolled, so tenure has to come from history: time
     ; known, from every source. Too soon, and the person is enrolled as anyone
     ; else is - platonic, seeded, observed - and the spark check decides once
-    ; the time is there. Only NO_RECORD proves too soon today (TimeKnown says
-    ; why the live feed cannot); unproven or long-known history sparks as before.
+    ; the time is there. Too soon is NO_RECORD, or SkyrimNet's database proving
+    ; everything between them is at most sparkMinDaysEnrolled old (TimeKnown);
+    ; unproven or long-known history sparks as before.
     String known = TimeKnown(akActor, "a spark begun in conversation")
-    If known == "NO_RECORD"
+    Float minDays = SkyrimNetApi.GetConfigFloat(CFG(), "sparkMinDaysEnrolled", 2.0)
+    Bool proven = known == "TODAY_OR_YESTERDAY" || known == "DAYS" || known == "WEEKS"
+    If known == "NO_RECORD" || (proven && _knownDays <= minDays)
         Diag(LOG_INFO(), "BeginSpark for " + akActor.GetDisplayName() + " held to an ordinary enrollment: " + \
-            "nothing is recorded between you yet. The spark check decides once " + \
-            SkyrimNetApi.GetConfigFloat(CFG(), "sparkMinDaysEnrolled", 2.0) + " game days have passed.")
+            "known at most " + Days1(_knownDays) + " game days (" + known + "), within the " + minDays + \
+            " the spark check waits. It decides once that time has passed.")
         EnrollNow(akActor, "Enrolled (a spark was asked for too soon):")
         Return
     EndIf
@@ -5775,8 +5778,8 @@ String Function TimeKnown(Actor akActor, String asWhy)
     { The time-known bucket for this person, from every source, logged with
       what each said and which decided. Returns NO_RECORD (the one short cap),
       MONTHS_OR_MORE, or UNPROVEN and PLAYER_STATED, which apply no time limit.
-      TODAY_OR_YESTERDAY, DAYS and WEEKS remain for a source that could prove
-      them - SkyrimNet's full event record, which a template cannot read. }
+      TODAY_OR_YESTERDAY, DAYS and WEEKS only on SkyrimNet's database's proof
+      (natives 13); _knownDays is then the proven upper bound. }
     String who = akActor.GetDisplayName()
     If StoreGetText(akActor, "History") != ""
         Diag(LOG_INFO(), "Time known for " + who + " (" + asWhy + "): PLAYER_STATED - you wrote their history " + \
@@ -5843,9 +5846,65 @@ String Function TimeKnown(Actor akActor, String asWhy)
     ; at his seed read they returned one, from the day before; an hour later,
     ; dozens. Every source is a lower bound, so only the absence of all of them
     ; caps anything; the rest erring loose is the rule this section began with.
+    ;
+    ; SKYRIMNET'S DATABASE CAN (natives 13, SkyrimNetLink.h). Every event the
+    ; two share, counted all-time and within 2, 7 and 30 game days: when the
+    ; all-time count equals a window's, every one of them is inside it. With
+    ; their oldest memory of any kind, read in date order across every row, and
+    ; our own record, the longest of the three is an UPPER bound - the one kind
+    ; of proof a short cap needs.
     String bucket
     String decided
-    If scanned && memDays == 0.0 && shared == 0 && firstLine == 0.0
+    String db = "not read"
+    Float upper = -1.0
+    If _dashNatives >= 13
+        String[] p = StringUtil.Split(SNRom_Native.KnownProof(akActor), " ")
+        If p.Length >= 7 && p[0] == "KNOWNPROOF"
+            Int total = p[2] as Int
+            Int in2 = p[3] as Int
+            Int in7 = p[4] as Int
+            Int in30 = p[5] as Int
+            Float oldMem = p[6] as Float
+            Float evBound = 9999.0
+            If total == 0
+                evBound = 0.0
+            ElseIf total == in2
+                evBound = 2.0
+            ElseIf total == in7
+                evBound = 7.0
+            ElseIf total == in30
+                evBound = 30.0
+            EndIf
+            Float dbMemDays = 0.0
+            If oldMem > 0.0
+                dbMemDays = (nowDays * 86400.0 - oldMem) / 86400.0
+            EndIf
+            upper = evBound
+            If dbMemDays > upper
+                upper = dbMemDays
+            EndIf
+            If recDays > upper
+                upper = recDays
+            EndIf
+            db = total + " shared events (" + in2 + " in 2 d, " + in7 + " in 7 d, " + in30 + " in 30 d); oldest " + \
+                "memory " + Days1(dbMemDays) + " d; known at most " + Days1(upper) + " d (API " + p[1] + ")"
+            If total == 0 && oldMem <= 0.0 && firstLine == 0.0
+                bucket = "NO_RECORD"
+                decided = "SkyrimNet's database holds nothing between you"
+            ElseIf upper > 30.0
+                bucket = "MONTHS_OR_MORE"
+                decided = "SkyrimNet's database reaches back over a month"
+            Else
+                bucket = KnownBucket(upper)
+                decided = "SkyrimNet's database proves it: everything between you is that recent"
+            EndIf
+        Else
+            db = "unavailable (SkyrimNet missing, older than API 10, or not ready)"
+        EndIf
+    EndIf
+    If bucket != ""
+        _knownDays = upper
+    ElseIf scanned && memDays == 0.0 && shared == 0 && firstLine == 0.0
         bucket = "NO_RECORD"
         decided = "nothing recorded between you"
     ElseIf longest > 30.0
@@ -5861,8 +5920,19 @@ String Function TimeKnown(Actor akActor, String asWhy)
     Diag(LOG_INFO(), "Time known for " + who + " (" + asWhy + "): " + bucket + " - " + decided + \
         ". Feed: " + shared + " shared events, oldest " + Days1(sharedDays) + " d ago (feed reaches " + \
         Days1(feedDays) + " d, first seen inside it: " + inside + "); oldest memory " + Days1(memDays) + \
-        " d (" + mems + "); our record " + Days1(recDays) + " d.")
+        " d (" + mems + "); our record " + Days1(recDays) + " d. Database: " + db + ".")
     Return bucket
+EndFunction
+
+String Function KnownBucket(Float afDays) Global
+    If afDays <= 2.0
+        Return "TODAY_OR_YESTERDAY"
+    ElseIf afDays <= 7.0
+        Return "DAYS"
+    ElseIf afDays <= 30.0
+        Return "WEEKS"
+    EndIf
+    Return "MONTHS_OR_MORE"
 EndFunction
 
 String Function Days1(Float afDays) Global
@@ -6345,9 +6415,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 12
+    If natives < 13
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v12). Install the DLL from the same release.", True)
+            ", these need v13). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5

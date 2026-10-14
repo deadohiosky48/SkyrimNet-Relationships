@@ -10,6 +10,7 @@
 #include "Hotkey.h"
 #include "Notices.h"
 #include "Settings.h"
+#include "SkyrimNetLink.h"
 
 #include <chrono>
 #include <filesystem>
@@ -160,6 +161,12 @@ namespace SNRom::Natives {
         // VERSION 12. The one String an op takes (2.4: SetPlayerHistory).
         std::string ActionText(RE::StaticFunctionTag*, std::int32_t a_requestId) {
             return Dashboard::ActionText(a_requestId);
+        }
+
+        // VERSION 13. How long the player and someone have known each other,
+        // from SkyrimNet's database rather than its live feed (SkyrimNetLink.h).
+        std::string KnownProof(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+            return a_actor ? SkyrimNetLink::KnownProof(a_actor->GetFormID()) : std::string{};
         }
 
         void ActionDone(RE::StaticFunctionTag*, std::int32_t a_requestId, bool a_ok, std::string a_message) {
@@ -351,10 +358,11 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("UuidHex", kScript, UuidHex, true);
             a_vm->RegisterFunction("ApiLoaded", kScript, ApiLoaded, true);
             a_vm->RegisterFunction("ApiSelfTest", kScript, ApiSelfTest, true);
+            a_vm->RegisterFunction("KnownProof", kScript, KnownProof, true);
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
                             "PutBondNumbers, PutBondText, DropBond, FormIdOf, PutPlaythrough, PutRefreshFacts, "
                             "RefreshDone, ActionArgs, ActionDone, CheckBond, RecordChange, Announce, ObserversNear, AppendLog, "
-                            "BioPlan, UuidHex, ApiLoaded, ApiSelfTest, Text, ActionText, AnnounceKey",
+                            "BioPlan, UuidHex, ApiLoaded, ApiSelfTest, Text, ActionText, AnnounceKey, KnownProof",
                             kScript, kVersion);
             return true;
         });

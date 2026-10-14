@@ -92,6 +92,7 @@ set(SOURCES
     src/Notices.cpp
     src/PrismaHost.cpp
     src/Settings.cpp
+    src/SkyrimNetLink.cpp
 )
 
 # add_commonlibsse_plugin, NOT add_library(SHARED).

@@ -19,7 +19,10 @@ namespace SNRom::Natives {
     //   8  BioPlan: one person's Relationships bio blocks, decided natively
     //   9  UuidHex: a decimal SkyrimNet UUID as the hex GetActorByUUID wants
     //  10  ApiLoaded, and PutBondNumbers takes 25 numbers: the read API (Api.h)
-    inline constexpr std::int32_t kVersion = 12;
+    //  11  Text: a string in the player's language (L10n.h)
+    //  12  ActionText, AnnounceKey; PutBondText takes 4 strings
+    //  13  KnownProof: time known, from SkyrimNet's database (SkyrimNetLink.h)
+    inline constexpr std::int32_t kVersion = 13;
 
     // Registers the natives declared in src/scripts/SNRom_Native.psc.
     void Register(const SKSE::PapyrusInterface* a_papyrus);
