@@ -5757,6 +5757,10 @@ Function SetPlayerHistory(Actor akActor, String asText)
         Return
     EndIf
     String text = SNRom_Decorators.Trim(asText)
+    ; NO BRACES: it is rendered into the bond section of their bio, and
+    ; SkyrimNet reads any bio section holding "{" as JSON, warning on every
+    ; render when it cannot (SeverActions' Bio API guide).
+    text = SNRom_Decorators.ReplaceAll(SNRom_Decorators.ReplaceAll(text, "{", "("), "}", ")")
     If StringUtil.GetLength(text) > 400
         text = StringUtil.Substring(text, 0, 400)
     EndIf

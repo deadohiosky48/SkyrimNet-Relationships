@@ -672,6 +672,19 @@ You expected one person and one life, because that is what people expect - not b
    model will use it in nearly every sentence - "Yes, Daddy. Of course, Daddy."
    Real speech uses a name sparingly and pointedly, which is exactly what makes
    it land when it is used. #}
+{# ── What went before (2.4) ─────────────────────────────────────────────────
+   The player's own account of their history with this person, from the
+   dashboard ("Your history with them"). The seed read already turned it into a
+   standing; this is the person knowing WHY. Beirand, seeded Friend from "good
+   friends for years, since his apprenticeship in Hammerfell", would otherwise
+   greet the player warmly with no idea where it came from. Background, not a
+   script: quoted, and told not to be recited. Rendered at any standing - a
+   grudge does not unmake a shared past. #}
+{% set history_line = default(rom.history, "") %}
+{% if history_line != "" %}
+
+What went before, in {{ player.name }}'s words: "{{ history_line }}" That is your history together, from before any of this. Let it show in what you take for granted about them and what you never need to explain; do not recite it.
+{% endif %}
 {% set address_line = default(rom.address, "") %}
 {% if address_line != "" and standing >= 0 %}
 

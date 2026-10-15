@@ -572,6 +572,14 @@ are required:
  "functionName":"SetCharacterField","arguments":["0x000A2C95",2,60]}
 ```
 
+**Someone you knew long before Relationships reads as a stranger.** SkyrimNet
+keeps only so much: short meetings never become memories, and old ones get
+deleted. Open their card and write **Your history with them** in a sentence or
+two ("Beirand and I have been friends since his apprenticeship in Hammerfell").
+Their record is read again at once, taking your words as fact, including how
+long you have known each other, and they remember it when they talk to you.
+It never makes them your lover or spouse on its own. Save it empty to clear it.
+
 **Someone calls you something garbled or wrong.** Use **Forget what they call
 you** on their card. They go back to having no saved name for you, as when they
 were enrolled, until a conversation sets one again: tell them what to call you

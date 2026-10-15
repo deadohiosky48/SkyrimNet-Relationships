@@ -591,6 +591,7 @@ String Function GetRomance(Actor akActor) Global
         ",\"why\":\"" + SNRom_Decorators.JsonEscape(SNRom_Bridge.StoreGetText(akActor, "Why")) + "\"" + \
         ",\"limit\":\"" + SNRom_Decorators.JsonEscape(SNRom_Bridge.StoreGetText(akActor, "Limit")) + "\"" + \
         ",\"address\":\"" + SNRom_Decorators.JsonEscape(SNRom_Bridge.StoreGetText(akActor, "Address")) + "\"" + \
+        ",\"history\":\"" + SNRom_Decorators.JsonEscape(SNRom_Bridge.StoreGetText(akActor, "History")) + "\"" + \
         ",\"romanceNA\":" + SNRom_Decorators.RomanceApplicability(akActor) + \
         ",\"physMinTier\":" + StorageUtil.GetIntValue(akActor, "SNRom_PhysMinTier", 4) + \
         ",\"otherPartners\":" + SNRom_Decorators.OtherPartners(akActor) + \
