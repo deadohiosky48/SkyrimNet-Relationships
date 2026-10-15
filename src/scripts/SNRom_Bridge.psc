@@ -531,8 +531,8 @@ Function BeginSpark(Actor akActor, String asReason)
     ; known, from every source. Too soon, and the person is enrolled as anyone
     ; else is - platonic, seeded, observed - and the spark check decides once
     ; the time is there. Too soon is NO_RECORD, or SkyrimNet's database proving
-    ; everything between them is at most sparkMinDaysEnrolled old (TimeKnown);
-    ; unproven or long-known history sparks as before.
+    ; everything between them is at most sparkMinDaysEnrolled old (TimeKnown;
+    ; only once DB_WINDOWS_TRUSTED). Unproven or long-known history sparks as before.
     String known = TimeKnown(akActor, "a spark begun in conversation")
     Float minDays = SkyrimNetApi.GetConfigFloat(CFG(), "sparkMinDaysEnrolled", 2.0)
     Bool proven = known == "TODAY_OR_YESTERDAY" || known == "DAYS" || known == "WEEKS"
@@ -5847,54 +5847,62 @@ String Function TimeKnown(Actor akActor, String asWhy)
     ; dozens. Every source is a lower bound, so only the absence of all of them
     ; caps anything; the rest erring loose is the rule this section began with.
     ;
-    ; SKYRIMNET'S DATABASE CAN (natives 13, SkyrimNetLink.h). Every event the
-    ; two share, counted all-time and within 2, 7 and 30 game days: when the
-    ; all-time count equals a window's, every one of them is inside it. With
-    ; their oldest memory of any kind, read in date order across every row, and
-    ; our own record, the longest of the three is an UPPER bound - the one kind
-    ; of proof a short cap needs.
+    ; SKYRIMNET'S DATABASE (natives 13, SkyrimNetLink.h). Two answers, one of
+    ; them usable. Their OLDEST MEMORY, read in date order across every row, is
+    ; exact where the template's is not - measured 2026-10-15, Storjar 120.5 d
+    ; and Gwendolyn 234 d, against a template reading of none for Storjar - so
+    ; it joins the lower bounds above, and a month of it is MONTHS_OR_MORE.
+    ; The SHARED-EVENT WINDOWS would make an upper bound - when the all-time
+    ; count equals a window's, everything is inside it - but they do not count
+    ; what they say: Storjar's 2-day window read 0 with 20 shared events in the
+    ; feed's last 0.7 d, and Jala's all-time total read 1 against 8 in the
+    ; feed. Until DB_WINDOWS_TRUSTED, they are logged and decide nothing. A
+    ; first build read their mismatch as "over a month" and told the seed read
+    ; Jala had known the player that long after one meeting.
     String bucket
     String decided
     String db = "not read"
     Float upper = -1.0
+    Bool dbRead = False
     If _dashNatives >= 13
         String[] p = StringUtil.Split(SNRom_Native.KnownProof(akActor), " ")
         If p.Length >= 7 && p[0] == "KNOWNPROOF"
+            dbRead = True
             Int total = p[2] as Int
             Int in2 = p[3] as Int
             Int in7 = p[4] as Int
             Int in30 = p[5] as Int
             Float oldMem = p[6] as Float
-            Float evBound = 9999.0
-            If total == 0
-                evBound = 0.0
-            ElseIf total == in2
-                evBound = 2.0
-            ElseIf total == in7
-                evBound = 7.0
-            ElseIf total == in30
-                evBound = 30.0
-            EndIf
             Float dbMemDays = 0.0
             If oldMem > 0.0
                 dbMemDays = (nowDays * 86400.0 - oldMem) / 86400.0
             EndIf
-            upper = evBound
-            If dbMemDays > upper
-                upper = dbMemDays
+            If dbMemDays > longest
+                longest = dbMemDays
+                _knownDays = longest
             EndIf
-            If recDays > upper
-                upper = recDays
+            db = total + " shared events (" + in2 + " in 2 d, " + in7 + " in 7 d, " + in30 + " in 30 d, windows " +                 "trusted: " + DB_WINDOWS_TRUSTED() + "); oldest memory " + Days1(dbMemDays) + " d (API " + p[1] + ")"
+            Float evBound = -1.0
+            If DB_WINDOWS_TRUSTED() && total > 0
+                If total == in2
+                    evBound = 2.0
+                ElseIf total == in7
+                    evBound = 7.0
+                ElseIf total == in30
+                    evBound = 30.0
+                EndIf
             EndIf
-            db = total + " shared events (" + in2 + " in 2 d, " + in7 + " in 7 d, " + in30 + " in 30 d); oldest " + \
-                "memory " + Days1(dbMemDays) + " d; known at most " + Days1(upper) + " d (API " + p[1] + ")"
-            If total == 0 && oldMem <= 0.0 && firstLine == 0.0
+            If total == 0 && oldMem <= 0.0 && firstLine == 0.0 && shared == 0 && memDays == 0.0
                 bucket = "NO_RECORD"
-                decided = "SkyrimNet's database holds nothing between you"
-            ElseIf upper > 30.0
+                decided = "SkyrimNet's database and the live feed hold nothing between you"
+            ElseIf longest > 30.0
                 bucket = "MONTHS_OR_MORE"
-                decided = "SkyrimNet's database reaches back over a month"
-            Else
+                decided = "the oldest memory or our own record reaches back over a month"
+            ElseIf evBound > 0.0
+                upper = evBound
+                If longest > upper
+                    upper = longest
+                EndIf
                 bucket = KnownBucket(upper)
                 decided = "SkyrimNet's database proves it: everything between you is that recent"
             EndIf
@@ -5903,8 +5911,12 @@ String Function TimeKnown(Actor akActor, String asWhy)
         EndIf
     EndIf
     If bucket != ""
-        _knownDays = upper
-    ElseIf scanned && memDays == 0.0 && shared == 0 && firstLine == 0.0
+        If upper >= 0.0
+            _knownDays = upper
+        EndIf
+    ElseIf !dbRead && scanned && memDays == 0.0 && shared == 0 && firstLine == 0.0
+        ; The template's "nothing" only when the database was not read: it can
+        ; hold events and memories the template cannot see.
         bucket = "NO_RECORD"
         decided = "nothing recorded between you"
     ElseIf longest > 30.0
@@ -5940,6 +5952,13 @@ Function ClearAddress(Actor akActor)
     JsonUtil.Save(StoreFile())
     Diag(LOG_INFO(), akActor.GetDisplayName() + " no longer has a saved name for " +         Game.GetPlayer().GetDisplayName() + " (was: " + was + ").")
     PushBondText(akActor)
+EndFunction
+
+Bool Function DB_WINDOWS_TRUSTED() Global
+    { Whether SkyrimNet's recent shared-event windows (PublicGetRelatedActors)
+      count what they say. False: measured 2026-10-15 they read 0 for events
+      hours old. See TimeKnown. }
+    Return False
 EndFunction
 
 String Function KnownBucket(Float afDays) Global
