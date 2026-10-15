@@ -5954,6 +5954,75 @@ Function ClearAddress(Actor akActor)
     PushBondText(akActor)
 EndFunction
 
+String Function ReauthorReplacingBlocks(Actor akActor)
+    { THE OVERRIDE (2.4, the author's request). Everywhere else a block the
+      player chose is theirs: our own categories leave it alone, one of ours
+      they took off is never put back, and authoring offers no pack tab that
+      holds one of theirs. This takes off every block in the tabs we pick from
+      - Relationships' own, and, while authoring picks others, the pack and
+      Arousal tabs it ranks (OtherTabRank) - forgets those records, and
+      re-authors, so everything there is chosen fresh. Other tabs are not
+      touched (the author's call: only the tabs we pick from).
+
+      SeverActions takes a block off only by its key, and only one applied to
+      the person: a block the player wrote themselves has no key, and one given
+      through a faction is not theirs alone. Those stay, are named in the
+      answer, and keep their tab the player's. What came off is logged, and the
+      pack ones go to OthersLifted, so an authoring answer that picks nothing
+      puts them back rather than leaving the tabs bare. Returns the answer. }
+    String whoName = akActor.GetDisplayName()
+    If _bioApiVer < 2 || !BioAssignOn()
+        ReauthorCharacter(akActor)
+        Return Tr("act.replaceNoBlocks", "Writing {0}'s character again. Bio blocks are not managed in this game, so none were replaced.", whoName)
+    EndIf
+    Bool others = OtherBlocksOn()
+    String[] recs = SNRom_SABio.ListApplied(akActor)
+    Int n = 0
+    If recs
+        n = recs.Length
+    EndIf
+    Int removed = 0
+    String removedKeys = ""
+    String left = ""
+    Int i = 0
+    While i < n
+        String[] f = StringUtil.Split(recs[i], "	")
+        If f.Length >= 3
+            String tab = SNRom_Decorators.Upper(f[1])
+            Int rank = OtherTabRank(f[1])
+            If StringUtil.Find(tab, "RELATIONSHIPS:") == 0 || (others && rank > 0)
+                If f[0] == "direct" && f.Length >= 4 && f[3] != "" && SNRom_SABio.UnapplyKey(akActor, f[3])
+                    removed += 1
+                    removedKeys += " " + f[3]
+                    If rank > 0
+                        OthersRemember(akActor, "OthersLifted", f[3])
+                    EndIf
+                Else
+                    If left != ""
+                        left += ", "
+                    EndIf
+                    left += f[2]
+                EndIf
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    Int c = 0
+    While c < 4
+        BioRecSet(akActor, c, "")
+        c += 1
+    EndWhile
+    OthersClear(akActor, "OthersOurs")
+    OthersClear(akActor, "OthersTaken")
+    Diag(LOG_INFO(), "Replacing " + whoName + "'s bio blocks at your request: took off " + removed + ":" +         removedKeys + ". Left on (no key, or given through a faction): " + left + ".")
+    ReauthorCharacter(akActor)
+    String answer = Tr("act.replaceBlocks", "Took {0} bio blocks off {1}. Their character is being written again, and new blocks follow when the answer comes back.", removed as String, whoName)
+    If left != ""
+        answer += " " + Tr("act.replaceLeft", "Still on, to take off in SeverActions if you want them gone: {0}.", left)
+    EndIf
+    Return answer
+EndFunction
+
 Bool Function DB_WINDOWS_TRUSTED() Global
     { Whether SkyrimNet's recent shared-event windows (PublicGetRelatedActors)
       count what they say. False: measured 2026-10-15 they read 0 for events
@@ -6833,8 +6902,13 @@ Event OnDashboardAction(String asEventName, String asOp, Float afRequestId, Form
         ReseedActor(who)
         answer = "Reading " + whoName + "'s record again. This updates when the answer comes back."
     ElseIf asOp == "ReauthorCharacter"
-        ReauthorCharacter(who)
-        answer = "Writing " + whoName + "'s character again. This updates when the answer comes back."
+        Int[] reArgs = SNRom_Native.ActionArgs(requestId)
+        If reArgs.Length >= 1 && reArgs[0] == 1
+            answer = ReauthorReplacingBlocks(who)
+        Else
+            ReauthorCharacter(who)
+            answer = "Writing " + whoName + "'s character again. This updates when the answer comes back."
+        EndIf
     ElseIf asOp == "SetCharacterField"
         Int[] fieldArgs = SNRom_Native.ActionArgs(requestId)
         If fieldArgs.Length < 2

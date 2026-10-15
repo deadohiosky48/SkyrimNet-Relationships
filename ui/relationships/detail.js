@@ -365,6 +365,28 @@
       hform.appendChild(btn);
       wrap.appendChild(hform);
       wrap.appendChild(el("p", "act-help", a.help));
+    } else if (a.form === "reauthorBlocks") {
+      // THE OVERRIDE (2.4): checked, the player's own blocks in the tabs we
+      // pick from come off too, and the confirmation says so.
+      var cb = el("input");
+      cb.type = "checkbox";
+      cb.id = "reauthor-replace";
+      var cbl = el("label", "act-check");
+      cbl.appendChild(cb);
+      cbl.appendChild(document.createTextNode(" " + a.replaceLabel));
+      btn.addEventListener("click", function () {
+        var act = a;
+        if (cb.checked) {
+          act = {};
+          for (var k in a) if (Object.prototype.hasOwnProperty.call(a, k)) act[k] = a[k];
+          act.confirm = a.confirmReplace;
+        }
+        self.onAction(act, b, [cb.checked ? 1 : 0], btn);
+      });
+      row.appendChild(el("span", "act-help", a.help));
+      row.appendChild(btn);
+      wrap.appendChild(row);
+      wrap.appendChild(cbl);
     } else {
       btn.addEventListener("click", function () { self.onAction(a, b, [], btn); });
       row.appendChild(el("span", "act-help", a.help));

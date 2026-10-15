@@ -551,7 +551,11 @@ is lost). There is no undo — the old one is written to the mod's log first, so
 a mistaken press is legible afterwards. **Reach for this rather than
 the re-read when the problem is the person, not the progress** — a devoted
 companion who still refuses to share you, or whose stated reasons are about
-someone they are not. By hand:
+someone they are not. Bio blocks you chose are kept unless you tick **Also
+replace bio blocks you chose**: then every block in the tabs Relationships
+picks from comes off first, yours included, and new ones are chosen. Blocks you
+wrote yourself, or gave through a faction, can't be taken off that way; the
+answer names them. By hand:
 
 ```json
 {"questEditorId":"SNRom_Quest","scriptName":"SNRom_Bridge",

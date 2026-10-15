@@ -51,7 +51,11 @@
       // crosshair hotkey needs them present (design 12, decided 2026-09-29).
       needs: t("action.reauthorCharacter.needs", "Nothing: works wherever they are."),
       needsNearby: false,
-      confirm: t("action.reauthorCharacter.confirm", "Their character is written again from the record. How they have changed through play since 2.2 is kept; the old one is written to the log, but there is no undo.")
+      confirm: t("action.reauthorCharacter.confirm", "Their character is written again from the record. How they have changed through play since 2.2 is kept; the old one is written to the log, but there is no undo."),
+      // 2.4: the override. Blocks the player chose are otherwise never touched.
+      form: "reauthorBlocks",
+      replaceLabel: t("action.reauthorCharacter.replace", "Also replace bio blocks you chose"),
+      confirmReplace: t("action.reauthorCharacter.confirmReplace", "Their character is written again, and every bio block in the tabs Relationships picks from comes off first, yours included, so new ones are chosen. Blocks you wrote yourself, or gave through a faction, cannot be taken off this way and are named afterwards. What came off is written to the log; there is no undo.")
     },
     {
       op: "SetCharacterField",

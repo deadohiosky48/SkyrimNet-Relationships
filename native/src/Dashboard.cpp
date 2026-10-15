@@ -109,8 +109,9 @@ namespace SNRom::Dashboard {
         constexpr std::array kOps{
             Op{ "ReseedActor", "SNRom_Bridge.ReseedActor(Actor)", OpScope::kBond, false,
                 "their record has been read again" },
+            // One optional Int (2.4): 1 also replaces the player's own blocks.
             Op{ "ReauthorCharacter", "SNRom_Bridge.ReauthorCharacter(Actor)", OpScope::kBond, false,
-                "their character has been written again" },
+                "their character has been written again", 0, 1 },
             Op{ "SetCharacterField", "SNRom_Bridge.SetCharacterField(Actor, Int, Int)", OpScope::kBond, false, {}, 2,
                 2 },
             Op{ "UnenrollActor", "SNRom_Bridge.UnenrollActor(Actor)", OpScope::kBond },

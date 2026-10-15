@@ -439,6 +439,8 @@ button, input, select { font: inherit; color: inherit; }
 .act-calls { margin: 0; font-family: var(--mono); font-size: calc(0.74rem * var(--t)); color: var(--faint); }
 .act-needs { margin: 0; font-size: calc(0.8rem * var(--t)); color: var(--faint); }
 .act-needs.is-blocking { color: var(--danger); }
+.act-check { display: flex; align-items: center; gap: 0.4em; margin: 0; font-size: calc(0.85rem * var(--t)); color: var(--muted); cursor: pointer; }
+.act-check input { margin: 0; accent-color: var(--danger); }
 .act-form { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
 .act-form select, .act-form input {
   height: calc(2rem * var(--t)); padding: 0 0.45rem; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-2);
