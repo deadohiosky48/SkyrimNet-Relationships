@@ -6023,6 +6023,157 @@ String Function ReauthorReplacingBlocks(Actor akActor)
     Return answer
 EndFunction
 
+Function TakeAddress(Actor akActor, String asName, String asValue)
+    { ADDRESS MAY BE RE-ESTABLISHED IN CONVERSATION. The author's case: the
+      player told Sybille, explicitly, to call him "Daddy" from then on. That
+      is a real event in the fiction and it should stick without anyone editing
+      a file - which SeverActions' custom bio blocks cannot do, since they are
+      writable only from PrismaUI. The prompt answers NONE unless one was set
+      or changed, so absent or NONE means "unchanged", never "cleared".
+
+      BEFORE THE WEIGHT GATES, AS ALWAYS INTENDED (fixed 2.4). "Call me Daddy"
+      may well score NOTHING, and a NOTHING verdict returned before this block
+      was reached, so a name given in an otherwise quiet exchange was dropped.
+
+      ONLY WHAT WAS SAID (2.4). A player found an NPC calling them "mommy" from
+      a two-month-old memory - the talk check also shows four memories of any
+      age - and another found a garbled name. AddressRefusal keeps a name only
+      if it is plausibly a name and was said in the conversation judged. }
+    String v = AddressClean(asValue)
+    If v == "" || SNRom_Decorators.Upper(v) == "NONE"
+        Return
+    EndIf
+    String oldAddress = StoreGetText(akActor, "Address")
+    If oldAddress == v
+        Return
+    EndIf
+    String refused = AddressRefusal(akActor, v, _talkSinceSec)
+    If refused != ""
+        Diag(LOG_WARN(), "Not taken as what " + asName + " calls " + Game.GetPlayer().GetDisplayName() + \
+            ": '" + v + "' - " + refused + ". Kept: '" + oldAddress + "'.")
+        Return
+    EndIf
+    StoreSetText(akActor, "Address", v)
+    ; The dashboard holds ADDRESS too; see PushBondText.
+    If _dashText
+        PushBondText(akActor)
+    EndIf
+    Diag(LOG_INFO(), asName + " now calls " + Game.GetPlayer().GetDisplayName() + \
+        ": " + v + " (was: " + oldAddress + ")")
+EndFunction
+
+String Function AddressClean(String asValue) Global
+    { Trimmed, without the quotes or end punctuation a model wraps a name in. }
+    String v = SNRom_Decorators.Trim(asValue)
+    Bool changed = True
+    While changed && StringUtil.GetLength(v) > 0
+        changed = False
+        String c = StringUtil.GetNthChar(v, 0)
+        If c == "\"" || c == "'" || c == "*"
+            v = SNRom_Decorators.Trim(StringUtil.Substring(v, 1))
+            changed = True
+        EndIf
+        Int n = StringUtil.GetLength(v)
+        If n > 0
+            c = StringUtil.GetNthChar(v, n - 1)
+            If c == "\"" || c == "'" || c == "*" || c == "." || c == ","
+                v = SNRom_Decorators.Trim(StringUtil.Substring(v, 0, n - 1))
+                changed = True
+            EndIf
+        EndIf
+    EndWhile
+    Return v
+EndFunction
+
+Int Function ADDRESS_MAX_CHARS() Global
+    { A name, or a short contextual one ("Haruk, or Thane in public"). }
+    Return 60
+EndFunction
+
+String Function ADDRESS_FILLER() Global
+    { Words that say nothing about the name itself, upper-case: a contextual
+      form's connectives, which also turn up in almost any conversation. }
+    Return "|THE|AND|YOU|YOUR|FOR|BUT|NOT|HIS|HER|HIM|THEM|THEY|WITH|WHEN|WHILE|FROM|THAT|THIS|ARE|WAS|ONE|" + \
+        "PUBLIC|PRIVATE|ALONE|OTHERS|AROUND|FRONT|COMPANY|SOMETIMES|USUALLY|ONLY|JUST|ALSO|CALL|CALLS|NAME|"
+EndFunction
+
+String Function AddressRefusal(Actor akActor, String asValue, Float afSinceSec)
+    { "" if asValue may be kept as what akActor calls the player; otherwise
+      why not, for the log. Plausibly a name - short, not a sentence - and
+      SAID: at least one of its meaningful words, or the whole of it when it
+      has none, appears in a line akActor and the player spoke to each other
+      since afSinceSec (snrom_address_check, the talk check's own window). A
+      check that cannot run refuses: a name nobody can show was said is the
+      failure this exists to stop. }
+    Int len = StringUtil.GetLength(asValue)
+    If len > ADDRESS_MAX_CHARS()
+        Return "too long to be a name (" + len + " characters)"
+    EndIf
+    If StringUtil.Find(asValue, "!") >= 0 || StringUtil.Find(asValue, "?") >= 0 || \
+       StringUtil.Find(asValue, ":") >= 0 || StringUtil.Find(asValue, ";") >= 0 || \
+       StringUtil.Find(asValue, "{") >= 0 || StringUtil.Find(asValue, ". ") >= 0
+        Return "it reads as a sentence, not a name"
+    EndIf
+    String[] words = StringUtil.Split(asValue, " ")
+    If words.Length > 8
+        Return "too many words to be a name (" + words.Length + ")"
+    EndIf
+
+    ; The meaningful words, upper-cased, each kept raw as well: upper() in
+    ; the template folds ASCII only, so a name in another script is matched
+    ; as written.
+    String filler = ADDRESS_FILLER()
+    String[] wantUp = Utility.CreateStringArray(words.Length + 1)
+    String[] wantRaw = Utility.CreateStringArray(words.Length + 1)
+    Int nWant = 0
+    Int i = 0
+    While i < words.Length
+        String w = AddressClean(words[i])
+        String up = SNRom_Decorators.Upper(w)
+        If StringUtil.GetLength(w) >= 3 && StringUtil.Find(filler, "|" + up + "|") < 0
+            wantUp[nWant] = up
+            wantRaw[nWant] = w
+            nWant += 1
+        EndIf
+        i += 1
+    EndWhile
+    If nWant == 0
+        wantUp[0] = SNRom_Decorators.Upper(asValue)
+        wantRaw[0] = asValue
+        nWant = 1
+    EndIf
+
+    String out = SkyrimNetApi.RenderTemplate("snrom_address_check", "npc_formid", akActor.GetFormID() as String)
+    If StringUtil.Find(out, "ADDRCHECK") < 0 || StringUtil.Find(out, "NOFORMID") >= 0
+        Return "the check of what was said could not run (snrom_address_check: " + \
+            StringUtil.Substring(out, 0, 80) + ")"
+    EndIf
+    String[] lines = StringUtil.Split(out, "\n")
+    Int seen = 0
+    i = 0
+    While i < lines.Length
+        String line = lines[i]
+        Int at = StringUtil.Find(line, "ADDRLINE ")
+        If at >= 0
+            String rest = StringUtil.Substring(line, at + 9)
+            Int sp = StringUtil.Find(rest, " ")
+            If sp > 0 && (StringUtil.Substring(rest, 0, sp) as Float) >= afSinceSec
+                seen += 1
+                String text = StringUtil.Substring(rest, sp + 1)
+                Int k = 0
+                While k < nWant
+                    If StringUtil.Find(text, wantUp[k]) >= 0 || StringUtil.Find(text, wantRaw[k]) >= 0
+                        Return ""
+                    EndIf
+                    k += 1
+                EndWhile
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    Return "never said in the conversation judged (" + seen + " lines between you since the last check)"
+EndFunction
+
 Bool Function DB_WINDOWS_TRUSTED() Global
     { Whether SkyrimNet's recent shared-event windows (PublicGetRelatedActors)
       count what they say. False: measured 2026-10-15 they read 0 for events
@@ -7568,6 +7719,7 @@ EndEvent
 
 Actor  _talkActor
 String _talkName
+Float _talkSinceSec      ; the judged window's start, game seconds (0 = all), for AddressRefusal
 Float  _talkPendingAt
 
 Function AssessNextTalk()
@@ -7886,6 +8038,7 @@ Function AssessTalk(Actor akActor, Float afSince = 0.0)
     EndIf
     _talkActor = akActor
     _talkName  = akActor.GetDisplayName()
+    _talkSinceSec = sinceSec
     _talkPendingAt = Utility.GetCurrentRealTime()
     StorageUtil.UnsetIntValue(akActor, "SNRom_TalkSoon")
     ; Her ardor and her authored WHY both go in, because the judgment is
@@ -7923,6 +8076,8 @@ Event OnTalkAssessed(String asResponse, Int aiSuccess)
         Diag(LOG_ERROR(), "Talk echo mismatch: asked about '" + asked + "', answered as '" + echoed + "'. Discarded.")
         Return
     EndIf
+
+    TakeAddress(who, asked, SNRom_Decorators.FieldValue(asResponse, "ADDRESS:"))
 
     String weightWord = SNRom_Decorators.FieldValue(asResponse, "WEIGHT:")
     Int points = SNRom_Decorators.WeightToPoints(weightWord)
@@ -7968,31 +8123,6 @@ Event OnTalkAssessed(String asResponse, Int aiSuccess)
         Return
     EndIf
 
-    ; ── ADDRESS may be RE-ESTABLISHED in conversation ───────────────────────
-    ; The author's case: the player told Sybille, explicitly, to call him "Daddy"
-    ; from then on. That is a real event in the fiction and it should stick
-    ; without anyone editing a file - which is precisely what SeverActions'
-    ; custom bio blocks cannot do, since they are writable only from PrismaUI.
-    ;
-    ; Read BEFORE the weight gates below. A conversation can change what someone
-    ; is called without moving the bond at all - "call me Daddy" may well score
-    ; NOTHING - so this must not be gated on an award being made.
-    ;
-    ; The prompt only emits this when a form of address is EXPLICITLY set or
-    ; changed, so an absent field means "unchanged", never "cleared".
-    String newAddress = SNRom_Decorators.FieldValue(asResponse, "ADDRESS:")
-    If newAddress != "" && SNRom_Decorators.Upper(newAddress) != "NONE"
-        String oldAddress = StoreGetText(who, "Address")
-        If oldAddress != newAddress
-            StoreSetText(who, "Address", newAddress)
-            ; The dashboard holds ADDRESS too; see PushBondText.
-            If _dashText
-                PushBondText(who)
-            EndIf
-            Diag(LOG_INFO(), asked + " now calls " + Game.GetPlayer().GetDisplayName() + \
-                ": " + newAddress + (" (was: " + oldAddress + ")"))
-        EndIf
-    EndIf
 
     ; DIRECTION negates only weights that are POSITIVE to begin with.
     ;
@@ -9812,9 +9942,18 @@ Function ApplyProse(Actor akActor, String asResponse, String asName)
     ; It DID warn until 1.0.2, on a field its own prompt never requested: 65 of
     ; 72 authorings logged it, against 0 for WHY and 0 for LIMIT. A warning that
     ; fires on 90% of healthy runs trains you to ignore the log.
-    String addressLine = SNRom_Decorators.FieldValue(asResponse, "ADDRESS:")
-    If addressLine != ""
-        StoreSetText(akActor, "Address", addressLine)
+    ;
+    ; THE SAME GUARD AS THE TALK PATH (2.4, TakeAddress): a volunteered name is
+    ; kept only if it was said, anywhere in what the live feed still holds
+    ; between them. Authoring reads their memories and diary too.
+    String addressLine = AddressClean(SNRom_Decorators.FieldValue(asResponse, "ADDRESS:"))
+    If addressLine != "" && SNRom_Decorators.Upper(addressLine) != "NONE"
+        String addrRefused = AddressRefusal(akActor, addressLine, 0.0)
+        If addrRefused == ""
+            StoreSetText(akActor, "Address", addressLine)
+        Else
+            Diag(LOG_WARN(), "Authoring offered '" + addressLine + "' as what " + asName + " calls you - not taken: " + addrRefused + ".")
+        EndIf
     EndIf
     ; THE DASHBOARD HOLDS THIS TEXT once a full refresh has answered this
     ; session, so the change goes to it now, not at the next load. A Bool when

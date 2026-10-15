@@ -1,0 +1,27 @@
+{# RENDER-ONLY. WHAT ONE PERSON AND THE PLAYER SAID TO EACH OTHER (2.4). Not
+   sent to any model. Rendered by SNRom_Bridge.AddressRefusal through
+   SkyrimNetApi.RenderTemplate, with npc_formid as the one variable, when a
+   talk check answers ADDRESS: Papyrus keeps a new form of address only if it
+   was actually said in the conversation that check judged.
+
+   Why: the talk check's prompt also shows four of the person's memories, by
+   relevance and of any age, and a player found an NPC calling them "mommy"
+   from a two-month-old memory - nobody had said it since. A garbled name
+   was reported too. A name nobody said is not a name they were given.
+
+   The same window and the same "said" filter as snrom_talk_assess (keep them
+   alike). One line per line spoken:
+     ADDRLINE <game seconds> <the line, upper-cased> <TAB> <the line as said>
+   upper() folds ASCII only, so Papyrus matches the raw line too. #}
+{% if exists("npc_formid") %}
+{% set snrom_uuid = formid_to_uuid(int(npc_formid)) %}
+{% set snrom_name = get_name(snrom_uuid) %}
+{% set snrom_who = [] %}
+{% set snrom_who = append(snrom_who, snrom_uuid) %}
+ADDRCHECK
+{% for ev in get_recent_events(300, snrom_who) %}{% if existsIn(ev.data, "dialogue") %}{% set snrom_take = false %}{% if ev.type == "dialogue" and existsIn(ev.data, "speaker") and existsIn(ev.data, "listener") %}{% if (ev.data.speaker == snrom_name and ev.data.listener == player.name) or (ev.data.speaker == player.name and ev.data.listener == snrom_name) %}{% set snrom_take = true %}{% endif %}{% else if ev.type == "dialogue_player_text" or ev.type == "dialogue_player_stt" %}{% if not existsIn(ev.data, "listener") or ev.data.listener == snrom_name %}{% set snrom_take = true %}{% endif %}{% endif %}{% if snrom_take %}
+ADDRLINE {{ ev.gameTime }} {{ upper(ev.data.dialogue) }}	{{ ev.data.dialogue }}
+{% endif %}{% endif %}{% endfor %}
+{% else %}
+ADDRCHECK NOFORMID
+{% endif %}

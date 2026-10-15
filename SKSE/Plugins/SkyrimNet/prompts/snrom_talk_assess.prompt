@@ -489,6 +489,6 @@ DIRECTION: <TOWARD|AWAY>   <- which way it went
 {% else %}WEIGHT: <NOTHING|SMALL|REAL|MAJOR|BETRAYAL>   <- how far
 {% endif %}
 LANDMARK_KIND: <COUPLE|MARRIAGE>   <- omit unless WEIGHT is `LANDMARK`. `COUPLE` if what they named aloud was becoming partners. `MARRIAGE` if what they named was marrying - proposing, accepting, or both plainly committing to it. Answer truthfully; nothing about the score depends on which you pick.
-ADDRESS: <NONE, unless one of them explicitly set or changed what {{ npc_name }} calls {{ player.name }} in the exchange above>
+ADDRESS: <NONE, unless one of them explicitly set or changed, in WHAT WAS SAID above, what {{ npc_name }} calls {{ player.name }} from now on - then that name or form of address, as it was said. Never from WHAT THEY KEPT or THEIR OWN ACCOUNT: those are older than this conversation, and a name found only there is NONE.>
 ACT: <omit unless WEIGHT is `BETRAYAL`, or `MAJOR` going `AWAY`. The words from the record above that show what {{ player.name }} did, copied as they appear.>
 WHAT: <if not NOTHING, one sentence in their voice naming the specific thing above that did it — spoken, remembered or written, whichever actually carries it. If NOTHING, write NONE.>
