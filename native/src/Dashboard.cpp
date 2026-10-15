@@ -117,6 +117,8 @@ namespace SNRom::Dashboard {
             // 2.4, WP-T: the player's own account of their history together.
             Op{ "SetPlayerHistory", "SNRom_Bridge.SetPlayerHistory(Actor, String)", OpScope::kBond, false, {}, 0, 0,
                 true, {}, true },
+            // 2.4: a garbled or unwanted ADDRESS, back to none.
+            Op{ "ClearAddress", "SNRom_Bridge.ClearAddress(Actor)", OpScope::kBond },
             Op{ "StartFreshStore", "SNRom_Bridge.StartFreshStore()", OpScope::kPlaythrough },
             Op{ "AdoptLegacyStore", "SNRom_Bridge.AdoptLegacyStore()", OpScope::kPlaythrough },
             // 2.1.1: blocks the player hid in SeverActions were read as taken

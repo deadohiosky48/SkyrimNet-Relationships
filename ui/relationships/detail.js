@@ -295,7 +295,8 @@
     // Why the button cannot be pressed, if it cannot. Papyrus refuses with a
     // reason as well, in case the game has moved on since the snapshot.
     var blocked = a.needsFollowing && !b.following ? t("act.notFollowing", "{0} is not travelling with you.", b.subject.name) + " " + a.needs :
-      a.needsNearby && !b.nearby ? t("act.notNear", "{0} is not near you.", b.subject.name) + " " + a.needs : null;
+      a.needsNearby && !b.nearby ? t("act.notNear", "{0} is not near you.", b.subject.name) + " " + a.needs :
+      a.needsAddress && !b.prose.address ? t("act.noAddress", "{0} has no saved name for you.", b.subject.name) : null;
     var btn = el("button", "btn" + (a.confirm ? " btn-danger" : ""), a.label);
     btn.type = "button";
     btn.setAttribute("data-op", a.op);

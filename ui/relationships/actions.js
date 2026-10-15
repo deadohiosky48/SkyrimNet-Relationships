@@ -76,6 +76,17 @@
       form: "historyText"
     },
     {
+      op: "ClearAddress",
+      scope: "bond",
+      calls: "SNRom_Bridge.ClearAddress(Actor)",
+      label: t("action.clearAddress.label", "Forget what they call you"),
+      help: t("action.clearAddress.help", "For a name that came out garbled or wrong. They go back to having no saved name for you, as when they were enrolled, until a conversation sets one again."),
+      needs: t("action.clearAddress.needs", "Nothing: works wherever they are."),
+      needsNearby: false,
+      needsAddress: true,
+      confirm: t("action.clearAddress.confirm", "The name they call you is forgotten. There is no undo, but you can tell them in conversation what to call you.")
+    },
+    {
       op: "UnenrollActor",
       scope: "bond",
       calls: "SNRom_Bridge.UnenrollActor(Actor)",

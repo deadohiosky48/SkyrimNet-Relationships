@@ -5924,6 +5924,24 @@ String Function TimeKnown(Actor akActor, String asWhy)
     Return bucket
 EndFunction
 
+Function ClearAddress(Actor akActor)
+    { WHAT THEY CALL THE PLAYER, BACK TO NOTHING (2.4). Reported by a player: an
+      enrolled character's ADDRESS came back garbled, a model's artifact, and
+      the store pins it into every bio render until a conversation changes it -
+      which a garbled name makes unlikely. Clearing returns them to how they
+      were enrolled: no saved name, nothing rendered. A talk check that hears a
+      name set explicitly writes one again (the ADDRESS block in the talk
+      path). }
+    If akActor == None
+        Return
+    EndIf
+    String was = StoreGetText(akActor, "Address")
+    JsonUtil.UnsetStringValue(StoreFile(), StoreKey(akActor, "Address"))
+    JsonUtil.Save(StoreFile())
+    Diag(LOG_INFO(), akActor.GetDisplayName() + " no longer has a saved name for " +         Game.GetPlayer().GetDisplayName() + " (was: " + was + ").")
+    PushBondText(akActor)
+EndFunction
+
 String Function KnownBucket(Float afDays) Global
     If afDays <= 2.0
         Return "TODAY_OR_YESTERDAY"
@@ -6814,6 +6832,9 @@ Event OnDashboardAction(String asEventName, String asOp, Float afRequestId, Form
         Else
             answer = Tr("act.historySaved", "Saved your history with {0}. Their record is being read again with it.", whoName)
         EndIf
+    ElseIf asOp == "ClearAddress"
+        ClearAddress(who)
+        answer = Tr("act.addressCleared", "{0} no longer has a saved name for you.", whoName)
     ElseIf asOp == "EnrollActor"
         String refused = EnrollByHand(who)
         If refused != ""

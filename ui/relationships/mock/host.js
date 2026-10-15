@@ -135,6 +135,11 @@
         later(80, pushSnapshot);
         return [true, "Repair written for " + b.subject.name + "."];
       },
+      ClearAddress: function (b) {
+        b.prose.address = "";
+        later(80, pushSnapshot);
+        return [true, b.subject.name + " no longer has a saved name for you."];
+      },
       UnenrollActor: function (b) {
         state.bonds.splice(state.bonds.indexOf(b), 1);
         if (state.crosshairTarget && state.crosshairTarget.formId === b.subject.formId) state.crosshairTarget.enrolled = false;

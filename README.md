@@ -568,6 +568,16 @@ are required:
  "functionName":"SetCharacterField","arguments":["0x000A2C95",2,60]}
 ```
 
+**Someone calls you something garbled or wrong.** Use **Forget what they call
+you** on their card. They go back to having no saved name for you, as when they
+were enrolled, until a conversation sets one again: tell them what to call you
+and it sticks. By hand:
+
+```json
+{"questEditorId":"SNRom_Quest","scriptName":"SNRom_Bridge",
+ "functionName":"ClearAddress","arguments":["0x000A2C95"]}
+```
+
 **Someone was read from a bio or a journal that was wrong, and you have since
 fixed it.** Fix the material first — correct the bio, write the missing diary
 entries, apply the blocks — then point at them and press the **Re-Read
