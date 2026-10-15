@@ -13,6 +13,7 @@
   "act.replaceBlocks": "{1} üzerinden {0} biyo blok kaldırıldı. Karakter yeniden yazılıyor; yeni bloklar yanıt gelince eklenecek.",
   "act.replaceLeft": "Hâlâ duruyor, istemiyorsan SeverActions'ta kaldır: {0}.",
   "act.replaceNoBlocks": "{0} karakteri yeniden yazılıyor. Bu oyunda biyo bloklar yönetilmiyor, bu yüzden hiçbiri değiştirilmedi.",
+  "act.replaceOursHeld": "Relationships sekmeleri olduğu gibi bırakıldı: bloklarımızın bazıları SeverActions'ta gizli ve Hidden listesinden geri getirilene kadar hiçbiri kimseye eklenemez.",
   "act.save": "Kaydet",
   "act.sent": "{0} gönderildi.",
   "act.traitToCorrect": "Düzeltilecek özellik",

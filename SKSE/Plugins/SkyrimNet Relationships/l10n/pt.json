@@ -13,6 +13,7 @@
   "act.replaceBlocks": "{0} blocos bio retirados de {1}. O caráter está sendo reescrito, e os novos blocos chegam com a resposta.",
   "act.replaceLeft": "Ainda aplicados; retire-os no SeverActions se não os quiser: {0}.",
   "act.replaceNoBlocks": "Reescrevendo o caráter de {0}. Blocos bio não são gerenciados neste jogo, então nenhum foi substituído.",
+  "act.replaceOursHeld": "As abas de Relationships ficaram como estavam: alguns dos nossos blocos estão ocultos no SeverActions, e nenhum pode ser aplicado a ninguém até serem restaurados da lista Hidden.",
   "act.save": "Salvar",
   "act.sent": "{0} enviado.",
   "act.traitToCorrect": "Traço a corrigir",

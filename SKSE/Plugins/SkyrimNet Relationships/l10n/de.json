@@ -13,6 +13,7 @@
   "act.replaceBlocks": "{0} Bio-Blöcke von {1} entfernt. Der Charakter wird neu geschrieben, neue Blöcke folgen mit der Antwort.",
   "act.replaceLeft": "Noch vorhanden, in SeverActions zu entfernen, wenn du sie loswerden willst: {0}.",
   "act.replaceNoBlocks": "Der Charakter von {0} wird neu geschrieben. Bio-Blöcke werden in diesem Spiel nicht verwaltet, daher wurde keiner ersetzt.",
+  "act.replaceOursHeld": "Die Tabs von Relationships blieben, wie sie waren: Einige unserer Blöcke sind in SeverActions ausgeblendet, und keiner von ihnen kann jemandem gegeben werden, bis sie aus der Hidden-Liste wiederhergestellt sind.",
   "act.save": "Speichern",
   "act.sent": "{0} gesendet.",
   "act.traitToCorrect": "Zu korrigierende Eigenschaft",

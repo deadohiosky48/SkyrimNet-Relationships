@@ -13,6 +13,7 @@
   "act.replaceBlocks": "Took {0} bio blocks off {1}. Their character is being written again, and new blocks follow when the answer comes back.",
   "act.replaceLeft": "Still on, to take off in SeverActions if you want them gone: {0}.",
   "act.replaceNoBlocks": "Writing {0}'s character again. Bio blocks are not managed in this game, so none were replaced.",
+  "act.replaceOursHeld": "Relationships' own tabs were left as they are: some of our blocks are hidden in SeverActions, and none of ours can be put on anyone until they are restored from its Hidden list.",
   "act.save": "Save",
   "act.sent": "{0} sent.",
   "act.traitToCorrect": "Trait to correct",

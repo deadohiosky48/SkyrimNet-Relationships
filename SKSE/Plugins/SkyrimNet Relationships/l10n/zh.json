@@ -13,6 +13,7 @@
   "act.replaceBlocks": "已从{1}身上移除 {0} 个简介区块。正在重写其性格，新区块会在回复到达时添加。",
   "act.replaceLeft": "仍然保留，如不需要请在 SeverActions 中移除：{0}。",
   "act.replaceNoBlocks": "正在重写{0}的性格。本游戏未管理简介区块，因此没有替换任何区块。",
+  "act.replaceOursHeld": "Relationships 的标签页保持原样：我们有部分区块在 SeverActions 中被隐藏，在从 Hidden 列表中恢复之前，无法为任何人添加我们的区块。",
   "act.save": "保存",
   "act.sent": "已发送{0}。",
   "act.traitToCorrect": "要修正的特质",

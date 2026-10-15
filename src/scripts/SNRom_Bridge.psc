@@ -5969,13 +5969,20 @@ String Function ReauthorReplacingBlocks(Actor akActor)
       through a faction is not theirs alone. Those stay, are named in the
       answer, and keep their tab the player's. What came off is logged, and the
       pack ones go to OthersLifted, so an authoring answer that picks nothing
-      puts them back rather than leaving the tabs bare. Returns the answer. }
+      puts them back rather than leaving the tabs bare. Returns the answer.
+
+      NOT OUR OWN TABS WHILE THE LIBRARY IS INCOMPLETE. With any of our blocks
+      hidden in SeverActions, BioRun applies none of ours to anyone (2.1.1), so
+      the first build took Taarie's Expression and Attachment off and nothing
+      could put new ones on (2026-10-15). Relationships' tabs, and our records
+      of them, are then left exactly as they are, and the answer says why. }
     String whoName = akActor.GetDisplayName()
     If _bioApiVer < 2 || !BioAssignOn()
         ReauthorCharacter(akActor)
         Return Tr("act.replaceNoBlocks", "Writing {0}'s character again. Bio blocks are not managed in this game, so none were replaced.", whoName)
     EndIf
     Bool others = OtherBlocksOn()
+    Bool ours = _bioLibraryWhole
     String[] recs = SNRom_SABio.ListApplied(akActor)
     Int n = 0
     If recs
@@ -5990,7 +5997,7 @@ String Function ReauthorReplacingBlocks(Actor akActor)
         If f.Length >= 3
             String tab = SNRom_Decorators.Upper(f[1])
             Int rank = OtherTabRank(f[1])
-            If StringUtil.Find(tab, "RELATIONSHIPS:") == 0 || (others && rank > 0)
+            If (ours && StringUtil.Find(tab, "RELATIONSHIPS:") == 0) || (others && rank > 0)
                 If f[0] == "direct" && f.Length >= 4 && f[3] != "" && SNRom_SABio.UnapplyKey(akActor, f[3])
                     removed += 1
                     removedKeys += " " + f[3]
@@ -6008,7 +6015,7 @@ String Function ReauthorReplacingBlocks(Actor akActor)
         i += 1
     EndWhile
     Int c = 0
-    While c < 4
+    While ours && c < 4
         BioRecSet(akActor, c, "")
         c += 1
     EndWhile
@@ -6019,6 +6026,10 @@ String Function ReauthorReplacingBlocks(Actor akActor)
     String answer = Tr("act.replaceBlocks", "Took {0} bio blocks off {1}. Their character is being written again, and new blocks follow when the answer comes back.", removed as String, whoName)
     If left != ""
         answer += " " + Tr("act.replaceLeft", "Still on, to take off in SeverActions if you want them gone: {0}.", left)
+    EndIf
+    If !ours
+        answer += " " + Tr("act.replaceOursHeld", "Relationships' own tabs were left as they are: some of our blocks are hidden in SeverActions, and none of ours can be put on anyone until they are restored from its Hidden list.")
+        Diag(LOG_WARN(), "Replacing " + whoName + "'s bio blocks: Relationships' own tabs left alone - our library is incomplete in SeverActions, so none of ours could be put back.")
     EndIf
     Return answer
 EndFunction

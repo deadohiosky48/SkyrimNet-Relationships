@@ -13,6 +13,7 @@
   "act.replaceBlocks": "{1}からバイオブロックを{0}個外しました。人物像を書き直し中で、新しいブロックは応答が届いたときに付きます。",
   "act.replaceLeft": "まだ付いています。不要なら SeverActions で外してください: {0}。",
   "act.replaceNoBlocks": "{0}の人物像を書き直しています。このゲームではバイオブロックを管理していないため、置き換えはありません。",
+  "act.replaceOursHeld": "Relationships のタブはそのままにしました。いくつかのブロックが SeverActions で非表示になっており、Hidden 一覧から戻すまで誰にも付けられません。",
   "act.save": "保存",
   "act.sent": "{0}を送信しました。",
   "act.traitToCorrect": "修正する特性",

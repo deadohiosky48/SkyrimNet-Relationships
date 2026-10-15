@@ -13,6 +13,7 @@
   "act.replaceBlocks": "Tolti {0} blocchi bio a {1}. Il suo carattere è in riscrittura e i nuovi blocchi arrivano con la risposta.",
   "act.replaceLeft": "Ancora presenti, da togliere in SeverActions se non li vuoi: {0}.",
   "act.replaceNoBlocks": "Riscrittura del carattere di {0}. In questa partita i blocchi bio non sono gestiti, quindi non ne è stato sostituito nessuno.",
+  "act.replaceOursHeld": "Le schede di Relationships sono rimaste com'erano: alcuni dei nostri blocchi sono nascosti in SeverActions e nessuno può essere dato a qualcuno finché non vengono ripristinati dalla lista Hidden.",
   "act.save": "Salva",
   "act.sent": "{0} inviato.",
   "act.traitToCorrect": "Tratto da correggere",

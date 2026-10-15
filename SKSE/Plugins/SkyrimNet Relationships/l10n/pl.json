@@ -13,6 +13,7 @@
   "act.replaceBlocks": "Zdjęto bloki bio ({0}) z {1}. Charakter jest pisany od nowa, a nowe bloki przyjdą z odpowiedzią.",
   "act.replaceLeft": "Wciąż nadane, zdejmij je w SeverActions, jeśli ich nie chcesz: {0}.",
   "act.replaceNoBlocks": "Charakter {0} jest pisany od nowa. Bloki bio nie są zarządzane w tej grze, więc niczego nie zastąpiono.",
+  "act.replaceOursHeld": "Karty Relationships zostały bez zmian: część naszych bloków jest ukryta w SeverActions i żadnego nie da się nikomu nadać, dopóki nie zostaną przywrócone z listy Hidden.",
   "act.save": "Zapisz",
   "act.sent": "{0}: wysłano.",
   "act.traitToCorrect": "Cecha do poprawienia",

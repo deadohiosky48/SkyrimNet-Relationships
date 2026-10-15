@@ -13,6 +13,7 @@
   "act.replaceBlocks": "Z {1} odebráno bio bloků: {0}. Povaha se píše znovu a nové bloky přijdou s odpovědí.",
   "act.replaceLeft": "Pořád přidělené, odeber je v SeverActions, pokud je nechceš: {0}.",
   "act.replaceNoBlocks": "Povaha {0} se píše znovu. Bio bloky se v této hře nespravují, takže se nic nenahradilo.",
+  "act.replaceOursHeld": "Karty Relationships zůstaly, jak byly: některé naše bloky jsou v SeverActions skryté a žádný z nich nejde nikomu přidělit, dokud je neobnovíš ze seznamu Hidden.",
   "act.save": "Uložit",
   "act.sent": "{0}: odesláno.",
   "act.traitToCorrect": "Rys k opravě",

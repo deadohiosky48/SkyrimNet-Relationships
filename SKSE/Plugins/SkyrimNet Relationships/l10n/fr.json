@@ -13,6 +13,7 @@
   "act.replaceBlocks": "{0} blocs bio retirés de {1}. Son caractère est en cours de réécriture, et les nouveaux blocs suivront avec la réponse.",
   "act.replaceLeft": "Toujours en place, à retirer dans SeverActions si vous n'en voulez plus : {0}.",
   "act.replaceNoBlocks": "Réécriture du caractère de {0}. Les blocs bio ne sont pas gérés dans cette partie, aucun n'a donc été remplacé.",
+  "act.replaceOursHeld": "Les onglets de Relationships sont restés tels quels : certains de nos blocs sont masqués dans SeverActions, et aucun ne peut être donné à quiconque avant d'être restauré depuis sa liste Hidden.",
   "act.save": "Enregistrer",
   "act.sent": "{0} envoyé.",
   "act.traitToCorrect": "Trait à corriger",

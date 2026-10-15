@@ -13,6 +13,7 @@
   "act.replaceBlocks": "{0} bioblokken van {1} gehaald. Het karakter wordt opnieuw geschreven; nieuwe blokken volgen met het antwoord.",
   "act.replaceLeft": "Nog aanwezig, haal ze weg in SeverActions als je ze niet wilt: {0}.",
   "act.replaceNoBlocks": "Het karakter van {0} wordt opnieuw geschreven. Bioblokken worden in dit spel niet beheerd, dus er is niets vervangen.",
+  "act.replaceOursHeld": "De tabbladen van Relationships zijn gelaten zoals ze waren: een paar van onze blokken zijn verborgen in SeverActions, en geen ervan kan iemand krijgen tot ze uit de Hidden-lijst zijn hersteld.",
   "act.save": "Bewaren",
   "act.sent": "{0} verzonden.",
   "act.traitToCorrect": "Te corrigeren eigenschap",

@@ -13,6 +13,7 @@
   "act.replaceBlocks": "{1}에게서 바이오 블록 {0}개를 뗐습니다. 성격을 다시 쓰는 중이며, 새 블록은 응답이 오면 붙습니다.",
   "act.replaceLeft": "아직 붙어 있습니다. 원하지 않으면 SeverActions에서 떼세요: {0}.",
   "act.replaceNoBlocks": "{0}의 성격을 다시 쓰는 중입니다. 이 게임에서는 바이오 블록을 관리하지 않아 교체된 것이 없습니다.",
+  "act.replaceOursHeld": "Relationships 탭은 그대로 두었습니다. 일부 블록이 SeverActions에서 숨겨져 있어, Hidden 목록에서 복원하기 전에는 누구에게도 붙일 수 없습니다.",
   "act.save": "저장",
   "act.sent": "{0} 전송됨.",
   "act.traitToCorrect": "수정할 특성",

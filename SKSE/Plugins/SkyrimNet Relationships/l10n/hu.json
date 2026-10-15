@@ -13,6 +13,7 @@
   "act.replaceBlocks": "{0} bio blokk lekerült róla: {1}. A jellem újraíródik, az új blokkok a válasszal érkeznek.",
   "act.replaceLeft": "Még rajta vannak, vedd le őket a SeverActionsben, ha nem kellenek: {0}.",
   "act.replaceNoBlocks": "{0} jelleme újraíródik. Ebben a játékban a bio blokkokat nem kezeljük, így semmi nem cserélődött.",
+  "act.replaceOursHeld": "A Relationships fülei maradtak, ahogy voltak: néhány blokkunk rejtve van a SeverActionsben, és egyiket sem lehet senkire rátenni, amíg vissza nem állítod őket a Hidden listáról.",
   "act.save": "Mentés",
   "act.sent": "{0}: elküldve.",
   "act.traitToCorrect": "Javítandó jellemvonás",
