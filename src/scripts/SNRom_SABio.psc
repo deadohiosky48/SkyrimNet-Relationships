@@ -23,7 +23,9 @@ EndFunction
 
 Int Function DefineAll() Global
     { Offers both libraries. Called on every game load: a Define that changes
-      nothing writes nothing, and this is how new block text reaches players. }
+      nothing writes nothing, and this is how new block text reaches players.
+      The titles SeverActions refused are left in SNRom_BioRefused. }
+    StorageUtil.StringListClear(None, "SNRom_BioRefused")
     Return SNRom_SABioLib.DefineRelationships() + SNRom_SABioLib.DefineArousal()
 EndFunction
 

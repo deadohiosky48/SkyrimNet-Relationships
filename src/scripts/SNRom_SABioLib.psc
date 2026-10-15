@@ -37,10 +37,14 @@ EndFunction
 
 Int Function Def(String asKey, String asTitle, String asContent, String asTab) Global
     { One block. False means SeverActions refused the key, or the player
-      deleted this block, which is final: Define never brings it back. }
+      deleted this block, which hides it: Define never brings it back, the
+      Hidden list on the Bio Blocks page does. A refused one is named in
+      SNRom_BioRefused (2.4) so the load warning can say which, by the title
+      the player sees there. }
     If SeverActionsNativeExt2.BioApi_Define(PREFIX() + asKey, asTitle, asContent, asTab)
         Return 1
     EndIf
+    StorageUtil.StringListAdd(None, "SNRom_BioRefused", asTitle, False)
     Return 0
 EndFunction
 

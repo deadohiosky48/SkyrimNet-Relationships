@@ -11475,6 +11475,27 @@ Function SyncAfterAuthoring(Actor akActor, String asLimitPicks)
     SyncOurBlocks(akActor, picks, "after authoring")
 EndFunction
 
+String Function BioRefusedTitles() Global
+    { Which of ours SeverActions refused at the last DefineAll, by the title
+      the player sees on its Hidden list (2.4). A player told "3 are hidden"
+      had deleted duplicates and kept look-alikes with no key: the count alone
+      could not show which three were ours. }
+    Int n = StorageUtil.StringListCount(None, "SNRom_BioRefused")
+    String out = ""
+    Int i = 0
+    While i < n
+        If i > 0
+            out += "; "
+        EndIf
+        out += "'" + StorageUtil.StringListGet(None, "SNRom_BioRefused", i) + "'"
+        i += 1
+    EndWhile
+    If out == ""
+        Return "(none recorded)"
+    EndIf
+    Return out
+EndFunction
+
 String Function RestoreOurBioBlocks()
     { PLAYTHROUGH REPAIR (2.1.1, dashboard "Give everyone our bio blocks
       again"). Forgets every "the player took ours off" we recorded, then lets
@@ -11575,7 +11596,7 @@ Function BioBlocksOnLoad()
         ; brought nothing back to anyone (a VR player, 2026-10-07).
         Diag(LOG_WARN(), "Bio blocks: SeverActions accepted " + defined + " of our " + offered + ". The rest are " + \
             "hidden on its Bio Blocks page (deleting a block there hides it). Until they are restored from its " + \
-            "Hidden list, nobody's blocks are judged taken off, and none are applied.")
+            "Hidden list, nobody's blocks are judged taken off, and none are applied. Refused: " + BioRefusedTitles() + ".")
         String hint = Tr("notice.blocksHidden", "Relationships: {0} of its bio blocks are hidden in SeverActions. Restore them from the Bio Blocks page, under Hidden.", (offered - defined) as String)
         If _dashNatives >= 12
             SNRom_Native.AnnounceKey("notice.blocksHidden", "Relationships: {0} of its bio blocks are hidden in " + \
