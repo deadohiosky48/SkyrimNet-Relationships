@@ -7884,8 +7884,11 @@ EndFunction
 ; ---------------------------------------------------------------------------
 
 Bool Function COOLDOWN_DIAG() Global
-    { True while 2.4 is in pre-release testing. Set False before shipping. }
-    Return True
+    { The per-scene [cooldown] lines: True through 2.4's pre-release testing,
+      off for release. Two days of them (2026-10-14/15) showed no scene held
+      by the cooldown, the long waits being time skips, so talkCooldownHours
+      stays at 3. The daily summary is kept. }
+    Return False
 EndFunction
 
 Float Function RealMinutes(Float afGameHours) Global
