@@ -7,6 +7,7 @@
 #include "Model.h"
 
 #include <atomic>
+#include <cctype>
 #include <cmath>
 #include <functional>
 
@@ -229,6 +230,32 @@ namespace SNRom::Decorators {
             return false;
         }
 
+        // What the check forgives, measured on the first run (2026-10-16, 146
+        // bonds): Papyrus strings pass through one case-insensitive string
+        // table, so "false" can come back "False" depending on what entered it
+        // first; and Papyrus's JsonEscape turns a double quote in authored text
+        // into a single one, where the native JSON escapes it. Neither is a
+        // difference a prompt sees.
+        std::string Lower(std::string a_text) {
+            for (auto& c : a_text) {
+                c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            }
+            return a_text;
+        }
+
+        json Forgiving(const json& a_value) {
+            if (!a_value.is_string()) {
+                return a_value;
+            }
+            auto text = a_value.get<std::string>();
+            for (auto& c : text) {
+                if (c == '"') {
+                    c = ''';
+                }
+            }
+            return text;
+        }
+
         std::int32_t FormIdOf(RE::Actor* a_actor) {
             return a_actor ? static_cast<std::int32_t>(a_actor->GetFormID()) : 0;
         }
@@ -294,7 +321,7 @@ namespace SNRom::Decorators {
                     continue;
                 }
                 const auto it = mine.find(key);
-                if (it == mine.end() || *it != value) {
+                if (it == mine.end() || Forgiving(*it) != Forgiving(value)) {
                     ++disagreements;
                     SKSE::log::warn("Decorator check: {} ({:08X}) get_romance.{}: Papyrus says {}, native says {}",
                                     name, static_cast<std::uint32_t>(a_formId), key, value.dump(),
@@ -303,7 +330,7 @@ namespace SNRom::Decorators {
             }
         }
         const auto physical = PhysicalOk(a_formId);
-        if (physical != a_papyrusPhysical) {
+        if (physical != Lower(a_papyrusPhysical)) {
             ++disagreements;
             SKSE::log::warn("Decorator check: {} ({:08X}) romance_physical_ok: Papyrus says {}, native says {}", name,
                             static_cast<std::uint32_t>(a_formId), a_papyrusPhysical, physical);
