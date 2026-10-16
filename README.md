@@ -220,7 +220,7 @@ fires, modifier or not. Pick keys nothing else in your load order uses.
 
 | | |
 |---|---|
-| [SkyrimNet](https://www.nexusmods.com/skyrimspecialedition/mods/151960) | required — **Beta 25 (0.25.0) or newer** |
+| [SkyrimNet](https://github.com/MinLL/SkyrimNet-GamePlugin) | required — **Beta 25 (0.25.0) or newer** |
 | SKSE64 | required |
 | [Address Library for SKSE Plugins](https://www.nexusmods.com/skyrimspecialedition/mods/32444) | required — for the included SkyrimNetRelationships.dll |
 | PapyrusUtil SE | required — StorageUtil, JsonUtil, MiscUtil |
@@ -626,7 +626,7 @@ familiar:
 
 ## Credits
 
-Built on [SkyrimNet](https://www.nexusmods.com/skyrimspecialedition/mods/151960)
+Built on [SkyrimNet](https://github.com/MinLL/SkyrimNet-GamePlugin)
 by MinLL. The dashboard is hosted in Meridian UI by ColdSun, whose Romantasy
 carried 1.x, in Magelight UI by Severause, or in Prisma UI. Their public API
 headers are in this repository, unmodified, to build the DLL; none of their
