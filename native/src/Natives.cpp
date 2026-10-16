@@ -7,6 +7,7 @@
 #include "BioPlan.h"
 #include "Dashboard.h"
 #include "Decorators.h"
+#include "Marriage.h"
 #include "History.h"
 #include "Hotkey.h"
 #include "Notices.h"
@@ -162,6 +163,41 @@ namespace SNRom::Natives {
         // VERSION 12. The one String an op takes (2.4: SetPlayerHistory).
         std::string ActionText(RE::StaticFunctionTag*, std::int32_t a_requestId) {
             return Dashboard::ActionText(a_requestId);
+        }
+
+        // VERSION 15 (2.5, marriage phase 1). The marriage record (Marriage.h).
+        std::int32_t MarriageState(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+            return a_actor ? static_cast<std::int32_t>(
+                                 Marriage::StateOf(static_cast<std::int32_t>(a_actor->GetFormID())))
+                           : 0;
+        }
+
+        bool SetMarriageState(RE::StaticFunctionTag*, RE::Actor* a_actor, std::int32_t a_state, std::string a_why,
+                              bool a_force, RE::Actor* a_officiant, bool a_eloped) {
+            if (!a_actor) {
+                return false;
+            }
+            return Marriage::Set(static_cast<std::int32_t>(a_actor->GetFormID()),
+                                 static_cast<Marriage::State>(a_state), std::move(a_why), a_force,
+                                 a_officiant ? static_cast<std::int32_t>(a_officiant->GetFormID()) : 0, a_eloped);
+        }
+
+        std::vector<RE::Actor*> MarriageWithState(RE::StaticFunctionTag*, std::int32_t a_state) {
+            std::vector<RE::Actor*> out;
+            for (const auto id : Marriage::WithState(static_cast<Marriage::State>(a_state))) {
+                if (auto* actor = RE::TESForm::LookupByID<RE::Actor>(static_cast<RE::FormID>(id))) {
+                    out.push_back(actor);
+                }
+            }
+            return out;
+        }
+
+        bool MaraException(RE::StaticFunctionTag*) {
+            return Marriage::Exception();
+        }
+
+        void SetMaraException(RE::StaticFunctionTag*, bool a_granted) {
+            Marriage::SetException(a_granted);
         }
 
         // VERSION 14 (2.4). The native get_romance and romance_physical_ok
@@ -380,10 +416,16 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("DecoratorsNative", kScript, DecoratorsNative, true);
             a_vm->RegisterFunction("SetDecoratorFacts", kScript, SetDecoratorFacts, true);
             a_vm->RegisterFunction("CheckDecorators", kScript, CheckDecorators);  // main thread: engine facts
+            a_vm->RegisterFunction("MarriageState", kScript, MarriageState, true);
+            a_vm->RegisterFunction("SetMarriageState", kScript, SetMarriageState, true);
+            a_vm->RegisterFunction("MarriageWithState", kScript, MarriageWithState, true);
+            a_vm->RegisterFunction("MaraException", kScript, MaraException, true);
+            a_vm->RegisterFunction("SetMaraException", kScript, SetMaraException, true);
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
                             "PutBondNumbers, PutBondText, DropBond, FormIdOf, PutPlaythrough, PutRefreshFacts, "
                             "RefreshDone, ActionArgs, ActionDone, CheckBond, RecordChange, Announce, ObserversNear, AppendLog, "
-                            "BioPlan, UuidHex, ApiLoaded, ApiSelfTest, Text, ActionText, AnnounceKey, KnownProof, DecoratorsNative, SetDecoratorFacts, CheckDecorators",
+                            "BioPlan, UuidHex, ApiLoaded, ApiSelfTest, Text, ActionText, AnnounceKey, KnownProof, DecoratorsNative, SetDecoratorFacts, CheckDecorators, MarriageState, SetMarriageState, "
+                            "MarriageWithState, MaraException, SetMaraException",
                             kScript, kVersion);
             return true;
         });

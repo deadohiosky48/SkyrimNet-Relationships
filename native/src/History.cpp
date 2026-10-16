@@ -10,12 +10,9 @@ namespace SNRom::History {
 
     namespace {
 
-        // The co-save record. The unique id is this plugin's claim on its own
-        // records in the .skse file; the type tags the one kind of record it
-        // writes. Bump kRecordVersion when the layout below changes, and keep
-        // reading the old one.
-        constexpr std::uint32_t kUniqueId = 'SNRH';
-        constexpr std::uint32_t kRecordType = 'HIST';
+        // The co-save record (Cosave.cpp owns the callbacks and the unique id).
+        // Bump kRecordVersion when the layout below changes, and keep reading
+        // the old one.
         constexpr std::uint32_t kRecordVersion = 1;
 
         // Generous bounds: a reason is one sentence, and the dashboard shows
@@ -69,7 +66,7 @@ namespace SNRom::History {
             return length == 0 || a_intfc->ReadRecordData(a_text.data(), length) == length;
         }
 
-        void Save(SKSE::SerializationInterface* a_intfc) {
+        void SaveImpl(SKSE::SerializationInterface* a_intfc) {
             const std::scoped_lock lock{ g_lock };
             if (!a_intfc->OpenRecord(kRecordType, kRecordVersion)) {
                 SKSE::log::error("History: could not open the co-save record; this save has no history");
@@ -90,21 +87,15 @@ namespace SNRom::History {
             }
         }
 
-        void Load(SKSE::SerializationInterface* a_intfc) {
+        // One HIST record's body; Cosave.cpp has read its header.
+        void LoadImpl(SKSE::SerializationInterface* a_intfc, std::uint32_t a_version) {
             const std::scoped_lock lock{ g_lock };
-            g_bonds.clear();
-            std::uint32_t type = 0;
-            std::uint32_t version = 0;
-            std::uint32_t length = 0;
-            std::size_t   kept = 0;
-            std::size_t   dropped = 0;
-            while (a_intfc->GetNextRecordInfo(type, version, length)) {
-                if (type != kRecordType) {
-                    continue;
-                }
-                if (version != kRecordVersion) {
-                    SKSE::log::warn("History: co-save record version {} is not one this DLL reads; skipped", version);
-                    continue;
+            std::size_t kept = 0;
+            std::size_t dropped = 0;
+            {
+                if (a_version != kRecordVersion) {
+                    SKSE::log::warn("History: co-save record version {} is not one this DLL reads; skipped", a_version);
+                    return;
                 }
                 std::uint32_t bonds = 0;
                 if (a_intfc->ReadRecordData(bonds) != sizeof(bonds) || bonds > kMaxBonds) {
@@ -154,12 +145,21 @@ namespace SNRom::History {
                             kept, g_bonds.size(), dropped);
         }
 
-        // A new game, and before any load: the history belongs to the save
-        // being left (design 6.4 - nothing outlives its timeline).
-        void Revert(SKSE::SerializationInterface*) {
-            const std::scoped_lock lock{ g_lock };
-            g_bonds.clear();
-        }
+    }
+
+    void Save(SKSE::SerializationInterface* a_intfc) {
+        SaveImpl(a_intfc);
+    }
+
+    void Load(SKSE::SerializationInterface* a_intfc, std::uint32_t a_version) {
+        LoadImpl(a_intfc, a_version);
+    }
+
+    // A new game, and before any load: the history belongs to the save
+    // being left (design 6.4 - nothing outlives its timeline).
+    void Revert() {
+        const std::scoped_lock lock{ g_lock };
+        g_bonds.clear();
     }
 
     void Record(std::int32_t a_formId, std::string a_kind, std::int32_t a_delta, std::int32_t a_total,
@@ -203,15 +203,4 @@ namespace SNRom::History {
         return out;
     }
 
-    bool Register() {
-        const auto* serialization = SKSE::GetSerializationInterface();
-        if (!serialization) {
-            return false;
-        }
-        serialization->SetUniqueID(kUniqueId);
-        serialization->SetSaveCallback(Save);
-        serialization->SetLoadCallback(Load);
-        serialization->SetRevertCallback(Revert);
-        return true;
-    }
 }

@@ -461,6 +461,7 @@ Function RegisterEvents()
     ; Signature is the standard SKSE shape, documented in MARAS.psc:585:
     ;   (String eventName, String status, Float statusEnum, Form npc)
     RegisterForModEvent("maras_status_changed", "OnMarasStatusChanged")
+    RegisterForModEvent("SNRom_MarriageChanged", "OnMarriageChanged")
     ; SkyrimNetRelationships.dll asks for the roster every time the dashboard
     ; opens (OnDashboardRefresh). Without the DLL it never fires, and this costs
     ; nothing.
@@ -4858,6 +4859,9 @@ Int Function CommitmentState(Actor akActor) Global
     If IsMarriedToPlayer(akActor)
         Return 3
     EndIf
+    If OurMarriage(akActor) == MARRIAGE_ENGAGED()       ; 2.5; Display::Commitment too
+        Return 2
+    EndIf
     If MarasPresent()
         If MARAS.IsNPCStatus(akActor, "engaged")
             Return 2
@@ -4886,11 +4890,98 @@ Bool Function IsMarriedToPlayer(Actor akActor) Global
     If married != None && akActor.IsInFaction(married)
         Return True
     EndIf
+    ; OUR OWN RECORD (2.5, marriage phase 1): married, or separated and still
+    ; married. Display::MarriedToPlayer has the same line.
+    Int ours = OurMarriage(akActor)
+    If ours == MARRIAGE_MARRIED() || ours == MARRIAGE_SEPARATED()
+        Return True
+    EndIf
     If MarasPresent() && MARAS.IsNPCStatus(akActor, "married")
         Return True
     EndIf
     Return False
 EndFunction
+
+; ===========================================================================
+; THE MARRIAGE RECORD (2.5, marriage phase 1, M1). Relationships keeps its own
+; record of who the player is engaged or married to, in the DLL and the co-save
+; (native/src/Marriage.h), so a player can drop MARAS. Numbered as
+; Marriage::State. COURTING is not stored: it is the spark and a yes.
+; ===========================================================================
+
+Int Function MARRIAGE_NONE() Global
+    Return 0
+EndFunction
+Int Function MARRIAGE_ENGAGED() Global
+    Return 1
+EndFunction
+Int Function MARRIAGE_MARRIED() Global
+    Return 2
+EndFunction
+Int Function MARRIAGE_BROKEN_OFF() Global
+    Return 3
+EndFunction
+Int Function MARRIAGE_DIVORCED() Global
+    Return 4
+EndFunction
+Int Function MARRIAGE_WIDOWED() Global
+    Return 5
+EndFunction
+Int Function MARRIAGE_SEPARATED() Global
+    Return 6
+EndFunction
+
+Int Function OurMarriage(Actor akActor) Global
+    { Our record's state for this person; MARRIAGE_NONE without the DLL that
+      keeps it. Global, for IsMarriedToPlayer and CommitmentState: the natives
+      version is the one ArmDashboard stored. }
+    If akActor == None || StorageUtil.GetIntValue(None, "SNRom_NativesV", 0) < 15
+        Return 0
+    EndIf
+    Return SNRom_Native.MarriageState(akActor)
+EndFunction
+
+Bool Function ChangeMarriage(Actor akActor, Int aiState, String asWhy, Bool abForce = False, \
+                             Actor akOfficiant = None, Bool abEloped = False)
+    { THE ONE WAY A MARRIAGE CHANGES. Writes the record (which refuses an
+      illegal step unless abForce), then puts the game in step with it: married
+      means vanilla's PlayerMarriedFaction and a lover's regard, as a vanilla
+      wedding leaves them; divorced or widowed takes the faction away. The
+      record's event (OnMarriageChanged) does the rest. }
+    If akActor == None || _dashNatives < 15
+        Return False
+    EndIf
+    If !SNRom_Native.SetMarriageState(akActor, aiState, asWhy, abForce, akOfficiant, abEloped)
+        Return False
+    EndIf
+    Faction married = Game.GetFormFromFile(0x000C6472, "Skyrim.esm") as Faction   ; PlayerMarriedFaction
+    If aiState == MARRIAGE_MARRIED() && married != None && !akActor.IsInFaction(married)
+        akActor.AddToFaction(married)
+        If akActor.GetRelationshipRank(Game.GetPlayer()) < 4
+            akActor.SetRelationshipRank(Game.GetPlayer(), 4)
+        EndIf
+    ElseIf (aiState == MARRIAGE_DIVORCED() || aiState == MARRIAGE_WIDOWED()) && married != None
+        akActor.RemoveFromFaction(married)
+    EndIf
+    Return True
+EndFunction
+
+Event OnMarriageChanged(String asEventName, String asState, Float afState, Form akSender)
+    { SNRom_MarriageChanged, from the record (Marriage.cpp). What every change
+      needs downstream: the read API and both decorators see the new commitment,
+      and a new spouse is re-read so the Spouse ceiling applies, as a MARAS
+      marriage always was. }
+    ApiFactsChanged()
+    Actor who = akSender as Actor
+    If who == None || !_ready
+        Return
+    EndIf
+    ApiTouch(who)
+    Diag(LOG_INFO(), "Marriage: " + who.GetDisplayName() + " is now " + asState + ".")
+    If (afState as Int) == MARRIAGE_MARRIED() && IsEnrolled(who)
+        ReseedActor(who)
+    EndIf
+EndEvent
 
 Bool Function SeedRomanticEvidence(Actor akActor)
     { EXPLICIT DECLARATIONS ONLY. Not points, not tier, not rapport, not
@@ -6710,9 +6801,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 14
+    If natives < 15
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v14). Install the DLL from the same release.", True)
+            ", these need v15). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5

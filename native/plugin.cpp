@@ -1,5 +1,6 @@
 #include "PCH.h"
 
+#include "src/Cosave.h"
 #include "src/Dashboard.h"
 #include "src/Decorators.h"
 #include "src/History.h"
@@ -78,7 +79,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
 
     // What moved each bond lives in the co-save, so it rolls back with the
     // save that holds the points it explains (History.h).
-    if (!SNRom::History::Register()) {
+    if (!SNRom::Cosave::Register()) {
         SKSE::log::error("No serialization interface: bond history will not be kept this session");
     }
 

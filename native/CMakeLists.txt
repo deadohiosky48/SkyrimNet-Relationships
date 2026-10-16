@@ -80,12 +80,14 @@ set(SOURCES
     plugin.cpp
     src/Api.cpp
     src/BioPlan.cpp
+    src/Cosave.cpp
     src/Dashboard.cpp
     src/Decorators.cpp
     src/Display.cpp
     src/History.cpp
     src/Hotkey.cpp
     src/MagelightHost.cpp
+    src/Marriage.cpp
     src/MeridianHost.cpp
     src/Model.cpp
     src/L10n.cpp

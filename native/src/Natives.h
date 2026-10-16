@@ -25,7 +25,9 @@ namespace SNRom::Natives {
     //  14  DecoratorsNative, SetDecoratorFacts, CheckDecorators: the native
     //      get_romance and romance_physical_ok (Decorators.h); PutBondNumbers
     //      takes 27 numbers
-    inline constexpr std::int32_t kVersion = 14;
+    //  15  MarriageState, SetMarriageState, MarriageWithState, MaraException,
+    //      SetMaraException: the marriage record (Marriage.h, 2.5)
+    inline constexpr std::int32_t kVersion = 15;
 
     // Registers the natives declared in src/scripts/SNRom_Native.psc.
     void Register(const SKSE::PapyrusInterface* a_papyrus);

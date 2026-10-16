@@ -1,5 +1,7 @@
 #include "Display.h"
 
+#include "Marriage.h"
+
 // Every function here is a copy, for display only, of a Papyrus function the
 // gates keep calling. Each Papyrus line is quoted above the line that mirrors
 // it; a change to either side is a change to both. See Display.h.
@@ -36,6 +38,12 @@ namespace SNRom::Display {
         if (a_engine.marriedFaction) {
             return true;
         }
+        //   If OurMarriage(akActor) >= married      ; 2.5, SNRom_Native.MarriageState
+        //       Return True
+        //   EndIf
+        if (Marriage::Married(a_formId)) {
+            return true;
+        }
         //   If MarasPresent() && MARAS.IsNPCStatus(akActor, "married")
         //       Return True
         //   EndIf
@@ -51,6 +59,12 @@ namespace SNRom::Display {
         //   EndIf
         if (MarriedToPlayer(a_formId, a_engine, a_batch)) {
             return 3;
+        }
+        //   If OurMarriage(akActor) == engaged       ; 2.5
+        //       Return 2
+        //   EndIf
+        if (Marriage::Engaged(a_formId)) {
+            return 2;
         }
         //   If MarasPresent()
         //       If MARAS.IsNPCStatus(akActor, "engaged")

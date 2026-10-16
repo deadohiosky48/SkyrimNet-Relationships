@@ -5,6 +5,10 @@
 
 #include <nlohmann/json.hpp>
 
+namespace SKSE {
+    class SerializationInterface;
+}
+
 // What moved each bond, and why: the last few changes to a bond's depth, kept
 // in the save itself (the SKSE co-save), so loading an older save rolls the
 // history back along with the points it explains.
@@ -35,7 +39,10 @@ namespace SNRom::History {
     // a bond with none.
     nlohmann::json Recent(std::int32_t a_formId);
 
-    // SKSEPluginLoad: claim a co-save record and the save, load and revert
-    // callbacks. False if SKSE has no serialization interface for us.
-    bool Register();
+    // The co-save (Cosave.cpp dispatches to these). Load reads one record's
+    // body after its header; Revert empties the history.
+    inline constexpr std::uint32_t kRecordType = 'HIST';
+    void Save(SKSE::SerializationInterface* a_intfc);
+    void Load(SKSE::SerializationInterface* a_intfc, std::uint32_t a_version);
+    void Revert();
 }

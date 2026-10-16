@@ -23,7 +23,8 @@ Int Function Version() Global Native
   11  Text (2.3)
   12  ActionText, AnnounceKey; PutBondText takes 4 strings (2.4)
   13  KnownProof (2.4)
-  14  DecoratorsNative, SetDecoratorFacts, CheckDecorators; PutBondNumbers takes 27 (2.4)}
+  14  DecoratorsNative, SetDecoratorFacts, CheckDecorators; PutBondNumbers takes 27 (2.4)
+  15  MarriageState, SetMarriageState, MarriageWithState, MaraException, SetMaraException (2.5)}
 
 Bool Function SetDashboardHotkey(Int aiVirtualKey, Int aiModifierVirtualKey) Global Native
 {Binds the dashboard key. aiVirtualKey is a Windows VIRTUAL-KEY code, which is
@@ -120,6 +121,27 @@ Int[] Function ActionArgs(Int aiRequestId) Global Native
 {The Int arguments the page sent with request aiRequestId, in order: a trait
  and a value for SetCharacterField, a field for ForceDriftReview. Empty for
  any other op, or a request the DLL no longer holds.}
+
+Int Function MarriageState(Actor akActor) Global Native
+{VERSION 15 (2.5). akActor's marriage to the player in Relationships' own record:
+ 0 none, 1 engaged, 2 married, 3 broken off, 4 divorced, 5 widowed, 6
+ separated (SNRom_Bridge.MARRIAGE_*).}
+
+Bool Function SetMarriageState(Actor akActor, Int aiState, String asWhy, Bool abForce, Actor akOfficiant, Bool abEloped) Global Native
+{VERSION 15 (2.5). The record's one writer: refuses a step that is not a legal
+ one unless abForce, stamps the game day, and fires SNRom_MarriageChanged.
+ akOfficiant and abEloped are kept for a marriage. False if refused or
+ unchanged. Call SNRom_Bridge.ChangeMarriage, which keeps the game in step.}
+
+Actor[] Function MarriageWithState(Int aiState) Global Native
+{VERSION 15 (2.5). Everyone in the record in aiState.}
+
+Bool Function MaraException() Global Native
+{VERSION 15 (2.5). Whether Mara has granted the player her exception: another
+ marriage while already married.}
+
+Function SetMaraException(Bool abGranted) Global Native
+{VERSION 15 (2.5). Grants or withdraws it. Kept in the save.}
 
 Bool Function DecoratorsNative() Global Native
 {VERSION 14 (2.4). True when the DLL answers get_romance and
