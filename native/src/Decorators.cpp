@@ -250,7 +250,7 @@ namespace SNRom::Decorators {
             auto text = a_value.get<std::string>();
             for (auto& c : text) {
                 if (c == '"') {
-                    c = ''';
+                    c = '\'';
                 }
             }
             return text;
