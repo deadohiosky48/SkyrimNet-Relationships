@@ -93,6 +93,7 @@ namespace SNRom::Model {
         kLimit,    // store key <formId>.Limit
         kAddress,  // store key <formId>.Address
         kPlayerSays,  // store key <formId>.History: the player's own account (2.4, WP-T)
+        kAddressDropped,  // store key <formId>.AddressDropped: a name the player cleared (2.4)
         kTextCount
     };
 

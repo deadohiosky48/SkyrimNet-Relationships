@@ -5967,6 +5967,14 @@ Function ClearAddress(Actor akActor)
     EndIf
     String was = StoreGetText(akActor, "Address")
     JsonUtil.UnsetStringValue(StoreFile(), StoreKey(akActor, "Address"))
+    ; REMEMBERED, SO IT CAN BE UNSAID (measured 2026-10-16). Clearing ours took
+    ; "my bear" out of Fridrika's bond section, and she said it again at once:
+    ; SkyrimNet's own bio for her says she calls him that, and five of her
+    ; recent lines do. 0330 now tells her she no longer does, until a new name
+    ; is set (TakeAddress forgets this).
+    If was != ""
+        JsonUtil.SetStringValue(StoreFile(), StoreKey(akActor, "AddressDropped"), was)
+    EndIf
     JsonUtil.Save(StoreFile())
     Diag(LOG_INFO(), akActor.GetDisplayName() + " no longer has a saved name for " +         Game.GetPlayer().GetDisplayName() + " (was: " + was + ").")
     PushBondText(akActor)
@@ -6083,6 +6091,7 @@ Function TakeAddress(Actor akActor, String asName, String asValue)
         Return
     EndIf
     StoreSetText(akActor, "Address", v)
+    JsonUtil.UnsetStringValue(StoreFile(), StoreKey(akActor, "AddressDropped"))
     ; The dashboard holds ADDRESS too; see PushBondText.
     If _dashText || _dashNatives >= 14
         PushBondText(akActor)
@@ -6877,11 +6886,12 @@ String[] Function DashboardText(Actor akActor, String asStoreName) Global
       into Relationships (the author, 2026-09-30); phase 5's own preferences,
       against our vocabulary, are the ones the dashboard will show. }
     Int id = SNRom_Native.FormIdOf(akActor)
-    String[] t = new String[4]
+    String[] t = new String[5]
     t[0] = StoreGetText(akActor, "Why", asStoreName, id)
     t[1] = StoreGetText(akActor, "Limit", asStoreName, id)
     t[2] = StoreGetText(akActor, "Address", asStoreName, id)
     t[3] = StoreGetText(akActor, "History", asStoreName, id)   ; 2.4, WP-T
+    t[4] = StoreGetText(akActor, "AddressDropped", asStoreName, id)   ; 2.4, ClearAddress
     Return t
 EndFunction
 

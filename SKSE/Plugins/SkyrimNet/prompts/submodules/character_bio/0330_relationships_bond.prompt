@@ -686,6 +686,15 @@ You expected one person and one life, because that is what people expect - not b
 What went before, in {{ player.name }}'s words: "{{ history_line }}" That is your history together, from before any of this. Let it show in what you take for granted about them and what you never need to explain; do not recite it.
 {% endif %}
 {% set address_line = default(rom.address, "") %}
+{# A NAME THE PLAYER CLEARED (2.4, "Forget what they call you"). Our line was
+   gone, and Fridrika called him "my bear" in her very next reply: SkyrimNet's
+   own bio for her and her recent lines still say it. So it is unsaid here,
+   plainly, until a new one is set. #}
+{% set address_dropped = default(rom.addressDropped, "") %}
+{% if address_line == "" and address_dropped != "" %}
+
+You do not call {{ player.name }} "{{ address_dropped }}" any more. Whatever you said before, and whatever else says otherwise, that name is not one you use now: call them by their name, or by nothing.
+{% endif %}
 {% if address_line != "" and standing >= 0 %}
 
 **You address {{ player.name }} as: {{ address_line }}** — and you do not drift from it. This is settled between you, not a style choice you revisit.

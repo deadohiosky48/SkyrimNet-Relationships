@@ -182,6 +182,7 @@ namespace SNRom::Decorators {
                 { "limit", a_row.text[Model::kLimit] },
                 { "address", a_row.text[Model::kAddress] },
                 { "history", a_row.text[Model::kPlayerSays] },
+                { "addressDropped", a_row.text[Model::kAddressDropped] },
                 { "romanceNA", Applicability(a_formId, a_row) },
                 { "physMinTier", n[Model::kPhysMinTier] },
                 { "otherPartners", OtherPartners(a_row) },
