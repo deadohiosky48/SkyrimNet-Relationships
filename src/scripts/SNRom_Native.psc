@@ -22,7 +22,8 @@ Int Function Version() Global Native
   10  ApiLoaded; PutBondNumbers takes 25 numbers
   11  Text (2.3)
   12  ActionText, AnnounceKey; PutBondText takes 4 strings (2.4)
-  13  KnownProof (2.4)}
+  13  KnownProof (2.4)
+  14  DecoratorsNative, SetDecoratorFacts, CheckDecorators; PutBondNumbers takes 27 (2.4)}
 
 Bool Function SetDashboardHotkey(Int aiVirtualKey, Int aiModifierVirtualKey) Global Native
 {Binds the dashboard key. aiVirtualKey is a Windows VIRTUAL-KEY code, which is
@@ -119,6 +120,21 @@ Int[] Function ActionArgs(Int aiRequestId) Global Native
 {The Int arguments the page sent with request aiRequestId, in order: a trait
  and a value for SetCharacterField, a field for ForceDriftReview. Empty for
  any other op, or a request the DLL no longer holds.}
+
+Bool Function DecoratorsNative() Global Native
+{VERSION 14 (2.4). True when the DLL answers get_romance and
+ romance_physical_ok itself (registered with SkyrimNet at kDataLoaded): they
+ then work while the game is paused, and SNRom_Bridge.RegisterDecorators does
+ not register the Papyrus pair.}
+
+Function SetDecoratorFacts(Int aiPartnerCount, Float afBypassRatio) Global Native
+{VERSION 14 (2.4). The two facts the native decorators cannot read from the
+ model: SNRom_PartnerCount and the attractionBypassRatio setting.}
+
+Int Function CheckDecorators(Actor akActor, String asPapyrusRomance, String asPapyrusPhysical) Global Native
+{VERSION 14 (2.4). Developer check: the native get_romance and
+ romance_physical_ok for akActor against the Papyrus answers given, field by
+ field. Logs each difference to SkyrimNetRelationships.log; returns how many.}
 
 String Function KnownProof(Actor akActor) Global Native
 {VERSION 13 (2.4). How long the player and akActor have known each other, from

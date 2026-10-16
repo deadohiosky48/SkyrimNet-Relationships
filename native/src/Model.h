@@ -76,6 +76,8 @@ namespace SNRom::Model {
         kAttractionMilli,     // StorageUtil Float SNRom_AttractionRatio x 1000
         // 2.2 (WP-N), appended.
         kPeakTier,            // StorageUtil Int SNRom_PeakTier, -9 when never recorded
+        // 2.4, appended: for the native get_romance (Decorators.h).
+        kBioHasBits,          // StorageUtil Int SNRom_BioHasBits: 1 Drawn To, 4 Attachment
         kNumberCount
     };
 
@@ -238,6 +240,8 @@ namespace SNRom::Model {
         Display::BatchFacts Facts() const;
         // One row's numbers, if it has any (the display check reads them).
         std::optional<Numbers> NumbersOf(std::int32_t a_formId) const;
+        // One row's text, if any was pushed (the native get_romance reads it).
+        std::optional<Texts> TextsOf(std::int32_t a_formId) const;
         // Every row that has numbers (the read API's roster).
         std::vector<std::int32_t> FormIds() const;
         void Drop(std::int32_t a_formId);

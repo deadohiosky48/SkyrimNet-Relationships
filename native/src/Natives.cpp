@@ -6,6 +6,7 @@
 #include "L10n.h"
 #include "BioPlan.h"
 #include "Dashboard.h"
+#include "Decorators.h"
 #include "History.h"
 #include "Hotkey.h"
 #include "Notices.h"
@@ -161,6 +162,23 @@ namespace SNRom::Natives {
         // VERSION 12. The one String an op takes (2.4: SetPlayerHistory).
         std::string ActionText(RE::StaticFunctionTag*, std::int32_t a_requestId) {
             return Dashboard::ActionText(a_requestId);
+        }
+
+        // VERSION 14 (2.4). The native get_romance and romance_physical_ok
+        // (Decorators.h): whether they are live, the two facts they cannot
+        // read from the model, and the developer check against Papyrus.
+        bool DecoratorsNative(RE::StaticFunctionTag*) {
+            return Decorators::Active();
+        }
+
+        void SetDecoratorFacts(RE::StaticFunctionTag*, std::int32_t a_partnerCount, float a_bypassRatio) {
+            Decorators::SetFacts(a_partnerCount, a_bypassRatio);
+        }
+
+        std::int32_t CheckDecorators(RE::StaticFunctionTag*, RE::Actor* a_actor, std::string a_romance,
+                                     std::string a_physical) {
+            return a_actor ? Decorators::Check(static_cast<std::int32_t>(a_actor->GetFormID()), a_romance, a_physical)
+                           : 0;
         }
 
         // VERSION 13. How long the player and someone have known each other,
@@ -359,10 +377,13 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("ApiLoaded", kScript, ApiLoaded, true);
             a_vm->RegisterFunction("ApiSelfTest", kScript, ApiSelfTest, true);
             a_vm->RegisterFunction("KnownProof", kScript, KnownProof, true);
+            a_vm->RegisterFunction("DecoratorsNative", kScript, DecoratorsNative, true);
+            a_vm->RegisterFunction("SetDecoratorFacts", kScript, SetDecoratorFacts, true);
+            a_vm->RegisterFunction("CheckDecorators", kScript, CheckDecorators);  // main thread: engine facts
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
                             "PutBondNumbers, PutBondText, DropBond, FormIdOf, PutPlaythrough, PutRefreshFacts, "
                             "RefreshDone, ActionArgs, ActionDone, CheckBond, RecordChange, Announce, ObserversNear, AppendLog, "
-                            "BioPlan, UuidHex, ApiLoaded, ApiSelfTest, Text, ActionText, AnnounceKey, KnownProof",
+                            "BioPlan, UuidHex, ApiLoaded, ApiSelfTest, Text, ActionText, AnnounceKey, KnownProof, DecoratorsNative, SetDecoratorFacts, CheckDecorators",
                             kScript, kVersion);
             return true;
         });

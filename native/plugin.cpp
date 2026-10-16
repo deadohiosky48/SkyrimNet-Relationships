@@ -1,6 +1,7 @@
 #include "PCH.h"
 
 #include "src/Dashboard.h"
+#include "src/Decorators.h"
 #include "src/History.h"
 #include "src/Hotkey.h"
 #include "src/L10n.h"
@@ -46,6 +47,9 @@ namespace {
             SNRom::L10n::SetLanguage("Game");
             SNRom::Settings::StartWatching();
             SNRom::Notices::Start();
+            // Before any save loads, so no prompt ever reaches the Papyrus pair
+            // while these are live (Decorators.h).
+            SNRom::Decorators::Register();
             break;
         // THE READ MODEL NEVER OUTLIVES ITS TIMELINE. Cleared before any save
         // loads and when a new game starts, so the dashboard can't show a

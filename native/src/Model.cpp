@@ -352,6 +352,15 @@ namespace SNRom::Model {
         return it->second.numbers;
     }
 
+    std::optional<Texts> ReadModel::TextsOf(std::int32_t a_formId) const {
+        const std::scoped_lock lock{ m_lock };
+        const auto             it = m_rows.find(a_formId);
+        if (it == m_rows.end()) {
+            return std::nullopt;
+        }
+        return it->second.text;
+    }
+
     std::vector<std::int32_t> ReadModel::FormIds() const {
         const std::scoped_lock    lock{ m_lock };
         std::vector<std::int32_t> ids;

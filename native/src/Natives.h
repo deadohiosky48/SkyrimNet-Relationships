@@ -22,7 +22,10 @@ namespace SNRom::Natives {
     //  11  Text: a string in the player's language (L10n.h)
     //  12  ActionText, AnnounceKey; PutBondText takes 4 strings
     //  13  KnownProof: time known, from SkyrimNet's database (SkyrimNetLink.h)
-    inline constexpr std::int32_t kVersion = 13;
+    //  14  DecoratorsNative, SetDecoratorFacts, CheckDecorators: the native
+    //      get_romance and romance_physical_ok (Decorators.h); PutBondNumbers
+    //      takes 27 numbers
+    inline constexpr std::int32_t kVersion = 14;
 
     // Registers the natives declared in src/scripts/SNRom_Native.psc.
     void Register(const SKSE::PapyrusInterface* a_papyrus);

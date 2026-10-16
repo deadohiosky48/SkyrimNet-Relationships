@@ -494,6 +494,19 @@ Function RegisterDecorators()
     ; Beta 25 every registered Papyrus decorator is also something the cache
     ; must warm, so dead ones compete with the two that matter. Unregistered
     ; 2026-09-27; IsEnrolled and CanBegin themselves stay, as plain functions.
+    ;
+    ; NATIVE FIRST (2.4, natives 14). A Papyrus decorator cannot run while the
+    ; game is paused, and SkyrimNet builds a dialogue prompt with the dialogue
+    ; menu open: an uncached get_romance came back empty and the whole bond
+    ; section went with it - in up to a third of conversations with enrolled
+    ; people (2026-10-16). The DLL registers both at kDataLoaded and answers
+    ; from the read model (native/src/Decorators.h). These are registered only
+    ; if it could not; the functions stay for the display check.
+    If DashboardDllPresent() && SNRom_Native.Version() >= 14 && SNRom_Native.DecoratorsNative()
+        Diag(LOG_INFO(), "Decorators: get_romance and romance_physical_ok are answered natively, so they " + \
+            "work while the game is paused.")
+        Return
+    EndIf
     Int c = SkyrimNetApi.RegisterDecorator("romance_physical_ok", "SNRom_Decorators", "PhysicalOk")
     Int e = SkyrimNetApi.RegisterDecorator("get_romance",         "SNRom_Decorators", "GetRomance")
     Diag(LOG_INFO(), "RegisterDecorator rc: physical_ok=" + c + " get_romance=" + e)
@@ -3300,7 +3313,7 @@ Function StartFreshStore()
     StorageUtil.SetIntValue(None, "SNRom_SaveId", 2)
     WriteStorePointer()
     DashboardCacheStore()
-    If _dashText
+    If _dashText || _dashNatives >= 14
         PushAllBondText()
     EndIf
     Diag(LOG_INFO(), "This playthrough now has its own disposition store: " + StoreFile() + \
@@ -3325,7 +3338,7 @@ Function AdoptLegacyStore()
     EndIf
     WriteStorePointer()
     DashboardCacheStore()
-    If _dashText
+    If _dashText || _dashNatives >= 14
         PushAllBondText()
     EndIf
     Diag(LOG_INFO(), "Adopted the main disposition store, now claimed by playthrough '" + \
@@ -5272,6 +5285,7 @@ Function RefreshPartnerCount()
         Diag(LOG_INFO(), "Acknowledged partners: " + n + ". The bond prompt uses this " + \
             "so an exclusivity boundary is not described as hypothetical to someone " + \
             "already living with the answer.")
+        ApiFactsChanged()
     EndIf
     StorageUtil.SetIntValue(None, "SNRom_PartnerCount", n)
 EndFunction
@@ -6070,7 +6084,7 @@ Function TakeAddress(Actor akActor, String asName, String asValue)
     EndIf
     StoreSetText(akActor, "Address", v)
     ; The dashboard holds ADDRESS too; see PushBondText.
-    If _dashText
+    If _dashText || _dashNatives >= 14
         PushBondText(akActor)
     EndIf
     Diag(LOG_INFO(), asName + " now calls " + Game.GetPlayer().GetDisplayName() + \
@@ -6317,7 +6331,7 @@ Event OnSeedAssessed(String asResponse, Int aiSuccess)
       runs - a re-read started from the dashboard ends here. }
     Actor who = _seedActor
     SeedAssessed(asResponse, aiSuccess)
-    If _dashText
+    If _dashText || _dashNatives >= 14
         PushBond(who, 0)
     EndIf
 EndEvent
@@ -6687,9 +6701,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 13
+    If natives < 14
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v13). Install the DLL from the same release.", True)
+            ", these need v14). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5
@@ -6812,7 +6826,7 @@ Int[] Function DashboardNumbers(Actor akActor) Global
 
       NO SKYRIMNET CALL, NO DIAG, NO JSONUTIL: it runs inside
       OnDashboardRefresh, while the dashboard has the game paused. }
-    Int[] n = new Int[26]
+    Int[] n = new Int[27]
     Int[] pts = DashboardPoints(akActor)
     n[0] = pts[0]                                                                       ; kPoints
     n[1] = pts[1]                                                                       ; kTier
@@ -6842,6 +6856,7 @@ Int[] Function DashboardNumbers(Actor akActor) Global
     n[24] = (StorageUtil.GetFloatValue(akActor, "SNRom_AttractionRatio", 0.0) * 1000.0) as Int ; kAttractionMilli
     ; 2.2 (WP-N): the highest tier they ever held, for Estranged.
     n[25] = StorageUtil.GetIntValue(akActor, "SNRom_PeakTier", -9)                      ; kPeakTier
+    n[26] = StorageUtil.GetIntValue(akActor, "SNRom_BioHasBits", 0)                     ; kBioHasBits (2.4)
     Return n
 EndFunction
 
@@ -6997,6 +7012,12 @@ String Function CheckDashboardDisplay()
             SNRom_Native.PutBondNumbers(-1, a, DashboardNumbers(a))
             disagreements += SNRom_Native.CheckBond(a, IsFollowing(a), CommitmentState(a), \
                 SNRom_Decorators.RomanceApplicability(a, _dashKinGuard))
+            ; THE NATIVE DECORATORS AGAINST PAPYRUS'S (2.4), field by field.
+            If _dashNatives >= 14
+                SNRom_Native.PutBondText(-1, a, DashboardText(a, ""))
+                disagreements += SNRom_Native.CheckDecorators(a, SNRom_Decorators.GetRomance(a), \
+                    SNRom_Decorators.PhysicalOk(a))
+            EndIf
             checked += 1
         EndIf
         i += 1
@@ -9802,7 +9823,7 @@ Event OnDispositionAuthored(String asResponse, Int aiSuccess)
     SyncAfterAuthoring(who, _limitPicks)
     ApplyOtherBlocks(who, _otherPicks)
     _otherKeys = ""
-    If _dashText
+    If _dashText || _dashNatives >= 14
         PushBond(who, 0)
     EndIf
 EndEvent
@@ -9973,7 +9994,7 @@ Function ApplyProse(Actor akActor, String asResponse, String asName)
     ; THE DASHBOARD HOLDS THIS TEXT once a full refresh has answered this
     ; session, so the change goes to it now, not at the next load. A Bool when
     ; nobody has opened it. See PushBondText.
-    If _dashText
+    If _dashText || _dashNatives >= 14
         PushBondText(akActor)
     EndIf
 EndFunction
@@ -10930,6 +10951,15 @@ Function ApiTouch(Actor akActor)
     ApiScheduleFlush()
 EndFunction
 
+Function ApiPushDecoratorFacts()
+    { What the native decorators cannot read from the model: the player's
+      acknowledged partners and the attraction bypass setting (Decorators.h). }
+    If _dashNatives >= 14
+        SNRom_Native.SetDecoratorFacts(StorageUtil.GetIntValue(None, "SNRom_PartnerCount", 0), \
+            SkyrimNetApi.GetConfigFloat(CFG(), "attractionBypassRatio", 1.5))
+    EndIf
+EndFunction
+
 Function ApiFactsChanged()
     { The facts commitment and the gate depend on may have moved. }
     If _dashNatives < 10
@@ -10963,6 +10993,7 @@ Function ApiFlush()
     If _apiFactsDirty
         _apiFactsDirty = False
         DashboardPutFacts(0)
+        ApiPushDecoratorFacts()
     EndIf
     Int n = StorageUtil.FormListCount(None, "SNRom_ApiDirty")
     While n > 0
@@ -10989,6 +11020,7 @@ Function ApiPublishAll()
     StorageUtil.FormListClear(None, "SNRom_ApiDirty")
     _apiFactsDirty = False
     DashboardPutFacts(0)
+    ApiPushDecoratorFacts()
     Int count = StorageUtil.FormListCount(None, "SNRom_Roster")
     Int pushed = 0
     Int i = 0
@@ -10996,6 +11028,12 @@ Function ApiPublishAll()
         Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
         If a != None && IsEnrolled(a)
             SNRom_Native.PutBondNumbers(0, a, DashboardNumbers(a))
+            ; THE TEXT TOO (2.4): the native get_romance reads WHY, LIMIT,
+            ; ADDRESS and the player's history from the model, whether or not
+            ; the dashboard is ever opened.
+            If _dashNatives >= 14
+                SNRom_Native.PutBondText(0, a, DashboardText(a, ""))
+            EndIf
             pushed += 1
         EndIf
         i += 1

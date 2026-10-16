@@ -81,6 +81,7 @@ set(SOURCES
     src/Api.cpp
     src/BioPlan.cpp
     src/Dashboard.cpp
+    src/Decorators.cpp
     src/Display.cpp
     src/History.cpp
     src/Hotkey.cpp
