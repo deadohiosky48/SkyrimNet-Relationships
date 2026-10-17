@@ -90,7 +90,7 @@ Note the direction carefully: "open" here means open to sharing, which is a lowe
 
 A pattern is made of **occasions**: specific things that happened, more than once, that you can point at in the material below. If you cannot name at least two, the answer is NO.
 
-{% if maras_present == 1 %}{% if npc_married == 1 %}
+{% if marriage_known == 1 %}{% if npc_married == 1 %}
 {{ npc_name }} is married to {{ player.name }}. A settled marriage is context for reading the material, not a pattern of change in itself.
 {% else if npc_engaged == 1 %}
 {{ npc_name }} is engaged to {{ player.name }}. An engagement is context for reading the material, not a pattern of change in itself.

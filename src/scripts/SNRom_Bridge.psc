@@ -4652,25 +4652,53 @@ String Function MarasContext(Actor akActor) Global
       who will never be a lover has to be able to reach it - gating it on a
       marriage system would collapse the two tracks back into one ladder. These
       are facts for the NPC to judge, which is the whole design. }
+    ;
+    ; 2.5 (M2): marriage_known gates the prompts' marriage lines, which used to
+    ; need MARAS. Our record makes a marriage known without it. marriage_ours
+    ; and mara_exception say whose rule on more spouses applies; a candidate,
+    ; when we own marriage, is someone at Spouse who is not yet engaged or
+    ; married (M3 narrows it to who may actually be asked).
     Int present   = 0
+    Int known     = 0
+    Int ours      = 0
+    Int exception = 0
     Int married   = 0
     Int engaged   = 0
     Int candidate = 0
-    Int spouses   = 0
     If IsMarriedToPlayer(akActor)
         married = 1
     EndIf
+    If StorageUtil.GetIntValue(None, "SNRom_NativesV", 0) >= 15
+        known = 1
+        If SNRom_Native.MaraException()
+            exception = 1
+        EndIf
+    EndIf
+    If OurMarriage(akActor) == MARRIAGE_ENGAGED()
+        engaged = 1
+    EndIf
     If MarasPresent()
         present = 1
+        known = 1
         If MARAS.IsNPCStatus(akActor, "engaged")
             engaged = 1
         EndIf
         If MARAS.IsNPCStatus(akActor, "candidate")
             candidate = 1
         EndIf
-        spouses = MARAS.GetStatusCount("married")
     EndIf
-    Return ",\"maras_present\":" + present +            ",\"npc_married\":" + married +            ",\"npc_engaged\":" + engaged +            ",\"npc_candidate\":" + candidate +            ",\"player_spouse_count\":" + spouses
+    If OwnsMarriage()
+        ours = 1
+        candidate = 0
+        If married == 0 && engaged == 0 && PointsOf(akActor) >= SPOUSE_MIN()
+            candidate = 1
+        EndIf
+    EndIf
+    Int spouses = SpouseCount()
+    Return ",\"maras_present\":" + present + \
+        ",\"marriage_known\":" + known + \
+        ",\"marriage_ours\":" + ours + \
+        ",\"mara_exception\":" + exception +            ",\"npc_married\":" + married +            ",\"npc_engaged\":" + engaged +            ",\"npc_candidate\":" + candidate +            ",\"player_spouse_count\":" + spouses
 EndFunction
 
 Bool Function MarasPresent() Global
@@ -4680,6 +4708,49 @@ Bool Function MarasPresent() Global
       SNRom_Decorators. The previous version cached into _marasState and logged
       once on absence; the log line is the only thing lost, and it was DEBUG. }
     Return Game.IsPluginInstalled("TT_MARAS.esp")
+EndFunction
+
+Bool Function OwnsMarriage() Global
+    { WHO RUNS PROPOSALS AND WEDDINGS (2.5, marriage phase 1, M2). Relationships,
+      unless MARAS is installed and "Who Handles Marriage" is left on Automatic:
+      then MARAS does, exactly as in 2.4, and our gate keeps it to Spouse.
+
+      READING DOES NOT DEPEND ON THIS. Our record, vanilla's faction and MARAS
+      all count as married whoever owns the next wedding, so a marriage made
+      under one owner is still a marriage under the other.
+
+      WHEN WE OWN AND MARAS IS STILL INSTALLED, its proposals are closed to
+      everyone (MaintainProposalGate) and an engagement it makes anyway is
+      reversed (OnMarasStatusChanged). Two systems both proposing is the one
+      outcome worse than either. }
+    If !MarasPresent()
+        Return True
+    EndIf
+    Return SkyrimNetApi.GetConfigString(CFG(), "marriageHandler", "Automatic") == "Relationships"
+EndFunction
+
+Int Function SpouseCount() Global
+    { Everyone married to the player, each counted once whichever record holds
+      them: ours (married or separated), then MARAS's that ours does not have.
+      Vanilla's faction keeps no list and is not counted; a vanilla spouse with
+      neither record is the M9 import's to bring in. }
+    Int n = 0
+    If StorageUtil.GetIntValue(None, "SNRom_NativesV", 0) >= 15
+        n = SNRom_Native.MarriageWithState(MARRIAGE_MARRIED()).Length + \
+            SNRom_Native.MarriageWithState(MARRIAGE_SEPARATED()).Length
+    EndIf
+    If MarasPresent()
+        Actor[] theirs = MARAS.GetNPCsByStatus("married")
+        Int i = 0
+        While i < theirs.Length
+            Int ours = OurMarriage(theirs[i])
+            If ours != MARRIAGE_MARRIED() && ours != MARRIAGE_SEPARATED()
+                n += 1
+            EndIf
+            i += 1
+        EndWhile
+    EndIf
+    Return n
 EndFunction
 
 Int Function SeedTarget(Actor akActor)
@@ -4824,7 +4895,8 @@ Int Function SeedTarget(Actor akActor)
     ; stays inside seedMaxPoints, so it is still capped like everything else.
     If IsMarriedToPlayer(akActor)
         best = 2500                             ; Spouse - see the cap exemption
-    ElseIf MarasPresent() && MARAS.IsNPCStatus(akActor, "engaged")
+    ElseIf OurMarriage(akActor) == MARRIAGE_ENGAGED() || \
+           (MarasPresent() && MARAS.IsNPCStatus(akActor, "engaged"))
         If 2000 > best
             best = 2000                         ; Lover
         EndIf
@@ -5010,6 +5082,10 @@ Bool Function SeedRomanticEvidence(Actor akActor)
       days and is exactly the wait the gate was built to impose. }
     Faction married = Game.GetFormFromFile(0x000C6472, "Skyrim.esm") as Faction   ; PlayerMarriedFaction
     If married != None && akActor.IsInFaction(married)
+        Return True
+    EndIf
+    Int ours = OurMarriage(akActor)            ; 2.5: our record, engaged or married
+    If ours == MARRIAGE_ENGAGED() || ours == MARRIAGE_MARRIED() || ours == MARRIAGE_SEPARATED()
         Return True
     EndIf
     If MarasPresent()
@@ -5218,7 +5294,7 @@ Function MaintainProposalGate(Actor akActor)
       CHEAP BY CONSTRUCTION. One HasKeyword native, and it only writes when the
       desired state differs from the current one - so the steady state is a single
       read per point change and nothing else. }
-    If akActor == None || !_ready
+    If akActor == None || !_ready || !MarasPresent()
         Return
     EndIf
     Keyword kw = IgnoreProposalKeyword()
@@ -5236,15 +5312,22 @@ Function MaintainProposalGate(Actor akActor)
         EndIf
         Return
     EndIf
-    Bool shouldBlock = PointsOf(akActor) < SPOUSE_MIN()
+    ; 2.5 (M2): closed to everyone while Relationships handles marriage.
+    Bool owned       = OwnsMarriage()
+    Bool shouldBlock = owned || PointsOf(akActor) < SPOUSE_MIN()
     Bool isBlocked   = akActor.HasKeyword(kw)
     If shouldBlock == isBlocked
         Return                                  ; already correct - the common case
     EndIf
     If shouldBlock
         PO3_SKSEFunctions.AddKeywordToRef(akActor, kw)
-        Diag(LOG_INFO(), "Marriage gate closed for " + akActor.GetDisplayName() + \
-            " - below Spouse at " + PointsOf(akActor) + " pts.")
+        If owned
+            Diag(LOG_INFO(), "Marriage gate closed for " + akActor.GetDisplayName() + \
+                " - Relationships handles marriage, so MARAS does not propose.")
+        Else
+            Diag(LOG_INFO(), "Marriage gate closed for " + akActor.GetDisplayName() + \
+                " - below Spouse at " + PointsOf(akActor) + " pts.")
+        EndIf
     Else
         PO3_SKSEFunctions.RemoveKeywordFromRef(akActor, kw)
         PO3_SKSEFunctions.RemoveKeywordOnForm(akActor.GetActorBase(), kw)
@@ -5278,10 +5361,24 @@ Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEn
     If who == None || !_ready
         Return
     EndIf
+    String st = SNRom_Decorators.Upper(SNRom_Decorators.Trim(asStatus))
+
+    ; 2.5 (M2): while Relationships handles marriage, MARAS engages nobody,
+    ; enrolled or not. Its marriages still stand and still count (below).
+    If st == "ENGAGED" && OwnsMarriage()
+        If MARAS.PromoteNPCToStatus(who, "candidate")
+            Diag(LOG_INFO(), "Engagement reversed for " + who.GetDisplayName() + \
+                " - Relationships handles marriage, so a MARAS engagement does not stand." + \
+                MarasStateLine(who))
+        Else
+            Diag(LOG_ERROR(), "MARAS refused to demote " + who.GetDisplayName() + \
+                " from engaged while Relationships handles marriage." + MarasStateLine(who))
+        EndIf
+        Return
+    EndIf
     If !IsEnrolled(who)
         Return
     EndIf
-    String st = SNRom_Decorators.Upper(SNRom_Decorators.Trim(asStatus))
 
     ; -- THE MARRIAGE GATE THAT ACTUALLY HOLDS ------------------------------
     ; The author designed the ladder so a formal proposal is only possible once

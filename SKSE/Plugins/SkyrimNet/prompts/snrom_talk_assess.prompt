@@ -78,7 +78,7 @@ COMMITTING TO MARRY IS ALSO THIS, and it may be the strongest version of it. Two
 
 When you answer `LANDMARK`, say which kind it was. That is a classification, not a judgement of size - answer it honestly and let the size be whatever the moment deserved.
 
-{% if maras_present == 1 %}
+{% if marriage_known == 1 %}
 WHAT THE WORLD ACTUALLY RECORDS
 {% if npc_married == 1 %}
 {{ npc_name }} and {{ player.name }} are married. This is recorded, not claimed.
@@ -92,7 +92,7 @@ No marriage between them is possible yet — {{ npc_name }} is not a recognised 
 {% endif %}
 {% if player_spouse_count >= 1 %}
 {{ player.name }} already has {{ player_spouse_count }} recorded spouse or spouses.
-{% if get_global_value("TTM_EnablePolygamyToggle") != 1.0 %}
+{% if (marriage_ours == 1 and mara_exception != 1) or (marriage_ours != 1 and get_global_value("TTM_EnablePolygamyToggle") != 1.0) %}
 Taking another is not permitted, so no further marriage can happen however the conversation went.
 {% endif %}
 {% endif %}
