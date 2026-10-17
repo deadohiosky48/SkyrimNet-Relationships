@@ -1,6 +1,7 @@
 #include "Model.h"
 
 #include "History.h"
+#include "Marriage.h"
 #include "L10n.h"
 
 #include <algorithm>
@@ -155,6 +156,33 @@ namespace SNRom::Model {
         return d;
     }
 
+    namespace {
+        std::string FormName(std::int32_t a_formId) {
+            const auto* form = a_formId ? RE::TESForm::LookupByID(static_cast<RE::FormID>(a_formId)) : nullptr;
+            const char* name = form ? form->GetName() : nullptr;
+            return name ? name : "";
+        }
+
+        // 2.5, Build A: the marriage record for the card (Marriage.h), with
+        // names for the officiant and the rings; null for no record.
+        json MarriageCard(std::int32_t a_formId) {
+            auto record = Marriage::Of(a_formId);
+            if (!record.is_object()) {
+                return nullptr;
+            }
+            const auto day = [](float a_day) { return a_day > 0.0f ? json(a_day) : json(nullptr); };
+            return json{ { "state", record.value("state", "none") },
+                         { "previous", record.value("previous", "none") },
+                         { "since", day(record.value("since", 0.0f)) },
+                         { "weddingDay", day(record.value("weddingDay", 0.0f)) },
+                         { "eloped", record.value("eloped", false) },
+                         { "officiant", FormName(record.value("officiant", 0)) },
+                         { "why", record.value("why", "") },
+                         { "ringFromPlayer", FormName(record.value("ringFromPlayer", 0)) },
+                         { "ringToPlayer", FormName(record.value("ringToPlayer", 0)) } };
+        }
+    }
+
     json Bond(std::int32_t a_formId, const Numbers& a_n, const Texts* a_text, const Derived& a_d, const json& a_player) {
         const bool foreclosed = Foreclosed(a_d);
         json       bond;
@@ -205,6 +233,7 @@ namespace SNRom::Model {
         // From the co-save, not from a push: the history is the DLL's own
         // (History.h), so every snapshot has it as of now.
         bond["history"] = History::Recent(a_formId);
+        bond["marriage"] = MarriageCard(a_formId);
         return bond;
     }
 

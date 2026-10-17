@@ -11,6 +11,7 @@
 #include "History.h"
 #include "Hotkey.h"
 #include "Notices.h"
+#include "Officiant.h"
 #include "Settings.h"
 #include "SkyrimNetLink.h"
 
@@ -198,6 +199,77 @@ namespace SNRom::Natives {
 
         void SetMaraException(RE::StaticFunctionTag*, bool a_granted) {
             Marriage::SetException(a_granted);
+        }
+
+        // VERSION 16 (2.5, Build A). Proposals, rings and eloping.
+        std::int32_t FormIdOfActor(RE::Actor* a_actor) {
+            return a_actor ? static_cast<std::int32_t>(a_actor->GetFormID()) : 0;
+        }
+
+        bool CanAcceptProposal(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+            return Decorators::CanAcceptProposal(FormIdOfActor(a_actor)) == "true";
+        }
+
+        bool CanDeclineProposal(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+            return Decorators::CanDeclineProposal(FormIdOfActor(a_actor)) == "true";
+        }
+
+        void NoteProposalDeclined(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+            if (const auto id = FormIdOfActor(a_actor)) {
+                Marriage::NoteDeclined(id);
+            }
+        }
+
+        void SetMarriageFacts(RE::StaticFunctionTag*, std::int32_t a_spouses, float a_cooldownDays) {
+            Marriage::SetFacts(a_spouses, a_cooldownDays);
+        }
+
+        RE::TESForm* MarriageRing(RE::StaticFunctionTag*, RE::Actor* a_actor, bool a_fromPlayer) {
+            const auto item = Marriage::Ring(FormIdOfActor(a_actor), a_fromPlayer);
+            return item ? RE::TESForm::LookupByID(static_cast<RE::FormID>(item)) : nullptr;
+        }
+
+        bool SetMarriageRing(RE::StaticFunctionTag*, RE::Actor* a_actor, bool a_fromPlayer, RE::TESForm* a_item) {
+            const auto id = FormIdOfActor(a_actor);
+            return id && Marriage::SetRing(id, a_fromPlayer, a_item ? static_cast<std::int32_t>(a_item->GetFormID()) : 0);
+        }
+
+        // Every ring a_actor carries that could change hands: armour on the
+        // ring slot or with ClothingRing, never a quest item. Worn ones
+        // included; the caller says so when it asks.
+        std::vector<RE::TESForm*> RingsCarried(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+            std::vector<RE::TESForm*> out;
+            if (!a_actor) {
+                return out;
+            }
+            static auto* ringKeyword = [] {
+                auto* data = RE::TESDataHandler::GetSingleton();
+                return data ? data->LookupForm<RE::BGSKeyword>(0x0010CD09, "Skyrim.esm") : nullptr;  // ClothingRing
+            }();
+            for (const auto& [object, entry] : a_actor->GetInventory()) {
+                auto* armor = object ? object->As<RE::TESObjectARMO>() : nullptr;
+                if (!armor || entry.first <= 0 || (entry.second && entry.second->IsQuestObject())) {
+                    continue;
+                }
+                const bool ringSlot = armor->HasPartOf(RE::BGSBipedObjectForm::BipedObjectSlot::kRing);
+                const bool keyword = ringKeyword && armor->HasKeyword(ringKeyword);
+                if (ringSlot || keyword) {
+                    out.push_back(armor);
+                }
+            }
+            return out;
+        }
+
+        bool IsOfficiant(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+            return Officiant::Is(a_actor);
+        }
+
+        bool CanBless(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+            return Officiant::CanBless(a_actor);
+        }
+
+        std::vector<RE::Actor*> BetrothedNear(RE::StaticFunctionTag*) {
+            return Officiant::BetrothedNear(Officiant::kPresentRange);
         }
 
         // VERSION 14 (2.4). The native get_romance and romance_physical_ok
@@ -421,11 +493,23 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("MarriageWithState", kScript, MarriageWithState, true);
             a_vm->RegisterFunction("MaraException", kScript, MaraException, true);
             a_vm->RegisterFunction("SetMaraException", kScript, SetMaraException, true);
+            a_vm->RegisterFunction("CanAcceptProposal", kScript, CanAcceptProposal, true);
+            a_vm->RegisterFunction("CanDeclineProposal", kScript, CanDeclineProposal, true);
+            a_vm->RegisterFunction("NoteProposalDeclined", kScript, NoteProposalDeclined, true);
+            a_vm->RegisterFunction("SetMarriageFacts", kScript, SetMarriageFacts, true);
+            a_vm->RegisterFunction("MarriageRing", kScript, MarriageRing, true);
+            a_vm->RegisterFunction("SetMarriageRing", kScript, SetMarriageRing, true);
+            a_vm->RegisterFunction("RingsCarried", kScript, RingsCarried);    // main thread: inventory
+            a_vm->RegisterFunction("IsOfficiant", kScript, IsOfficiant);      // main thread: factions
+            a_vm->RegisterFunction("CanBless", kScript, CanBless);            // main thread: positions
+            a_vm->RegisterFunction("BetrothedNear", kScript, BetrothedNear);  // main thread: positions
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
                             "PutBondNumbers, PutBondText, DropBond, FormIdOf, PutPlaythrough, PutRefreshFacts, "
                             "RefreshDone, ActionArgs, ActionDone, CheckBond, RecordChange, Announce, ObserversNear, AppendLog, "
                             "BioPlan, UuidHex, ApiLoaded, ApiSelfTest, Text, ActionText, AnnounceKey, KnownProof, DecoratorsNative, SetDecoratorFacts, CheckDecorators, MarriageState, SetMarriageState, "
-                            "MarriageWithState, MaraException, SetMaraException",
+                            "MarriageWithState, MaraException, SetMaraException, CanAcceptProposal, CanDeclineProposal, "
+                            "NoteProposalDeclined, SetMarriageFacts, MarriageRing, SetMarriageRing, RingsCarried, "
+                            "IsOfficiant, CanBless, BetrothedNear",
                             kScript, kVersion);
             return true;
         });

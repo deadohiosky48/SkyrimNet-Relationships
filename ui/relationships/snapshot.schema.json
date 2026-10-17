@@ -343,6 +343,28 @@
               "reason": { "type": "string", "description": "The reason the change was made with, at most 600 bytes." }
             }
           }
+        },
+        "marriage": {
+          "description": "Relationships' own marriage record (2.5; native/src/Marriage.h, in the SKSE co-save), or null for none. Optional and additive: a snapshot from a DLL before natives v16 has none.",
+          "anyOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["state", "previous", "since", "weddingDay", "eloped", "officiant", "why", "ringFromPlayer", "ringToPlayer"],
+              "properties": {
+                "state": { "enum": ["none", "engaged", "married", "broken_off", "divorced", "widowed", "separated"] },
+                "previous": { "enum": ["none", "engaged", "married", "broken_off", "divorced", "widowed", "separated"] },
+                "since": { "type": ["number", "null"], "description": "Game day the state was entered." },
+                "weddingDay": { "type": ["number", "null"], "description": "Game day they married; null if never." },
+                "eloped": { "type": "boolean" },
+                "officiant": { "type": "string", "description": "Who married them, by name; empty if unknown." },
+                "why": { "type": "string", "description": "Why the state last changed, at most 400 bytes." },
+                "ringFromPlayer": { "type": "string", "description": "The engagement ring the player gave them, by name; empty for none." },
+                "ringToPlayer": { "type": "string", "description": "The engagement ring they gave the player, by name; empty for none." }
+              }
+            }
+          ]
         }
       },
       "allOf": [

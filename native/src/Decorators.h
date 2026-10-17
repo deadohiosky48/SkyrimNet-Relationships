@@ -36,6 +36,14 @@ namespace SNRom::Decorators {
     std::string Romance(std::int32_t a_formId);
     std::string PhysicalOk(std::int32_t a_formId);
 
+    // 2.5, Build A: the marriage gates, "true" or "false" as their decorators
+    // give them (marriage_can_accept, marriage_can_decline, marriage_engaged),
+    // and what an officiant knows (get_officiant). The actions that use them
+    // ask again through SNRom_Native when they run.
+    std::string CanAcceptProposal(std::int32_t a_formId);
+    std::string CanDeclineProposal(std::int32_t a_formId);
+    std::string EngagedToPlayer(std::int32_t a_formId);
+
     // Developer check: the native answers against Papyrus's for one person.
     // Logs each field that differs; returns how many.
     std::int32_t Check(std::int32_t a_formId, const std::string& a_papyrusRomance,

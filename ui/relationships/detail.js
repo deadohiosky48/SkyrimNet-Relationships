@@ -206,6 +206,20 @@
         kv(dl2, t("detail.spark", "Spark"), spark);
       }
       if (b.commitment !== "none") kv(dl2, t("detail.commitment", "Commitment"), L.COMMITMENT[b.commitment]);
+      // 2.5, Build A: Relationships' own marriage record.
+      var m = b.marriage;
+      if (m) {
+        var MARRIAGE = { none: t("marriage.none", "None"), engaged: t("marriage.engaged", "Engaged"),
+          married: t("marriage.married", "Married"), broken_off: t("marriage.broken_off", "Broken off"),
+          divorced: t("marriage.divorced", "Divorced"), widowed: t("marriage.widowed", "Widowed"),
+          separated: t("marriage.separated", "Separated") };
+        var mState = MARRIAGE[m.state] || m.state;
+        if (m.since !== null) mState += " (" + L.daysAgo(m.since, snap.generatedAt) + ")";
+        kv(dl2, t("detail.marriage", "Marriage"), mState);
+        if (m.officiant) kv(dl2, m.eloped ? t("detail.elopedBy", "Eloped, married by") : t("detail.marriedBy", "Married by"), m.officiant);
+        if (m.ringFromPlayer) kv(dl2, t("detail.ringFromYou", "Your ring to them"), m.ringFromPlayer);
+        if (m.ringToPlayer) kv(dl2, t("detail.ringToYou", "Their ring to you"), m.ringToPlayer);
+      }
     }
     kind.appendChild(dl2);
     scroll.appendChild(kind);
@@ -296,7 +310,9 @@
     // reason as well, in case the game has moved on since the snapshot.
     var blocked = a.needsFollowing && !b.following ? t("act.notFollowing", "{0} is not travelling with you.", b.subject.name) + " " + a.needs :
       a.needsNearby && !b.nearby ? t("act.notNear", "{0} is not near you.", b.subject.name) + " " + a.needs :
-      a.needsAddress && !b.prose.address ? t("act.noAddress", "{0} has no saved name for you.", b.subject.name) : null;
+      a.needsAddress && !b.prose.address ? t("act.noAddress", "{0} has no saved name for you.", b.subject.name) :
+      a.needsMarried && !(b.marriage && (b.marriage.state === "married" || b.marriage.state === "separated")) ?
+        t("act.notMarried", "{0} is not married to you in Relationships' record.", b.subject.name) : null;
     var btn = el("button", "btn" + (a.confirm ? " btn-danger" : ""), a.label);
     btn.type = "button";
     btn.setAttribute("data-op", a.op);
@@ -364,6 +380,20 @@
       hform.appendChild(ta);
       hform.appendChild(btn);
       wrap.appendChild(hform);
+      wrap.appendChild(el("p", "act-help", a.help));
+    } else if (a.form === "intChoice") {
+      // A fixed list of numbered choices (2.5: a marriage state).
+      var cform = el("div", "act-form");
+      var csel = el("select");
+      csel.setAttribute("aria-label", a.label);
+      a.choices.forEach(function (c) { var o = el("option", null, c[1]); o.value = String(c[0]); csel.appendChild(o); });
+      btn.textContent = t("act.write", "Write");
+      btn.addEventListener("click", function () { self.onAction(a, b, [parseInt(csel.value, 10)], btn); });
+      row.appendChild(el("strong", null, a.label));
+      wrap.appendChild(row);
+      cform.appendChild(csel);
+      cform.appendChild(btn);
+      wrap.appendChild(cform);
       wrap.appendChild(el("p", "act-help", a.help));
     } else if (a.form === "reauthorBlocks") {
       // THE OVERRIDE (2.4): checked, the player's own blocks in the tabs we

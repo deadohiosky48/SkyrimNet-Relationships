@@ -1,0 +1,40 @@
+# 2.5, Build A: marriage. Gated by a NATIVE decorator (registered by
+# SkyrimNetRelationships.dll at data load, before SkyrimNet caches
+# eligibility); the Papyrus function checks again when it runs, and the player
+# confirms every change of state in a message box.
+
+customCategory: marriage
+name: MarriageDecline
+description: |
+  {{ player.name }} asked you to marry them, and your answer is no - or not yet.
+
+  USE when you have just turned a proposal down, however gently. Your answer stands for a while: they cannot simply ask again tomorrow.
+
+questEditorId: SNRom_Quest
+scriptName: SNRom_Bridge
+executionFunctionName: DeclineProposal
+
+parameterMapping:
+  - type: speaker
+    name: akActor
+    description: you, the one declining
+  - type: dynamic
+    name: asWhy
+    description: "one sentence, in your own voice, of why"
+    optional: true
+    default: ""
+
+eligibilityRules:
+  - conditions:
+      - decoratorName: "marriage_can_decline"
+        arguments: ["currentActor"]
+        comparisonOperator: "=="
+        expectedValue: true
+    logicalOperator: "AND"
+    required: true
+
+eventString: "{{ actor.name }} turned down {{ player.name }}'s proposal."
+isShortLived: false
+
+enabled: true
+defaultPriority: 1

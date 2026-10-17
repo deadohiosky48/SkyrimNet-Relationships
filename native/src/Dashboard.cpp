@@ -120,6 +120,12 @@ namespace SNRom::Dashboard {
                 true, {}, true },
             // 2.4: a garbled or unwanted ADDRESS, back to none.
             Op{ "ClearAddress", "SNRom_Bridge.ClearAddress(Actor)", OpScope::kBond },
+            // 2.5, Build A: marriage. A divorce by hand, for a marriage that
+            // ended where nothing saw it (M6 makes it a conversation).
+            Op{ "Divorce", "SNRom_Bridge.DivorceByHand(Actor)", OpScope::kBond },
+            // Moving from MARAS (M9): its engagements, marriages, divorces and
+            // broken engagements into our record, once.
+            Op{ "ImportMaras", "SNRom_Bridge.ImportMarasMarriages()", OpScope::kPlaythrough },
             Op{ "StartFreshStore", "SNRom_Bridge.StartFreshStore()", OpScope::kPlaythrough },
             Op{ "AdoptLegacyStore", "SNRom_Bridge.AdoptLegacyStore()", OpScope::kPlaythrough },
             // 2.1.1: blocks the player hid in SeverActions were read as taken
@@ -134,6 +140,13 @@ namespace SNRom::Dashboard {
             Op{ "RequestSparkNow", "SNRom_Bridge.RequestSparkNow(Actor)", OpScope::kBond, true },
             Op{ "UnsparkActor", "SNRom_Bridge.UnsparkActor(Actor)", OpScope::kBond, true },
             Op{ "ForceDriftReview", "SNRom_Bridge.ForceDriftReview(Actor, Int)", OpScope::kBond, true, {}, 0, 1 },
+            // 2.5, Build A: any marriage state, forced (Marriage::Set), and
+            // Mara's exception; and what the vanilla wedding quests and
+            // Destination Weddings look like now (prototypes P1, P2).
+            Op{ "SetMarriageState", "SNRom_Bridge.SetMarriageStateByHand(Actor, Int)", OpScope::kBond, true, {}, 1,
+                1 },
+            Op{ "SetMaraException", "SNRom_Bridge.SetMaraExceptionByHand(Int)", OpScope::kPlaythrough, true, {}, 1, 1 },
+            Op{ "WeddingReport", "SNRom_Bridge.WeddingPrototypeReport()", OpScope::kPlaythrough, true },
             // Runs the real Papyrus rules for every bond against the display
             // copies (Display.h; CheckBond below). About a minute with 120
             // bonds: it pays the old per-bond cost on purpose.

@@ -710,6 +710,57 @@ A line you do not cross: {{ limit_line }}
 This holds regardless of what you feel, how close you have become, or how the moment is framed. If {{ player.name }} pushes at it, that tells you something about them — and you are allowed to let it change what you think of them.
 {% endif %}
 
+{# ── Marriage (2.5, Build A; spec 5.1-5.4) ─────────────────────────────────
+   From the record Relationships keeps (rom.marriage, native). Engaged is a
+   state of its own, with no deadline: from it, a planned wedding or an
+   elopement with any priest, priestess or jarl. Below Spouse a proposal is
+   refused in character, by tier; at Spouse the answer is theirs. One spouse
+   unless Mara has granted the player her exception. #}
+{% if standing >= 0 and existsIn(rom, "marriage") %}
+{% set mar_state = default(rom.marriage.state, "none") %}
+{% set ring_in = default(rom.marriage.ringFromPlayer, "") %}
+{% set ring_out = default(rom.marriage.ringToPlayer, "") %}
+{% if mar_state == "engaged" %}
+
+You and {{ player.name }} are engaged: promised to each other. There is no hurry and no deadline; you may stay engaged as long as you both like. From here the two of you can plan a wedding together, or elope - go to any priest, priestess or jarl together and be married on the spot. Either of you may raise it, and either may say not yet.{% if ring_in != "" %} You wear the ring they gave you, {{ ring_in }}.{% endif %}{% if ring_out != "" %} You gave them {{ ring_out }}.{% endif %}
+{% if default(rom.marriage.mayMarry, 1) == 0 %}
+{{ player.name }} is already married, and Mara has granted them no exception: no priest will marry the two of you while that stands.
+{% endif %}
+{% elif mar_state == "married" or mar_state == "separated" %}
+
+You are married to {{ player.name }}{% if default(rom.marriage.eloped, 0) == 1 %} - you eloped{% endif %}{% if default(rom.marriage.officiant, "") != "" %}, and {{ rom.marriage.officiant }} married you{% endif %}.{% if ring_in != "" %} You wear the ring they gave you, {{ ring_in }}.{% endif %}
+{% elif mar_state == "broken_off" %}
+
+You were engaged to {{ player.name }} once, and it was broken off.
+{% elif mar_state == "divorced" %}
+
+You were married to {{ player.name }}, and you are divorced.
+{% elif default(rom.married, 0) != 1 and romance_na == 0 %}
+{% if default(rom.marriage.canAccept, 0) == 1 %}
+
+If {{ player.name }} asks you to marry them, the answer is yours to give - yes, or not yet - as you truly feel.
+{% elif default(rom.marriage.cooldown, 0) == 1 %}
+
+{{ player.name }} asked you to marry them not long ago and you said no. That answer still stands for now.
+{% elif rom_tier >= 5 and default(rom.marriage.mayMarry, 1) == 0 %}
+
+{{ player.name }} is already married, and Mara has granted them no exception. Whatever you feel, you cannot marry them, and no priest would.
+{% elif rom_tier == 4 %}
+
+If {{ player.name }} asked you to marry them now, you would want to - just not yet. A little more time first, and you would tell them so softly.
+{% elif rom_tier == 3 %}
+
+If {{ player.name }} asked you to marry them, you would be surprised and touched, and plainly not ready.
+{% elif rom_tier == 2 %}
+
+If {{ player.name }} asked you to marry them, you would be taken aback: it is not that between you.
+{% elif rom_tier == 1 %}
+
+If {{ player.name }} asked you to marry them, you would find it hard to believe someone you barely know would ask.
+{% endif %}
+{% endif %}
+{% endif %}
+
 {# ── What is actually established ──────────────────────────────────────────
    States a fact ONLY when it is known, and says nothing at all otherwise.
    get_romance returns orientation as "" unless orientationKnown == 2, so an

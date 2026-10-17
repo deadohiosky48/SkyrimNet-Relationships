@@ -11,7 +11,8 @@ namespace SNRom::Marriage {
     namespace {
 
         // Bump when the layout below changes, and keep reading the old one.
-        constexpr std::uint32_t kRecordVersion = 1;
+        // 2: the rings, and the declines after the records (Build A).
+        constexpr std::uint32_t kRecordVersion = 2;
         constexpr std::size_t   kMaxWhy = 400;
         constexpr std::uint32_t kMaxRecords = 100000;
 
@@ -23,11 +24,18 @@ namespace SNRom::Marriage {
             bool         eloped = false;
             std::int32_t officiant = 0;      // form id; 0 none or unknown
             std::string  why;
+            std::int32_t ringFromPlayer = 0;  // the item the player gave them; 0 none
+            float        ringFromPlayerDay = 0.0f;
+            std::int32_t ringToPlayer = 0;    // the item they gave the player; 0 none
+            float        ringToPlayerDay = 0.0f;
         };
 
         std::mutex                         g_lock;
         std::map<std::uint32_t, Record>    g_records;
+        std::map<std::uint32_t, float>     g_declined;  // form id -> game day of the last no
         bool                               g_exception = false;
+        std::int32_t                       g_spouses = 0;
+        float                              g_cooldownDays = 3.0f;
 
         float GameDay() {
             const auto* calendar = RE::Calendar::GetSingleton();
@@ -173,6 +181,10 @@ namespace SNRom::Marriage {
             if (a_to == State::kNone) {
                 g_records.erase(static_cast<std::uint32_t>(a_formId));
             }
+            // A yes ends any wait after an earlier no.
+            if (a_to == State::kEngaged) {
+                g_declined.erase(static_cast<std::uint32_t>(a_formId));
+            }
         }
         SKSE::log::info("Marriage: {:08X} {} -> {}{}: {}", static_cast<std::uint32_t>(a_formId), Name(from), Name(a_to),
                         a_force ? " (forced)" : "", a_why);
@@ -214,10 +226,87 @@ namespace SNRom::Marriage {
             return nullptr;
         }
         const auto& r = it->second;
-        return nlohmann::json{ { "state", Name(r.state) },     { "previous", Name(r.previous) },
-                               { "since", r.since },          { "weddingDay", r.weddingDay },
-                               { "eloped", r.eloped },        { "officiant", r.officiant },
-                               { "why", r.why } };
+        return nlohmann::json{ { "state", Name(r.state) },
+                               { "previous", Name(r.previous) },
+                               { "since", r.since },
+                               { "weddingDay", r.weddingDay },
+                               { "eloped", r.eloped },
+                               { "officiant", r.officiant },
+                               { "why", r.why },
+                               { "ringFromPlayer", r.ringFromPlayer },
+                               { "ringFromPlayerDay", r.ringFromPlayerDay },
+                               { "ringToPlayer", r.ringToPlayer },
+                               { "ringToPlayerDay", r.ringToPlayerDay } };
+    }
+
+    bool SetRing(std::int32_t a_formId, bool a_fromPlayer, std::int32_t a_item) {
+        {
+            const std::scoped_lock lock{ g_lock };
+            const auto             it = g_records.find(static_cast<std::uint32_t>(a_formId));
+            if (it == g_records.end() || (it->second.state != State::kEngaged && it->second.state != State::kMarried &&
+                                          it->second.state != State::kSeparated)) {
+                SKSE::log::warn("Marriage: a ring for {:08X}, who is not engaged or married; refused",
+                                static_cast<std::uint32_t>(a_formId));
+                return false;
+            }
+            auto& r = it->second;
+            (a_fromPlayer ? r.ringFromPlayer : r.ringToPlayer) = a_item;
+            (a_fromPlayer ? r.ringFromPlayerDay : r.ringToPlayerDay) = a_item ? GameDay() : 0.0f;
+        }
+        SKSE::log::info("Marriage: {:08X} ring {} the player: item {:08X}", static_cast<std::uint32_t>(a_formId),
+                        a_fromPlayer ? "from" : "to", static_cast<std::uint32_t>(a_item));
+        return true;
+    }
+
+    std::int32_t Ring(std::int32_t a_formId, bool a_fromPlayer) {
+        const std::scoped_lock lock{ g_lock };
+        const auto             it = g_records.find(static_cast<std::uint32_t>(a_formId));
+        if (it == g_records.end()) {
+            return 0;
+        }
+        return a_fromPlayer ? it->second.ringFromPlayer : it->second.ringToPlayer;
+    }
+
+    void NoteDeclined(std::int32_t a_formId) {
+        const auto day = GameDay();
+        {
+            const std::scoped_lock lock{ g_lock };
+            g_declined[static_cast<std::uint32_t>(a_formId)] = day;
+        }
+        SKSE::log::info("Marriage: {:08X} declined a proposal", static_cast<std::uint32_t>(a_formId));
+    }
+
+    float DaysSinceDeclined(std::int32_t a_formId) {
+        const auto             day = GameDay();
+        const std::scoped_lock lock{ g_lock };
+        const auto             it = g_declined.find(static_cast<std::uint32_t>(a_formId));
+        return it == g_declined.end() ? -1.0f : std::max(0.0f, day - it->second);
+    }
+
+    void SetFacts(std::int32_t a_spouses, float a_cooldownDays) {
+        const std::scoped_lock lock{ g_lock };
+        g_spouses = std::max(a_spouses, 0);
+        g_cooldownDays = a_cooldownDays > 0.0f ? a_cooldownDays : 3.0f;
+    }
+
+    std::int32_t Spouses() {
+        const std::scoped_lock lock{ g_lock };
+        return g_spouses;
+    }
+
+    bool InCooldown(std::int32_t a_formId) {
+        const auto             since = DaysSinceDeclined(a_formId);
+        const std::scoped_lock lock{ g_lock };
+        return since >= 0.0f && since < g_cooldownDays;
+    }
+
+    bool MayMarryAnother() {
+        const std::scoped_lock lock{ g_lock };
+        return g_spouses == 0 || g_exception;
+    }
+
+    std::vector<std::int32_t> AllEngaged() {
+        return WithState(State::kEngaged);
     }
 
     void Save(SKSE::SerializationInterface* a_intfc) {
@@ -237,18 +326,33 @@ namespace SNRom::Marriage {
             a_intfc->WriteRecordData(static_cast<std::uint8_t>(r.eloped ? 1 : 0));
             a_intfc->WriteRecordData(static_cast<std::uint32_t>(r.officiant));
             WriteString(a_intfc, r.why);
+            a_intfc->WriteRecordData(static_cast<std::uint32_t>(r.ringFromPlayer));
+            a_intfc->WriteRecordData(r.ringFromPlayerDay);
+            a_intfc->WriteRecordData(static_cast<std::uint32_t>(r.ringToPlayer));
+            a_intfc->WriteRecordData(r.ringToPlayerDay);
+        }
+        a_intfc->WriteRecordData(static_cast<std::uint32_t>(g_declined.size()));
+        for (const auto& [formId, day] : g_declined) {
+            a_intfc->WriteRecordData(formId);
+            a_intfc->WriteRecordData(day);
         }
     }
 
     void Load(SKSE::SerializationInterface* a_intfc, std::uint32_t a_version) {
         const std::scoped_lock lock{ g_lock };
-        if (a_version != kRecordVersion) {
+        if (a_version < 1 || a_version > kRecordVersion) {
             SKSE::log::warn("Marriage: co-save record version {} is not one this DLL reads; skipped", a_version);
             return;
         }
         auto damaged = [&]() {
             SKSE::log::error("Marriage: the co-save record is damaged; this save's marriages are empty");
             g_records.clear();
+            g_declined.clear();
+        };
+        // An item or person from a plugin that is gone is simply not there.
+        auto resolve = [&](std::uint32_t a_saved) -> std::int32_t {
+            RE::FormID now = 0;
+            return a_saved && a_intfc->ResolveFormID(a_saved, now) ? static_cast<std::int32_t>(now) : 0;
         };
         std::uint8_t  exception = 0;
         std::uint32_t count = 0;
@@ -275,6 +379,18 @@ namespace SNRom::Marriage {
                 !Known(state) || !Known(previous)) {
                 return damaged();
             }
+            if (a_version >= 2) {
+                std::uint32_t fromPlayer = 0;
+                std::uint32_t toPlayer = 0;
+                if (a_intfc->ReadRecordData(fromPlayer) != sizeof(fromPlayer) ||
+                    a_intfc->ReadRecordData(r.ringFromPlayerDay) != sizeof(r.ringFromPlayerDay) ||
+                    a_intfc->ReadRecordData(toPlayer) != sizeof(toPlayer) ||
+                    a_intfc->ReadRecordData(r.ringToPlayerDay) != sizeof(r.ringToPlayerDay)) {
+                    return damaged();
+                }
+                r.ringFromPlayer = resolve(fromPlayer);
+                r.ringToPlayer = resolve(toPlayer);
+            }
             r.state = static_cast<State>(state);
             r.previous = static_cast<State>(previous);
             r.eloped = eloped == 1;
@@ -290,6 +406,23 @@ namespace SNRom::Marriage {
             }
             g_records[now] = std::move(r);
         }
+        if (a_version >= 2) {
+            std::uint32_t declines = 0;
+            if (a_intfc->ReadRecordData(declines) != sizeof(declines) || declines > kMaxRecords) {
+                return damaged();
+            }
+            for (std::uint32_t i = 0; i < declines; ++i) {
+                std::uint32_t savedId = 0;
+                float         day = 0.0f;
+                if (a_intfc->ReadRecordData(savedId) != sizeof(savedId) ||
+                    a_intfc->ReadRecordData(day) != sizeof(day)) {
+                    return damaged();
+                }
+                if (const auto now = resolve(savedId)) {
+                    g_declined[static_cast<std::uint32_t>(now)] = day;
+                }
+            }
+        }
         SKSE::log::info("Marriage: {} records loaded from the save ({} dropped, their plugin gone); Mara's "
                         "exception {}",
                         g_records.size(), dropped, g_exception ? "granted" : "not granted");
@@ -298,6 +431,8 @@ namespace SNRom::Marriage {
     void Revert() {
         const std::scoped_lock lock{ g_lock };
         g_records.clear();
+        g_declined.clear();
         g_exception = false;
+        g_spouses = 0;
     }
 }

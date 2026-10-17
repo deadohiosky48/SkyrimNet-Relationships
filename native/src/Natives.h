@@ -27,7 +27,11 @@ namespace SNRom::Natives {
     //      takes 27 numbers
     //  15  MarriageState, SetMarriageState, MarriageWithState, MaraException,
     //      SetMaraException: the marriage record (Marriage.h, 2.5)
-    inline constexpr std::int32_t kVersion = 15;
+    //  16  CanAcceptProposal, CanDeclineProposal, NoteProposalDeclined,
+    //      SetMarriageFacts, MarriageRing, SetMarriageRing, RingsCarried,
+    //      IsOfficiant, CanBless, BetrothedNear: proposals, rings and eloping
+    //      (2.5, Build A; Officiant.h)
+    inline constexpr std::int32_t kVersion = 16;
 
     // Registers the natives declared in src/scripts/SNRom_Native.psc.
     void Register(const SKSE::PapyrusInterface* a_papyrus);

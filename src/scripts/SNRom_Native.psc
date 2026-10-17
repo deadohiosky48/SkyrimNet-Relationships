@@ -24,7 +24,9 @@ Int Function Version() Global Native
   12  ActionText, AnnounceKey; PutBondText takes 4 strings (2.4)
   13  KnownProof (2.4)
   14  DecoratorsNative, SetDecoratorFacts, CheckDecorators; PutBondNumbers takes 27 (2.4)
-  15  MarriageState, SetMarriageState, MarriageWithState, MaraException, SetMaraException (2.5)}
+  15  MarriageState, SetMarriageState, MarriageWithState, MaraException, SetMaraException (2.5)
+  16  CanAcceptProposal, CanDeclineProposal, NoteProposalDeclined, SetMarriageFacts, MarriageRing,
+      SetMarriageRing, RingsCarried, IsOfficiant, CanBless, BetrothedNear (2.5, Build A)}
 
 Bool Function SetDashboardHotkey(Int aiVirtualKey, Int aiModifierVirtualKey) Global Native
 {Binds the dashboard key. aiVirtualKey is a Windows VIRTUAL-KEY code, which is
@@ -142,6 +144,45 @@ Bool Function MaraException() Global Native
 
 Function SetMaraException(Bool abGranted) Global Native
 {VERSION 15 (2.5). Grants or withdraws it. Kept in the save.}
+
+Bool Function CanAcceptProposal(Actor akActor) Global Native
+{VERSION 16 (2.5). Whether akActor could say yes to a proposal now: Spouse and
+ above, enrolled, romance applicable, not engaged or married to the player, not
+ inside the wait after a no, and one more spouse allowed. The decorator
+ marriage_can_accept gives the same answer.}
+
+Bool Function CanDeclineProposal(Actor akActor) Global Native
+{VERSION 16 (2.5). Enrolled, and not engaged or married to the player.}
+
+Function NoteProposalDeclined(Actor akActor) Global Native
+{VERSION 16 (2.5). Starts the wait after a no (SetMarriageFacts' cooldown).}
+
+Function SetMarriageFacts(Int aiSpouses, Float afCooldownDays) Global Native
+{VERSION 16 (2.5). What the DLL cannot count itself: the player's spouses
+ across every record (SNRom_Bridge.SpouseCount), and the wait after a no in
+ game days.}
+
+Form Function MarriageRing(Actor akActor, Bool abFromPlayer) Global Native
+{VERSION 16 (2.5). The engagement ring the player gave akActor (abFromPlayer)
+ or akActor gave the player; None if none.}
+
+Bool Function SetMarriageRing(Actor akActor, Bool abFromPlayer, Form akItem) Global Native
+{VERSION 16 (2.5). Records a ring. Refused unless akActor is engaged or married
+ to the player.}
+
+Form[] Function RingsCarried(Actor akActor) Global Native
+{VERSION 16 (2.5). Every ring akActor carries that could change hands, worn
+ ones included; never a quest item.}
+
+Bool Function IsOfficiant(Actor akActor) Global Native
+{VERSION 16 (2.5). A living adult priest, priestess or jarl.}
+
+Bool Function CanBless(Actor akActor) Global Native
+{VERSION 16 (2.5). An officiant who could marry the player now: someone engaged
+ to the player is here, and one more spouse is allowed.}
+
+Actor[] Function BetrothedNear() Global Native
+{VERSION 16 (2.5). Everyone engaged to the player who is here with them.}
 
 Bool Function DecoratorsNative() Global Native
 {VERSION 14 (2.4). True when the DLL answers get_romance and

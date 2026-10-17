@@ -1,0 +1,9 @@
+# Marriage category (2.5, Build A). A ROUTER, NOT A GATE: see cat_romance.yaml.
+# It names the situations concretely; the gates are the actions' native
+# decorators and the Papyrus checks behind them.
+
+customCategory: marriage
+actionType: category
+name: Marriage
+description: "Marriage with the player: answering a proposal (yes or no), breaking off an engagement, giving or accepting an engagement ring, or - for a priest, priestess or jarl - marrying the player to the one they are engaged to, here and now. SELECT THIS whenever marrying, being engaged, a ring or a wedding is what is being talked about. Choosing this commits you to nothing: you will see the options and may decline."
+enabled: true

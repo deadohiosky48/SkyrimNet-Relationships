@@ -91,6 +91,18 @@
       confirm: t("action.clearAddress.confirm", "The name they call you is forgotten. There is no undo, but you can tell them in conversation what to call you.")
     },
     {
+      // 2.5, Build A: a marriage in Relationships' record, ended by hand.
+      op: "Divorce",
+      scope: "bond",
+      calls: "SNRom_Bridge.DivorceByHand(Actor)",
+      label: t("action.divorce.label", "Divorce"),
+      help: t("action.divorce.help", "For a marriage that ended where nothing in the game saw it. You are recorded as divorced; what that costs between you is for the two of you."),
+      needs: t("action.divorce.needs", "Nothing: works wherever they are."),
+      needsNearby: false,
+      needsMarried: true,
+      confirm: t("action.divorce.confirm", "You and they are recorded as divorced. There is no undo.")
+    },
+    {
       op: "UnenrollActor",
       scope: "bond",
       calls: "SNRom_Bridge.UnenrollActor(Actor)",
@@ -109,6 +121,17 @@
       needs: t("action.enrollActor.needs", "They were under your crosshair when the dashboard opened."),
       needsNearby: false,
       confirm: null
+    },
+    {
+      // 2.5, Build A (M9): moving from MARAS.
+      op: "ImportMaras",
+      scope: "playthrough",
+      calls: "SNRom_Bridge.ImportMarasMarriages()",
+      label: t("action.importMaras.label", "Bring marriages over from MARAS"),
+      help: t("action.importMaras.help", "Copies who MARAS records as your spouses, betrothed, divorced and jilted into Relationships' own record, so they stay married if MARAS is removed. Anyone Relationships already records is left as it is. A household with more than one spouse is granted Mara's exception."),
+      needs: t("action.importMaras.needs", "MARAS must be installed."),
+      needsNearby: false,
+      confirm: t("action.importMaras.confirm", "MARAS's marriages and engagements are copied into Relationships. MARAS itself is not changed.")
     },
     {
       op: "StartFreshStore",
@@ -173,6 +196,57 @@
       calls: "SNRom_Bridge.ForceDriftReview(Actor, Int field)",
       label: t("action.forceDriftReview.label", "Force a drift review"),
       help: t("action.forceDriftReview.help", "Reviews one trait now, bypassing both drift gates. A quiet history should come back NO."),
+      needs: null,
+      needsNearby: false,
+      confirm: null,
+      developer: true
+    },
+    {
+      // 2.5, Build A: any marriage state, forced past the legal steps.
+      op: "SetMarriageState",
+      scope: "bond",
+      calls: "SNRom_Bridge.SetMarriageStateByHand(Actor, Int state)",
+      label: t("action.setMarriageState.label", "Set marriage state"),
+      help: t("action.setMarriageState.help", "Writes the marriage record directly, skipping the legal steps and the player's confirmation. Married also adds vanilla's married faction."),
+      needs: null,
+      needsNearby: false,
+      confirm: null,
+      form: "intChoice",
+      choices: [[0, t("marriage.none", "None")], [1, t("marriage.engaged", "Engaged")], [2, t("marriage.married", "Married")],
+                [3, t("marriage.broken_off", "Broken off")], [4, t("marriage.divorced", "Divorced")],
+                [5, t("marriage.widowed", "Widowed")], [6, t("marriage.separated", "Separated")]],
+      developer: true
+    },
+    {
+      op: "SetMaraException",
+      scope: "playthrough",
+      calls: "SNRom_Bridge.SetMaraExceptionByHand(1)",
+      label: t("action.grantException.label", "Grant Mara's exception"),
+      help: t("action.grantException.help", "Lets the player marry while already married, until the quest that earns it exists."),
+      needs: null,
+      needsNearby: false,
+      confirm: null,
+      args: [1],
+      developer: true
+    },
+    {
+      op: "SetMaraException",
+      scope: "playthrough",
+      calls: "SNRom_Bridge.SetMaraExceptionByHand(0)",
+      label: t("action.withdrawException.label", "Withdraw Mara's exception"),
+      help: t("action.withdrawException.help", "One spouse again, for anyone new. Existing marriages stand."),
+      needs: null,
+      needsNearby: false,
+      confirm: null,
+      args: [0],
+      developer: true
+    },
+    {
+      op: "WeddingReport",
+      scope: "playthrough",
+      calls: "SNRom_Bridge.WeddingPrototypeReport()",
+      label: t("action.weddingReport.label", "Wedding report"),
+      help: t("action.weddingReport.help", "Reads the vanilla wedding quests, Destination Weddings and the marriage record, and writes them to snrom.log. Changes nothing."),
       needs: null,
       needsNearby: false,
       confirm: null,

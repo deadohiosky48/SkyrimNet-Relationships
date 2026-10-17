@@ -4,7 +4,9 @@
 
 #include "Dashboard.h"
 #include "Display.h"
+#include "Marriage.h"
 #include "Model.h"
+#include "Officiant.h"
 
 #include <atomic>
 #include <cctype>
@@ -144,6 +146,59 @@ namespace SNRom::Decorators {
             return total < 0 ? 0 : total;
         }
 
+        std::string FormName(std::int32_t a_formId) {
+            const auto* form = a_formId ? RE::TESForm::LookupByID(static_cast<RE::FormID>(a_formId)) : nullptr;
+            const char* name = form ? form->GetName() : nullptr;
+            return name ? name : "";
+        }
+
+        float GameDayNow() {
+            const auto* calendar = RE::Calendar::GetSingleton();
+            return calendar ? calendar->GetCurrentGameTime() : 0.0f;
+        }
+
+        // WHO MAY SAY YES TO A PROPOSAL (2.5, Build A, M3; spec 5.1, 5.2):
+        // Spouse and above, enrolled, romance applicable (kin, minor and
+        // orientation), not already engaged or married to the player, not
+        // inside the wait after a no, and the household rule allows another
+        // spouse. AgreeToMarry's eligibility, and checked again when it runs.
+        bool CanAccept(std::int32_t a_formId, const Row& a_row) {
+            if (a_row.n[Model::kTier] < 5 || Applicability(a_formId, a_row) != 0) {
+                return false;
+            }
+            if (Display::MarriedToPlayer(a_formId, a_row.engine, a_row.batch) || Marriage::Engaged(a_formId)) {
+                return false;
+            }
+            return !Marriage::InCooldown(a_formId) && Marriage::MayMarryAnother();
+        }
+
+        // What 0330 says about marriage (spec 5.2a): the record, the rings,
+        // and whether a proposal could be answered yes.
+        json MarriageObject(std::int32_t a_formId, const Row& a_row) {
+            const auto record = Marriage::Of(a_formId);
+            json       out{ { "state", "none" },
+                            { "sinceDays", 0 },
+                            { "eloped", 0 },
+                            { "officiant", "" },
+                            { "ringFromPlayer", "" },
+                            { "ringToPlayer", "" } };
+            if (record.is_object()) {
+                const auto since = record.value("since", 0.0f);
+                out["state"] = record.value("state", "none");
+                out["sinceDays"] = static_cast<std::int32_t>(std::max(0.0f, GameDayNow() - since));
+                out["eloped"] = record.value("eloped", false) ? 1 : 0;
+                out["officiant"] = FormName(record.value("officiant", 0));
+                out["ringFromPlayer"] = FormName(record.value("ringFromPlayer", 0));
+                out["ringToPlayer"] = FormName(record.value("ringToPlayer", 0));
+            }
+            out["canAccept"] = CanAccept(a_formId, a_row) ? 1 : 0;
+            out["cooldown"] = Marriage::InCooldown(a_formId) ? 1 : 0;
+            out["spouses"] = Marriage::Spouses();
+            out["exception"] = Marriage::Exception() ? 1 : 0;
+            out["mayMarry"] = Marriage::MayMarryAnother() ? 1 : 0;
+            return out;
+        }
+
         json RomanceObject(std::int32_t a_formId, const Row& a_row) {
             const auto& n = a_row.n;
             const auto  pts = n[Model::kPoints];
@@ -189,6 +244,7 @@ namespace SNRom::Decorators {
                 { "stance", n[Model::kStance] },
                 { "blkDrawn", bio & 1 },
                 { "blkAttach", (bio & 4) >> 2 },
+                { "marriage", MarriageObject(a_formId, a_row) },
             };
         }
 
@@ -275,6 +331,44 @@ namespace SNRom::Decorators {
         return row && Physical(a_formId, *row) ? "true" : "false";
     }
 
+    std::string CanAcceptProposal(std::int32_t a_formId) {
+        const auto row = a_formId ? Load(a_formId) : std::nullopt;
+        return row && CanAccept(a_formId, *row) ? "true" : "false";
+    }
+
+    std::string CanDeclineProposal(std::int32_t a_formId) {
+        const auto row = a_formId ? Load(a_formId) : std::nullopt;
+        if (!row) {
+            return "false";
+        }
+        const auto state = Marriage::StateOf(a_formId);
+        return state == Marriage::State::kEngaged || Marriage::Married(a_formId) ? "false" : "true";
+    }
+
+    std::string EngagedToPlayer(std::int32_t a_formId) {
+        return a_formId && Marriage::Engaged(a_formId) ? "true" : "false";
+    }
+
+    std::string OfficiantJson(RE::Actor* a_actor) {
+        if (!Officiant::Is(a_actor)) {
+            return R"({"officiant":0})";
+        }
+        json names = json::array();
+        for (auto* betrothed : Officiant::BetrothedNear(Officiant::kPresentRange)) {
+            if (betrothed != a_actor) {
+                const char* name = betrothed->GetDisplayFullName();
+                names.push_back(name ? name : "");
+            }
+        }
+        const json out{ { "officiant", 1 },
+                        { "betrothed", names },
+                        { "spouses", Marriage::Spouses() },
+                        { "exception", Marriage::Exception() ? 1 : 0 },
+                        { "mayMarry", Marriage::MayMarryAnother() ? 1 : 0 },
+                        { "canBless", Officiant::CanBless(a_actor) ? 1 : 0 } };
+        return out.dump(-1, ' ', false, json::error_handler_t::replace);
+    }
+
     bool Register() {
         const auto mod = GetModuleHandleW(L"SkyrimNet.dll");
         const auto version = mod ? reinterpret_cast<VersionFn>(GetProcAddress(mod, "PublicGetVersion")) : nullptr;
@@ -293,6 +387,30 @@ namespace SNRom::Decorators {
         g_active = romance && physical;
         SKSE::log::info("Decorators: native get_romance {}, romance_physical_ok {} (SkyrimNet API v{})",
                         romance ? "registered" : "REFUSED", physical ? "registered" : "REFUSED", api);
+
+        // 2.5, Build A: marriage. Native ONLY, never registered from Papyrus:
+        // these gate actions, and a Papyrus decorator registers too late for
+        // SkyrimNet's eligibility cache. Each action checks again when it runs.
+        const std::pair<const char*, bool> marriage[] = {
+            { "marriage_can_accept",
+              reg("marriage_can_accept", "Relationships: whether they could say yes to a proposal now",
+                  [](RE::Actor* a_actor) { return CanAcceptProposal(FormIdOf(a_actor)); }) },
+            { "marriage_can_decline",
+              reg("marriage_can_decline", "Relationships: whether they could turn a proposal down now",
+                  [](RE::Actor* a_actor) { return CanDeclineProposal(FormIdOf(a_actor)); }) },
+            { "marriage_engaged",
+              reg("marriage_engaged", "Relationships: whether they are engaged to the player",
+                  [](RE::Actor* a_actor) { return EngagedToPlayer(FormIdOf(a_actor)); }) },
+            { "marriage_can_bless",
+              reg("marriage_can_bless", "Relationships: whether this priest or jarl could marry the player now",
+                  [](RE::Actor* a_actor) { return std::string(Officiant::CanBless(a_actor) ? "true" : "false"); }) },
+            { "get_officiant",
+              reg("get_officiant", "Relationships: what a priest or jarl knows of the player's engagements, as JSON",
+                  [](RE::Actor* a_actor) { return OfficiantJson(a_actor); }) },
+        };
+        for (const auto& [name, ok] : marriage) {
+            SKSE::log::info("Decorators: native {} {}", name, ok ? "registered" : "REFUSED");
+        }
         return g_active;
     }
 

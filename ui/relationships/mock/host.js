@@ -157,6 +157,29 @@
       },
       ForceDriftReview: function (b) {
         return [true, "Forced drift review for " + b.subject.name + " sent. A quiet history should come back NO."];
+      },
+      // 2.5, Build A: marriage.
+      Divorce: function (b) {
+        var m = b.marriage;
+        if (!m || (m.state !== "married" && m.state !== "separated")) {
+          return [true, b.subject.name + " is not married to you in Relationships' record. A MARAS marriage must be imported first."];
+        }
+        m.previous = m.state; m.state = "divorced"; m.since = state.generatedAt;
+        later(80, pushSnapshot);
+        return [true, "You and " + b.subject.name + " are divorced."];
+      },
+      SetMarriageState: function (b, args) {
+        var names = ["none", "engaged", "married", "broken_off", "divorced", "widowed", "separated"];
+        var s = names[args[0]];
+        if (!s) return [true, "No marriage state " + args[0] + "."];
+        if (s === "none") { b.marriage = null; }
+        else {
+          var m = b.marriage || { state: "none", previous: "none", since: null, weddingDay: null, eloped: false, officiant: "", why: "", ringFromPlayer: "", ringToPlayer: "" };
+          m.previous = m.state; m.state = s; m.since = state.generatedAt; m.why = "set by hand (developer view)";
+          b.marriage = m;
+        }
+        later(80, pushSnapshot);
+        return [true, b.subject.name + " set to state " + args[0] + "."];
       }
     };
 
@@ -179,6 +202,15 @@
         return [true, "Forgot 3 taken-off record(s) on 2 people, and applied 3 of our blocks where the category was empty."];
       },
       // The DLL answers this one at once; the count arrives as a notice.
+      ImportMaras: function () {
+        return [true, "Brought over from MARAS: 13 married, 0 engaged."];
+      },
+      SetMaraException: function (args) {
+        return [true, args[0] ? "Mara's exception granted: the player may marry again." : "Mara's exception withdrawn."];
+      },
+      WeddingReport: function () {
+        return [true, "Wedding report: | RelationshipMarriage running false stage 0 done false | DestinationWeddings.esp true"];
+      },
       CheckDisplay: function () {
         var n = state.bonds.length;
         later(600, function () { notice(n + " bonds checked, 0 disagreements (see SkyrimNetRelationships.log)."); });
@@ -218,7 +250,7 @@
     function act(p) {
       var op = p && p.op;
       if (op === "EnrollActor") return enroll(p.subject);
-      if (playthroughOps[op]) return playthroughOps[op]();
+      if (playthroughOps[op]) return playthroughOps[op](p.args || []);
       if (!ops[op]) return [false, "Unknown operation " + op + "."];
       var b = bondOf(p.subject);
       if (!b) return [false, "Nobody with that form id is on the roster."];

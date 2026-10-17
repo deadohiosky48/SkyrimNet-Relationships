@@ -445,7 +445,7 @@
       b.disabled = current;
       b.addEventListener("click", function () {
         closeDialog();
-        runAction(a, null, [], opener);
+        runAction(a, null, a.args || [], opener);
       });
       row.appendChild(b);
       wrap.appendChild(row);

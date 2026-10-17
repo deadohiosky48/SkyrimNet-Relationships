@@ -1,0 +1,42 @@
+# 2.5, Build A: marriage. Gated by a NATIVE decorator (registered by
+# SkyrimNetRelationships.dll at data load, before SkyrimNet caches
+# eligibility); the Papyrus function checks again when it runs, and the player
+# confirms every change of state in a message box.
+
+customCategory: marriage
+name: MarriageAgree
+description: |
+  You and {{ player.name }} have just agreed to marry: they asked and you said yes, or you asked and they said yes.
+
+  USE ONLY when the answer was an unmistakable yes, spoken now. Not for talk of marrying someday, not for a hope, not for teasing.
+
+  If you do not want this, or not yet, do not use this: say so in your own words, and use MarriageDecline.
+
+questEditorId: SNRom_Quest
+scriptName: SNRom_Bridge
+executionFunctionName: AgreeToMarry
+
+parameterMapping:
+  - type: speaker
+    name: akActor
+    description: you, the one saying yes
+  - type: dynamic
+    name: asWords
+    description: "one short sentence, in your own voice, of what you said to them"
+    optional: true
+    default: ""
+
+eligibilityRules:
+  - conditions:
+      - decoratorName: "marriage_can_accept"
+        arguments: ["currentActor"]
+        comparisonOperator: "=="
+        expectedValue: true
+    logicalOperator: "AND"
+    required: true
+
+eventString: "{{ actor.name }} said yes to marrying {{ player.name }}."
+isShortLived: false
+
+enabled: true
+defaultPriority: 1

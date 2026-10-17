@@ -5024,10 +5024,390 @@ Event OnMarriageChanged(String asEventName, String asState, Float afState, Form 
     EndIf
     ApiTouch(who)
     Diag(LOG_INFO(), "Marriage: " + who.GetDisplayName() + " is now " + asState + ".")
-    If (afState as Int) == MARRIAGE_MARRIED() && IsEnrolled(who)
+    ; Re-read only when the Spouse floor would lift them: a marriage brought in
+    ; from MARAS is usually at Spouse already, and an import must not set off
+    ; a read per spouse.
+    If (afState as Int) == MARRIAGE_MARRIED() && IsEnrolled(who) && PointsOf(who) < SPOUSE_MIN()
         ReseedActor(who)
     EndIf
 EndEvent
+
+; ===========================================================================
+; PROPOSALS, RINGS AND ELOPING (2.5, Build A: M3, M3r, M4e, M5). The actions
+; in config/actions/Marriage*.yaml. Each is gated by a native decorator, which
+; holds while dialogue pauses the game, and asks again here when it runs: the
+; check that runs is the one that holds (see OnMarasStatusChanged).
+;
+; THE PLAYER CONFIRMS every change of state with a message box (P3): the model
+; can say yes for an NPC, never for the player.
+; ===========================================================================
+
+Float Function ProposalCooldownDays() Global
+    { The wait after a no, in game days: three at Normal, scaled by Bond Pace. }
+    Return 3.0 / PaceMultiplier()
+EndFunction
+
+String Function ProposalRefusal(Actor akActor)
+    { Why CanAcceptProposal said no, for the log. }
+    If TierOf(akActor) < 5
+        Return "below Spouse, at " + TierName(TierOf(akActor))
+    ElseIf IsMarriedToPlayer(akActor)
+        Return "already married to the player"
+    ElseIf OurMarriage(akActor) == MARRIAGE_ENGAGED()
+        Return "already engaged"
+    ElseIf SpouseCount() > 0 && !SNRom_Native.MaraException()
+        Return "the player is married, and Mara has not granted an exception"
+    EndIf
+    Return "a recent no, kin, or orientation"
+EndFunction
+
+Function AgreeToMarry(Actor akActor, String asWords)
+    { Action AgreeToMarry: they said yes to marrying the player, or proposed and
+      heard yes. The player confirms; then ENGAGED. }
+    If akActor == None || !_ready || _dashNatives < 16
+        Return
+    EndIf
+    String who = akActor.GetDisplayName()
+    If !SNRom_Native.CanAcceptProposal(akActor)
+        Diag(LOG_WARN(), "Proposal: " + who + " agreed to marry, but the rules do not allow it now (" + \
+            ProposalRefusal(akActor) + "). Not recorded.")
+        Return
+    EndIf
+    Int answer = SNRom_Choice.AskNow(Tr("marry.ask.body", "{0} has said yes. Are the two of you promised to each other?", who), \
+        Tr("marry.ask.accept", "Yes, we are engaged"), \
+        Tr("marry.ask.decline", "No, I spoke too soon"), \
+        Tr("marry.ask.defer", "Not yet"))
+    Actor player = Game.GetPlayer()
+    If answer == SNRom_Choice.ANSWER_ACCEPT()
+        If ChangeMarriage(akActor, MARRIAGE_ENGAGED(), "agreed to marry: " + asWords)
+            SkyrimNetApi.RegisterPersistentEvent(who + " and " + player.GetDisplayName() + \
+                " are engaged to be married.", akActor, player)
+        EndIf
+    ElseIf answer == SNRom_Choice.ANSWER_DECLINE()
+        SkyrimNetApi.RegisterPersistentEvent(player.GetDisplayName() + " stopped short of making a promise to " + \
+            who + ".", player, akActor)
+        Diag(LOG_INFO(), "Proposal: the player stopped short with " + who + "; nothing recorded.")
+    Else
+        Diag(LOG_INFO(), "Proposal: " + who + " - the player has not answered; nothing recorded.")
+    EndIf
+EndFunction
+
+Function DeclineProposal(Actor akActor, String asWhy)
+    { Action DeclineProposal: they turned a proposal down. A no is an answer
+      for now (spec 5.2): AgreeToMarry is closed for ProposalCooldownDays. }
+    If akActor == None || !_ready || _dashNatives < 16
+        Return
+    EndIf
+    If !SNRom_Native.CanDeclineProposal(akActor)
+        Return
+    EndIf
+    SNRom_Native.NoteProposalDeclined(akActor)
+    SkyrimNetApi.RegisterPersistentEvent(akActor.GetDisplayName() + " turned down " + \
+        Game.GetPlayer().GetDisplayName() + "'s proposal. " + asWhy, akActor, Game.GetPlayer())
+    Diag(LOG_INFO(), "Proposal: " + akActor.GetDisplayName() + " declined (" + asWhy + "); asking again waits " + \
+        ProposalCooldownDays() + " game days.")
+    ApiTouch(akActor)
+EndFunction
+
+Function EndEngagement(Actor akActor, String asWhy)
+    { Action EndEngagement: the engagement is off, by either of them. Rings
+      already given stay where they are; giving one back is its own moment. }
+    If akActor == None || !_ready || OurMarriage(akActor) != MARRIAGE_ENGAGED()
+        Return
+    EndIf
+    If ChangeMarriage(akActor, MARRIAGE_BROKEN_OFF(), "engagement ended: " + asWhy)
+        SkyrimNetApi.RegisterPersistentEvent(akActor.GetDisplayName() + " and " + \
+            Game.GetPlayer().GetDisplayName() + " are no longer engaged. " + asWhy, akActor, Game.GetPlayer())
+    EndIf
+EndFunction
+
+Form Function PlaceholderRing() Global
+    { Until the bespoke ring (backlog): vanilla's gold diamond ring,
+      JewelryRingGoldDiamond, verified against Skyrim.esm. }
+    Return Game.GetFormFromFile(0x000877C9, "Skyrim.esm")
+EndFunction
+
+Function GiveEngagementRing(Actor akActor)
+    { Action GiveEngagementRing: they give the player a ring. One they carry and
+      are not wearing, or the placeholder, had made for the purpose. }
+    If akActor == None || !_ready || _dashNatives < 16 || OurMarriage(akActor) != MARRIAGE_ENGAGED()
+        Return
+    EndIf
+    If SNRom_Native.MarriageRing(akActor, False) != None
+        Diag(LOG_INFO(), "Ring: " + akActor.GetDisplayName() + " has already given the player a ring.")
+        Return
+    EndIf
+    Form ring = None
+    Form[] carried = SNRom_Native.RingsCarried(akActor)
+    Int i = 0
+    While i < carried.Length && ring == None
+        If !akActor.IsEquipped(carried[i])
+            ring = carried[i]
+        EndIf
+        i += 1
+    EndWhile
+    If ring == None
+        ring = PlaceholderRing()
+        If ring == None
+            Return
+        EndIf
+        akActor.AddItem(ring, 1, True)
+    EndIf
+    Actor player = Game.GetPlayer()
+    akActor.RemoveItem(ring, 1, True, player)
+    SNRom_Native.SetMarriageRing(akActor, False, ring)
+    Debug.Notification(Tr("ring.received", "{0} gave you {1}.", akActor.GetDisplayName(), ring.GetName()))
+    SkyrimNetApi.RegisterPersistentEvent(akActor.GetDisplayName() + " gave " + player.GetDisplayName() + \
+        " an engagement ring: " + ring.GetName() + ".", akActor, player)
+EndFunction
+
+Function AcceptEngagementRing(Actor akActor, String asRing)
+    { Action AcceptEngagementRing: the player offers them a ring. The player
+      chooses which, or confirms the one they named; then it is theirs, and
+      they put it on. }
+    If akActor == None || !_ready || _dashNatives < 16 || OurMarriage(akActor) != MARRIAGE_ENGAGED()
+        Return
+    EndIf
+    Actor player = Game.GetPlayer()
+    String who = akActor.GetDisplayName()
+    Form[] carried = SNRom_Native.RingsCarried(player)
+    If carried.Length == 0
+        Debug.Notification(Tr("ring.none", "You have no ring to give."))
+        Return
+    EndIf
+    Form ring = None
+    Int i = 0
+    If asRing != ""
+        While i < carried.Length && ring == None
+            If StringUtil.Find(carried[i].GetName(), asRing) >= 0 || StringUtil.Find(asRing, carried[i].GetName()) >= 0
+                ring = carried[i]
+            EndIf
+            i += 1
+        EndWhile
+    EndIf
+    If ring != None
+        Int answer = SNRom_Choice.AskNow(Tr("ring.give.body", "Give {0} your {1}?", who, ring.GetName()), \
+            Tr("ring.give.accept", "Give it"), Tr("ring.give.decline", "Not this one"), "")
+        If answer == SNRom_Choice.ANSWER_DECLINE()
+            ring = None
+        ElseIf answer != SNRom_Choice.ANSWER_ACCEPT()
+            Return
+        EndIf
+    EndIf
+    If ring == None
+        Int shown = carried.Length
+        If shown > 9
+            shown = 9
+        EndIf
+        String[] buttons = Utility.CreateStringArray(shown + 1)
+        i = 0
+        While i < shown
+            buttons[i] = carried[i].GetName()
+            If player.IsEquipped(carried[i])
+                buttons[i] = Tr("ring.worn", "{0} (wearing)", buttons[i])
+            EndIf
+            i += 1
+        EndWhile
+        buttons[shown] = Tr("ring.notNow", "Not now")
+        Int picked = SNRom_Choice.AskList(Tr("ring.pick.body", "Which ring will you give {0}?", who), buttons)
+        If picked < 0 || picked >= shown
+            Return
+        EndIf
+        ring = carried[picked]
+    EndIf
+    player.RemoveItem(ring, 1, True, akActor)
+    akActor.EquipItem(ring, False, True)
+    SNRom_Native.SetMarriageRing(akActor, True, ring)
+    SkyrimNetApi.RegisterPersistentEvent(player.GetDisplayName() + " gave " + who + " an engagement ring: " + \
+        ring.GetName() + ".", player, akActor)
+    Diag(LOG_INFO(), "Ring: the player gave " + who + " " + ring.GetName() + ".")
+EndFunction
+
+Function BlessUnion(Actor akOfficiant, String asBetrothed)
+    { Action BlessUnion: a priest, priestess or jarl marries the player to their
+      betrothed, here and now (eloping, spec 5.3). Eloping's checklist (5.3a):
+      the day is now, the officiant willing, both present; outfits optional. }
+    If akOfficiant == None || !_ready || _dashNatives < 16
+        Return
+    EndIf
+    String priest = akOfficiant.GetDisplayName()
+    If !SNRom_Native.CanBless(akOfficiant)
+        Diag(LOG_WARN(), "Eloping: " + priest + " offered to marry the player, but nobody engaged to them is " + \
+            "here, or Mara has not granted another marriage. Not recorded.")
+        Return
+    EndIf
+    Actor[] here = SNRom_Native.BetrothedNear()
+    Actor betrothed = None
+    Int i = 0
+    While i < here.Length && betrothed == None
+        If here[i] != akOfficiant && asBetrothed != "" && StringUtil.Find(here[i].GetDisplayName(), asBetrothed) >= 0
+            betrothed = here[i]
+        EndIf
+        i += 1
+    EndWhile
+    If betrothed == None
+        Actor[] others = PapyrusUtil.ActorArray(0)
+        i = 0
+        While i < here.Length
+            If here[i] != akOfficiant
+                others = PapyrusUtil.PushActor(others, here[i])
+            EndIf
+            i += 1
+        EndWhile
+        If others.Length == 1
+            betrothed = others[0]
+        ElseIf others.Length > 1
+            String[] names = Utility.CreateStringArray(others.Length + 1)
+            i = 0
+            While i < others.Length
+                names[i] = others[i].GetDisplayName()
+                i += 1
+            EndWhile
+            names[others.Length] = Tr("ring.notNow", "Not now")
+            Int picked = SNRom_Choice.AskList(Tr("elope.pick.body", "Who will {0} marry you to?", priest), names)
+            If picked < 0 || picked >= others.Length
+                Return
+            EndIf
+            betrothed = others[picked]
+        EndIf
+    EndIf
+    If betrothed == None
+        Return
+    EndIf
+    String who = betrothed.GetDisplayName()
+    Int answer = SNRom_Choice.AskNow(Tr("elope.ask.body", "{0} will marry you and {1}, here and now.", priest, who), \
+        Tr("elope.ask.accept", "Marry now"), Tr("elope.ask.decline", "Not yet"), "")
+    If answer != SNRom_Choice.ANSWER_ACCEPT()
+        Diag(LOG_INFO(), "Eloping: the player did not go ahead with " + who + " before " + priest + ".")
+        Return
+    EndIf
+    If ChangeMarriage(betrothed, MARRIAGE_MARRIED(), "eloped; married by " + priest, False, akOfficiant, True)
+        Actor player = Game.GetPlayer()
+        SkyrimNetApi.RegisterPersistentEvent(priest + " married " + player.GetDisplayName() + " and " + who + \
+            ", who eloped.", akOfficiant, player)
+    EndIf
+EndFunction
+
+; ---- the dashboard's marriage operations -----------------------------------
+
+String Function DivorceByHand(Actor akActor)
+    { The dashboard's Divorce: for a marriage in our record that ended where
+      nothing saw it. M6 makes divorce a conversation. }
+    Int current = OurMarriage(akActor)
+    If current != MARRIAGE_MARRIED() && current != MARRIAGE_SEPARATED()
+        Return Tr("act.divorce.notMarried", "{0} is not married to you in Relationships' record. A MARAS marriage must be imported first.", akActor.GetDisplayName())
+    EndIf
+    ChangeMarriage(akActor, MARRIAGE_DIVORCED(), "divorced, by hand from the dashboard")
+    Return Tr("act.divorce.done", "You and {0} are divorced.", akActor.GetDisplayName())
+EndFunction
+
+String Function SetMarriageStateByHand(Actor akActor, Int aiState)
+    { Developer: any state, forced. }
+    If aiState < 0 || aiState > MARRIAGE_SEPARATED()
+        Return "No marriage state " + aiState + "."
+    EndIf
+    If OurMarriage(akActor) == aiState
+        Return akActor.GetDisplayName() + " is already in that state."
+    EndIf
+    ChangeMarriage(akActor, aiState, "set by hand (developer view)", True)
+    Return akActor.GetDisplayName() + " set to state " + aiState + "."
+EndFunction
+
+String Function SetMaraExceptionByHand(Int aiGranted)
+    { Developer: Mara's exception, until the quest exists (spec 5.4). }
+    SNRom_Native.SetMaraException(aiGranted != 0)
+    ApiFactsChanged()
+    If aiGranted != 0
+        Return "Mara's exception granted: the player may marry again."
+    EndIf
+    Return "Mara's exception withdrawn."
+EndFunction
+
+String Function ImportMarasMarriages()
+    { Moving from MARAS (M9): what MARAS records - engaged, married, divorced,
+      jilted - into our record, forced, once per person. A record we already
+      hold is left alone. A household with more than one spouse is granted
+      Mara's exception, since it already has one. Run with MARAS installed. }
+    If !MarasPresent()
+        Return Tr("act.import.noMaras", "MARAS is not installed, so there is nothing to bring over.")
+    EndIf
+    ; Safe to run again: anyone already in our record is skipped, so a second
+    ; run brings over only what MARAS recorded since the first.
+    Bool before = StorageUtil.GetIntValue(None, "SNRom_MarasImported", 0) == 1
+    Int married = ImportMarasStatus("married", MARRIAGE_MARRIED())
+    Int engaged = ImportMarasStatus("engaged", MARRIAGE_ENGAGED())
+    Int divorced = ImportMarasStatus("divorced", MARRIAGE_DIVORCED())
+    Int jilted = ImportMarasStatus("jilted", MARRIAGE_BROKEN_OFF())
+    If SpouseCount() > 1 && !SNRom_Native.MaraException()
+        SNRom_Native.SetMaraException(True)
+        Diag(LOG_INFO(), "Import: more than one spouse, so Mara's exception is granted.")
+    EndIf
+    StorageUtil.SetIntValue(None, "SNRom_MarasImported", 1)
+    ApiFactsChanged()
+    String summary = Tr("act.import.done", "Brought over from MARAS: {0} married, {1} engaged.", married, engaged)
+    If divorced + jilted > 0
+        summary += " " + Tr("act.import.ended", "Also {0} divorced and {1} broken engagements.", divorced, jilted)
+    EndIf
+    If before && married + engaged + divorced + jilted == 0
+        summary = Tr("act.import.again", "Already brought over; MARAS has recorded nothing new since.")
+    EndIf
+    Diag(LOG_INFO(), "Import from MARAS: " + married + " married, " + engaged + " engaged, " + divorced + \
+        " divorced, " + jilted + " jilted (run before: " + before + ").")
+    Return summary
+EndFunction
+
+Int Function ImportMarasStatus(String asStatus, Int aiState)
+    Actor[] people = MARAS.GetNPCsByStatus(asStatus)
+    Int brought = 0
+    Int i = 0
+    While i < people.Length
+        Actor a = people[i]
+        If a != None && OurMarriage(a) == MARRIAGE_NONE()
+            If ChangeMarriage(a, aiState, "imported from MARAS (" + asStatus + ")", True)
+                brought += 1
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    Return brought
+EndFunction
+
+String Function WeddingPrototypeReport()
+    { Developer, prototypes P1 and P2: the vanilla wedding quests and
+      Destination Weddings as they stand now, written to snrom.log. Reads
+      only; it starts and changes nothing. }
+    String report = "Wedding report:"
+    report += QuestLine("RelationshipMarriage", 0x00074793)
+    report += QuestLine("RelationshipMarriageWedding", 0x0007404E)
+    report += QuestLine("RelationshipMarriageFIN", 0x00021382)
+    report += QuestLine("RelationshipMarriageBreakUp", 0x0007431B)
+    report += " | DestinationWeddings.esp " + Game.IsPluginInstalled("DestinationWeddings.esp")
+    report += " | MARAS " + MarasPresent() + " | spouses " + SpouseCount() + \
+        " | Mara's exception " + SNRom_Native.MaraException()
+    Actor[] ours = SNRom_Native.MarriageWithState(MARRIAGE_MARRIED())
+    report += " | ours married " + ours.Length
+    Diag(LOG_INFO(), report)
+    Return report
+EndFunction
+
+String Function QuestLine(String asName, Int aiFormId)
+    Quest q = Game.GetFormFromFile(aiFormId, "Skyrim.esm") as Quest
+    If q == None
+        Return " | " + asName + " missing"
+    EndIf
+    String line = " | " + asName + " running " + q.IsRunning() + " stage " + q.GetStage() + \
+        " done " + q.IsCompleted()
+    ReferenceAlias love = q.GetAliasByName("LoveInterest") as ReferenceAlias
+    If love != None
+        Actor who = love.GetActorReference()
+        If who != None
+            line += " LoveInterest " + who.GetDisplayName()
+        Else
+            line += " LoveInterest empty"
+        EndIf
+    EndIf
+    Return line
+EndFunction
 
 Bool Function SeedRomanticEvidence(Actor akActor)
     { EXPLICIT DECLARATIONS ONLY. Not points, not tier, not rapport, not
@@ -6834,9 +7214,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 15
+    If natives < 16
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v15). Install the DLL from the same release.", True)
+            ", these need v16). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5
@@ -7110,7 +7490,8 @@ Bool Function DashboardDeveloperOp(String asOp) Global
       in the DLL's op table. Each bypasses a gate that is the design, so both
       sides refuse them unless the developer view is on. }
     Return asOp == "RequestSparkNow" || asOp == "UnsparkActor" || asOp == "ForceDriftReview" || \
-        asOp == "CheckDisplay"
+        asOp == "CheckDisplay" || asOp == "SetMarriageState" || asOp == "SetMaraException" || \
+        asOp == "WeddingReport"
 EndFunction
 
 String Function CheckDashboardDisplay()
@@ -7197,7 +7578,8 @@ Event OnDashboardAction(String asEventName, String asOp, Float afRequestId, Form
         Return
     EndIf
     Bool forPlaythrough = asOp == "StartFreshStore" || asOp == "AdoptLegacyStore" || asOp == "CheckDisplay" || \
-        asOp == "RestoreOurBioBlocks"
+        asOp == "RestoreOurBioBlocks" || asOp == "ImportMaras" || asOp == "SetMaraException" || \
+        asOp == "WeddingReport"
     If !forPlaythrough && who == None
         SNRom_Native.ActionDone(requestId, False, "They could not be found in the game right now.")
         Return
@@ -7288,6 +7670,26 @@ Event OnDashboardAction(String asEventName, String asOp, Float afRequestId, Form
         answer = "Asked for a drift review of " + whoName + ". The next open shows the result."
     ElseIf asOp == "CheckDisplay"
         answer = CheckDashboardDisplay()
+    ElseIf asOp == "Divorce"
+        answer = DivorceByHand(who)
+    ElseIf asOp == "ImportMaras"
+        answer = ImportMarasMarriages()
+    ElseIf asOp == "SetMarriageState"
+        Int[] stateArgs = SNRom_Native.ActionArgs(requestId)
+        If stateArgs.Length < 1
+            SNRom_Native.ActionDone(requestId, False, "Set marriage state needs a state.")
+            Return
+        EndIf
+        answer = SetMarriageStateByHand(who, stateArgs[0])
+    ElseIf asOp == "SetMaraException"
+        Int[] exArgs = SNRom_Native.ActionArgs(requestId)
+        Int granted = 0
+        If exArgs.Length > 0
+            granted = exArgs[0]
+        EndIf
+        answer = SetMaraExceptionByHand(granted)
+    ElseIf asOp == "WeddingReport"
+        answer = WeddingPrototypeReport()
     Else
         SNRom_Native.ActionDone(requestId, False, "This version of the scripts has no operation " + asOp + ".")
         Return
@@ -11094,6 +11496,9 @@ Function ApiPushDecoratorFacts()
     If _dashNatives >= 14
         SNRom_Native.SetDecoratorFacts(StorageUtil.GetIntValue(None, "SNRom_PartnerCount", 0), \
             SkyrimNetApi.GetConfigFloat(CFG(), "attractionBypassRatio", 1.5))
+    EndIf
+    If _dashNatives >= 16
+        SNRom_Native.SetMarriageFacts(SpouseCount(), ProposalCooldownDays())
     EndIf
 EndFunction
 

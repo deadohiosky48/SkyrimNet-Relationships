@@ -64,6 +64,30 @@ namespace SNRom::Marriage {
     // One person's record as the snapshot carries it; null for no record.
     nlohmann::json Of(std::int32_t a_formId);
 
+    // ENGAGEMENT RINGS (Build A, M3r; spec 5.2a). The item each gave the
+    // other, by form id; 0 none. Kept on an engaged or married record only.
+    bool         SetRing(std::int32_t a_formId, bool a_fromPlayer, std::int32_t a_item);
+    std::int32_t Ring(std::int32_t a_formId, bool a_fromPlayer);
+
+    // A PROPOSAL DECLINED (spec 5.2): a no is an answer for now. Kept apart
+    // from the records, since most who decline have none. Game days since the
+    // last one, or -1 for never.
+    void  NoteDeclined(std::int32_t a_formId);
+    float DaysSinceDeclined(std::int32_t a_formId);
+
+    // What Papyrus knows and pushes (SNRom_Bridge.ApiPushDecoratorFacts):
+    // the player's spouses across every record, and the cooldown after a no,
+    // in game days (Bond Pace).
+    void         SetFacts(std::int32_t a_spouses, float a_cooldownDays);
+    std::int32_t Spouses();
+    bool         InCooldown(std::int32_t a_formId);
+
+    // One more spouse allowed: none yet, or Mara's exception (spec 5.4).
+    bool MayMarryAnother();
+
+    // Everyone engaged to the player, ascending form id.
+    std::vector<std::int32_t> AllEngaged();
+
     // The co-save (Cosave.cpp dispatches to these).
     inline constexpr std::uint32_t kRecordType = 'MARR';
     void Save(SKSE::SerializationInterface* a_intfc);

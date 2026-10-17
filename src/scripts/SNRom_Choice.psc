@@ -137,3 +137,25 @@ Int Function AskNow(String asBody, String asAccept, String asDecline, String asD
     EndIf
     Return SkyMessage.GetResultIndex(boxId)
 EndFunction
+
+Int Function AskList(String asBody, String[] asButtons, Float afTimeoutSeconds = 60.0) Global
+    { AskNow with any number of buttons (2.5: which ring, which betrothed).
+      Returns the index of the button chosen, or ANSWER_NONE on a timeout or a
+      box that could not open. }
+    If asButtons.Length == 0
+        Return ANSWER_NONE()
+    EndIf
+    Int boxId = SkyMessage.ShowArray_NonBlocking(asBody, asButtons)
+    If boxId == 0
+        Return ANSWER_NONE()
+    EndIf
+    Float started = Utility.GetCurrentRealTime()
+    While !SkyMessage.IsMessageResultAvailable(boxId) && (Utility.GetCurrentRealTime() - started) < afTimeoutSeconds
+        Utility.WaitMenuMode(0.1)
+    EndWhile
+    If !SkyMessage.IsMessageResultAvailable(boxId)
+        Discard(boxId)
+        Return ANSWER_NONE()
+    EndIf
+    Return SkyMessage.GetResultIndex(boxId)
+EndFunction

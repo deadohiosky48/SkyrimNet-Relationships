@@ -5334,6 +5334,17 @@
         "why": "Veyla trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
         "limit": "Veyla will not be kept as someone's second choice.",
         "address": "'Dearest', half teasing."
+      },
+      "marriage": {
+        "state": "engaged",
+        "previous": "none",
+        "since": 210.37,
+        "weddingDay": null,
+        "eloped": false,
+        "officiant": "",
+        "why": "agreed to marry: yes",
+        "ringFromPlayer": "Gold Diamond Ring",
+        "ringToPlayer": "Silver Ruby Ring"
       }
     },
     {
@@ -5384,6 +5395,17 @@
         "why": "Maelis is restless under routine and comes alive on the road.",
         "limit": "Maelis will not leave a companion behind in a fight.",
         "address": "'Love', easily."
+      },
+      "marriage": {
+        "state": "married",
+        "previous": "engaged",
+        "since": 184.37,
+        "weddingDay": 184.37,
+        "eloped": true,
+        "officiant": "Maramal",
+        "why": "eloped",
+        "ringFromPlayer": "",
+        "ringToPlayer": ""
       }
     },
     {

@@ -1,0 +1,27 @@
+{% if render_mode == "full" or render_mode == "thoughts" or render_mode == "target" %}
+{# render_mode guard MUST be within the first 5 lines (see 0330). #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{# Relationships - the officiant (2.5, Build A; spec 5.3, 5.4)                  #}
+{#                                                                            #}
+{# Any priest, priestess or jarl can marry the player to their betrothed,      #}
+{# here and now (eloping). Officiants are seldom enrolled, so 0330 never       #}
+{# reaches them: this tells them only when it matters - someone engaged to the #}
+{# player is here with them. Silent otherwise. get_officiant is native.        #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{% if not is_player(actorUUID) %}
+{% if is_plugin_loaded("SNRom_Integration.esl") %}
+{% set off = get_officiant(actorUUID) %}
+{% if off and default(off.officiant, 0) == 1 and existsIn(off, "betrothed") and length(off.betrothed) > 0 %}
+
+## Who Has Come Before You
+
+{{ player.name }} is here with {% for name in off.betrothed %}{{ name }}{% if not loop.is_last %} and {% endif %}{% endfor %}, to whom they are engaged. As one who can marry people, you could marry them here and now, if both of them ask you and you are willing - a plain blessing, no ceremony, no guests. Whether you would is yours to judge, as yourself.
+{% if default(off.mayMarry, 1) == 0 %}
+But {{ player.name }} is already married, and Mara has granted them no exception. You know it, and you will not marry them to another. Say so in your own way.
+{% elif default(off.exception, 0) == 1 and default(off.spouses, 0) > 0 %}
+{{ player.name }} holds Mara's own exception to marry more than once. Every priest knows it; you may still have an opinion.
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
