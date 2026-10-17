@@ -1,7 +1,14 @@
-# 2.5, Build A: marriage. Gated by a NATIVE decorator (registered by
-# SkyrimNetRelationships.dll at data load, before SkyrimNet caches
-# eligibility); the Papyrus function checks again when it runs, and the player
-# confirms every change of state in a message box.
+# 2.5, Build A: marriage. ELIGIBILITY HERE IS ONLY A COARSE FILTER, built from
+# SkyrimNet's own faction checks: our bond faction's rank, or vanilla's priest
+# and jarl factions by hex FormID. The real rules are the native ones
+# (SkyrimNetRelationships.dll, Decorators.cpp), which the Papyrus function asks
+# when the action runs, and the player confirms every change of state.
+#
+# NOT OUR OWN DECORATORS. marriage_can_accept and the rest answered correctly
+# through the template preview (Hroki, 2026-10-17: accept=true), yet SkyrimNet's
+# eligibility check held every action that used them ineligible: compared with
+# true, with "true", and after a reload of actions with them registered. A
+# built-in check it evaluates itself is the one it can be trusted to evaluate.
 
 customCategory: marriage
 name: MarriageEndEngagement
@@ -26,10 +33,10 @@ parameterMapping:
 
 eligibilityRules:
   - conditions:
-      - decoratorName: "marriage_engaged"
-        arguments: ["currentActor"]
-        comparisonOperator: "=="
-        expectedValue: true
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "SNRom_Bond"]
+        comparisonOperator: ">="
+        expectedValue: 0
     logicalOperator: "AND"
     required: true
 
