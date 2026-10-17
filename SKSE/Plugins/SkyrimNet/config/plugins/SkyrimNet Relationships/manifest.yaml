@@ -117,17 +117,6 @@ schema:
       description: "Bars anyone SkyrimNet-Kinship records as your child from the romantic and sexual ladders, whatever their disposition says. Requires SkyrimNet-Kinship to identify them; with that mod absent this setting does nothing at all, because nobody is recorded as your child in the first place. Leave on unless you have a specific reason not to."
       defaultValue: true
       category: "Kinship"
-
-    # 2.5 (M2). Read by SNRom_Bridge.OwnsMarriage().
-    - name: "Who Handles Marriage"
-      path: "marriageHandler"
-      type: "select"
-      description: "Who runs proposals and weddings. Automatic: MARAS when it is installed, and Relationships when it is not. Relationships: always this mod, even with MARAS installed; MARAS then makes no engagements, and any it makes anyway are undone. Marriages that already exist count either way, whichever mod made them. Default: Automatic."
-      defaultValue: "Automatic"
-      options:
-        - Automatic
-        - Relationships
-      category: "Marriage"
     - name: "Let Personalities Change Over Time"
       path: "driftEnabled"
       type: "bool"
