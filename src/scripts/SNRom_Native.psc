@@ -193,10 +193,6 @@ Int Function SeverOutfitLockSetting() Global Native
 {VERSION 16 (2.5). SeverActions' Outfit Lock setting, read from its script: 1
  on, 0 off, -1 unread.}
 
-Function WearRing(Actor akActor, Form akRing, String asName) Global Native
-{VERSION 16 (2.5). Puts akRing on akActor once nothing pauses the game, then
- names the copy worn asName. Returns at once.}
-
 Bool Function IsOfficiant(Actor akActor) Global Native
 {VERSION 16 (2.5). A living adult priest, priestess or jarl.}
 

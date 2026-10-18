@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-
 // THE MARRIAGE RINGS IN PLAY (2.5). Two things the plugin's records cannot do
 // on their own:
 //
@@ -29,12 +27,4 @@ namespace SNRom::Rings {
 
     // The same, from any thread: queued as a task.
     void UpdateSpouseHereSoon();
-
-    // PUT A RING ON ONCE THE GAME RUNS, AND NAME IT. A ring is given in the gift
-    // menu, during a conversation, with the game paused, and an NPC's
-    // equipment does not change while it is: Hroki took hers and never wore it
-    // (2026-10-18). This waits until nothing pauses the game, equips it, and
-    // names the copy worn ("Hroki's Gold Engagement Ring"), which keeps the
-    // name in the save. Any thread.
-    void WearWhenResumed(RE::FormID a_actor, RE::FormID a_ring, std::string a_name);
 }

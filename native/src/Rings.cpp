@@ -153,66 +153,6 @@ namespace SNRom::Rings {
         }
     }
 
-    namespace {
-        // Main thread: name the copy of a_ring that a_actor wears.
-        void Name(RE::FormID a_actor, RE::FormID a_ring, const std::string& a_name) {
-            auto* actor = RE::TESForm::LookupByID<RE::Actor>(a_actor);
-            auto* ring = RE::TESForm::LookupByID<RE::TESBoundObject>(a_ring);
-            auto* changes = actor ? actor->GetInventoryChanges() : nullptr;
-            if (!ring || !changes || !changes->entryList) {
-                return;
-            }
-            for (auto* entry : *changes->entryList) {
-                if (!entry || entry->object != ring || !entry->extraLists) {
-                    continue;
-                }
-                RE::ExtraDataList* worn = nullptr;
-                for (auto* list : *entry->extraLists) {
-                    if (list && list->HasType(RE::ExtraDataType::kWorn)) {
-                        worn = list;
-                        break;
-                    }
-                }
-                if (!worn) {
-                    SKSE::log::warn("Rings: {:08X} is not wearing {:08X}; not named", a_actor, a_ring);
-                    return;
-                }
-                if (auto* text = worn->GetByType<RE::ExtraTextDisplayData>()) {
-                    text->SetName(a_name.c_str());
-                } else {
-                    worn->Add(new RE::ExtraTextDisplayData(a_name.c_str()));
-                }
-                SKSE::log::info("Rings: {:08X} wears \"{}\"", a_actor, a_name);
-                return;
-            }
-        }
-
-        void TryWear(RE::FormID a_actor, RE::FormID a_ring, std::string a_name, int a_tries) {
-            After(std::chrono::milliseconds{ 500 }, [=]() {
-                auto* ui = RE::UI::GetSingleton();
-                if (ui && ui->GameIsPaused()) {
-                    if (a_tries < 600) {   // five minutes of menus, then give up
-                        TryWear(a_actor, a_ring, a_name, a_tries + 1);
-                    }
-                    return;
-                }
-                auto* actor = RE::TESForm::LookupByID<RE::Actor>(a_actor);
-                auto* ring = RE::TESForm::LookupByID<RE::TESObjectARMO>(a_ring);
-                if (!actor || !ring || actor->IsDead() || !Carries(actor, ring)) {
-                    return;
-                }
-                if (actor->GetWornArmor(RE::BGSBipedObjectForm::BipedObjectSlot::kRing) != ring) {
-                    RE::ActorEquipManager::GetSingleton()->EquipObject(actor, ring);
-                }
-                After(std::chrono::seconds{ 1 }, [=]() { Name(a_actor, a_ring, a_name); });
-            });
-        }
-    }
-
-    void WearWhenResumed(RE::FormID a_actor, RE::FormID a_ring, std::string a_name) {
-        TryWear(a_actor, a_ring, std::move(a_name), 0);
-    }
-
     void UpdateSpouseHereSoon() {
         SKSE::GetTaskInterface()->AddTask([]() { UpdateSpouseHere(); });
     }

@@ -5163,9 +5163,28 @@ Function WearAndName(Actor akWearer, Form akRing)
     EndIf
     ; ONCE THE GAME RUNS. The ring arrives in the gift menu, mid-conversation,
     ; with the game paused, and an NPC's equipment does not change while it is:
-    ; Hroki took hers and never wore it. The DLL waits for nothing to pause the
-    ; game, puts it on, and names the copy worn (Rings.h, WearWhenResumed).
-    SNRom_Native.WearRing(akWearer, akRing, Tr("ring.named", "{0}'s {1}", akWearer.GetDisplayName(), akRing.GetName()))
+    ; Hroki took hers and never wore it. Utility.Wait counts only time the game
+    ; runs, so this resumes after every menu has closed, whichever paused it.
+    ; (A DLL wait on UI::GameIsPaused never ended in play: a Prisma UI screen
+    ; counts as a pausing menu while it exists.)
+    Utility.Wait(0.5)
+    If akWearer == None || akWearer.IsDead() || akWearer.GetItemCount(akRing) == 0
+        Return
+    EndIf
+    akWearer.EquipItem(akRing, False, True)
+    Float waited = 0.0
+    While !akWearer.IsEquipped(akRing) && waited < 3.0
+        Utility.Wait(0.25)
+        waited += 0.25
+    EndWhile
+    If !akWearer.IsEquipped(akRing)
+        Diag(LOG_INFO(), "Ring: " + akWearer.GetDisplayName() + " did not keep " + akRing.GetName() + \
+            " on; it is in their inventory, unnamed.", True)
+        Return
+    EndIf
+    String named = Tr("ring.named", "{0}'s {1}", akWearer.GetDisplayName(), akRing.GetName())
+    WornObject.SetDisplayName(akWearer, 0, 0x00000040, named, True)
+    Diag(LOG_INFO(), "Ring: " + akWearer.GetDisplayName() + " wears " + named + ".")
 EndFunction
 
 Function RingsBecomeWeddingRings(Actor akSpouse)
