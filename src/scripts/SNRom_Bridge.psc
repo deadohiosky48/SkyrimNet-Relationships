@@ -5006,6 +5006,9 @@ Bool Function ChangeMarriage(Actor akActor, Int aiState, String asWhy, Bool abFo
         If akActor.GetRelationshipRank(Game.GetPlayer()) < 4
             akActor.SetRelationshipRank(Game.GetPlayer(), 4)
         EndIf
+    EndIf
+    If aiState == MARRIAGE_MARRIED()
+        RingsBecomeWeddingRings(akActor)
     ElseIf (aiState == MARRIAGE_DIVORCED() || aiState == MARRIAGE_WIDOWED()) && married != None
         akActor.RemoveFromFaction(married)
     EndIf
@@ -5122,9 +5125,56 @@ Function EndEngagement(Actor akActor, String asWhy)
 EndFunction
 
 Form Function PlaceholderRing() Global
-    { Until the bespoke ring (backlog): vanilla's gold diamond ring,
-      JewelryRingGoldDiamond, verified against Skyrim.esm. }
+    { The ring a betrothed gives when they carry none of their own: our Gold
+      Engagement Ring; vanilla's gold diamond ring (JewelryRingGoldDiamond) if
+      the plugin is somehow older than these scripts. }
+    Form ours = EngagementRing()
+    If ours != None
+        Return ours
+    EndIf
     Return Game.GetFormFromFile(0x000877C9, "Skyrim.esm")
+EndFunction
+
+Form Function EngagementRing() Global
+    { SNRom_EngagementRingGold (2.5): the engagement ring alone. Worn on the
+      left ring finger; built by tools/rings from a modder's resource. }
+    Return Game.GetFormFromFile(0x00000D66, "SNRom_Integration.esl")
+EndFunction
+
+Form Function WeddingRing() Global
+    { SNRom_WeddingRingGold (2.5): the engagement ring with its band, which an
+      engagement ring of ours becomes at the wedding. }
+    Return Game.GetFormFromFile(0x00000D68, "SNRom_Integration.esl")
+EndFunction
+
+Function RingsBecomeWeddingRings(Actor akSpouse)
+    { At the wedding (the author, 2026-10-18): an engagement ring of ours that
+      either of them gave becomes the wedding ring, the band added to it, and
+      is put on if it was worn. Any other ring is left as it was given: it is
+      theirs, and it means what it meant. }
+    Form engagement = EngagementRing()
+    Form wedding = WeddingRing()
+    If engagement == None || wedding == None || _dashNatives < 16
+        Return
+    EndIf
+    Actor player = Game.GetPlayer()
+    If SNRom_Native.MarriageRing(akSpouse, True) == engagement && akSpouse.GetItemCount(engagement) > 0
+        akSpouse.RemoveItem(engagement, 1, True)
+        akSpouse.AddItem(wedding, 1, True)
+        akSpouse.EquipItem(wedding, False, True)
+        SNRom_Native.SetMarriageRing(akSpouse, True, wedding)
+        Diag(LOG_INFO(), "Ring: " + akSpouse.GetDisplayName() + "'s engagement ring is now a wedding ring.")
+    EndIf
+    If SNRom_Native.MarriageRing(akSpouse, False) == engagement && player.GetItemCount(engagement) > 0
+        Bool worn = player.IsEquipped(engagement)
+        player.RemoveItem(engagement, 1, True)
+        player.AddItem(wedding, 1, True)
+        If worn
+            player.EquipItem(wedding, False, True)
+        EndIf
+        SNRom_Native.SetMarriageRing(akSpouse, False, wedding)
+        Diag(LOG_INFO(), "Ring: the engagement ring " + akSpouse.GetDisplayName() + " gave you is now a wedding ring.")
+    EndIf
 EndFunction
 
 Function GiveEngagementRing(Actor akActor)
