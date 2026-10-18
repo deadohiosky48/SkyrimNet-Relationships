@@ -116,7 +116,7 @@ try {
     if ($shipped) { throw "settings.yaml is staged - it would overwrite user tuning. Remove it." }
 
     # --- 3a. models (2.5): the engagement and wedding rings, built by
-    # toolsingsuild_rings.py from a modder's resource (see its header).
+    # tools\rings\build_rings.py from a modder's resource (tools\rings\README.md).
     $meshes = Join-Path $repo 'meshes'
     if (Test-Path $meshes) { Copy-Item $meshes $stage -Recurse -Force }
 
