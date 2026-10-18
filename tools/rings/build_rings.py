@@ -33,6 +33,13 @@ ALONG_FINGER = 1.75       # the engagement ring's centre, from the knuckle
 FINGER_BONE = 'NPC Finger30.L'  # left ring finger, first segment
 TRIS = {'EngagementRing': 1600, 'WeddingRing': 2800}
 
+# THE METAL'S COLOUR IS A VERTEX COLOUR. Vanilla's gold and silver rings share
+# one grey sheet; GoldRingDiamondGO.nif tints its metal vertices (1.0, 0.8,
+# 0.51) and its stone (0.97, 0.97, 0.97). Without them the ring is the sheet's
+# grey (seen in game, 2026-10-18).
+METAL_COLOURS = {'Gold': (1.0, 0.8, 0.51, 1.0)}
+STONE_COLOUR = (0.97, 0.97, 0.97, 1.0)
+
 # Where the two materials go on vanilla's ring sheet, in Blender UV space
 # (v up): the band strip on the left, the cut stone bottom right.
 METAL_UV = (0.15, 0.10, 0.40, 0.90)          # u0, v0, u1, v1
@@ -124,6 +131,20 @@ def remap_uv(me):
                 uv[li].uv = (u0 + (u1 - u0) * u, v0 + (v1 - v0) * v)
 
 
+def paint(me):
+    """Vertex colours as vanilla's: the metal's tint, the stones white. A
+    vertex takes the colour of most of the faces around it."""
+    metal = METAL_COLOURS[METAL]
+    attr = me.color_attributes.get('VERTEX_COLOR') or me.color_attributes.new('VERTEX_COLOR', 'FLOAT_COLOR', 'POINT')
+    votes = [[0, 0] for _ in me.vertices]
+    for poly in me.polygons:
+        k = 1 if poly.material_index == stone_index else 0
+        for vi in poly.vertices:
+            votes[vi][k] += 1
+    for i, (m, s) in enumerate(votes):
+        attr.data[i].color = STONE_COLOUR if s > m else metal
+
+
 # --------------------------------------------------------------- templates
 def import_nif(path, **options):
     before = set(bpy.data.objects)
@@ -174,6 +195,7 @@ for item, keep_band in (('EngagementRing', False), ('WeddingRing', True)):
     bpy.data.meshes.remove(old)
     reduce(shape, TRIS[item])
     remap_uv(shape.data)
+    paint(shape.data)
     shape.data.materials.clear()
     shape.data.materials.append(mat)
     for p in shape.data.polygons:
@@ -222,6 +244,7 @@ for item, keep_band in (('EngagementRing', False), ('WeddingRing', True)):
     bpy.context.scene.collection.objects.link(obj)
     reduce(obj, TRIS[item])
     remap_uv(obj.data)
+    paint(obj.data)
     obj.data.materials.clear()
     obj.data.materials.append(wmat)
     for p in obj.data.polygons:
