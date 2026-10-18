@@ -39,15 +39,32 @@ FORTIFY_RESTORATION = 0x0007A101  # EnchFortifyRestorationConstantSelf
 NO_DISENCHANT = 0x000C27BD        # MagicDisallowEnchanting
 PLAYER_REF = 0x00000014
 
+# OUR OWN EFFECTS, copies of vanilla's with our names and words. The item card
+# shows an effect's description, never an enchantment's name (in game,
+# 2026-10-18: "Increases Health by 15 points", no "A Promise Kept"), so the
+# wording has to live here. <mag> is the game's own placeholder.
+# (FormID, vanilla effect copied, EditorID, name, description)
+EFFECTS = [
+    (0xD6C, FORTIFY_HEALTH, 'SNRom_MgefPromiseHealth', 'A Promise Kept',
+     'A promise kept: Health is increased by <mag> points.'),
+    (0xD6D, FORTIFY_RESTORATION, 'SNRom_MgefGraceRestoration', "Mara's Grace",
+     "Mara's Grace: Restoration spells cost <mag>% less to cast."),
+    (0xD6E, FORTIFY_HEAL_RATE, 'SNRom_MgefGraceHealRate', "Mara's Grace",
+     "Mara's Grace: Health regenerates <mag>% faster."),
+    (0xD6F, FORTIFY_HEALTH, 'SNRom_MgefGraceTogether', 'Together',
+     'Together: Health is increased by <mag> more points while you are with your spouse.'),
+]
+
 # The enchantments (the author, 2026-10-18: option B). Each effect is
 # (effect, magnitude, together), where "together" holds only while husband
 # and wife are together: for an NPC wearer, the player within 2048 units; for
 # the player, a spouse here (SPOUSE_HERE).
+# Effects by our local FormID (EFFECTS above).
 ENCHANTMENTS = [
-    (0xD6A, 'SNRom_EnchEngagementPromise', 'A Promise Kept', [(FORTIFY_HEALTH, 15.0, False)]),
-    (0xD6B, 'SNRom_EnchMarasGrace', "Mara's Grace", [(FORTIFY_RESTORATION, 10.0, False),
-                                                     (FORTIFY_HEAL_RATE, 10.0, False),
-                                                     (FORTIFY_HEALTH, 25.0, True)]),
+    (0xD6A, 'SNRom_EnchEngagementPromise', 'A Promise Kept', [(0xD6C, 15.0, False)]),
+    (0xD6B, 'SNRom_EnchMarasGrace', "Mara's Grace", [(0xD6D, 10.0, False),
+                                                     (0xD6E, 10.0, False),
+                                                     (0xD6F, 25.0, True)]),
 ]
 
 # The game reads top-level groups in this order (UESP, TES5 Mod: Mod File Format).
@@ -152,6 +169,20 @@ def make_ench(form_id, edid, name, effects, global_id):
     return raw_record('ENCH', form_id, body)
 
 
+def make_mgef(header, body, form_id, edid, name, description):
+    out = b''
+    for t, v in subrecords(body):
+        if t == 'EDID':
+            out += pack_sub('EDID', zstr(edid))
+        elif t == 'FULL':
+            out += pack_sub('FULL', zstr(name))           # this plugin is not localized
+        elif t == 'DNAM':
+            out += pack_sub('DNAM', zstr(description))
+        else:
+            out += pack_sub(t, v)
+    return record(header, form_id, out)
+
+
 def make_arma(header, body, form_id, edid, worn):
     out = b''
     for t, v in subrecords(body):
@@ -202,12 +233,17 @@ def main(esm_path, esl_path):
 
     # Our own records are master index 1 (Skyrim.esm is 0).
     own = 0x01000000
-    new = {'ARMO': [], 'ARMA': [], 'GLOB': [], 'ENCH': []}
+    new = {'ARMO': [], 'ARMA': [], 'GLOB': [], 'ENCH': [], 'MGEF': []}
     ours = set()
+    for mgef_id, vanilla, edid, name, description in EFFECTS:
+        mh, mb = find_record(esm, vanilla)
+        new['MGEF'].append(make_mgef(mh, mb, own | mgef_id, edid, name, description))
+        ours.add(own | mgef_id)
     glob_id = own | SPOUSE_HERE[0]
     new['GLOB'].append(make_global(glob_id, SPOUSE_HERE[1]))
     ours.add(glob_id)
     for ench_id, edid, name, effects in ENCHANTMENTS:
+        effects = [(own | e, magnitude, together_only) for e, magnitude, together_only in effects]
         new['ENCH'].append(make_ench(own | ench_id, edid, name, effects, glob_id))
         ours.add(own | ench_id)
     for armo_id, arma_id, edid, name, worn, ground, ench_id in RINGS:

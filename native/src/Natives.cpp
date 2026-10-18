@@ -15,6 +15,7 @@
 #include "Settings.h"
 #include "SkyrimNetLink.h"
 
+#include <algorithm>
 #include <cctype>
 #include <chrono>
 #include <map>
@@ -282,29 +283,81 @@ namespace SNRom::Natives {
             return out;
         }
 
-        // The ring a_owner carries whose name contains a_name, or is contained
-        // in it, ignoring case ("the emerald one" finds Gold Emerald Ring only
-        // if it says the whole name; "Gold Emerald Ring" finds it outright).
-        RE::TESForm* RingNamed(RE::StaticFunctionTag*, RE::Actor* a_owner, std::string a_name) {
-            auto lower = [](std::string a_text) {
-                for (auto& c : a_text) {
-                    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        // THE RING THE PLAYER MEANT, from the words the model passed. Hroki was
+        // offered vanilla's Gold Ring for an engagement (2026-10-18): the old
+        // match took the first ring whose name held the words, and vanilla's
+        // come first.
+        //
+        // A ring qualifies when every word asked for is in its name ("gold
+        // ring" fits both Gold Ring and Gold Engagement Ring). Our marriage
+        // ring wins whenever it qualifies, or when nothing particular was
+        // asked for ("a ring", "it"): this is an engagement. Otherwise the
+        // ring with the fewest words beyond those asked for; a tie is no
+        // answer, and the player chooses in the gift menu.
+        std::vector<std::string> Words(const char* a_text) {
+            static const std::unordered_set<std::string> filler{ "a", "an", "the", "my", "your", "this", "that",
+                                                                  "it", "one", "of", "for", "you", "to" };
+            std::vector<std::string> out;
+            std::string              word;
+            for (const char* p = a_text ? a_text : ""; ; ++p) {
+                const auto c = static_cast<unsigned char>(*p);
+                if (std::isalnum(c) || c == '\'') {
+                    word += static_cast<char>(std::tolower(c));
+                } else {
+                    if (!word.empty() && !filler.contains(word)) {
+                        out.push_back(word);
+                    }
+                    word.clear();
+                    if (!c) {
+                        break;
+                    }
                 }
-                return a_text;
-            };
-            const auto wanted = lower(a_name);
-            if (wanted.empty()) {
-                return nullptr;
             }
+            return out;
+        }
+
+        bool IsOurMarriageRing(const RE::TESForm* a_form) {
+            const auto* file = a_form ? a_form->GetFile(0) : nullptr;
+            if (!file || std::string_view(file->GetFilename()) != "SNRom_Integration.esl") {
+                return false;
+            }
+            const auto local = a_form->GetLocalFormID();
+            return local == 0xD66 || local == 0xD68;   // the engagement ring, the wedding ring
+        }
+
+        RE::TESForm* RingNamed(RE::StaticFunctionTag*, RE::Actor* a_owner, std::string a_name) {
+            const auto   wanted = Words(a_name.c_str());
+            RE::TESForm* best = nullptr;
+            std::size_t  bestExtra = SIZE_MAX;
+            bool         tie = false;
             for (const auto& [id, count] : Rings(a_owner)) {
-                auto*       form = RE::TESForm::LookupByID(id);
-                const char* name = form ? form->GetName() : nullptr;
-                const auto  have = lower(name ? name : "");
-                if (!have.empty() && (have.find(wanted) != std::string::npos || wanted.find(have) != std::string::npos)) {
+                auto* form = RE::TESForm::LookupByID(id);
+                if (!form) {
+                    continue;
+                }
+                const auto have = Words(form->GetName());
+                const bool fits = std::all_of(wanted.begin(), wanted.end(), [&](const std::string& w) {
+                    return std::find(have.begin(), have.end(), w) != have.end();
+                });
+                if (!fits) {
+                    continue;
+                }
+                if (IsOurMarriageRing(form)) {
                     return form;
                 }
+                if (wanted.empty()) {
+                    continue;   // nothing particular asked for, and no ring of ours: the player chooses
+                }
+                const auto extra = have.size() - wanted.size();
+                if (extra < bestExtra) {
+                    best = form;
+                    bestExtra = extra;
+                    tie = false;
+                } else if (extra == bestExtra) {
+                    tie = true;
+                }
             }
-            return nullptr;
+            return tie ? nullptr : best;
         }
 
         // THE GIFT MENU, FILTERED TO RINGS: the player's whole inventory of
