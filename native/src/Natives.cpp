@@ -15,7 +15,9 @@
 #include "Settings.h"
 #include "SkyrimNetLink.h"
 
+#include <cctype>
 #include <chrono>
+#include <map>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -234,30 +236,118 @@ namespace SNRom::Natives {
             return id && Marriage::SetRing(id, a_fromPlayer, a_item ? static_cast<std::int32_t>(a_item->GetFormID()) : 0);
         }
 
-        // Every ring a_actor carries that could change hands: armour on the
-        // ring slot or with ClothingRing, never a quest item. Worn ones
-        // included; the caller says so when it asks.
-        std::vector<RE::TESForm*> RingsCarried(RE::StaticFunctionTag*, RE::Actor* a_actor) {
-            std::vector<RE::TESForm*> out;
-            if (!a_actor) {
-                return out;
-            }
-            static auto* ringKeyword = [] {
+        // RINGS. Armour on the ring slot or with ClothingRing, never a quest
+        // item; worn ones included, and the caller says so when it asks.
+        RE::BGSKeyword* RingKeyword() {
+            static auto* keyword = [] {
                 auto* data = RE::TESDataHandler::GetSingleton();
                 return data ? data->LookupForm<RE::BGSKeyword>(0x0010CD09, "Skyrim.esm") : nullptr;  // ClothingRing
             }();
+            return keyword;
+        }
+
+        // Every ring a_actor carries and the count of each.
+        std::map<RE::FormID, std::int32_t> Rings(RE::Actor* a_actor) {
+            std::map<RE::FormID, std::int32_t> out;
+            if (!a_actor) {
+                return out;
+            }
+            auto* keyword = RingKeyword();
             for (const auto& [object, entry] : a_actor->GetInventory()) {
                 auto* armor = object ? object->As<RE::TESObjectARMO>() : nullptr;
                 if (!armor || entry.first <= 0 || (entry.second && entry.second->IsQuestObject())) {
                     continue;
                 }
-                const bool ringSlot = armor->HasPartOf(RE::BGSBipedObjectForm::BipedObjectSlot::kRing);
-                const bool keyword = ringKeyword && armor->HasKeyword(ringKeyword);
-                if (ringSlot || keyword) {
-                    out.push_back(armor);
+                if (armor->HasPartOf(RE::BGSBipedObjectForm::BipedObjectSlot::kRing) ||
+                    (keyword && armor->HasKeyword(keyword))) {
+                    out[armor->GetFormID()] = entry.first;
                 }
             }
             return out;
+        }
+
+        // At most 128, Papyrus's array limit: a player can carry more rings
+        // than that, which is why the player chooses in the gift menu
+        // (RingGiftFilter) and not from this list.
+        std::vector<RE::TESForm*> RingsCarried(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+            std::vector<RE::TESForm*> out;
+            for (const auto& [id, count] : Rings(a_actor)) {
+                if (out.size() >= 128) {
+                    break;
+                }
+                if (auto* form = RE::TESForm::LookupByID(id)) {
+                    out.push_back(form);
+                }
+            }
+            return out;
+        }
+
+        // The ring a_owner carries whose name contains a_name, or is contained
+        // in it, ignoring case ("the emerald one" finds Gold Emerald Ring only
+        // if it says the whole name; "Gold Emerald Ring" finds it outright).
+        RE::TESForm* RingNamed(RE::StaticFunctionTag*, RE::Actor* a_owner, std::string a_name) {
+            auto lower = [](std::string a_text) {
+                for (auto& c : a_text) {
+                    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                }
+                return a_text;
+            };
+            const auto wanted = lower(a_name);
+            if (wanted.empty()) {
+                return nullptr;
+            }
+            for (const auto& [id, count] : Rings(a_owner)) {
+                auto*       form = RE::TESForm::LookupByID(id);
+                const char* name = form ? form->GetName() : nullptr;
+                const auto  have = lower(name ? name : "");
+                if (!have.empty() && (have.find(wanted) != std::string::npos || wanted.find(have) != std::string::npos)) {
+                    return form;
+                }
+            }
+            return nullptr;
+        }
+
+        // THE GIFT MENU, FILTERED TO RINGS: the player's whole inventory of
+        // them, scrolling, however many. Vanilla has no list of the ring
+        // keyword alone, so one is made at run time and remade if a load ever
+        // drops it.
+        RE::BGSListForm* RingGiftFilter(RE::StaticFunctionTag*) {
+            static RE::FormID made = 0;
+            if (made) {
+                if (auto* list = RE::TESForm::LookupByID<RE::BGSListForm>(made)) {
+                    return list;
+                }
+            }
+            auto* factory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::BGSListForm>();
+            auto* list = factory ? factory->Create() : nullptr;
+            auto* keyword = RingKeyword();
+            if (!list || !keyword) {
+                SKSE::log::error("Rings: could not make the gift menu's ring filter");
+                return nullptr;
+            }
+            list->AddForm(keyword);
+            made = list->GetFormID();
+            return list;
+        }
+
+        // Which ring left a_owner's inventory between a snapshot and now: how
+        // the gift menu's choice is read, since the menu moves the item
+        // itself. The first whose count fell.
+        std::map<RE::FormID, std::int32_t> g_ringSnapshot;
+
+        void SnapshotRings(RE::StaticFunctionTag*, RE::Actor* a_owner) {
+            g_ringSnapshot = Rings(a_owner);
+        }
+
+        RE::TESForm* RingGivenSince(RE::StaticFunctionTag*, RE::Actor* a_owner) {
+            const auto now = Rings(a_owner);
+            for (const auto& [id, before] : g_ringSnapshot) {
+                const auto it = now.find(id);
+                if (it == now.end() || it->second < before) {
+                    return RE::TESForm::LookupByID(id);
+                }
+            }
+            return nullptr;
         }
 
         bool IsOfficiant(RE::StaticFunctionTag*, RE::Actor* a_actor) {
@@ -500,6 +590,10 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("MarriageRing", kScript, MarriageRing, true);
             a_vm->RegisterFunction("SetMarriageRing", kScript, SetMarriageRing, true);
             a_vm->RegisterFunction("RingsCarried", kScript, RingsCarried);    // main thread: inventory
+            a_vm->RegisterFunction("RingNamed", kScript, RingNamed);          // main thread: inventory
+            a_vm->RegisterFunction("RingGiftFilter", kScript, RingGiftFilter);  // main thread: makes a form
+            a_vm->RegisterFunction("SnapshotRings", kScript, SnapshotRings);    // main thread: inventory
+            a_vm->RegisterFunction("RingGivenSince", kScript, RingGivenSince);  // main thread: inventory
             a_vm->RegisterFunction("IsOfficiant", kScript, IsOfficiant);      // main thread: factions
             a_vm->RegisterFunction("CanBless", kScript, CanBless);            // main thread: positions
             a_vm->RegisterFunction("BetrothedNear", kScript, BetrothedNear);  // main thread: positions
@@ -509,7 +603,8 @@ namespace SNRom::Natives {
                             "BioPlan, UuidHex, ApiLoaded, ApiSelfTest, Text, ActionText, AnnounceKey, KnownProof, DecoratorsNative, SetDecoratorFacts, CheckDecorators, MarriageState, SetMarriageState, "
                             "MarriageWithState, MaraException, SetMaraException, CanAcceptProposal, CanDeclineProposal, "
                             "NoteProposalDeclined, SetMarriageFacts, MarriageRing, SetMarriageRing, RingsCarried, "
-                            "IsOfficiant, CanBless, BetrothedNear",
+                            "IsOfficiant, CanBless, BetrothedNear, RingNamed, RingGiftFilter, SnapshotRings, "
+                            "RingGivenSince",
                             kScript, kVersion);
             return true;
         });

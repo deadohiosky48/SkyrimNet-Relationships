@@ -5162,60 +5162,47 @@ Function GiveEngagementRing(Actor akActor)
 EndFunction
 
 Function AcceptEngagementRing(Actor akActor, String asRing)
-    { Action AcceptEngagementRing: the player offers them a ring. The player
-      chooses which, or confirms the one they named; then it is theirs, and
-      they put it on. }
+    { Action AcceptEngagementRing: the player offers them a ring. The one the
+      player named, once confirmed; otherwise the player chooses in the gift
+      menu, filtered to rings, which lists every one they carry however many
+      (a message box shows only what fits). Then it is theirs, and they put
+      it on. }
     If akActor == None || !_ready || _dashNatives < 16 || OurMarriage(akActor) != MARRIAGE_ENGAGED()
         Return
     EndIf
     Actor player = Game.GetPlayer()
     String who = akActor.GetDisplayName()
-    Form[] carried = SNRom_Native.RingsCarried(player)
-    If carried.Length == 0
+    If SNRom_Native.RingsCarried(player).Length == 0
         Debug.Notification(Tr("ring.none", "You have no ring to give."))
         Return
     EndIf
     Form ring = None
-    Int i = 0
     If asRing != ""
-        While i < carried.Length && ring == None
-            If StringUtil.Find(carried[i].GetName(), asRing) >= 0 || StringUtil.Find(asRing, carried[i].GetName()) >= 0
-                ring = carried[i]
-            EndIf
-            i += 1
-        EndWhile
+        ring = SNRom_Native.RingNamed(player, asRing)
     EndIf
     If ring != None
         Int answer = SNRom_Choice.AskNow(Tr("ring.give.body", "Give {0} your {1}?", who, ring.GetName()), \
-            Tr("ring.give.accept", "Give it"), Tr("ring.give.decline", "Not this one"), "")
-        If answer == SNRom_Choice.ANSWER_DECLINE()
+            Tr("ring.give.accept", "Give it"), Tr("ring.give.decline", "Choose another"), "")
+        If answer == SNRom_Choice.ANSWER_ACCEPT()
+            player.RemoveItem(ring, 1, True, akActor)
+        ElseIf answer == SNRom_Choice.ANSWER_DECLINE()
             ring = None
-        ElseIf answer != SNRom_Choice.ANSWER_ACCEPT()
+        Else
             Return
         EndIf
     EndIf
     If ring == None
-        Int shown = carried.Length
-        If shown > 9
-            shown = 9
-        EndIf
-        String[] buttons = Utility.CreateStringArray(shown + 1)
-        i = 0
-        While i < shown
-            buttons[i] = carried[i].GetName()
-            If player.IsEquipped(carried[i])
-                buttons[i] = Tr("ring.worn", "{0} (wearing)", buttons[i])
-            EndIf
-            i += 1
-        EndWhile
-        buttons[shown] = Tr("ring.notNow", "Not now")
-        Int picked = SNRom_Choice.AskList(Tr("ring.pick.body", "Which ring will you give {0}?", who), buttons)
-        If picked < 0 || picked >= shown
+        ; THE GIFT MENU MOVES THE ITEM ITSELF, so what was chosen is read back
+        ; as the ring that left the player's inventory. No favor points: this
+        ; is not a bribe.
+        SNRom_Native.SnapshotRings(player)
+        akActor.ShowGiftMenu(True, SNRom_Native.RingGiftFilter(), False, False)
+        ring = SNRom_Native.RingGivenSince(player)
+        If ring == None
+            Diag(LOG_INFO(), "Ring: the gift menu closed with no ring given to " + who + ".")
             Return
         EndIf
-        ring = carried[picked]
     EndIf
-    player.RemoveItem(ring, 1, True, akActor)
     akActor.EquipItem(ring, False, True)
     SNRom_Native.SetMarriageRing(akActor, True, ring)
     SkyrimNetApi.RegisterPersistentEvent(player.GetDisplayName() + " gave " + who + " an engagement ring: " + \

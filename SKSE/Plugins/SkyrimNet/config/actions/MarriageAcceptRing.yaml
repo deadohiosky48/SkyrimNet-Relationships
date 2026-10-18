@@ -13,9 +13,11 @@
 customCategory: marriage
 name: MarriageAcceptRing
 description: |
-  {{ player.name }}, your betrothed, is giving you an engagement ring, now, and you take it.
+  {{ player.name }}, your betrothed, has a ring for you, and you want it.
 
-  USE when they are offering it to you in this moment. They choose which ring; you put it on.
+  USE as soon as they offer you a ring and you are willing to take it - even if you only ask to see it first. Using this is how they show it to you: they choose which ring, and you put it on. Do not wait for them to say "here it is".
+
+  Do not use this if you would refuse their ring.
 
 questEditorId: SNRom_Quest
 scriptName: SNRom_Bridge

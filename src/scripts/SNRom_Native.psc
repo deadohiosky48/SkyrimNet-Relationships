@@ -174,6 +174,21 @@ Form[] Function RingsCarried(Actor akActor) Global Native
 {VERSION 16 (2.5). Every ring akActor carries that could change hands, worn
  ones included; never a quest item.}
 
+Form Function RingNamed(Actor akOwner, String asName) Global Native
+{VERSION 16 (2.5). The ring akOwner carries whose name contains asName or is
+ contained in it, ignoring case; None if none.}
+
+FormList Function RingGiftFilter() Global Native
+{VERSION 16 (2.5). A list holding the ring keyword, for ShowGiftMenu: the gift
+ menu then shows rings only, however many.}
+
+Function SnapshotRings(Actor akOwner) Global Native
+{VERSION 16 (2.5). Notes akOwner's rings and counts, before the gift menu.}
+
+Form Function RingGivenSince(Actor akOwner) Global Native
+{VERSION 16 (2.5). A ring that left akOwner's inventory since SnapshotRings;
+ None if none did.}
+
 Bool Function IsOfficiant(Actor akActor) Global Native
 {VERSION 16 (2.5). A living adult priest, priestess or jarl.}
 
