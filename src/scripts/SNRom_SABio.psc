@@ -144,27 +144,52 @@ Function MarkOneBlockTabs() Global
     SeverActionsNativeExt2.BioApi_SetTabExclusive("Arousal: Appetite", True)
 EndFunction
 
-Bool Function OutfitEnforced(Actor akActor) Global
-    { SeverActions takes off what akActor's outfit does not list: asked before
-      a marriage ring is put on, since the enforcement strips it (Hroki,
-      2026-10-18) and trying again only fights it. The caller has checked that
-      SeverActions is installed.
+Int Function OutfitEnforcement(Actor akActor, Form akItem) Global
+    { Whether SeverActions would take akItem off akActor, and why: 0 not (no
+      outfit enforced, or the enforced one lists akItem), 1 a lock, 2 an active
+      slot preset. Asked before a marriage ring is put on, since the
+      enforcement strips it and trying again only fights it. The caller has
+      checked that SeverActions is installed.
 
-      SEVERACTIONS' OWN RULE, NOT A GUESS AT IT: the outfit system on, its
-      Outfit Lock setting on (SeverActions_Outfit.OutfitLockEnabled, on its
-      quest SeverActions, 0xD62 in SeverActions.esp; every enforcement path
-      returns early without it), and a lock active for this actor
-      (Native_Outfit_IsLockActive). An active slot preset alone is not
-      enforcement: the first version counted it, and with the lock turned off
-      the ring was still refused. }
+      MEASURED, BOTH WAYS (Hroki, 2026-10-18). With the lock off, her preset
+      'desert trader light' still came back on its own timer
+      ("OutfitAlias OnUpdate reapply slot preset 2 for Hroki"), twice in two
+      seconds, and took the ring with it: an active slot preset that is not
+      held is enforced whatever the lock says. The lock is the other way:
+      enforced only while SeverActions' Outfit Lock setting is on
+      (SeverActions_Outfit.OutfitLockEnabled, read by the DLL so our scripts
+      never name that script) and the actor has one. }
     If akActor == None || !SeverActionsNativeExt2.Native_Outfit_IsSystemEnabled()
-        Return False
+        Return 0
     EndIf
-    ; Read by the DLL from the script itself: naming SeverActions_Outfit here
-    ; drags all of SeverActions' outfit scripts into our compile. 0 off, 1 on,
-    ; -1 unread (no such property in this SeverActions): the lock alone decides.
-    If SNRom_Native.SeverOutfitLockSetting() == 0
-        Return False
+    If SeverActionsNative.Native_OutfitSlot_IsPresetActive(akActor) && \
+       !SeverActionsNativeExt2.Native_OutfitSlot_IsActivePresetHeld(akActor)
+        ; The player can add the ring to the preset, as the notice says; then
+        ; the preset puts it on itself, and so may we. A slot preset's items
+        ; live in its container.
+        Int index = SeverActionsNative.Native_OutfitSlot_GetActivePreset(akActor)
+        ObjectReference chest = SeverActionsNative.Native_OutfitSlot_GetContainer( \
+            SeverActionsNative.Native_OutfitSlot_GetSlot(akActor), index)
+        If chest != None && chest.GetItemCount(akItem) > 0
+            Return 0
+        EndIf
+        Return 2
     EndIf
-    Return SeverActionsNativeExt.Native_Outfit_IsLockActive(akActor)
+    ; 0 off, 1 on, -1 unread (no such property): the lock alone decides.
+    If SNRom_Native.SeverOutfitLockSetting() != 0 && SeverActionsNativeExt.Native_Outfit_IsLockActive(akActor)
+        If SeverActionsNative.Native_Outfit_GetLockedItems(akActor).Find(akItem) >= 0
+            Return 0
+        EndIf
+        Return 1
+    EndIf
+    Return 0
+EndFunction
+
+String Function ActivePresetName(Actor akActor) Global
+    { The name of akActor's active slot preset, for the player; "" if none. }
+    Int index = SeverActionsNative.Native_OutfitSlot_GetActivePreset(akActor)
+    If index < 0
+        Return ""
+    EndIf
+    Return SeverActionsNative.Native_OutfitSlot_GetPresetName(akActor, index)
 EndFunction

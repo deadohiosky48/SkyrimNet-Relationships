@@ -448,6 +448,7 @@
   "ring.named": "{0}'s {1}",
   "ring.none": "You have no ring to give.",
   "ring.notNow": "Not now",
+  "ring.preset": "{0}'s SeverActions outfit '{1}' re-dresses them, so the ring would come off. Add the ring to that outfit in SeverActions to keep it on.",
   "ring.received": "{0} gave you {1}.",
   "roster.aria": "Roster",
   "roster.default.hint": "Not authored yet: this is the default, not a judgement.",

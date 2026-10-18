@@ -5170,10 +5170,20 @@ Function WearAndName(Actor akWearer, Form akRing)
       slot is 36 (mask 0x40). }
     ; AN OUTFIT SEVERACTIONS ENFORCES TAKES THE RING OFF, so it is not put on:
     ; the ring stays in their inventory and the player is told why.
-    If SeverActionsPresent() && SNRom_SABio.OutfitEnforced(akWearer)
+    Int enforced = 0
+    If SeverActionsPresent()
+        enforced = SNRom_SABio.OutfitEnforcement(akWearer, akRing)
+    EndIf
+    If enforced == 2
+        String preset = SNRom_SABio.ActivePresetName(akWearer)
+        Debug.Notification(Tr("ring.preset", "{0}'s SeverActions outfit '{1}' re-dresses them, so the ring would come off. Add the ring to that outfit in SeverActions to keep it on.", akWearer.GetDisplayName(), preset))
+        Diag(LOG_INFO(), "Ring: " + akWearer.GetDisplayName() + "'s SeverActions preset '" + preset + \
+            "' is re-applied on its own; " + akRing.GetName() + " left in their inventory.", True)
+        Return
+    ElseIf enforced == 1
         Debug.Notification(Tr("ring.locked", "{0} has the ring, but their outfit is locked in SeverActions, so it is not worn. Add it to their outfit there to wear it.", akWearer.GetDisplayName()))
-        Diag(LOG_INFO(), "Ring: " + akWearer.GetDisplayName() + "'s outfit is enforced by SeverActions; " + \
-            akRing.GetName() + " left in their inventory.")
+        Diag(LOG_INFO(), "Ring: " + akWearer.GetDisplayName() + "'s outfit is locked in SeverActions; " + \
+            akRing.GetName() + " left in their inventory.", True)
         Return
     EndIf
     ; ONCE THE GAME RUNS. The ring arrives in the gift menu, mid-conversation,
