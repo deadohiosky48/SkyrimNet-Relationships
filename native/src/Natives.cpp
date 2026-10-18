@@ -288,12 +288,15 @@ namespace SNRom::Natives {
         // match took the first ring whose name held the words, and vanilla's
         // come first.
         //
-        // A ring qualifies when every word asked for is in its name ("gold
-        // ring" fits both Gold Ring and Gold Engagement Ring). Our marriage
-        // ring wins whenever it qualifies, or when nothing particular was
-        // asked for ("a ring", "it"): this is an engagement. Otherwise the
-        // ring with the fewest words beyond those asked for; a tie is no
-        // answer, and the player chooses in the gift menu.
+        // SCORED, NOT FILTERED: requiring every word sent "gold engagement
+        // ring with a diamond solitaire" to the gift menu, and the model then
+        // took the action again. Each ring scores the words asked for that its
+        // name holds; our rings also answer to what they look like ("diamond",
+        // "solitaire", "band"). The highest score wins, and our marriage ring
+        // wins a tie, since this is an engagement; nothing particular asked
+        // for ("a ring", "it") means ours if the player carries it. Among
+        // others, fewer words beyond those asked for breaks a tie, and a tie
+        // left after that is no answer: the player chooses in the gift menu.
         std::vector<std::string> Words(const char* a_text) {
             static const std::unordered_set<std::string> filler{ "a", "an", "the", "my", "your", "this", "that",
                                                                   "it", "one", "of", "for", "you", "to" };
@@ -326,38 +329,51 @@ namespace SNRom::Natives {
         }
 
         RE::TESForm* RingNamed(RE::StaticFunctionTag*, RE::Actor* a_owner, std::string a_name) {
+            static const std::vector<std::string> ourWords{ "engagement", "wedding", "marriage", "diamond", "solitaire",
+                                                            "band", "promise" };
             const auto   wanted = Words(a_name.c_str());
             RE::TESForm* best = nullptr;
+            int          bestScore = 0;
             std::size_t  bestExtra = SIZE_MAX;
+            bool         bestOurs = false;
             bool         tie = false;
             for (const auto& [id, count] : Rings(a_owner)) {
                 auto* form = RE::TESForm::LookupByID(id);
                 if (!form) {
                     continue;
                 }
-                const auto have = Words(form->GetName());
-                const bool fits = std::all_of(wanted.begin(), wanted.end(), [&](const std::string& w) {
-                    return std::find(have.begin(), have.end(), w) != have.end();
-                });
-                if (!fits) {
+                auto       have = Words(form->GetName());
+                const bool ours = IsOurMarriageRing(form);
+                if (ours) {
+                    have.insert(have.end(), ourWords.begin(), ourWords.end());
+                }
+                int score = 0;
+                for (const auto& w : wanted) {
+                    score += std::find(have.begin(), have.end(), w) != have.end() ? 1 : 0;
+                }
+                if (wanted.empty() && ours) {
+                    return form;   // nothing particular asked for: the ring of ours
+                }
+                if (score == 0) {
                     continue;
                 }
-                if (IsOurMarriageRing(form)) {
-                    return form;
-                }
-                if (wanted.empty()) {
-                    continue;   // nothing particular asked for, and no ring of ours: the player chooses
-                }
-                const auto extra = have.size() - wanted.size();
-                if (extra < bestExtra) {
+                const auto extra = Words(form->GetName()).size() > static_cast<std::size_t>(score)
+                                       ? Words(form->GetName()).size() - score
+                                       : 0;
+                const bool better = score > bestScore || (score == bestScore && ours && !bestOurs) ||
+                                    (score == bestScore && ours == bestOurs && extra < bestExtra);
+                const bool same = score == bestScore && ours == bestOurs && extra == bestExtra;
+                if (better) {
                     best = form;
+                    bestScore = score;
                     bestExtra = extra;
+                    bestOurs = ours;
                     tie = false;
-                } else if (extra == bestExtra) {
+                } else if (same) {
                     tie = true;
                 }
             }
-            return tie ? nullptr : best;
+            return tie && !bestOurs ? nullptr : best;
         }
 
         // THE GIFT MENU, FILTERED TO RINGS: the player's whole inventory of

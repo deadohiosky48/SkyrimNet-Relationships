@@ -443,6 +443,7 @@
   "ring.give.accept": "Give it",
   "ring.give.body": "Give {0} your {1}?",
   "ring.give.decline": "Choose another",
+  "ring.locked": "{0} has the ring, but their outfit is locked in SeverActions, so it is not worn. Add it to their outfit there to wear it.",
   "ring.named": "{0}'s {1}",
   "ring.none": "You have no ring to give.",
   "ring.notNow": "Not now",

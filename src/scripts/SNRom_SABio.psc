@@ -143,3 +143,20 @@ Function MarkOneBlockTabs() Global
     SeverActionsNativeExt2.BioApi_SetTabExclusive("Relationships: Attachment", True)
     SeverActionsNativeExt2.BioApi_SetTabExclusive("Arousal: Appetite", True)
 EndFunction
+
+Bool Function OutfitEnforced(Actor akActor) Global
+    { SeverActions dresses akActor and takes off what their outfit does not
+      list: a legacy lock, or an active slot preset that is not held. Asked
+      before a marriage ring is put on, since the enforcement strips it (Hroki,
+      2026-10-18) and trying again only fights it. The caller has checked that
+      SeverActions is installed. }
+    If akActor == None || !SeverActionsNativeExt2.Native_Outfit_IsSystemEnabled()
+        Return False
+    EndIf
+    Form[] locked = SeverActionsNative.Native_Outfit_GetLockedItems(akActor)
+    If locked.Length > 0
+        Return True
+    EndIf
+    Return SeverActionsNative.Native_OutfitSlot_IsPresetActive(akActor) && \
+        !SeverActionsNativeExt2.Native_OutfitSlot_IsActivePresetHeld(akActor)
+EndFunction

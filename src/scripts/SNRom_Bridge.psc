@@ -5153,6 +5153,14 @@ Function WearAndName(Actor akWearer, Form akRing)
       ring alone, kept with it in the save, whoever holds it later. Renamed
       once it is worn, which is how SKSE names an item instance; the ring
       slot is 36 (mask 0x40). }
+    ; AN OUTFIT SEVERACTIONS ENFORCES TAKES THE RING OFF, so it is not put on:
+    ; the ring stays in their inventory and the player is told why.
+    If SeverActionsPresent() && SNRom_SABio.OutfitEnforced(akWearer)
+        Debug.Notification(Tr("ring.locked", "{0} has the ring, but their outfit is locked in SeverActions, so it is not worn. Add it to their outfit there to wear it.", akWearer.GetDisplayName()))
+        Diag(LOG_INFO(), "Ring: " + akWearer.GetDisplayName() + "'s outfit is enforced by SeverActions; " + \
+            akRing.GetName() + " left in their inventory.")
+        Return
+    EndIf
     akWearer.EquipItem(akRing, False, True)
     Float waited = 0.0
     While !akWearer.IsEquipped(akRing) && waited < 2.0
@@ -5243,6 +5251,16 @@ Function AcceptEngagementRing(Actor akActor, String asRing)
     EndIf
     Actor player = Game.GetPlayer()
     String who = akActor.GetDisplayName()
+    ; THEY ALREADY HOLD THE PLAYER'S RING: the model can take this action again
+    ; (Hroki, 2026-10-18: once for the ring, again for "diamond ring"), and a
+    ; second gift menu helps no one. Put it on if it is off; nothing more.
+    Form given = SNRom_Native.MarriageRing(akActor, True)
+    If given != None && akActor.GetItemCount(given) > 0
+        If !akActor.IsEquipped(given)
+            WearAndName(akActor, given)
+        EndIf
+        Return
+    EndIf
     If SNRom_Native.RingsCarried(player).Length == 0
         Debug.Notification(Tr("ring.none", "You have no ring to give."))
         Return
