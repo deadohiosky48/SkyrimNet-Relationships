@@ -45,8 +45,8 @@ PLAYER_REF = 0x00000014
 # wording has to live here. <mag> is the game's own placeholder.
 # (FormID, vanilla effect copied, EditorID, name, description)
 EFFECTS = [
-    (0xD6C, FORTIFY_HEALTH, 'SNRom_MgefPromiseHealth', 'A Promise Kept',
-     'A promise kept: Health is increased by <mag> points.'),
+    (0xD6C, FORTIFY_HEALTH, 'SNRom_MgefPromiseHealth', "Mara's Promise",
+     "Mara's Promise: Health is increased by <mag> points."),
     (0xD6D, FORTIFY_RESTORATION, 'SNRom_MgefGraceRestoration', "Mara's Grace",
      "Mara's Grace: Restoration spells cost <mag>% less to cast."),
     (0xD6E, FORTIFY_HEAL_RATE, 'SNRom_MgefGraceHealRate', "Mara's Grace",
@@ -61,7 +61,7 @@ EFFECTS = [
 # the player, a spouse here (SPOUSE_HERE).
 # Effects by our local FormID (EFFECTS above).
 ENCHANTMENTS = [
-    (0xD6A, 'SNRom_EnchEngagementPromise', 'A Promise Kept', [(0xD6C, 15.0, False)]),
+    (0xD6A, 'SNRom_EnchEngagementPromise', "Mara's Promise", [(0xD6C, 15.0, False)]),
     (0xD6B, 'SNRom_EnchMarasGrace', "Mara's Grace", [(0xD6D, 10.0, False),
                                                      (0xD6E, 10.0, False),
                                                      (0xD6F, 25.0, True)]),
