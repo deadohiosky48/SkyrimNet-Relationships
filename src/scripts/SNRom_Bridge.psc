@@ -5147,6 +5147,21 @@ Form Function WeddingRing() Global
     Return Game.GetFormFromFile(0x00000D68, "SNRom_Integration.esl")
 EndFunction
 
+Form Function RingSlotBlocker(Actor akWearer, Form akRing) Global
+    { What holds akWearer's ring slot (36, mask 0x40) and would not give way to
+      a ring: anything there but a ring, which a ring simply replaces. None if
+      the slot is free, holds a ring, or holds akRing. }
+    Form worn = akWearer.GetWornForm(0x00000040)
+    If worn == None || worn == akRing
+        Return None
+    EndIf
+    Keyword ring = Game.GetFormFromFile(0x0010CD09, "Skyrim.esm") as Keyword   ; ClothingRing
+    If ring != None && worn.HasKeyword(ring)
+        Return None
+    EndIf
+    Return worn
+EndFunction
+
 Function WearAndName(Actor akWearer, Form akRing)
     { Puts the ring on and names this one ring after its wearer: "Hroki's Gold
       Engagement Ring" (the author, 2026-10-18). The name belongs to this
@@ -5171,6 +5186,18 @@ Function WearAndName(Actor akWearer, Form akRing)
     If akWearer == None || akWearer.IsDead() || akWearer.GetItemCount(akRing) == 0
         Return
     EndIf
+    ; THE RING SLOT TAKEN BY SOMETHING THAT IS NOT A RING. Equipping a ring
+    ; replaces another ring, but not gloves that also claim slot 36 (some armour
+    ; mods' do): Hroki's ring would not go on until her gloves came off
+    ; (2026-10-18). Their gloves are their own business, so they are not taken
+    ; off; the player is told what is in the way.
+    Form blocker = RingSlotBlocker(akWearer, akRing)
+    If blocker != None
+        Debug.Notification(Tr("ring.blocked", "{0} cannot wear the ring while wearing {1}, which covers the ring finger.", akWearer.GetDisplayName(), blocker.GetName()))
+        Diag(LOG_INFO(), "Ring: " + akWearer.GetDisplayName() + "'s " + blocker.GetName() + \
+            " holds the ring slot; " + akRing.GetName() + " left in their inventory.", True)
+        Return
+    EndIf
     akWearer.EquipItem(akRing, False, True)
     Float waited = 0.0
     While !akWearer.IsEquipped(akRing) && waited < 3.0
@@ -5178,8 +5205,13 @@ Function WearAndName(Actor akWearer, Form akRing)
         waited += 0.25
     EndWhile
     If !akWearer.IsEquipped(akRing)
+        Form worn = akWearer.GetWornForm(0x00000040)
+        String what = "nothing"
+        If worn != None
+            what = worn.GetName()
+        EndIf
         Diag(LOG_INFO(), "Ring: " + akWearer.GetDisplayName() + " did not keep " + akRing.GetName() + \
-            " on; it is in their inventory, unnamed.", True)
+            " on (the ring slot now holds " + what + "); it is in their inventory, unnamed.", True)
         Return
     EndIf
     String named = Tr("ring.named", "{0}'s {1}", akWearer.GetDisplayName(), akRing.GetName())

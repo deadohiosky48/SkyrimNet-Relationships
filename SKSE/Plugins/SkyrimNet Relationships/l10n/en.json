@@ -440,6 +440,7 @@
   "prose.why": "Why",
   "repairs.intro": "For the playthrough as a whole, not one person. The two store repairs are safe to undo: neither deletes anything.",
   "repairs.title": "Playthrough repairs",
+  "ring.blocked": "{0} cannot wear the ring while wearing {1}, which covers the ring finger.",
   "ring.give.accept": "Give it",
   "ring.give.body": "Give {0} your {1}?",
   "ring.give.decline": "Choose another",
