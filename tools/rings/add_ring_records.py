@@ -18,12 +18,36 @@ import zlib
 VANILLA_ARMO = 0x000877C9
 VANILLA_ARMA = 0x0008E83C
 
-# (FormID of the ARMO, of its ARMA, EditorID stem, name, worn model, ground model)
+# (FormID of the ARMO, of its ARMA, EditorID stem, name, worn model, ground model, enchantment)
 RINGS = [
     (0xD66, 0xD65, 'SNRom_EngagementRingGold', 'Gold Engagement Ring',
-     r'Relationships\Rings\EngagementRingGold.nif', r'Relationships\Rings\EngagementRingGoldGO.nif'),
+     r'Relationships\Rings\EngagementRingGold.nif', r'Relationships\Rings\EngagementRingGoldGO.nif', 0xD6A),
     (0xD68, 0xD67, 'SNRom_WeddingRingGold', 'Gold Wedding Ring',
-     r'Relationships\Rings\WeddingRingGold.nif', r'Relationships\Rings\WeddingRingGoldGO.nif'),
+     r'Relationships\Rings\WeddingRingGold.nif', r'Relationships\Rings\WeddingRingGoldGO.nif', 0xD6B),
+]
+
+# A spouse is here with the player: 1 or 0, kept by the DLL (Rings.cpp) on
+# every change of the player's location and of a marriage. What the wedding
+# ring's "together" effect asks when the player wears it.
+SPOUSE_HERE = (0xD69, 'SNRom_SpouseHere')
+
+# Vanilla's constant-effect enchantment effects (Skyrim.esm), and the keyword
+# that stops a ring being disenchanted.
+FORTIFY_HEALTH = 0x000493AA       # EnchFortifyHealthConstantSelf
+FORTIFY_HEAL_RATE = 0x0007A0F8    # EnchFortifyHealRateConstantSelf
+FORTIFY_RESTORATION = 0x0007A101  # EnchFortifyRestorationConstantSelf
+NO_DISENCHANT = 0x000C27BD        # MagicDisallowEnchanting
+PLAYER_REF = 0x00000014
+
+# The enchantments (the author, 2026-10-18: option B). Each effect is
+# (effect, magnitude, together), where "together" holds only while husband
+# and wife are together: for an NPC wearer, the player within 2048 units; for
+# the player, a spouse here (SPOUSE_HERE).
+ENCHANTMENTS = [
+    (0xD6A, 'SNRom_EnchEngagementPromise', 'A Promise Kept', [(FORTIFY_HEALTH, 15.0, False)]),
+    (0xD6B, 'SNRom_EnchMarasGrace', "Mara's Grace", [(FORTIFY_RESTORATION, 10.0, False),
+                                                     (FORTIFY_HEAL_RATE, 10.0, False),
+                                                     (FORTIFY_HEALTH, 25.0, True)]),
 ]
 
 # The game reads top-level groups in this order (UESP, TES5 Mod: Mod File Format).
@@ -84,6 +108,50 @@ def record(header, form_id, body):
     return typ + struct.pack('<III', len(body), 0, form_id) + bytes(rest) + body
 
 
+def raw_record(typ, form_id, body):
+    """A record of our own: uncompressed, form version 44 as the CK writes."""
+    return typ.encode('latin1') + struct.pack('<III', len(body), 0, form_id) + struct.pack('<IHH', 0, 44, 0) + body
+
+
+def make_global(form_id, edid):
+    body = pack_sub('EDID', zstr(edid)) + pack_sub('FNAM', b's') + pack_sub('FLTV', struct.pack('<f', 0.0))
+    return raw_record('GLOB', form_id, body)
+
+
+def ctda(op, function, param1, value, or_next=False):
+    """A condition on the wearer (run on Subject). op: 0 ==, 1 !=, 4 <."""
+    kind = (op << 5) | (0x01 if or_next else 0)
+    return pack_sub('CTDA', struct.pack('<B3xfHHIIIIi', kind, value, function, 0, param1, 0, 0, 0, -1))
+
+
+GET_DISTANCE = 1
+GET_GLOBAL_VALUE = 74
+GET_IS_REFERENCE = 136
+
+
+def together(global_id):
+    """Husband and wife are together. Skyrim reads ORs before ANDs, so this is
+    (player OR player within 2048) AND (not player OR a spouse here): for an
+    NPC wearer, the player near; for the player, SNRom_SpouseHere."""
+    return (ctda(0, GET_IS_REFERENCE, PLAYER_REF, 1.0, or_next=True) +
+            ctda(4, GET_DISTANCE, PLAYER_REF, 2048.0) +
+            ctda(0, GET_IS_REFERENCE, PLAYER_REF, 0.0, or_next=True) +
+            ctda(0, GET_GLOBAL_VALUE, global_id, 1.0))
+
+
+def make_ench(form_id, edid, name, effects, global_id):
+    # ENIT as vanilla's armour enchantments have it (EnchArmorFortifyHealth01):
+    # constant effect on self, an "enchantment", worn-restricted to armour.
+    enit = struct.pack('<IIIIIIfII', 202, 0, 0, 202, 0, 6, 0.0, 0, 0x0010FB77)
+    body = (pack_sub('EDID', zstr(edid)) + pack_sub('OBND', bytes(12)) + pack_sub('FULL', zstr(name)) +
+            pack_sub('ENIT', enit))
+    for effect, magnitude, only_together in effects:
+        body += pack_sub('EFID', struct.pack('<I', effect)) + pack_sub('EFIT', struct.pack('<fII', magnitude, 0, 0))
+        if only_together:
+            body += together(global_id)
+    return raw_record('ENCH', form_id, body)
+
+
 def make_arma(header, body, form_id, edid, worn):
     out = b''
     for t, v in subrecords(body):
@@ -101,13 +169,18 @@ def make_arma(header, body, form_id, edid, worn):
     return record(header, form_id, out)
 
 
-def make_armo(header, body, form_id, arma_id, edid, name, ground):
+def make_armo(header, body, form_id, arma_id, edid, name, ground, ench_id):
     out = b''
     for t, v in subrecords(body):
         if t == 'EDID':
             out += pack_sub('EDID', zstr(edid))
         elif t == 'FULL':
             out += pack_sub('FULL', zstr(name))   # this plugin is not localized
+            out += pack_sub('EITM', struct.pack('<I', ench_id))
+        elif t == 'KSIZ':
+            out += pack_sub('KSIZ', struct.pack('<I', struct.unpack('<I', v)[0] + 1))
+        elif t == 'KWDA':
+            out += pack_sub('KWDA', v + struct.pack('<I', NO_DISENCHANT))
         elif t == 'MOD2':
             out += pack_sub('MOD2', zstr(ground))
         elif t in ('MO2T', 'MOD4', 'MO4T'):
@@ -129,12 +202,18 @@ def main(esm_path, esl_path):
 
     # Our own records are master index 1 (Skyrim.esm is 0).
     own = 0x01000000
-    new = {'ARMO': [], 'ARMA': []}
+    new = {'ARMO': [], 'ARMA': [], 'GLOB': [], 'ENCH': []}
     ours = set()
-    for armo_id, arma_id, edid, name, worn, ground in RINGS:
+    glob_id = own | SPOUSE_HERE[0]
+    new['GLOB'].append(make_global(glob_id, SPOUSE_HERE[1]))
+    ours.add(glob_id)
+    for ench_id, edid, name, effects in ENCHANTMENTS:
+        new['ENCH'].append(make_ench(own | ench_id, edid, name, effects, glob_id))
+        ours.add(own | ench_id)
+    for armo_id, arma_id, edid, name, worn, ground, ench_id in RINGS:
         assert 0x800 <= armo_id <= 0xFFF and 0x800 <= arma_id <= 0xFFF, 'ESL FormIDs are 0x800-0xFFF'
         new['ARMA'].append(make_arma(arma_h, arma_b, own | arma_id, edid, worn))
-        new['ARMO'].append(make_armo(armo_h, armo_b, own | armo_id, own | arma_id, edid, name, ground))
+        new['ARMO'].append(make_armo(armo_h, armo_b, own | armo_id, own | arma_id, edid, name, ground, own | ench_id))
         ours.update({own | armo_id, own | arma_id})
 
     # Split the plugin into its header and its top-level groups, dropping any

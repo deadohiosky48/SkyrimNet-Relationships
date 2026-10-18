@@ -443,6 +443,7 @@
   "ring.give.accept": "Give it",
   "ring.give.body": "Give {0} your {1}?",
   "ring.give.decline": "Choose another",
+  "ring.named": "{0}'s {1}",
   "ring.none": "You have no ring to give.",
   "ring.notNow": "Not now",
   "ring.received": "{0} gave you {1}.",

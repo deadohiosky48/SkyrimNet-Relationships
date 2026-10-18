@@ -8,6 +8,7 @@
 #include "src/L10n.h"
 #include "src/Natives.h"
 #include "src/Notices.h"
+#include "src/Rings.h"
 #include "src/Settings.h"
 
 namespace {
@@ -51,6 +52,11 @@ namespace {
             // Before any save loads, so no prompt ever reaches the Papyrus pair
             // while these are live (Decorators.h).
             SNRom::Decorators::Register();
+            SNRom::Rings::Register();
+            break;
+        // Positions are real once a save has loaded: who is here now.
+        case SKSE::MessagingInterface::kPostLoadGame:
+            SNRom::Rings::UpdateSpouseHereSoon();
             break;
         // THE READ MODEL NEVER OUTLIVES ITS TIMELINE. Cleared before any save
         // loads and when a new game starts, so the dashboard can't show a

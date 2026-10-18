@@ -89,6 +89,7 @@ set(SOURCES
     src/MagelightHost.cpp
     src/Marriage.cpp
     src/Officiant.cpp
+    src/Rings.cpp
     src/MeridianHost.cpp
     src/Model.cpp
     src/L10n.cpp

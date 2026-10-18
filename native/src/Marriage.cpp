@@ -2,6 +2,8 @@
 
 #include "PCH.h"
 
+#include "Rings.h"
+
 #include <algorithm>
 #include <map>
 #include <mutex>
@@ -91,6 +93,7 @@ namespace SNRom::Marriage {
                 if (auto* source = SKSE::GetModCallbackEventSource()) {
                     source->SendEvent(&event);
                 }
+                Rings::UpdateSpouseHere();   // a new spouse here, or one gone
             });
         }
 

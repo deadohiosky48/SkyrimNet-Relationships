@@ -5147,6 +5147,27 @@ Form Function WeddingRing() Global
     Return Game.GetFormFromFile(0x00000D68, "SNRom_Integration.esl")
 EndFunction
 
+Function WearAndName(Actor akWearer, Form akRing)
+    { Puts the ring on and names this one ring after its wearer: "Hroki's Gold
+      Engagement Ring" (the author, 2026-10-18). The name belongs to this
+      ring alone, kept with it in the save, whoever holds it later. Renamed
+      once it is worn, which is how SKSE names an item instance; the ring
+      slot is 36 (mask 0x40). }
+    akWearer.EquipItem(akRing, False, True)
+    Float waited = 0.0
+    While !akWearer.IsEquipped(akRing) && waited < 2.0
+        Utility.WaitMenuMode(0.2)
+        waited += 0.2
+    EndWhile
+    If !akWearer.IsEquipped(akRing)
+        Diag(LOG_WARN(), "Ring: " + akWearer.GetDisplayName() + " did not put on " + akRing.GetName() + \
+            "; it is in their inventory, unnamed.")
+        Return
+    EndIf
+    String named = Tr("ring.named", "{0}'s {1}", akWearer.GetDisplayName(), akRing.GetName())
+    WornObject.SetDisplayName(akWearer, 0, 0x00000040, named, True)
+EndFunction
+
 Function RingsBecomeWeddingRings(Actor akSpouse)
     { At the wedding (the author, 2026-10-18): an engagement ring of ours that
       either of them gave becomes the wedding ring, the band added to it, and
@@ -5161,8 +5182,8 @@ Function RingsBecomeWeddingRings(Actor akSpouse)
     If SNRom_Native.MarriageRing(akSpouse, True) == engagement && akSpouse.GetItemCount(engagement) > 0
         akSpouse.RemoveItem(engagement, 1, True)
         akSpouse.AddItem(wedding, 1, True)
-        akSpouse.EquipItem(wedding, False, True)
         SNRom_Native.SetMarriageRing(akSpouse, True, wedding)
+        WearAndName(akSpouse, wedding)
         Diag(LOG_INFO(), "Ring: " + akSpouse.GetDisplayName() + "'s engagement ring is now a wedding ring.")
     EndIf
     If SNRom_Native.MarriageRing(akSpouse, False) == engagement && player.GetItemCount(engagement) > 0
@@ -5253,8 +5274,8 @@ Function AcceptEngagementRing(Actor akActor, String asRing)
             Return
         EndIf
     EndIf
-    akActor.EquipItem(ring, False, True)
     SNRom_Native.SetMarriageRing(akActor, True, ring)
+    WearAndName(akActor, ring)
     SkyrimNetApi.RegisterPersistentEvent(player.GetDisplayName() + " gave " + who + " an engagement ring: " + \
         ring.GetName() + ".", player, akActor)
     Diag(LOG_INFO(), "Ring: the player gave " + who + " " + ring.GetName() + ".")
