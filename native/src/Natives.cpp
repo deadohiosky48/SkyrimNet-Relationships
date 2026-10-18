@@ -419,6 +419,28 @@ namespace SNRom::Natives {
             return nullptr;
         }
 
+        // SEVERACTIONS' OUTFIT LOCK SETTING, read from its script: the
+        // OutfitLockEnabled property of SeverActions_Outfit on its quest
+        // SeverActions (0xD62, SeverActions.esp). Every enforcement path there
+        // returns early without it. Read here so our scripts never name
+        // SeverActions_Outfit, which drags its outfit scripts into our compile.
+        // 1 on, 0 off, -1 unread (no SeverActions, or no such property).
+        std::int32_t SeverOutfitLockSetting(RE::StaticFunctionTag*) {
+            auto* data = RE::TESDataHandler::GetSingleton();
+            auto* quest = data ? data->LookupForm<RE::TESQuest>(0xD62, "SeverActions.esp") : nullptr;
+            auto* vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+            if (!quest || !vm) {
+                return -1;
+            }
+            const auto handle = vm->GetObjectHandlePolicy()->GetHandleForObject(RE::FormType::Quest, quest);
+            RE::BSTSmartPointer<RE::BSScript::Object> object;
+            if (!vm->FindBoundObject(handle, "SeverActions_Outfit", object) || !object) {
+                return -1;
+            }
+            const auto* property = object->GetProperty("OutfitLockEnabled");
+            return property ? (property->GetBool() ? 1 : 0) : -1;
+        }
+
         bool IsOfficiant(RE::StaticFunctionTag*, RE::Actor* a_actor) {
             return Officiant::Is(a_actor);
         }
@@ -664,6 +686,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("SnapshotRings", kScript, SnapshotRings);    // main thread: inventory
             a_vm->RegisterFunction("RingGivenSince", kScript, RingGivenSince);  // main thread: inventory
             a_vm->RegisterFunction("IsOfficiant", kScript, IsOfficiant);      // main thread: factions
+            a_vm->RegisterFunction("SeverOutfitLockSetting", kScript, SeverOutfitLockSetting, true);
             a_vm->RegisterFunction("CanBless", kScript, CanBless);            // main thread: positions
             a_vm->RegisterFunction("BetrothedNear", kScript, BetrothedNear);  // main thread: positions
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
@@ -673,7 +696,7 @@ namespace SNRom::Natives {
                             "MarriageWithState, MaraException, SetMaraException, CanAcceptProposal, CanDeclineProposal, "
                             "NoteProposalDeclined, SetMarriageFacts, MarriageRing, SetMarriageRing, RingsCarried, "
                             "IsOfficiant, CanBless, BetrothedNear, RingNamed, RingGiftFilter, SnapshotRings, "
-                            "RingGivenSince",
+                            "RingGivenSince, SeverOutfitLockSetting",
                             kScript, kVersion);
             return true;
         });

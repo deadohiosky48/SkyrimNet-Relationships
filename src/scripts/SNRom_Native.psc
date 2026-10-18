@@ -189,6 +189,10 @@ Form Function RingGivenSince(Actor akOwner) Global Native
 {VERSION 16 (2.5). A ring that left akOwner's inventory since SnapshotRings;
  None if none did.}
 
+Int Function SeverOutfitLockSetting() Global Native
+{VERSION 16 (2.5). SeverActions' Outfit Lock setting, read from its script: 1
+ on, 0 off, -1 unread.}
+
 Bool Function IsOfficiant(Actor akActor) Global Native
 {VERSION 16 (2.5). A living adult priest, priestess or jarl.}
 

@@ -145,18 +145,26 @@ Function MarkOneBlockTabs() Global
 EndFunction
 
 Bool Function OutfitEnforced(Actor akActor) Global
-    { SeverActions dresses akActor and takes off what their outfit does not
-      list: a legacy lock, or an active slot preset that is not held. Asked
-      before a marriage ring is put on, since the enforcement strips it (Hroki,
+    { SeverActions takes off what akActor's outfit does not list: asked before
+      a marriage ring is put on, since the enforcement strips it (Hroki,
       2026-10-18) and trying again only fights it. The caller has checked that
-      SeverActions is installed. }
+      SeverActions is installed.
+
+      SEVERACTIONS' OWN RULE, NOT A GUESS AT IT: the outfit system on, its
+      Outfit Lock setting on (SeverActions_Outfit.OutfitLockEnabled, on its
+      quest SeverActions, 0xD62 in SeverActions.esp; every enforcement path
+      returns early without it), and a lock active for this actor
+      (Native_Outfit_IsLockActive). An active slot preset alone is not
+      enforcement: the first version counted it, and with the lock turned off
+      the ring was still refused. }
     If akActor == None || !SeverActionsNativeExt2.Native_Outfit_IsSystemEnabled()
         Return False
     EndIf
-    Form[] locked = SeverActionsNative.Native_Outfit_GetLockedItems(akActor)
-    If locked.Length > 0
-        Return True
+    ; Read by the DLL from the script itself: naming SeverActions_Outfit here
+    ; drags all of SeverActions' outfit scripts into our compile. 0 off, 1 on,
+    ; -1 unread (no such property in this SeverActions): the lock alone decides.
+    If SNRom_Native.SeverOutfitLockSetting() == 0
+        Return False
     EndIf
-    Return SeverActionsNative.Native_OutfitSlot_IsPresetActive(akActor) && \
-        !SeverActionsNativeExt2.Native_OutfitSlot_IsActivePresetHeld(akActor)
+    Return SeverActionsNativeExt.Native_Outfit_IsLockActive(akActor)
 EndFunction

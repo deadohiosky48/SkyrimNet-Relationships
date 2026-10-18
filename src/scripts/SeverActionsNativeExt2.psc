@@ -42,8 +42,6 @@ String[] Function BioApi_ListBlocks(Bool abIncludeIntimate) Global Native
 String Function BioApi_GetContent(String asKey) Global Native
 
 ; Outfits (2.5, the marriage rings). Documented in SeverActions' own
-; SeverActionsNativeExt2: the system's master switch, and whether the active
-; slot preset is held (held = not enforced). An older SeverActions leaves them
-; unbound, which reads False.
+; SeverActionsNativeExt2: the outfit system's master switch. An older
+; SeverActions leaves it unbound, which reads False.
 Bool Function Native_Outfit_IsSystemEnabled() Global Native
-Bool Function Native_OutfitSlot_IsActivePresetHeld(Actor akActor) Global Native
