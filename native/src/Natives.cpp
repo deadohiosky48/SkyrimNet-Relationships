@@ -12,6 +12,7 @@
 #include "Hotkey.h"
 #include "Notices.h"
 #include "Officiant.h"
+#include "Rings.h"
 #include "Settings.h"
 #include "SkyrimNetLink.h"
 
@@ -441,6 +442,14 @@ namespace SNRom::Natives {
             return property ? (property->GetBool() ? 1 : 0) : -1;
         }
 
+        // Put a ring on once nothing pauses the game, and name the copy worn
+        // (Rings.h).
+        void WearRing(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::TESForm* a_ring, std::string a_name) {
+            if (a_actor && a_ring) {
+                Rings::WearWhenResumed(a_actor->GetFormID(), a_ring->GetFormID(), std::move(a_name));
+            }
+        }
+
         bool IsOfficiant(RE::StaticFunctionTag*, RE::Actor* a_actor) {
             return Officiant::Is(a_actor);
         }
@@ -687,6 +696,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("RingGivenSince", kScript, RingGivenSince);  // main thread: inventory
             a_vm->RegisterFunction("IsOfficiant", kScript, IsOfficiant);      // main thread: factions
             a_vm->RegisterFunction("SeverOutfitLockSetting", kScript, SeverOutfitLockSetting, true);
+            a_vm->RegisterFunction("WearRing", kScript, WearRing, true);
             a_vm->RegisterFunction("CanBless", kScript, CanBless);            // main thread: positions
             a_vm->RegisterFunction("BetrothedNear", kScript, BetrothedNear);  // main thread: positions
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
@@ -696,7 +706,7 @@ namespace SNRom::Natives {
                             "MarriageWithState, MaraException, SetMaraException, CanAcceptProposal, CanDeclineProposal, "
                             "NoteProposalDeclined, SetMarriageFacts, MarriageRing, SetMarriageRing, RingsCarried, "
                             "IsOfficiant, CanBless, BetrothedNear, RingNamed, RingGiftFilter, SnapshotRings, "
-                            "RingGivenSince, SeverOutfitLockSetting",
+                            "RingGivenSince, SeverOutfitLockSetting, WearRing",
                             kScript, kVersion);
             return true;
         });

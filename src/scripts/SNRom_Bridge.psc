@@ -5161,19 +5161,11 @@ Function WearAndName(Actor akWearer, Form akRing)
             akRing.GetName() + " left in their inventory.")
         Return
     EndIf
-    akWearer.EquipItem(akRing, False, True)
-    Float waited = 0.0
-    While !akWearer.IsEquipped(akRing) && waited < 2.0
-        Utility.WaitMenuMode(0.2)
-        waited += 0.2
-    EndWhile
-    If !akWearer.IsEquipped(akRing)
-        Diag(LOG_WARN(), "Ring: " + akWearer.GetDisplayName() + " did not put on " + akRing.GetName() + \
-            "; it is in their inventory, unnamed.")
-        Return
-    EndIf
-    String named = Tr("ring.named", "{0}'s {1}", akWearer.GetDisplayName(), akRing.GetName())
-    WornObject.SetDisplayName(akWearer, 0, 0x00000040, named, True)
+    ; ONCE THE GAME RUNS. The ring arrives in the gift menu, mid-conversation,
+    ; with the game paused, and an NPC's equipment does not change while it is:
+    ; Hroki took hers and never wore it. The DLL waits for nothing to pause the
+    ; game, puts it on, and names the copy worn (Rings.h, WearWhenResumed).
+    SNRom_Native.WearRing(akWearer, akRing, Tr("ring.named", "{0}'s {1}", akWearer.GetDisplayName(), akRing.GetName()))
 EndFunction
 
 Function RingsBecomeWeddingRings(Actor akSpouse)
