@@ -162,6 +162,12 @@ Int Function OutfitEnforcement(Actor akActor, Form akItem) Global
     If akActor == None || !SeverActionsNativeExt2.Native_Outfit_IsSystemEnabled()
         Return 0
     EndIf
+    ; ON SEVERACTIONS' EQUIPMENT BLACKLIST: no outfit, lock or undress takes it
+    ; off (its preset apply and lock re-equip both skip a blacklisted piece and
+    ; its slot; SeverActions 4.3 and 4.5 alike).
+    If akItem != None && SeverActionsNative.Native_Blacklist_IsBlacklisted(akItem)
+        Return 0
+    EndIf
     If SeverActionsNative.Native_OutfitSlot_IsPresetActive(akActor) && \
        !SeverActionsNativeExt2.Native_OutfitSlot_IsActivePresetHeld(akActor)
         ; The player can add the ring to the preset, as the notice says; then
@@ -192,4 +198,18 @@ String Function ActivePresetName(Actor akActor) Global
         Return ""
     EndIf
     Return SeverActionsNative.Native_OutfitSlot_GetPresetName(akActor, index)
+EndFunction
+
+Bool Function OnBlacklist(Form akItem) Global
+    { akItem is on SeverActions' equipment blacklist, itself or by its plugin. }
+    Return akItem != None && SeverActionsNative.Native_Blacklist_IsBlacklisted(akItem)
+EndFunction
+
+Function AddToBlacklist(Form akItem) Global
+    { Puts akItem on SeverActions' equipment blacklist, which every outfit,
+      lock and undress leaves on. The player's own SeverActions setting, kept
+      in this save: asked first (SNRom_Bridge.KeepRingsOnThroughOutfits). }
+    If akItem != None && !SeverActionsNative.Native_Blacklist_IsBlacklisted(akItem)
+        SeverActionsNative.Native_Blacklist_AddItem(akItem)
+    EndIf
 EndFunction

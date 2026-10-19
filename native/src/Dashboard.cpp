@@ -26,8 +26,10 @@
 #include "PrismaHost.h"
 #include "ViewHost.h"
 
+#include <deque>
 #include <format>
 #include <fstream>
+#include <map>
 #include <thread>
 
 namespace SNRom::Dashboard {
@@ -380,11 +382,151 @@ namespace SNRom::Dashboard {
         // Page to native. Runs as an SKSE task on the main thread, never on
         // the framework's callback thread, because it reads game state.
         // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // QUESTIONS (Ask, AskAnswer). The queue and the answers are shared
+        // with the VM thread, under g_askLock; what is on screen is the main
+        // thread's alone.
+        // ------------------------------------------------------------------
+        struct Question {
+            std::int32_t             id = 0;
+            std::string              title;
+            std::string              body;
+            std::vector<std::string> buttons;
+        };
+
+        std::mutex                         g_askLock;
+        std::deque<Question>               g_askQueue;   // not yet on screen
+        std::map<std::int32_t, std::int32_t> g_answers;  // id -> kAskPending or the answer
+        std::int32_t                       g_nextAsk = 1;
+
+        std::optional<Question> g_asking;            // on screen. Main thread.
+        bool                    g_askAlone = false;  // the view was opened for it
+        int                     g_askTries = 0;      // focus refused, in a row
+
+        // Another menu holding the screen (a gift menu, a book) is waited out,
+        // looking twice a second, for up to a minute.
+        constexpr auto kAskRetry = std::chrono::milliseconds{ 500 };
+        constexpr int  kAskMaxTries = 120;
+
+        void ShowNextAsk();
+
+        void SendAsk(const Question& a_q, bool a_alone) {
+            Send({ { "v", kProtocol },
+                   { "kind", "ask" },
+                   { "payload",
+                     { { "id", a_q.id },
+                       { "title", a_q.title },
+                       { "body", a_q.body },
+                       { "buttons", a_q.buttons },
+                       { "standalone", a_alone } } } });
+        }
+
+        void SetAnswer(std::int32_t a_id, std::int32_t a_answer) {
+            const std::scoped_lock lock{ g_askLock };
+            if (const auto it = g_answers.find(a_id); it != g_answers.end()) {
+                it->second = a_answer;
+            }
+        }
+
+        // The question on screen is answered (or dismissed): record it, close
+        // a view opened only for it, and show the next.
+        void EndAsking(std::int32_t a_answer, bool a_hide) {
+            if (!g_asking) {
+                return;
+            }
+            SetAnswer(g_asking->id, a_answer);
+            SKSE::log::info("Question {} answered: {}", g_asking->id, a_answer);
+            g_asking.reset();
+            Send({ { "v", kProtocol }, { "kind", "askEnd" } });
+            if (a_hide && g_askAlone && g_host && g_created) {
+                g_host->Hide();
+            }
+            g_askAlone = false;
+            SKSE::GetTaskInterface()->AddTask([]() { ShowNextAsk(); });
+        }
+
+        void RetryAskSoon() {
+            std::thread([]() {
+                std::this_thread::sleep_for(kAskRetry);
+                SKSE::GetTaskInterface()->AddTask([]() { ShowNextAsk(); });
+            }).detach();
+        }
+
+        void ShowNextAsk() {
+            if (g_asking || !g_host || !g_created) {
+                return;
+            }
+            Question next;
+            {
+                const std::scoped_lock lock{ g_askLock };
+                if (g_askQueue.empty()) {
+                    return;
+                }
+                next = g_askQueue.front();
+            }
+            const auto shown = [&](bool a_alone) {
+                {
+                    const std::scoped_lock lock{ g_askLock };
+                    g_askQueue.pop_front();
+                }
+                g_asking = next;
+                g_askAlone = a_alone;
+                g_askTries = 0;
+                SKSE::log::info("Question {} shown{}", next.id, a_alone ? " on its own" : " over the dashboard");
+            };
+            // The dashboard is open: the question goes over it.
+            if (g_host->HasFocus()) {
+                SendAsk(next, false);
+                shown(false);
+                return;
+            }
+            // Otherwise the view opens with the question alone. The page
+            // hears it first, so it never shows the dashboard for a moment.
+            SendAsk(next, true);
+            g_host->Show();
+            if (g_host->Focus() == FocusOutcome::Granted) {
+                shown(true);
+                return;
+            }
+            g_host->Hide();
+            if (++g_askTries < kAskMaxTries) {
+                RetryAskSoon();
+                return;
+            }
+            SKSE::log::warn("Question {} not shown: another menu kept the screen for a minute", next.id);
+            Send({ { "v", kProtocol }, { "kind", "askEnd" } });
+            {
+                const std::scoped_lock lock{ g_askLock };
+                g_askQueue.pop_front();
+            }
+            SetAnswer(next.id, kAskUnshown);
+            g_askTries = 0;
+            SKSE::GetTaskInterface()->AddTask([]() { ShowNextAsk(); });
+        }
+
+        // The page's answer to the question on screen.
+        void HandleAnswer(const std::string& a_pageId, const json& a_payload) {
+            const auto ask = a_payload.value("ask", 0);
+            const auto choice = a_payload.value("choice", kAskDismissed);
+            if (!g_asking || g_asking->id != ask) {
+                Result(a_pageId, false, "That question is no longer open.");
+                return;
+            }
+            if (choice < kAskDismissed || choice >= static_cast<std::int32_t>(g_asking->buttons.size())) {
+                Result(a_pageId, false, "That is not one of the answers.");
+                return;
+            }
+            Result(a_pageId, true, "");
+            EndAsking(choice, true);
+        }
+
         void Close() {
             if (g_host && g_created) {
                 g_host->Hide();
                 SKSE::log::info("Dashboard closed");
             }
+            // Closed with a question on screen (Escape, the hotkey): dismissed.
+            EndAsking(kAskDismissed, false);
         }
 
         // ------------------------------------------------------------------
@@ -546,6 +688,8 @@ namespace SNRom::Dashboard {
                     Result(id, true, "");
                 } else if (kind == "action") {
                     DispatchAction(id, message.value("payload", json::object()));
+                } else if (kind == "answer") {
+                    HandleAnswer(id, message.value("payload", json::object()));
                 } else {
                     Result(id, false, "Unknown request kind " + kind + ".");
                 }
@@ -723,6 +867,34 @@ namespace SNRom::Dashboard {
         ResendIfOpen();
     }
 
+    std::int32_t Ask(std::string a_title, std::string a_body, std::vector<std::string> a_buttons) {
+        if (!g_host || !g_created || a_buttons.empty()) {
+            return 0;
+        }
+        std::int32_t id = 0;
+        {
+            const std::scoped_lock lock{ g_askLock };
+            id = g_nextAsk++;
+            g_answers[id] = kAskPending;
+            g_askQueue.push_back(Question{ id, std::move(a_title), std::move(a_body), std::move(a_buttons) });
+        }
+        SKSE::GetTaskInterface()->AddTask([]() { ShowNextAsk(); });
+        return id;
+    }
+
+    std::int32_t AskAnswer(std::int32_t a_id) {
+        const std::scoped_lock lock{ g_askLock };
+        const auto             it = g_answers.find(a_id);
+        if (it == g_answers.end()) {
+            return kAskDismissed;
+        }
+        const auto answer = it->second;
+        if (answer != kAskPending) {
+            g_answers.erase(it);
+        }
+        return answer;
+    }
+
     void SetDisplay(std::optional<std::int32_t> a_scale, std::optional<std::int32_t> a_textSize) {
         // Logged when either CHANGES, for the reason SetDeveloperView gives.
         bool changed = false;
@@ -751,6 +923,22 @@ namespace SNRom::Dashboard {
             Result(action.pageId, false, "A save was loaded before the game's scripts answered.");
         }
         g_noAnswerLogged = false;
+        // A question belongs to the timeline it was asked in, and the script
+        // waiting on it is gone with that timeline.
+        {
+            const std::scoped_lock lock{ g_askLock };
+            g_askQueue.clear();
+            g_answers.clear();
+        }
+        if (g_asking) {
+            g_asking.reset();
+            Send({ { "v", kProtocol }, { "kind", "askEnd" } });
+            if (g_askAlone && g_host && g_created) {
+                g_host->Hide();
+            }
+            g_askAlone = false;
+        }
+        g_askTries = 0;
         Api::Reset();
         SKSE::log::info("A save is loading: the dashboard's read model is cleared");
     }

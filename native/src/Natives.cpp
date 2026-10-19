@@ -425,6 +425,16 @@ namespace SNRom::Natives {
         // returns early without it. Read here so our scripts never name
         // SeverActions_Outfit, which drags its outfit scripts into our compile.
         // 1 on, 0 off, -1 unread (no SeverActions, or no such property).
+        // VERSION 17: a question in our own UI (Dashboard::Ask).
+        std::int32_t AskOpen(RE::StaticFunctionTag*, std::string a_title, std::string a_body,
+                             std::vector<std::string> a_buttons) {
+            return Dashboard::Ask(std::move(a_title), std::move(a_body), std::move(a_buttons));
+        }
+
+        std::int32_t AskAnswer(RE::StaticFunctionTag*, std::int32_t a_id) {
+            return Dashboard::AskAnswer(a_id);
+        }
+
         std::int32_t SeverOutfitLockSetting(RE::StaticFunctionTag*) {
             auto* data = RE::TESDataHandler::GetSingleton();
             auto* quest = data ? data->LookupForm<RE::TESQuest>(0xD62, "SeverActions.esp") : nullptr;
@@ -689,6 +699,8 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("SeverOutfitLockSetting", kScript, SeverOutfitLockSetting, true);
             a_vm->RegisterFunction("CanBless", kScript, CanBless);            // main thread: positions
             a_vm->RegisterFunction("BetrothedNear", kScript, BetrothedNear);  // main thread: positions
+            a_vm->RegisterFunction("AskOpen", kScript, AskOpen, true);
+            a_vm->RegisterFunction("AskAnswer", kScript, AskAnswer, true);
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
                             "PutBondNumbers, PutBondText, DropBond, FormIdOf, PutPlaythrough, PutRefreshFacts, "
                             "RefreshDone, ActionArgs, ActionDone, CheckBond, RecordChange, Announce, ObserversNear, AppendLog, "
@@ -696,7 +708,7 @@ namespace SNRom::Natives {
                             "MarriageWithState, MaraException, SetMaraException, CanAcceptProposal, CanDeclineProposal, "
                             "NoteProposalDeclined, SetMarriageFacts, MarriageRing, SetMarriageRing, RingsCarried, "
                             "IsOfficiant, CanBless, BetrothedNear, RingNamed, RingGiftFilter, SnapshotRings, "
-                            "RingGivenSince, SeverOutfitLockSetting",
+                            "RingGivenSince, SeverOutfitLockSetting, AskOpen, AskAnswer",
                             kScript, kVersion);
             return true;
         });

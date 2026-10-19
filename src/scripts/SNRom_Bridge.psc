@@ -5168,11 +5168,26 @@ Function WearAndName(Actor akWearer, Form akRing)
       ring alone, kept with it in the save, whoever holds it later. Renamed
       once it is worn, which is how SKSE names an item instance; the ring
       slot is 36 (mask 0x40). }
+    ; ONCE THE GAME RUNS. The ring arrives in the gift menu, mid-conversation,
+    ; with the game paused, and an NPC's equipment does not change while it is:
+    ; Hroki took hers and never wore it. Utility.Wait counts only time the game
+    ; runs, so this resumes after every menu has closed, whichever paused it.
+    ; (A DLL wait on UI::GameIsPaused never ended in play: a Prisma UI screen
+    ; counts as a pausing menu while it exists.) Before the outfit check below,
+    ; which may ask the player a question on screen.
+    Utility.Wait(0.5)
+    If akWearer == None || akWearer.IsDead() || akWearer.GetItemCount(akRing) == 0
+        Return
+    EndIf
     ; AN OUTFIT SEVERACTIONS ENFORCES TAKES THE RING OFF, so it is not put on:
-    ; the ring stays in their inventory and the player is told why.
+    ; the ring stays in their inventory and the player is told why. Unless the
+    ; player lets SeverActions leave our rings alone (asked once).
     Int enforced = 0
     If SeverActionsPresent()
         enforced = SNRom_SABio.OutfitEnforcement(akWearer, akRing)
+        If enforced != 0 && KeepRingsOnThroughOutfits(akWearer)
+            enforced = 0
+        EndIf
     EndIf
     If enforced == 2
         String preset = SNRom_SABio.ActivePresetName(akWearer)
@@ -5184,16 +5199,6 @@ Function WearAndName(Actor akWearer, Form akRing)
         Debug.Notification(Tr("ring.locked", "{0} has the ring, but their outfit is locked in SeverActions, so it is not worn. Add it to their outfit there to wear it.", akWearer.GetDisplayName()))
         Diag(LOG_INFO(), "Ring: " + akWearer.GetDisplayName() + "'s outfit is locked in SeverActions; " + \
             akRing.GetName() + " left in their inventory.", True)
-        Return
-    EndIf
-    ; ONCE THE GAME RUNS. The ring arrives in the gift menu, mid-conversation,
-    ; with the game paused, and an NPC's equipment does not change while it is:
-    ; Hroki took hers and never wore it. Utility.Wait counts only time the game
-    ; runs, so this resumes after every menu has closed, whichever paused it.
-    ; (A DLL wait on UI::GameIsPaused never ended in play: a Prisma UI screen
-    ; counts as a pausing menu while it exists.)
-    Utility.Wait(0.5)
-    If akWearer == None || akWearer.IsDead() || akWearer.GetItemCount(akRing) == 0
         Return
     EndIf
     ; THE RING SLOT TAKEN BY SOMETHING THAT IS NOT A RING. Equipping a ring
@@ -5227,6 +5232,53 @@ Function WearAndName(Actor akWearer, Form akRing)
     String named = Tr("ring.named", "{0}'s {1}", akWearer.GetDisplayName(), akRing.GetName())
     WornObject.SetDisplayName(akWearer, 0, 0x00000040, named, True)
     Diag(LOG_INFO(), "Ring: " + akWearer.GetDisplayName() + " wears " + named + ".")
+EndFunction
+
+Bool Function KeepRingsOnThroughOutfits(Actor akWearer)
+    { SEVERACTIONS' EQUIPMENT BLACKLIST FOR OUR RINGS (2.5; the author,
+      2026-10-19). An outfit SeverActions enforces takes a ring off; a piece on
+      its blacklist it never takes off, through any outfit, lock or undress. That
+      list is the player's own SeverActions setting, so the player is asked, in
+      our own UI, the first time a ring meets such an outfit: yes puts both our
+      rings on it, for everyone, in this save; no is remembered and never asked
+      again in this save; "not now" asks again next time. True when our rings
+      are on it now. }
+    Form engagement = EngagementRing()
+    Form wedding = WeddingRing()
+    If engagement == None || wedding == None
+        Return False
+    EndIf
+    If SNRom_SABio.OnBlacklist(engagement) && SNRom_SABio.OnBlacklist(wedding)
+        Return True
+    EndIf
+    If StorageUtil.GetIntValue(None, "SNRom_RingKeepDeclined", 0) == 1
+        Return False
+    EndIf
+    String who = akWearer.GetDisplayName()
+    String body = Tr("ringkeep.body", "{0}'s SeverActions outfit puts itself back on, and that would take the ring off.", who) + \
+        SNRom_Choice.NL() + Tr("ringkeep.body2", "SeverActions can leave Relationships' engagement and wedding rings alone, for everyone in this playthrough: no outfit, lock or undress will take them off. It adds them to SeverActions' undress blacklist, where you can remove them again.")
+    String[] buttons = new String[3]
+    buttons[0] = Tr("ringkeep.yes", "Keep rings on")
+    buttons[1] = Tr("ringkeep.no", "No, leave outfits as they are")
+    buttons[2] = Tr("ringkeep.later", "Not now")
+    Int answer = -1
+    If _dashNatives >= 17
+        answer = SNRom_Choice.AskInView(Tr("ringkeep.title", "Marriage rings"), body, buttons)
+    Else
+        answer = SNRom_Choice.AskList(body, buttons)
+    EndIf
+    If answer == 0
+        SNRom_SABio.AddToBlacklist(engagement)
+        SNRom_SABio.AddToBlacklist(wedding)
+        Diag(LOG_INFO(), "Ring: the player put our engagement and wedding rings on SeverActions' equipment blacklist.")
+        Return SNRom_SABio.OnBlacklist(engagement)
+    ElseIf answer == 1
+        StorageUtil.SetIntValue(None, "SNRom_RingKeepDeclined", 1)
+        Diag(LOG_INFO(), "Ring: the player keeps SeverActions' outfits as they are; not asked again in this save.")
+    Else
+        Diag(LOG_INFO(), "Ring: no answer about SeverActions' blacklist; asked again next time.")
+    EndIf
+    Return False
 EndFunction
 
 Function RingsBecomeWeddingRings(Actor akSpouse)
@@ -7345,9 +7397,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 16
+    If natives < 17
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v16). Install the DLL from the same release.", True)
+            ", these need v17). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5

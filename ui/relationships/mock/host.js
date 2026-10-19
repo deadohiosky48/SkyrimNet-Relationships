@@ -47,6 +47,7 @@
       renderDevBar();
     }
 
+    var asked = false;
     function later(ms, fn) { setTimeout(fn, ms); }
     function push(kind, payload, extra) {
       var m = { v: PROTOCOL, kind: kind, payload: payload };
@@ -73,6 +74,16 @@
       }).then(function (snap) {
         state = withDisplay(snap);
         renderDevBar();
+        // ?ask=over or ?ask=alone: a question as the game would ask it
+        // (Dashboard::Ask), over the dashboard or on its own.
+        if (params.ask && !asked) {
+          asked = true;
+          later(400, function () {
+            push("ask", { id: 1, title: "Marriage rings",
+              body: "Hroki's SeverActions outfit puts itself back on, and takes her ring off with it.\nSeverActions can leave marriage rings alone.",
+              buttons: ["Keep rings on", "Not now", "No"], standalone: params.ask === "alone" });
+          });
+        }
         return state;
       });
       return loading;
@@ -268,6 +279,10 @@
           } else if (envelope.kind === "action") {
             var r = act(envelope.payload);
             answer(envelope.id, r[0], r[1]);
+          } else if (envelope.kind === "answer") {
+            answer(envelope.id, true, "");
+            push("askEnd", {});
+            notice("Mock host: question " + envelope.payload.ask + " answered " + envelope.payload.choice + ".");
           } else {
             answer(envelope.id, false, "Unknown request kind " + envelope.kind + ".");
           }

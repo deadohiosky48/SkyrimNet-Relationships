@@ -159,3 +159,38 @@ Int Function AskList(String asBody, String[] asButtons, Float afTimeoutSeconds =
     EndIf
     Return SkyMessage.GetResultIndex(boxId)
 EndFunction
+
+Int Function AskInView(String asTitle, String asBody, String[] asButtons) Global
+    { THE QUESTION IN OUR OWN UI (2.5; the author, 2026-10-19: "Use our UI for
+      the confirmation box"), shown by the DLL in the dashboard's view
+      (SNRom_Native.AskOpen). Returns the index of the button chosen, or
+      ANSWER_NONE when it was dismissed or never answered. The caller has
+      checked that the natives are version 17 or later.
+
+      Lines of asBody are split on a newline (NL()). With no dashboard view (no
+      UI framework installed), or when another menu held the screen for a
+      minute, the same question is asked in a message box instead.
+
+      Waits in menu time: the view pauses the game while it asks, and
+      Utility.Wait would not return until it closed. Ten minutes at most. }
+    If asButtons.Length == 0
+        Return ANSWER_NONE()
+    EndIf
+    Int id = SNRom_Native.AskOpen(asTitle, asBody, asButtons)
+    Int answer = -3
+    If id > 0
+        answer = SNRom_Native.AskAnswer(id)
+        Float started = Utility.GetCurrentRealTime()
+        While answer == -2 && (Utility.GetCurrentRealTime() - started) < 600.0
+            Utility.WaitMenuMode(0.2)
+            answer = SNRom_Native.AskAnswer(id)
+        EndWhile
+    EndIf
+    If answer == -3 || id <= 0
+        Return AskList(asTitle + NL() + NL() + asBody, asButtons)
+    EndIf
+    If answer < 0
+        Return ANSWER_NONE()
+    EndIf
+    Return answer
+EndFunction

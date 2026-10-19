@@ -526,6 +526,11 @@ kbd {
 .dialog .act-calls { margin-top: 0.6rem; }
 .dialog-buttons { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1rem; }
 
+/* A QUESTION ALONE (app.js, showAsk): the view opened only to ask it, so the
+   dashboard stays out of sight behind it. */
+body.ask-only .panel, body.ask-only .toasts { visibility: hidden; }
+.dialog[data-kind="ask"] p { color: var(--text); }
+
 /* ---------------------------------------------------------------- toasts */
 
 .toasts {

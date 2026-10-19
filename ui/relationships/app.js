@@ -125,7 +125,7 @@
 
   snrom.on("notice", function (n) { toast(n.text, n.level === "error" ? "error" : n.level === "warn" ? "warn" : "info"); });
   snrom.on("connection", function (c) { if (!c.ok) toast(c.message, "error"); });
-  snrom.on("opened", function () { closeDialog(); roster.focus(); });
+  snrom.on("opened", function () { if (asking) return; closeDialog(); roster.focus(); });
 
   // ---------------------------------------------------------------- roster status
   // Where the roster stands (snapshot.roster, WP2). The game shows this page
@@ -425,6 +425,46 @@
     ], btn);
   }
 
+  // ---------------------------------------------------------------- questions
+  // A question the game asks the player (Dashboard::Ask, 2.5), in place of a
+  // Papyrus message box: the dialog with the game's own buttons, over the
+  // dashboard, or alone when the view opened for it (body.ask-only hides the
+  // panel). Escape, the close hotkey and a click beside it dismiss it, which
+  // the game reads as no answer yet, never as a choice.
+  var asking = null;
+
+  function showAsk(q) {
+    if (!q || typeof q.id !== "number") return;
+    asking = q;
+    document.body.classList.toggle("ask-only", !!q.standalone);
+    var body = String(q.body || "").split("\n").filter(function (x) { return x.trim() !== ""; })
+      .map(function (x) { return para(x); });
+    var buttons = (q.buttons || []).map(function (label, i) {
+      return { label: String(label), cls: i === 0 ? "btn-accent" : "", run: function () { answerAsk(i); } };
+    });
+    openDialog(String(q.title || ""), body, buttons, null);
+    $("dialog").setAttribute("data-kind", "ask");
+  }
+
+  function endAsk() {
+    if (!asking) return;
+    asking = null;
+    document.body.classList.remove("ask-only");
+    if ($("dialog").getAttribute("data-kind") === "ask") closeDialog();
+  }
+
+  function answerAsk(choice) {
+    if (!asking) return;
+    var id = asking.id;
+    endAsk();
+    snrom.request("answer", { ask: id, choice: choice }).then(function (r) {
+      if (!r.ok && r.message) toast(r.message, "warn");
+    });
+  }
+
+  snrom.on("ask", showAsk);
+  snrom.on("askEnd", endAsk);
+
   // The playthrough-wide actions a dialog offers, one block each. The button
   // that opened the dialog gets the focus back after an action.
   function actionList(actions, opener) {
@@ -506,6 +546,7 @@
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape" && e.key !== "Esc") return;
     e.preventDefault();
+    if (asking) { answerAsk(-1); return; }
     if (closeDialog()) return;
     if (closeDetail()) return;
     snrom.request("close", { reason: "escape" });

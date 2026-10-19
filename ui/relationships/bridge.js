@@ -54,6 +54,12 @@
            {"v":1, "kind":"result",   "re":"r7", "payload":{"ok":true,"message":"..."}}
            {"v":1, "kind":"notice",   "payload":{"text":"...","level":"info"|"warn"|"error"}}
            {"v":1, "kind":"opened"}   the dashboard was just shown and focused
+           {"v":1, "kind":"ask", "payload":{"id":3,"title":"...","body":"...",
+                                            "buttons":["...","..."],"standalone":true}}
+                                      a question for the player (2.5): over the
+                                      dashboard, or alone (standalone) when the
+                                      view opened only for it
+           {"v":1, "kind":"askEnd"}   the question on screen is over; take it down
          "notice" carries an answer that arrives later and belongs to no request,
          such as a seed read coming back from the LLM seconds after the re-read
          was dispatched, or the DLL saying the game's scripts have not answered
@@ -68,8 +74,9 @@
    ==========================================================================
 
      snrom.request(kind, payload) -> Promise<{ok, message}>
-         kind "snapshot" | "action" as above, or "close" ({reason}), which goes
-         to snromClose and resolves at once.
+         kind "snapshot" | "action" as above, "answer" ({ask, choice}: the
+         button's index, or -1 for dismissed) for the question on screen, or
+         "close" ({reason}), which goes to snromClose and resolves at once.
      snrom.on(kind, handler) -> unsubscribe function
          kind "snapshot" | "notice" | "opened" | "result" | "connection".
          A "snapshot" handler registered late is handed the last one at once.

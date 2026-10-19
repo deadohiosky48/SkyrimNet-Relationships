@@ -76,4 +76,21 @@ namespace SNRom::Dashboard {
     // read them; an empty one stays as it is. Sent to the page as
     // settings.scale and settings.textSize, at once if the dashboard is open.
     void SetDisplay(std::optional<std::int32_t> a_scale, std::optional<std::int32_t> a_textSize);
+
+    // ---- QUESTIONS FOR THE PLAYER IN OUR OWN UI (2.5), in place of a Papyrus
+    // message box. One at a time, in the order asked: over the dashboard if it
+    // is open, otherwise the view opens showing the question alone, and closes
+    // when it is answered. From a VM thread.
+    //
+    // Ask returns the question's id, or 0 when there is no dashboard view (no
+    // UI framework): the caller then asks some other way.
+    std::int32_t Ask(std::string a_title, std::string a_body, std::vector<std::string> a_buttons);
+
+    // kAskPending until answered; then, ONCE (the answer is forgotten when
+    // read), the button's index, kAskDismissed (closed without a choice), or
+    // kAskUnshown (another menu kept the screen for a minute).
+    inline constexpr std::int32_t kAskPending = -2;
+    inline constexpr std::int32_t kAskDismissed = -1;
+    inline constexpr std::int32_t kAskUnshown = -3;
+    std::int32_t AskAnswer(std::int32_t a_id);
 }

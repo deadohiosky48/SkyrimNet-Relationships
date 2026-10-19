@@ -299,3 +299,14 @@ Function ApiSelfTest() Global Native
  or dispositions.jsonl - in the mod's logs folder, at once and in order.
  snrom.log lines get the wall clock in front. False when it could not be
  written. Called only by SNRom_Bridge.WriteLog.}
+
+Int Function AskOpen(String asTitle, String asBody, String[] asButtons) Global Native
+{VERSION 17 (2.5). A question for the player in our own UI: over the dashboard
+ if it is open, otherwise the view opens with the question alone. Returns its
+ id, or 0 when there is no dashboard view (no UI framework). Read the answer
+ with AskAnswer.}
+
+Int Function AskAnswer(Int aiId) Global Native
+{VERSION 17 (2.5). -2 while unanswered; then, once (the answer is forgotten
+ when read), the index of the button chosen, -1 dismissed (closed without a
+ choice), or -3 never shown (another menu kept the screen for a minute).}
