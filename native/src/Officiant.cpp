@@ -28,6 +28,11 @@ namespace SNRom::Officiant {
             return f;
         }
 
+        // Every officiant's record, found at kDataLoaded from the plugins.
+        std::vector<RE::TESNPC*> g_officiants;
+
+        void Mark(RE::TESNPC* a_npc, RE::TESFaction* a_ours);
+
         // The record lists a_faction, at any rank.
         bool Lists(const RE::TESNPC* a_npc, const RE::TESFaction* a_faction) {
             if (!a_npc || !a_faction) {
@@ -49,27 +54,55 @@ namespace SNRom::Officiant {
             SKSE::log::warn("Officiants: SNRom_Officiant not found; no one can marry the player");
             return;
         }
-        std::size_t marked = 0;
+        g_officiants.clear();
         for (auto* npc : data->GetFormArray<RE::TESNPC>()) {
-            if (npc && !Lists(npc, ours) && (Lists(npc, Priests()) || Lists(npc, Jarls()))) {
-                RE::FACTION_RANK entry{};
-                entry.faction = ours;
-                entry.rank = 0;
-                npc->factions.push_back(entry);
-                ++marked;
+            if (npc && (Lists(npc, Priests()) || Lists(npc, Jarls()))) {
+                g_officiants.push_back(npc);
+                Mark(npc, ours);
             }
         }
-        SKSE::log::info("Officiants: {} priests, priestesses and jarls can marry the player", marked);
+        SKSE::log::info("Officiants: {} priests, priestesses and jarls can marry the player", g_officiants.size());
+    }
+
+    void Remark() {
+        auto* ours = Ours();
+        if (!ours) {
+            return;
+        }
+        std::size_t again = 0;
+        for (auto* npc : g_officiants) {
+            if (!Lists(npc, ours)) {
+                Mark(npc, ours);
+                ++again;
+            }
+        }
+        SKSE::log::info("Officiants: {} marked again after the load (their factions came from the save)", again);
     }
 
     bool Is(RE::Actor* a_actor) {
         if (!a_actor || a_actor->IsDead() || a_actor->IsChild() || a_actor->IsPlayerRef()) {
             return false;
         }
-        // Ours covers every record; the vanilla two catch someone a mod adds
-        // to them while the game runs.
+        // The plugins' officiants; the factions catch someone a mod makes a
+        // priest or jarl while the game runs.
+        auto* base = a_actor->GetActorBase();
+        if (base && std::find(g_officiants.begin(), g_officiants.end(), base) != g_officiants.end()) {
+            return true;
+        }
         const auto in = [&](RE::TESFaction* a_faction) { return a_faction && a_actor->IsInFaction(a_faction); };
         return in(Ours()) || in(Priests()) || in(Jarls());
+    }
+
+    namespace {
+        void Mark(RE::TESNPC* a_npc, RE::TESFaction* a_ours) {
+            if (Lists(a_npc, a_ours)) {
+                return;
+            }
+            RE::FACTION_RANK entry{};
+            entry.faction = a_ours;
+            entry.rank = 0;
+            a_npc->factions.push_back(entry);
+        }
     }
 
     std::vector<RE::Actor*> BetrothedNear(float a_range) {

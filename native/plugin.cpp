@@ -61,6 +61,7 @@ namespace {
         case SKSE::MessagingInterface::kPostLoadGame:
             SNRom::Rings::UpdateSpouseHereSoon();
             SNRom::Marriage::SyncFactionsSoon();
+            SNRom::Officiant::Remark();
             break;
         // THE READ MODEL NEVER OUTLIVES ITS TIMELINE. Cleared before any save
         // loads and when a new game starts, so the dashboard can't show a

@@ -22,6 +22,12 @@ namespace SNRom::Officiant {
     // only; nothing reaches the save.
     void MarkAll();
 
+    // kPostLoadGame. A SAVE REPLACES THE FACTION LIST of every NPC whose
+    // factions changed in it, which takes our mark off them: Elisif, a MARAS
+    // spouse with a dozen factions added, lost hers (2026-10-19). So everyone
+    // MarkAll found is marked again after each load. Main thread.
+    void Remark();
+
     // A living adult priest, priestess or jarl.
     bool Is(RE::Actor* a_actor);
 
