@@ -88,6 +88,13 @@ namespace SNRom::Marriage {
     // Everyone engaged to the player, ascending form id.
     std::vector<std::int32_t> AllEngaged();
 
+    // THE STATE AS A FACTION RANK, for SkyrimNet's eligibility rules, which
+    // evaluate get_faction_rank but not our own decorators (measured
+    // 2026-10-17): FACT SNRom_Marriage, rank the State number, -1 for none.
+    // Set on every change (Announce) and, after a load, for everyone with a
+    // record who can be found; ranks are kept in the save as well.
+    void SyncFactionsSoon();
+
     // The co-save (Cosave.cpp dispatches to these).
     inline constexpr std::uint32_t kRecordType = 'MARR';
     void Save(SKSE::SerializationInterface* a_intfc);

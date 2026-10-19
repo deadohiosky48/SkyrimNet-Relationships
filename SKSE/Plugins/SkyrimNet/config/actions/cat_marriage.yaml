@@ -5,5 +5,5 @@
 customCategory: marriage
 actionType: category
 name: Marriage
-description: "Marriage with the player: answering a proposal (yes or no), breaking off an engagement, giving or accepting an engagement ring, or - for a priest, priestess or jarl - marrying the player to the one they are engaged to, here and now. SELECT THIS whenever marrying, being engaged, a ring or a wedding is what is being talked about. Choosing this commits you to nothing: you will see the options and may decline."
+description: "Marriage with the player: answering a proposal (yes or no), breaking off an engagement, giving or accepting an engagement ring, or - for a priest, priestess or jarl - marrying the player to the one they are engaged to, here and now, quietly or in a ceremony. SELECT THIS whenever marrying, being engaged, a ring or a wedding is what is being talked about. Choosing this commits you to nothing: you will see the options and may decline."
 enabled: true

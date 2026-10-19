@@ -9,9 +9,18 @@ namespace RE {
 
 // WHO CAN MARRY THEM (2.5, Build A, M4e; spec 5.3). Any priest or priestess at
 // any temple, or any jarl: vanilla's JobPriestFaction and JobJarlFaction.
-// Recognised natively, so the eligibility of BlessUnion holds while dialogue
-// pauses the game.
+//
+// AT ANY RANK, -1 INCLUDED. Vanilla lists its jarls in JobJarlFaction at rank
+// -1 (Elisif, Skyrim.esm NPC_ 0x0001326A), which the engine's IsInFaction, and
+// so SkyrimNet's is_in_faction, reads as not a member: Elisif was never
+// offered MarriageBless (2026-10-19). So at kDataLoaded every NPC whose record
+// lists either faction, at any rank, is given our own SNRom_Officiant at rank
+// 0, which the action's eligibility can ask.
 namespace SNRom::Officiant {
+
+    // kDataLoaded: SNRom_Officiant onto every officiant's record. In memory
+    // only; nothing reaches the save.
+    void MarkAll();
 
     // A living adult priest, priestess or jarl.
     bool Is(RE::Actor* a_actor);

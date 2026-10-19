@@ -6,8 +6,10 @@
 #include "src/History.h"
 #include "src/Hotkey.h"
 #include "src/L10n.h"
+#include "src/Marriage.h"
 #include "src/Natives.h"
 #include "src/Notices.h"
+#include "src/Officiant.h"
 #include "src/Rings.h"
 #include "src/Settings.h"
 
@@ -53,10 +55,12 @@ namespace {
             // while these are live (Decorators.h).
             SNRom::Decorators::Register();
             SNRom::Rings::Register();
+            SNRom::Officiant::MarkAll();
             break;
         // Positions are real once a save has loaded: who is here now.
         case SKSE::MessagingInterface::kPostLoadGame:
             SNRom::Rings::UpdateSpouseHereSoon();
+            SNRom::Marriage::SyncFactionsSoon();
             break;
         // THE READ MODEL NEVER OUTLIVES ITS TIMELINE. Cleared before any save
         // loads and when a new game starts, so the dashboard can't show a

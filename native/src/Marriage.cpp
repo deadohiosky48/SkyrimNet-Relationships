@@ -83,6 +83,24 @@ namespace SNRom::Marriage {
             return a_value >= 0 && a_value <= static_cast<std::int32_t>(State::kSeparated);
         }
 
+        RE::TESFaction* StateFaction() {
+            static auto* f = [] {
+                auto* data = RE::TESDataHandler::GetSingleton();
+                return data ? data->LookupForm<RE::TESFaction>(0xD70, "SNRom_Integration.esl") : nullptr;
+            }();
+            return f;
+        }
+
+        // Main thread.
+        void SyncFaction(std::int32_t a_formId, State a_state) {
+            auto* faction = StateFaction();
+            auto* actor = RE::TESForm::LookupByID<RE::Actor>(static_cast<RE::FormID>(a_formId));
+            if (faction && actor) {
+                const auto rank = a_state == State::kNone ? -1 : static_cast<std::int32_t>(a_state);
+                actor->AddToFaction(faction, static_cast<std::int8_t>(rank));
+            }
+        }
+
         // SNRom_MarriageChanged: strArg the new state's name, numArg its
         // number, sender the person. Papyrus and other mods listen for it.
         void Announce(std::int32_t a_formId, State a_to) {
@@ -93,6 +111,7 @@ namespace SNRom::Marriage {
                 if (auto* source = SKSE::GetModCallbackEventSource()) {
                     source->SendEvent(&event);
                 }
+                SyncFaction(a_formId, a_to);
                 Rings::UpdateSpouseHere();   // a new spouse here, or one gone
             });
         }
@@ -310,6 +329,22 @@ namespace SNRom::Marriage {
 
     std::vector<std::int32_t> AllEngaged() {
         return WithState(State::kEngaged);
+    }
+
+    void SyncFactionsSoon() {
+        std::vector<std::pair<std::int32_t, State>> all;
+        {
+            const std::scoped_lock lock{ g_lock };
+            for (const auto& [formId, r] : g_records) {
+                all.emplace_back(static_cast<std::int32_t>(formId), r.state);
+            }
+        }
+        SKSE::GetTaskInterface()->AddTask([all = std::move(all)]() {
+            for (const auto& [formId, state] : all) {
+                SyncFaction(formId, state);
+            }
+            SKSE::log::info("Marriage: {} states set as SNRom_Marriage ranks", all.size());
+        });
     }
 
     void Save(SKSE::SerializationInterface* a_intfc) {

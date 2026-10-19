@@ -1,8 +1,14 @@
-# 2.5, Build A: marriage. ELIGIBILITY HERE IS ONLY A COARSE FILTER, built from
-# SkyrimNet's own faction checks: our bond faction's rank, or vanilla's priest
-# and jarl factions by hex FormID. The real rules are the native ones
-# (SkyrimNetRelationships.dll, Decorators.cpp), which the Papyrus function asks
-# when the action runs, and the player confirms every change of state.
+# 2.5, Build A: marriage. ELIGIBILITY IS BUILT FROM SKYRIMNET'S OWN
+# get_faction_rank, on factions the DLL keeps: SNRom_Bond (the tier),
+# SNRom_Marriage (the marriage state's number: 1 engaged, 2 married,
+# 6 separated; Marriage.h) and SNRom_Officiant (every priest, priestess and
+# jarl; Officiant.h). The full rules are the native ones (Decorators.cpp),
+# which the Papyrus function asks when the action runs, and the player
+# confirms every change of state.
+#
+# NOT is_in_faction ON VANILLA'S JOB FACTIONS: vanilla lists jarls in
+# JobJarlFaction at rank -1, which reads as not a member, so Elisif was never
+# offered MarriageBless (2026-10-19).
 #
 # NOT OUR OWN DECORATORS. marriage_can_accept and the rest answered correctly
 # through the template preview (Hroki, 2026-10-17: accept=true), yet SkyrimNet's
@@ -13,9 +19,9 @@
 customCategory: marriage
 name: MarriageBless
 description: |
-  As a priest, priestess or jarl, you marry {{ player.name }} to the one they are engaged to, here and now: they have come to you to elope.
+  As a priest, priestess or jarl, you marry {{ player.name }} to the one they are engaged to, here and now: you pronounce them wed, whether with a quiet blessing or a ceremony before witnesses.
 
-  USE ONLY when both of them are here, both have asked you to, and you are willing. You may refuse, as yourself, for your own reasons. If you do not know them, or the match troubles you, say so.
+  USE when they have asked you to marry them and you do it now: when you declare them married, or they have said their vows before you and you seal them. Both must be here. You may refuse, as yourself, for your own reasons; then do not use this, and say so.
 
 questEditorId: SNRom_Quest
 scriptName: SNRom_Bridge
@@ -33,24 +39,18 @@ parameterMapping:
 
 eligibilityRules:
   - conditions:
-      # JobPriestFaction and JobJarlFaction (Skyrim.esm), by hex FormID: the
-      # form that needs no editor-ID lookup.
-      - decoratorName: "is_in_faction"
-        arguments:
-          - currentActor
-          - "0x0005159A"
-        comparisonOperator: "=="
-        expectedValue: true
-      - decoratorName: "is_in_faction"
-        arguments:
-          - currentActor
-          - "0x00050920"
-        comparisonOperator: "=="
-        expectedValue: true
-    logicalOperator: "OR"
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "SNRom_Officiant"]
+        comparisonOperator: ">="
+        expectedValue: 0
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "SNRom_Marriage"]
+        comparisonOperator: "!="
+        expectedValue: 1
+    logicalOperator: "AND"
     required: true
 
-eventString: "{{ actor.name }} agreed to marry {{ player.name }} to their betrothed."
+eventString: "{{ actor.name }} married {{ player.name }} to their betrothed."
 isShortLived: false
 
 enabled: true

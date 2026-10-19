@@ -5410,10 +5410,12 @@ Function BlessUnion(Actor akOfficiant, String asBetrothed)
         Diag(LOG_INFO(), "Eloping: the player did not go ahead with " + who + " before " + priest + ".")
         Return
     EndIf
-    If ChangeMarriage(betrothed, MARRIAGE_MARRIED(), "eloped; married by " + priest, False, akOfficiant, True)
+    ; Recorded as eloped: married without a planned wedding (Build B's), be it
+    ; a quiet blessing or a ceremony at court (Elisif, 2026-10-19).
+    If ChangeMarriage(betrothed, MARRIAGE_MARRIED(), "married by " + priest + ", unplanned", False, akOfficiant, True)
         Actor player = Game.GetPlayer()
         SkyrimNetApi.RegisterPersistentEvent(priest + " married " + player.GetDisplayName() + " and " + who + \
-            ", who eloped.", akOfficiant, player)
+            ".", akOfficiant, player)
     EndIf
 EndFunction
 

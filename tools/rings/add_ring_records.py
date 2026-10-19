@@ -1,4 +1,5 @@
-"""Add (or refresh) the ring records in SNRom_Integration.esl.
+"""Add (or refresh) the marriage records in SNRom_Integration.esl: the rings,
+their enchantments, and the factions the marriage actions' eligibility reads.
 
     python tools/rings/add_ring_records.py <Skyrim.esm> <SNRom_Integration.esl>
 
@@ -66,6 +67,32 @@ ENCHANTMENTS = [
                                                      (0xD6E, 10.0, False),
                                                      (0xD6F, 25.0, True)]),
 ]
+
+# FACTIONS FOR ELIGIBILITY. SkyrimNet's eligibility rules evaluate
+# get_faction_rank, not our own decorators (measured 2026-10-17), so the DLL
+# keeps what the marriage actions need as faction ranks:
+# - SNRom_Marriage: the actor's marriage to the player, rank = the state's
+#   number (Marriage.h), -1 for none (Marriage.cpp, SyncFaction);
+# - SNRom_Officiant: rank 0 on every priest, priestess and jarl, put on their
+#   records at kDataLoaded (Officiant.cpp, MarkAll), since vanilla lists jarls
+#   in JobJarlFaction at rank -1, which reads as not a member.
+# (FormID, EditorID, name, rank titles from 0)
+FACTIONS = [
+    (0xD70, 'SNRom_Marriage', 'Relationships Marriage',
+     ['None', 'Engaged', 'Married', 'Broken Off', 'Divorced', 'Widowed', 'Separated']),
+    (0xD71, 'SNRom_Officiant', 'Relationships Officiant', ['Officiant']),
+]
+
+
+def make_fact(form_id, edid, name, ranks):
+    # As SNRom_Bond is: no flags, no crime values, no vendor.
+    body = (pack_sub('EDID', zstr(edid)) + pack_sub('FULL', zstr(name)) + pack_sub('DATA', bytes(4)) +
+            pack_sub('CRVA', bytes([1, 1]) + bytes(18)))
+    for i, title in enumerate(ranks):
+        body += pack_sub('RNAM', struct.pack('<I', i)) + pack_sub('MNAM', zstr(title)) + pack_sub('FNAM', zstr(title))
+    body += pack_sub('VENV', bytes(12))
+    return raw_record('FACT', form_id, body)
+
 
 # The game reads top-level groups in this order (UESP, TES5 Mod: Mod File Format).
 GROUP_ORDER = ('GMST KYWD LCRT AACT TXST GLOB CLAS FACT HDPT HAIR EYES RACE SOUN ASPC MGEF SCPT LTEX ENCH SPEL '
@@ -233,8 +260,12 @@ def main(esm_path, esl_path):
 
     # Our own records are master index 1 (Skyrim.esm is 0).
     own = 0x01000000
-    new = {'ARMO': [], 'ARMA': [], 'GLOB': [], 'ENCH': [], 'MGEF': []}
+    new = {'ARMO': [], 'ARMA': [], 'GLOB': [], 'ENCH': [], 'MGEF': [], 'FACT': []}
     ours = set()
+    for fact_id, edid, name, ranks in FACTIONS:
+        assert 0x800 <= fact_id <= 0xFFF, 'ESL FormIDs are 0x800-0xFFF'
+        new['FACT'].append(make_fact(own | fact_id, edid, name, ranks))
+        ours.add(own | fact_id)
     for mgef_id, vanilla, edid, name, description in EFFECTS:
         mh, mb = find_record(esm, vanilla)
         new['MGEF'].append(make_mgef(mh, mb, own | mgef_id, edid, name, description))
