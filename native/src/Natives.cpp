@@ -13,6 +13,7 @@
 #include "Hotkey.h"
 #include "Notices.h"
 #include "Officiant.h"
+#include "RingCatalog.h"
 #include "Settings.h"
 #include "SkyrimNetLink.h"
 
@@ -321,12 +322,7 @@ namespace SNRom::Natives {
         }
 
         bool IsOurMarriageRing(const RE::TESForm* a_form) {
-            const auto* file = a_form ? a_form->GetFile(0) : nullptr;
-            if (!file || std::string_view(file->GetFilename()) != "SNRom_Integration.esl") {
-                return false;
-            }
-            const auto local = a_form->GetLocalFormID();
-            return local == 0xD66 || local == 0xD68;   // the engagement ring, the wedding ring
+            return RingCatalog::IsOurs(a_form);   // any of the twelve
         }
 
         RE::TESForm* RingNamed(RE::StaticFunctionTag*, RE::Actor* a_owner, std::string a_name) {
@@ -459,6 +455,29 @@ namespace SNRom::Natives {
         void CeremonySetReplyWait(RE::StaticFunctionTag*, float a_seconds) {
             Ceremony::SetReplyWait(a_seconds);
         }
+        // VERSION 22: the ring catalogue (RingCatalog.h).
+        RE::TESForm* RingWeddingFor(RE::StaticFunctionTag*, RE::TESForm* a_engagement) {
+            if (RingCatalog::KindOf(a_engagement) != static_cast<std::int32_t>(RingCatalog::Kind::kEngagement)) {
+                return nullptr;
+            }
+            return RingCatalog::Find(RingCatalog::Kind::kWedding,
+                                     static_cast<RingCatalog::Metal>(RingCatalog::MetalOf(a_engagement)));
+        }
+        RE::TESForm* RingBand(RE::StaticFunctionTag*, std::int32_t a_metal, bool a_wide) {
+            const auto metal = a_metal >= 0 && a_metal <= 2 ? static_cast<RingCatalog::Metal>(a_metal)
+                                                            : RingCatalog::Metal::kGold;
+            return RingCatalog::Find(a_wide ? RingCatalog::Kind::kWideBand : RingCatalog::Kind::kBand, metal);
+        }
+        std::int32_t RingKindOf(RE::StaticFunctionTag*, RE::TESForm* a_ring) {
+            return RingCatalog::KindOf(a_ring);
+        }
+        std::int32_t RingMetalOf(RE::StaticFunctionTag*, RE::TESForm* a_ring) {
+            return RingCatalog::MetalOf(a_ring);
+        }
+        std::vector<RE::TESForm*> RingAllOurs(RE::StaticFunctionTag*) {
+            return RingCatalog::All();
+        }
+
         // VERSION 21.
         void CeremonySetSpeechBudget(RE::StaticFunctionTag*, std::int32_t a_lines, float a_windowSeconds) {
             Ceremony::SetSpeechBudget(a_lines, a_windowSeconds);
@@ -754,6 +773,11 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("CeremonyStop", kScript, CeremonyStop);
             a_vm->RegisterFunction("CeremonySetReplyWait", kScript, CeremonySetReplyWait);
             a_vm->RegisterFunction("CeremonySetSpeechBudget", kScript, CeremonySetSpeechBudget);
+            a_vm->RegisterFunction("RingWeddingFor", kScript, RingWeddingFor, true);
+            a_vm->RegisterFunction("RingBand", kScript, RingBand, true);
+            a_vm->RegisterFunction("RingKindOf", kScript, RingKindOf, true);
+            a_vm->RegisterFunction("RingMetalOf", kScript, RingMetalOf, true);
+            a_vm->RegisterFunction("RingAllOurs", kScript, RingAllOurs, true);
             a_vm->RegisterFunction("AskOpen", kScript, AskOpen, true);
             a_vm->RegisterFunction("AskAnswer", kScript, AskAnswer, true);
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
@@ -765,7 +789,8 @@ namespace SNRom::Natives {
                             "IsOfficiant, CanBless, BetrothedNear, RingNamed, RingGiftFilter, SnapshotRings, "
                             "RingGivenSince, SeverOutfitLockSetting, AskOpen, AskAnswer, CeremonyBegin, CeremonyStage, "
                             "CeremonyOfficiant, CeremonyBetrothed, CeremonyLastOfficiant, CeremonyCueTarget, "
-                            "CeremonyCueWanted, CeremonyCueDelay, CeremonyCueSent, CeremonyStop, CeremonySetReplyWait, CeremonySetSpeechBudget",
+                            "CeremonyCueWanted, CeremonyCueDelay, CeremonyCueSent, CeremonyStop, CeremonySetReplyWait, CeremonySetSpeechBudget, RingWeddingFor, RingBand, RingKindOf, "
+                            "RingMetalOf, RingAllOurs",
                             kScript, kVersion);
             return true;
         });

@@ -5248,58 +5248,65 @@ Bool Function KeepRingsOnThroughOutfits(Actor akWearer)
     { SEVERACTIONS' EQUIPMENT BLACKLIST FOR OUR RINGS (2.5). An outfit
       SeverActions enforces takes a ring off; a piece on its blacklist it never
       takes off, through any outfit, lock or undress. The first time one of our
-      rings meets such an outfit, both go on it, without asking (the author,
-      2026-10-20: a question there landed in the middle of the wedding); the
-      player can take them off it in SeverActions, and once they have been put
-      there this save never puts them back. True when our rings are on it now. }
-    Form engagement = EngagementRing()
-    Form wedding = WeddingRing()
-    If engagement == None || wedding == None
+      rings meets such an outfit, all twelve go on it (every shape, every
+      metal), without asking (the author, 2026-10-20: a question there landed
+      in the middle of the wedding); the player can take them off it in
+      SeverActions, and once they have been put there this save never puts them
+      back. True when the ring being worn is on it now. }
+    Form[] ours = SNRom_Native.RingAllOurs()
+    If ours.Length == 0
         Return False
     EndIf
-    If SNRom_SABio.OnBlacklist(engagement) && SNRom_SABio.OnBlacklist(wedding)
+    Form first = ours[0]
+    If SNRom_SABio.OnBlacklist(first) && SNRom_SABio.OnBlacklist(ours[ours.Length - 1])
         Return True
     EndIf
     If StorageUtil.GetIntValue(None, "SNRom_RingsBlacklisted", 0) == 1
         Return False    ; the player took them off it again
     EndIf
     StorageUtil.SetIntValue(None, "SNRom_RingsBlacklisted", 1)
-    SNRom_SABio.AddToBlacklist(engagement)
-    SNRom_SABio.AddToBlacklist(wedding)
+    Int i = 0
+    While i < ours.Length
+        SNRom_SABio.AddToBlacklist(ours[i])
+        i += 1
+    EndWhile
     Diag(LOG_INFO(), "Ring: " + akWearer.GetDisplayName() + "'s SeverActions outfit would take the ring off, so our " + \
-        "engagement and wedding rings are now on SeverActions' equipment blacklist (removable there).")
-    Return SNRom_SABio.OnBlacklist(engagement)
+        ours.Length + " rings are now on SeverActions' equipment blacklist (removable there).")
+    Return SNRom_SABio.OnBlacklist(first)
 EndFunction
 
 Function RingsBecomeWeddingRings(Actor akSpouse)
     { At the wedding (the author, 2026-10-18): an engagement ring of ours that
-      either of them gave becomes the wedding ring, the band added to it, and
-      is put on if it was worn. Any other ring is left as it was given: it is
-      theirs, and it means what it meant. }
-    Form engagement = EngagementRing()
-    Form wedding = WeddingRing()
-    If engagement == None || wedding == None || _dashNatives < 16
+      either of them gave becomes the wedding ring of the same metal, the band
+      added to it, and is put on. Any other ring is left as it was given: it is
+      theirs, and it means what it meant. The player, unless an engagement ring
+      of ours became theirs, is given a band (GiveWeddingBand). }
+    If akSpouse == None || _dashNatives < 22
         Return
     EndIf
     Actor player = Game.GetPlayer()
-    If SNRom_Native.MarriageRing(akSpouse, True) == engagement && akSpouse.GetItemCount(engagement) > 0
-        akSpouse.RemoveItem(engagement, 1, True)
+    Form fromPlayer = SNRom_Native.MarriageRing(akSpouse, True)
+    Form wedding = SNRom_Native.RingWeddingFor(fromPlayer)
+    If wedding != None && akSpouse.GetItemCount(fromPlayer) > 0
+        akSpouse.RemoveItem(fromPlayer, 1, True)
         akSpouse.AddItem(wedding, 1, True)
         SNRom_Native.SetMarriageRing(akSpouse, True, wedding)
         WearAndName(akSpouse, wedding)
-        Diag(LOG_INFO(), "Ring: " + akSpouse.GetDisplayName() + "'s engagement ring is now a wedding ring.")
+        Diag(LOG_INFO(), "Ring: " + akSpouse.GetDisplayName() + "'s engagement ring is now " + wedding.GetName() + ".")
     EndIf
     Form toPlayer = SNRom_Native.MarriageRing(akSpouse, False)
-    If toPlayer == engagement && player.GetItemCount(engagement) > 0
-        Bool worn = player.IsEquipped(engagement)
-        player.RemoveItem(engagement, 1, True)
-        player.AddItem(wedding, 1, True)
+    Form playerWedding = SNRom_Native.RingWeddingFor(toPlayer)
+    If playerWedding != None && player.GetItemCount(toPlayer) > 0
+        Bool worn = player.IsEquipped(toPlayer)
+        player.RemoveItem(toPlayer, 1, True)
+        player.AddItem(playerWedding, 1, True)
         If worn
-            player.EquipItem(wedding, False, True)
+            player.EquipItem(playerWedding, False, True)
         EndIf
-        SNRom_Native.SetMarriageRing(akSpouse, False, wedding)
-        Diag(LOG_INFO(), "Ring: the engagement ring " + akSpouse.GetDisplayName() + " gave you is now a wedding ring.")
-    ElseIf toPlayer != wedding || player.GetItemCount(wedding) == 0
+        SNRom_Native.SetMarriageRing(akSpouse, False, playerWedding)
+        Diag(LOG_INFO(), "Ring: the engagement ring " + akSpouse.GetDisplayName() + " gave you is now " + \
+            playerWedding.GetName() + ".")
+    ElseIf SNRom_Native.RingKindOf(toPlayer) != 1 || player.GetItemCount(toPlayer) == 0
         GiveWeddingBand(akSpouse)
     EndIf
 EndFunction
@@ -5307,18 +5314,28 @@ EndFunction
 Function GiveWeddingBand(Actor akSpouse)
     { THE PLAYER'S WEDDING BAND (the author, 2026-10-20: "the player should at
       least get a wedding band"). Married, and no engagement ring of ours
-      became theirs: their spouse puts a band on their finger, named for them
-      ("Haruk's Gold Wedding Band"), with Mara's Grace and its "Together"
-      bonus. Once per marriage: not again when they already hold the band
-      from this spouse. Which rings each of them gets, and their styles, are
-      to be the player's choice later (BACKLOG). }
-    Form band = WeddingBand()
+      became theirs: their spouse puts a band on their finger, named for them,
+      with Mara's Grace and its "Together" bonus. In the metal of the spouse's
+      own ring when that is one of ours, else gold; the wide band for a man,
+      the braided band for a woman. Once per marriage: not again when they
+      already hold a band of ours from this spouse. Which rings each of them
+      gets, and their styles, are the wedding planner's to settle later; at an
+      elopement, this. }
     Actor player = Game.GetPlayer()
-    If band == None || akSpouse == None
+    If akSpouse == None
         Return
     EndIf
     Form recorded = SNRom_Native.MarriageRing(akSpouse, False)
-    If recorded == band && player.GetItemCount(band) > 0
+    Int recordedKind = SNRom_Native.RingKindOf(recorded)
+    If (recordedKind == 2 || recordedKind == 3) && player.GetItemCount(recorded) > 0
+        Return
+    EndIf
+    Int metal = SNRom_Native.RingMetalOf(SNRom_Native.MarriageRing(akSpouse, True))
+    If metal < 0
+        metal = 0
+    EndIf
+    Form band = SNRom_Native.RingBand(metal, player.GetActorBase().GetSex() == 0)
+    If band == None
         Return
     EndIf
     player.AddItem(band, 1, True)
@@ -7525,9 +7542,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 21
+    If natives < 22
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v21). Install the DLL from the same release.", True)
+            ", these need v22). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5

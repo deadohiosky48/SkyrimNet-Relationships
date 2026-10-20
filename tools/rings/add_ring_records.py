@@ -19,17 +19,32 @@ import zlib
 VANILLA_ARMO = 0x000877C9
 VANILLA_ARMA = 0x0008E83C
 
-# (FormID of the ARMO, of its ARMA, EditorID stem, name, worn model, ground model, enchantment)
-RINGS = [
-    (0xD66, 0xD65, 'SNRom_EngagementRingGold', 'Gold Engagement Ring',
-     r'Relationships\Rings\EngagementRingGold.nif', r'Relationships\Rings\EngagementRingGoldGO.nif', 0xD6A),
-    (0xD68, 0xD67, 'SNRom_WeddingRingGold', 'Gold Wedding Ring',
-     r'Relationships\Rings\WeddingRingGold.nif', r'Relationships\Rings\WeddingRingGoldGO.nif', 0xD6B),
-    # The band alone (the author, 2026-10-20): what the player is given at the
-    # wedding when no engagement ring of ours became theirs.
-    (0xD74, 0xD73, 'SNRom_WeddingBandGold', 'Gold Wedding Band',
-     r'Relationships\Rings\WeddingBandGold.nif', r'Relationships\Rings\WeddingBandGoldGO.nif', 0xD6B),
+# THE RINGS (2.5). Each shape in three metals (the author, 2026-10-20): the
+# resource's engagement ring, its wedding ring (the engagement ring with its
+# band, made only at a wedding), its band alone, and the wide plain band we
+# make ourselves (build_rings.py), traditionally a man's. Values are base values
+# before the enchantment, about vanilla's (its gold diamond ring is 900):
+# silver lower, ebony higher. FormIDs: the gold engagement and wedding rings and
+# the gold band kept their first ones; the rest run from 0xD75.
+ENGAGEMENT_ENCH, WEDDING_ENCH = 0xD6A, 0xD6B
+# (ARMO, ARMA, EditorID, name, model stem, metal, enchantment, value)
+RING_TABLE = [
+    (0xD66, 0xD65, 'SNRom_EngagementRingGold', 'Gold Engagement Ring', 'EngagementRing', 'Gold', ENGAGEMENT_ENCH, 900),
+    (0xD76, 0xD75, 'SNRom_EngagementRingSilver', 'Silver Engagement Ring', 'EngagementRing', 'Silver', ENGAGEMENT_ENCH, 550),
+    (0xD78, 0xD77, 'SNRom_EngagementRingEbony', 'Ebony Engagement Ring', 'EngagementRing', 'Ebony', ENGAGEMENT_ENCH, 1500),
+    (0xD68, 0xD67, 'SNRom_WeddingRingGold', 'Gold Wedding Ring', 'WeddingRing', 'Gold', WEDDING_ENCH, 1200),
+    (0xD7A, 0xD79, 'SNRom_WeddingRingSilver', 'Silver Wedding Ring', 'WeddingRing', 'Silver', WEDDING_ENCH, 750),
+    (0xD7C, 0xD7B, 'SNRom_WeddingRingEbony', 'Ebony Wedding Ring', 'WeddingRing', 'Ebony', WEDDING_ENCH, 1900),
+    (0xD74, 0xD73, 'SNRom_WeddingBandGold', 'Gold Wedding Band', 'WeddingBand', 'Gold', WEDDING_ENCH, 300),
+    (0xD7E, 0xD7D, 'SNRom_WeddingBandSilver', 'Silver Wedding Band', 'WeddingBand', 'Silver', WEDDING_ENCH, 180),
+    (0xD80, 0xD7F, 'SNRom_WeddingBandEbony', 'Ebony Wedding Band', 'WeddingBand', 'Ebony', WEDDING_ENCH, 550),
+    (0xD82, 0xD81, 'SNRom_WideBandGold', 'Wide Gold Wedding Band', 'WideBand', 'Gold', WEDDING_ENCH, 400),
+    (0xD84, 0xD83, 'SNRom_WideBandSilver', 'Wide Silver Wedding Band', 'WideBand', 'Silver', WEDDING_ENCH, 240),
+    (0xD86, 0xD85, 'SNRom_WideBandEbony', 'Wide Ebony Wedding Band', 'WideBand', 'Ebony', WEDDING_ENCH, 700),
 ]
+RINGS = [(armo, arma, edid, name, 'Relationships\\Rings\\' + stem + metal + '.nif',
+          'Relationships\\Rings\\' + stem + metal + 'GO.nif', ench, value)
+         for armo, arma, edid, name, stem, metal, ench, value in RING_TABLE]
 
 # A spouse is here with the player: 1 or 0, kept by the DLL (Rings.cpp) on
 # every change of the player's location and of a marriage. What the wedding
@@ -238,7 +253,7 @@ def make_arma(header, body, form_id, edid, worn):
     return record(header, form_id, out)
 
 
-def make_armo(header, body, form_id, arma_id, edid, name, ground, ench_id):
+def make_armo(header, body, form_id, arma_id, edid, name, ground, ench_id, value):
     out = b''
     for t, v in subrecords(body):
         if t == 'EDID':
@@ -258,6 +273,8 @@ def make_armo(header, body, form_id, arma_id, edid, name, ground, ench_id):
             out += pack_sub('MODL', struct.pack('<I', arma_id))
         elif t == 'DESC':
             out += pack_sub('DESC', struct.pack('<I', 0))
+        elif t == 'DATA':
+            out += pack_sub('DATA', struct.pack('<i', value) + v[4:])   # value, then vanilla's weight
         else:
             out += pack_sub(t, v)
     return record(header, form_id, out)
@@ -288,10 +305,11 @@ def main(esm_path, esl_path):
         effects = [(own | e, magnitude, together_only) for e, magnitude, together_only in effects]
         new['ENCH'].append(make_ench(own | ench_id, edid, name, effects, glob_id))
         ours.add(own | ench_id)
-    for armo_id, arma_id, edid, name, worn, ground, ench_id in RINGS:
+    for armo_id, arma_id, edid, name, worn, ground, ench_id, value in RINGS:
         assert 0x800 <= armo_id <= 0xFFF and 0x800 <= arma_id <= 0xFFF, 'ESL FormIDs are 0x800-0xFFF'
         new['ARMA'].append(make_arma(arma_h, arma_b, own | arma_id, edid, worn))
-        new['ARMO'].append(make_armo(armo_h, armo_b, own | armo_id, own | arma_id, edid, name, ground, own | ench_id))
+        new['ARMO'].append(make_armo(armo_h, armo_b, own | armo_id, own | arma_id, edid, name, ground, own | ench_id,
+                                     value))
         ours.update({own | armo_id, own | arma_id})
 
     # Split the plugin into its header and its top-level groups, dropping any

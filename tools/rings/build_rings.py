@@ -1,4 +1,6 @@
-"""Build Relationships' engagement ring and wedding ring NIFs from the resource.
+"""Build Relationships' rings: from the resource, the engagement ring, the wedding
+ring (with its band) and the band alone; and a wide plain band of our own,
+made here in code. One metal per run.
 
 Run in the background with the ring's .blend open (never saved):
   blender -b --factory-startup --disable-autoexec "Ring Gold.blend" --python build_rings.py -- <vanilla dir> <out dir> <metal>
@@ -31,13 +33,27 @@ INNER_RADIUS = 0.97       # the hole the finger passes through
 BAND_CENTRE = (0.03, -0.22)  # x, y off the bone's axis
 ALONG_FINGER = 1.75       # the engagement ring's centre, from the knuckle
 FINGER_BONE = 'NPC Finger30.L'  # left ring finger, first segment
-TRIS = {'EngagementRing': 1600, 'WeddingRing': 2800, 'WeddingBand': 1200}
+TRIS = {'EngagementRing': 1600, 'WeddingRing': 2800, 'WeddingBand': 1200, 'WideBand': 2048}
 
 # THE METAL'S COLOUR IS A VERTEX COLOUR. Vanilla's gold and silver rings share
 # one grey sheet; GoldRingDiamondGO.nif tints its metal vertices (1.0, 0.8,
 # 0.51) and its stone (0.97, 0.97, 0.97). Without them the ring is the sheet's
 # grey (seen in game, 2026-10-18).
-METAL_COLOURS = {'Gold': (1.0, 0.8, 0.51, 1.0)}
+# Vanilla's silver ring (silverringgo.nif) has no vertex colours: the sheet's
+# own grey is silver. Ebony has no vanilla ring; its armour is near black with
+# a cool sheen, which the ring shader's environment map supplies.
+METAL_COLOURS = {'Gold': (1.0, 0.8, 0.51, 1.0), 'Silver': (1.0, 1.0, 1.0, 1.0),
+                 'Ebony': (0.2, 0.19, 0.22, 1.0)}
+
+# THE WIDE BAND (the author, 2026-10-20: "a wider version of the gold wedding
+# band", traditionally a man's). Our own shape, not the resource's: a plain
+# comfort-fit band, twice the resource band's width, a rounded rectangle in
+# section turned about the finger. Sits where the resource's band sits.
+WIDE_WIDTH = 0.56        # along the finger (the resource's band: 0.27)
+WIDE_THICKNESS = 0.13    # from the hole outward
+WIDE_AROUND = 64         # segments around the finger
+WIDE_SECTION = 16        # points around the section
+WIDE_ROUNDING = 4.0      # superellipse exponent: 2 an oval, higher squarer
 STONE_COLOUR = (0.97, 0.97, 0.97, 1.0)
 
 # Where the two materials go on vanilla's ring sheet, in Blender UV space
@@ -94,9 +110,14 @@ def build_mesh(name, part):
     inner = min(math.hypot(v.co.x, v.co.y) for f in engagement for v in f.verts if f.material_index != stone_index)
     if part == 'engagement':
         bmesh.ops.delete(bm, geom=[f for g in band for f in g], context='FACES')
-    elif part == 'band':
+    elif part in ('band', 'wide'):
         bmesh.ops.delete(bm, geom=list(engagement), context='FACES')
     scale = INNER_RADIUS / inner
+    if part == 'wide':
+        # Only the band's place is taken from the resource; the shape is ours.
+        band_z = sum(v.co.z for v in bm.verts) / len(bm.verts) * scale
+        bm.free()
+        return wide_band(name, band_z), scale, ez * scale
     bmesh.ops.scale(bm, vec=(scale, scale, scale), verts=bm.verts)
     bmesh.ops.triangulate(bm, faces=bm.faces[:])
     me = bpy.data.meshes.new(name)
@@ -106,6 +127,49 @@ def build_mesh(name, part):
         me.materials.append(m)
     log(name, 'inner radius', round(inner, 3), 'scale', round(scale, 4), 'tris before', len(me.polygons))
     return me, scale, ez * scale
+
+
+def wide_band(name, centre_z):
+    """The wide band: a rounded-rectangle section, turned about the ring's axis
+    (z), its hole INNER_RADIUS, centred on centre_z. UVs run around (u) and
+    across (v), for remap_uv; every face the metal."""
+    bm = bmesh.new()
+    uv_layer = bm.loops.layers.uv.new('UVMap')
+    half_w, half_t = WIDE_WIDTH / 2.0, WIDE_THICKNESS / 2.0
+    mid_r = INNER_RADIUS + half_t
+    section = []
+    for j in range(WIDE_SECTION):
+        a = 2.0 * math.pi * j / WIDE_SECTION
+        c, s_ = math.cos(a), math.sin(a)
+        e = 2.0 / WIDE_ROUNDING
+        r = mid_r + half_t * math.copysign(abs(c) ** e, c)
+        z = centre_z + half_w * math.copysign(abs(s_) ** e, s_)
+        section.append((r, z))
+    rings = []
+    for i in range(WIDE_AROUND):
+        t = 2.0 * math.pi * i / WIDE_AROUND
+        rings.append([bm.verts.new((r * math.cos(t), r * math.sin(t), z)) for r, z in section])
+    for i in range(WIDE_AROUND):
+        a, b = rings[i], rings[(i + 1) % WIDE_AROUND]
+        for j in range(WIDE_SECTION):
+            k = (j + 1) % WIDE_SECTION
+            f = bm.faces.new((a[j], b[j], b[k], a[k]))
+            us = (i / WIDE_AROUND, (i + 1) / WIDE_AROUND)
+            vs = (j / WIDE_SECTION, (j + 1) / WIDE_SECTION)
+            for loop, (u, v) in zip(f.loops, ((us[0], vs[0]), (us[1], vs[0]), (us[1], vs[1]), (us[0], vs[1]))):
+                loop[uv_layer].uv = (u, v)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    for m in full.materials:
+        me.materials.append(m)
+    metal_index = next(i for i in range(len(full.materials)) if i != stone_index)
+    for p in me.polygons:
+        p.material_index = metal_index
+    log(name, 'made: width', WIDE_WIDTH, 'thickness', WIDE_THICKNESS, 'tris', len(me.polygons))
+    return me
 
 
 def reduce(obj, target):
@@ -179,7 +243,8 @@ def remove(objs):
 
 
 results = []
-for item, part in (('EngagementRing', 'engagement'), ('WeddingRing', 'both'), ('WeddingBand', 'band')):
+for item, part in (('EngagementRing', 'engagement'), ('WeddingRing', 'both'), ('WeddingBand', 'band'),
+                   ('WideBand', 'wide')):
     me, scale, eng_z = build_mesh(item, part)
 
     # ---------------- on the ground: vanilla's GO nif with our mesh in it

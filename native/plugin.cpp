@@ -11,6 +11,7 @@
 #include "src/Natives.h"
 #include "src/Notices.h"
 #include "src/Officiant.h"
+#include "src/RingCatalog.h"
 #include "src/Rings.h"
 #include "src/Settings.h"
 
@@ -58,6 +59,7 @@ namespace {
             SNRom::Rings::Register();
             SNRom::Officiant::MarkAll();
             SNRom::Ceremony::Register();
+            SNRom::RingCatalog::StockJewelers();
             break;
         // Positions are real once a save has loaded: who is here now.
         case SKSE::MessagingInterface::kPostLoadGame:

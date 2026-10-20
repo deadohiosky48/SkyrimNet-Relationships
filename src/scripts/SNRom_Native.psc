@@ -343,3 +343,21 @@ Function CeremonySetSpeechBudget(Int aiLines, Float afWindowSeconds) Global Nati
  speech.maxRecentSpeechCount and recentSpeechTimeWindowSeconds): an NPC with
  that many lines in that window gets no natural reply, so the ceremony cues
  them after a short wait instead of the full reply wait.}
+
+; VERSION 22 (2.5): THE RING CATALOGUE (native/src/RingCatalog.h): four shapes
+; (0 engagement ring, 1 wedding ring, 2 wedding band, 3 wide band) in three
+; metals (0 gold, 1 silver, 2 ebony).
+Form Function RingWeddingFor(Form akEngagement) Global Native
+{The wedding ring an engagement ring of ours becomes, in its metal; None for any other ring.}
+
+Form Function RingBand(Int aiMetal, Bool abWide) Global Native
+{The wedding band in that metal: the wide band, or the braided one.}
+
+Int Function RingKindOf(Form akRing) Global Native
+{0-3 as above; -1 for a ring not ours.}
+
+Int Function RingMetalOf(Form akRing) Global Native
+{0 gold, 1 silver, 2 ebony; -1 for a ring not ours.}
+
+Form[] Function RingAllOurs() Global Native
+{Every ring of ours.}

@@ -3,6 +3,7 @@
 #include "PCH.h"
 
 #include "Marriage.h"
+#include "RingCatalog.h"
 
 #include <chrono>
 #include <map>
@@ -15,8 +16,6 @@ namespace SNRom::Rings {
 
         constexpr auto kPlugin = "SNRom_Integration.esl";
         constexpr RE::FormID kSpouseHere = 0xD69;      // GLOB SNRom_SpouseHere
-        constexpr RE::FormID kEngagementRing = 0xD66;  // ARMO SNRom_EngagementRingGold
-        constexpr RE::FormID kWeddingRing = 0xD68;     // ARMO SNRom_WeddingRingGold
         constexpr float      kNear = 2048.0f;
         constexpr auto       kReequipDelay = std::chrono::seconds{ 2 };
         constexpr auto       kFightWindow = std::chrono::seconds{ 15 };
@@ -28,15 +27,7 @@ namespace SNRom::Rings {
         }
 
         bool IsMarriageRing(RE::FormID a_id) {
-            static const auto engagement = [] {
-                auto* f = Ours<RE::TESObjectARMO>(kEngagementRing);
-                return f ? f->GetFormID() : 0;
-            }();
-            static const auto wedding = [] {
-                auto* f = Ours<RE::TESObjectARMO>(kWeddingRing);
-                return f ? f->GetFormID() : 0;
-            }();
-            return a_id && (a_id == engagement || a_id == wedding);
+            return a_id && RingCatalog::IsOurs(RE::TESForm::LookupByID(a_id));   // any of the twelve
         }
 
         void After(std::chrono::milliseconds a_delay, std::function<void()> a_task) {

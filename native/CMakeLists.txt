@@ -91,6 +91,7 @@ set(SOURCES
     src/Officiant.cpp
     src/Rings.cpp
     src/Ceremony.cpp
+    src/RingCatalog.cpp
     src/MeridianHost.cpp
     src/Model.cpp
     src/L10n.cpp
