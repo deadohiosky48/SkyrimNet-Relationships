@@ -310,3 +310,20 @@ Int Function AskAnswer(Int aiId) Global Native
 {VERSION 17 (2.5). -2 while unanswered; then, once (the answer is forgotten
  when read), the index of the button chosen, -1 dismissed (closed without a
  choice), or -3 never shown (another menu kept the screen for a minute).}
+
+; VERSION 18 (2.5): THE WEDDING, SPOKEN (native/src/Ceremony.h). One at a time;
+; the step is mirrored as FACT SNRom_Ceremony's rank on both taking part.
+Bool Function CeremonyBegin(Actor akOfficiant, Actor akBetrothed) Global Native
+{Begins one at step 1 (the officiant asks the player). False when one is under way.}
+
+Int Function CeremonyStage() Global Native
+{0 none, 1 asking the player, 2 asking the betrothed, 3 pronouncing.}
+
+Actor Function CeremonyOfficiant() Global Native
+Actor Function CeremonyBetrothed() Global Native
+
+Bool Function CeremonyAdvance(Int aiTo) Global Native
+{On to the next step only; False otherwise.}
+
+Function CeremonyEnd(Bool abMarried, String asWhy) Global Native
+{Over. Not married: SNRom_CeremonyEnded (strArg asWhy, sender the betrothed).}

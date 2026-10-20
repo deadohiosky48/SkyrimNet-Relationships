@@ -4,6 +4,7 @@
 
 #include "Dashboard.h"
 #include "Display.h"
+#include "Ceremony.h"
 #include "Marriage.h"
 #include "Model.h"
 #include "Officiant.h"
@@ -196,6 +197,14 @@ namespace SNRom::Decorators {
             out["spouses"] = Marriage::Spouses();
             out["exception"] = Marriage::Exception() ? 1 : 0;
             out["mayMarry"] = Marriage::MayMarryAnother() ? 1 : 0;
+            // Being married now, by step (Ceremony.h), and by whom.
+            out["ceremony"] = 0;
+            if (Ceremony::RoleOf(a_formId) == 2) {
+                auto*       officiant = Ceremony::Officiant();
+                const char* name = officiant ? officiant->GetDisplayFullName() : nullptr;
+                out["ceremony"] = static_cast<std::int32_t>(Ceremony::Now());
+                out["ceremonyOfficiant"] = name ? name : "";
+            }
             return out;
         }
 
@@ -360,12 +369,24 @@ namespace SNRom::Decorators {
                 names.push_back(name ? name : "");
             }
         }
-        const json out{ { "officiant", 1 },
-                        { "betrothed", names },
-                        { "spouses", Marriage::Spouses() },
-                        { "exception", Marriage::Exception() ? 1 : 0 },
-                        { "mayMarry", Marriage::MayMarryAnother() ? 1 : 0 },
-                        { "canBless", Officiant::CanBless(a_actor) ? 1 : 0 } };
+        json out{ { "officiant", 1 },
+                  { "betrothed", names },
+                  { "spouses", Marriage::Spouses() },
+                  { "exception", Marriage::Exception() ? 1 : 0 },
+                  { "mayMarry", Marriage::MayMarryAnother() ? 1 : 0 },
+                  { "canBless", Officiant::CanBless(a_actor) ? 1 : 0 },
+                  { "ceremony", 0 } };
+        // The ceremony this officiant is conducting, by step (Ceremony.h).
+        if (Ceremony::RoleOf(a_actor) == 1) {
+            auto*       betrothed = Ceremony::Betrothed();
+            const char* name = betrothed ? betrothed->GetDisplayFullName() : nullptr;
+            out["ceremony"] = static_cast<std::int32_t>(Ceremony::Now());
+            out["marrying"] = name ? name : "";
+            out["marryingFemale"] = betrothed && betrothed->GetActorBase() &&
+                                            betrothed->GetActorBase()->GetSex() == RE::SEX::kFemale
+                                        ? 1
+                                        : 0;
+        }
         return out.dump(-1, ' ', false, json::error_handler_t::replace);
     }
 

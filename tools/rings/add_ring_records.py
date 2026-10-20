@@ -73,6 +73,7 @@ ENCHANTMENTS = [
 # keeps what the marriage actions need as faction ranks:
 # - SNRom_Marriage: the actor's marriage to the player, rank = the state's
 #   number (Marriage.h), -1 for none (Marriage.cpp, SyncFaction);
+# - SNRom_Ceremony: the step of the wedding under way (Ceremony.cpp);
 # - SNRom_Officiant: rank 0 on every priest, priestess and jarl, put on their
 #   records at kDataLoaded (Officiant.cpp, MarkAll), since vanilla lists jarls
 #   in JobJarlFaction at rank -1, which reads as not a member.
@@ -81,6 +82,10 @@ FACTIONS = [
     (0xD70, 'SNRom_Marriage', 'Relationships Marriage',
      ['None', 'Engaged', 'Married', 'Broken Off', 'Divorced', 'Widowed', 'Separated']),
     (0xD71, 'SNRom_Officiant', 'Relationships Officiant', ['Officiant']),
+    # The wedding under way (Ceremony.h): its step, on the officiant and the
+    # betrothed; -1 when none.
+    (0xD72, 'SNRom_Ceremony', 'Relationships Ceremony', ['None', 'Asking the Player', 'Asking the Betrothed',
+                                                          'Pronouncing']),
 ]
 
 

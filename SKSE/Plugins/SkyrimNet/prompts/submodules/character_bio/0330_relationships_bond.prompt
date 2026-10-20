@@ -726,6 +726,21 @@ You and {{ player.name }} are engaged: promised to each other. There is no hurry
 {% if default(rom.marriage.mayMarry, 1) == 0 %}
 {{ player.name }} is already married, and Mara has granted them no exception: no priest will marry the two of you while that stands.
 {% endif %}
+{# THE WEDDING UNDER WAY (Ceremony.h; the author, 2026-10-20): 1 the officiant
+   asks the player, 2 asks you, 3 is pronouncing. Your yes is yours to give;
+   cold feet are allowed, and leave you engaged. #}
+{% set wed = default(rom.marriage.ceremony, 0) %}
+{% set wed_by = default(rom.marriage.ceremonyOfficiant, "the officiant") %}
+{% if wed == 1 %}
+
+You are being married to {{ player.name }}, now, by {{ wed_by }}. {{ wed_by }} is asking {{ player.name }} first whether they take you; listen for their answer. It is not your turn to answer yet.
+{% elif wed == 2 %}
+
+You are being married to {{ player.name }}, now, by {{ wed_by }}. {{ player.name }} has said yes, and {{ wed_by }} is asking you whether you take {{ player.name }}. Answer as yourself, aloud: yes, if your heart says yes - or, if you cannot, say so, and the wedding stops here.
+{% elif wed == 3 %}
+
+You are being married to {{ player.name }}, now, by {{ wed_by }}. You have both said yes; {{ wed_by }} is about to pronounce you married.
+{% endif %}
 {% elif mar_state == "married" or mar_state == "separated" %}
 
 You are married to {{ player.name }}{% if default(rom.marriage.eloped, 0) == 1 %} - you eloped{% endif %}{% if default(rom.marriage.officiant, "") != "" %}, and {{ rom.marriage.officiant }} married you{% endif %}.{% if ring_in != "" %} You wear the ring they gave you, {{ ring_in }}.{% endif %}

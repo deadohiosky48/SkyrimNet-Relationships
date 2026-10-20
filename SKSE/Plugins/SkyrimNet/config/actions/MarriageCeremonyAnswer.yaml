@@ -1,0 +1,54 @@
+# 2.5, Build A: marriage. ELIGIBILITY IS BUILT FROM SKYRIMNET'S OWN
+# get_faction_rank, on factions the DLL keeps: SNRom_Bond (the tier),
+# SNRom_Marriage (the marriage state's number: 1 engaged, 2 married,
+# 6 separated; Marriage.h), SNRom_Officiant (every priest, priestess and jarl;
+# Officiant.h) and SNRom_Ceremony (the step of the wedding under way, on the
+# officiant and the betrothed; Ceremony.h). The full rules are the native ones,
+# which the Papyrus function asks when the action runs.
+#
+# THE WEDDING IS SPOKEN (the author, 2026-10-20): the officiant opens and asks
+# the player, then the betrothed, whether each takes the other, and
+# pronounces them married once both have said yes. One action per step,
+# offered only at its step; only the pronouncement records the marriage, and
+# no message box asks anything.
+#
+# NOT is_in_faction ON VANILLA'S JOB FACTIONS (rank -1 reads as not a member),
+# and NOT OUR OWN DECORATORS, which SkyrimNet's eligibility check held false.
+
+customCategory: marriage
+name: MarriageCeremonyAnswer
+description: |
+  You are marrying {{ player.name }} now, and you asked them whether they take the one they are engaged to. They have answered.
+
+  USE as soon as {{ player.name }} has given their answer to that question: "yes" if they said yes in any words (I do, I will, with all my heart), "no" if they said no, would not answer, or are not ready. Not for anything else they say.
+
+questEditorId: SNRom_Quest
+scriptName: SNRom_Bridge
+executionFunctionName: CeremonyPlayerAnswered
+
+parameterMapping:
+  - type: speaker
+    name: akOfficiant
+    description: you, the one marrying them
+  - type: dynamic
+    name: asAnswer
+    description: "yes or no: what they answered"
+
+eligibilityRules:
+  - conditions:
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "SNRom_Ceremony"]
+        comparisonOperator: "=="
+        expectedValue: 1
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "SNRom_Officiant"]
+        comparisonOperator: ">="
+        expectedValue: 0
+    logicalOperator: "AND"
+    required: true
+
+eventString: "{{ player.name }} gave their answer before {{ actor.name }}."
+isShortLived: false
+
+enabled: true
+defaultPriority: 1

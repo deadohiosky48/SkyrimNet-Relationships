@@ -11,11 +11,29 @@
 {% if not is_player(actorUUID) %}
 {% if is_plugin_loaded("SNRom_Integration.esl") %}
 {% set off = get_officiant(actorUUID) %}
-{% if off and default(off.officiant, 0) == 1 and existsIn(off, "betrothed") and length(off.betrothed) > 0 %}
+{# THE WEDDING YOU ARE CONDUCTING (Ceremony.h), by step: 1 you have opened and
+   asked the player, 2 the player said yes and you ask the betrothed, 3 both
+   said yes and you pronounce them married. The author, 2026-10-20: spoken
+   like a real wedding, one question at a time, and nobody married until both
+   have said yes and you declare it. #}
+{% if off and default(off.officiant, 0) == 1 and default(off.ceremony, 0) > 0 %}
+{% set them = default(off.marrying, "your betrothed") %}
+
+## The Wedding You Are Conducting
+
+You are marrying {{ player.name }} and {{ them }}, now, here, before whoever is present. It is a wedding, not a chat: speak as one who marries people, with the solemnity and warmth that are yours, and let each of them answer for themselves.
+{% if off.ceremony == 1 %}
+You have begun. Say a few words fitting the moment if you have not, then ask {{ player.name }}, plainly, whether they take {{ them }} to be their {% if default(off.marryingFemale, 0) == 1 %}wife{% else %}husband{% endif %} - and wait for their answer. Do not answer for them, and do not ask {{ them }} yet.
+{% elif off.ceremony == 2 %}
+{{ player.name }} has said yes. Now ask {{ them }} whether they take {{ player.name }}, and let {{ them }} answer for themselves. Do not pronounce anything yet.
+{% elif off.ceremony == 3 %}
+Both {{ player.name }} and {{ them }} have said yes. Pronounce them married, in your own words.
+{% endif %}
+{% elif off and default(off.officiant, 0) == 1 and existsIn(off, "betrothed") and length(off.betrothed) > 0 %}
 
 ## Who Has Come Before You
 
-{{ player.name }} is here with {% for name in off.betrothed %}{{ name }}{% if not loop.is_last %} and {% endif %}{% endfor %}, to whom they are engaged. As one who can marry people, you could marry them here and now, if they ask you and you are willing - a quiet blessing, or vows said before you and whoever is here to witness. Whether you would is yours to judge, as yourself.
+{{ player.name }} is here with {% for name in off.betrothed %}{{ name }}{% if not loop.is_last %} and {% endif %}{% endfor %}, to whom they are engaged. As one who can marry people, you could marry them here and now, if they ask you and you are willing: a few words fitting the moment, then you ask each of them in turn whether they take the other, and when both have said yes, you pronounce them married. Whether you would is yours to judge, as yourself.
 {% if default(off.mayMarry, 1) == 0 %}
 But {{ player.name }} is already married, and Mara has granted them no exception. You know it, and you will not marry them to another. Say so in your own way.
 {% elif default(off.exception, 0) == 1 and default(off.spouses, 0) > 0 %}

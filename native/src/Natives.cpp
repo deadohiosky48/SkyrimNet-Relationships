@@ -6,6 +6,7 @@
 #include "L10n.h"
 #include "BioPlan.h"
 #include "Dashboard.h"
+#include "Ceremony.h"
 #include "Decorators.h"
 #include "Marriage.h"
 #include "History.h"
@@ -425,6 +426,26 @@ namespace SNRom::Natives {
         // returns early without it. Read here so our scripts never name
         // SeverActions_Outfit, which drags its outfit scripts into our compile.
         // 1 on, 0 off, -1 unread (no SeverActions, or no such property).
+        // VERSION 18: the wedding, spoken (Ceremony.h).
+        bool CeremonyBegin(RE::StaticFunctionTag*, RE::Actor* a_officiant, RE::Actor* a_betrothed) {
+            return Ceremony::Begin(a_officiant, a_betrothed);
+        }
+        std::int32_t CeremonyStage(RE::StaticFunctionTag*) {
+            return static_cast<std::int32_t>(Ceremony::Now());
+        }
+        RE::Actor* CeremonyOfficiant(RE::StaticFunctionTag*) {
+            return Ceremony::Officiant();
+        }
+        RE::Actor* CeremonyBetrothed(RE::StaticFunctionTag*) {
+            return Ceremony::Betrothed();
+        }
+        bool CeremonyAdvance(RE::StaticFunctionTag*, std::int32_t a_to) {
+            return Ceremony::Advance(static_cast<Ceremony::Stage>(a_to));
+        }
+        void CeremonyEnd(RE::StaticFunctionTag*, bool a_married, std::string a_why) {
+            Ceremony::End(a_married, std::move(a_why));
+        }
+
         // VERSION 17: a question in our own UI (Dashboard::Ask).
         std::int32_t AskOpen(RE::StaticFunctionTag*, std::string a_title, std::string a_body,
                              std::vector<std::string> a_buttons) {
@@ -699,6 +720,12 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("SeverOutfitLockSetting", kScript, SeverOutfitLockSetting, true);
             a_vm->RegisterFunction("CanBless", kScript, CanBless);            // main thread: positions
             a_vm->RegisterFunction("BetrothedNear", kScript, BetrothedNear);  // main thread: positions
+            a_vm->RegisterFunction("CeremonyBegin", kScript, CeremonyBegin);        // main thread: factions
+            a_vm->RegisterFunction("CeremonyStage", kScript, CeremonyStage, true);
+            a_vm->RegisterFunction("CeremonyOfficiant", kScript, CeremonyOfficiant, true);
+            a_vm->RegisterFunction("CeremonyBetrothed", kScript, CeremonyBetrothed, true);
+            a_vm->RegisterFunction("CeremonyAdvance", kScript, CeremonyAdvance);    // main thread: factions
+            a_vm->RegisterFunction("CeremonyEnd", kScript, CeremonyEnd);            // main thread: factions
             a_vm->RegisterFunction("AskOpen", kScript, AskOpen, true);
             a_vm->RegisterFunction("AskAnswer", kScript, AskAnswer, true);
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
@@ -708,7 +735,8 @@ namespace SNRom::Natives {
                             "MarriageWithState, MaraException, SetMaraException, CanAcceptProposal, CanDeclineProposal, "
                             "NoteProposalDeclined, SetMarriageFacts, MarriageRing, SetMarriageRing, RingsCarried, "
                             "IsOfficiant, CanBless, BetrothedNear, RingNamed, RingGiftFilter, SnapshotRings, "
-                            "RingGivenSince, SeverOutfitLockSetting, AskOpen, AskAnswer",
+                            "RingGivenSince, SeverOutfitLockSetting, AskOpen, AskAnswer, CeremonyBegin, CeremonyStage, "
+                            "CeremonyOfficiant, CeremonyBetrothed, CeremonyAdvance, CeremonyEnd",
                             kScript, kVersion);
             return true;
         });

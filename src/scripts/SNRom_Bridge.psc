@@ -462,6 +462,7 @@ Function RegisterEvents()
     ;   (String eventName, String status, Float statusEnum, Form npc)
     RegisterForModEvent("maras_status_changed", "OnMarasStatusChanged")
     RegisterForModEvent("SNRom_MarriageChanged", "OnMarriageChanged")
+    RegisterForModEvent("SNRom_CeremonyEnded", "OnCeremonyEnded")
     ; SkyrimNetRelationships.dll asks for the roster every time the dashboard
     ; opens (OnDashboardRefresh). Without the DLL it never fires, and this costs
     ; nothing.
@@ -5173,15 +5174,15 @@ Function WearAndName(Actor akWearer, Form akRing)
     ; Hroki took hers and never wore it. Utility.Wait counts only time the game
     ; runs, so this resumes after every menu has closed, whichever paused it.
     ; (A DLL wait on UI::GameIsPaused never ended in play: a Prisma UI screen
-    ; counts as a pausing menu while it exists.) Before the outfit check below,
-    ; which may ask the player a question on screen.
+    ; counts as a pausing menu while it exists.)
     Utility.Wait(0.5)
     If akWearer == None || akWearer.IsDead() || akWearer.GetItemCount(akRing) == 0
         Return
     EndIf
     ; AN OUTFIT SEVERACTIONS ENFORCES TAKES THE RING OFF, so it is not put on:
-    ; the ring stays in their inventory and the player is told why. Unless the
-    ; player lets SeverActions leave our rings alone (asked once).
+    ; the ring stays in their inventory and the player is told why. Unless our
+    ; rings are on SeverActions' blacklist, where the first such outfit puts
+    ; them (KeepRingsOnThroughOutfits).
     Int enforced = 0
     If SeverActionsPresent()
         enforced = SNRom_SABio.OutfitEnforcement(akWearer, akRing)
@@ -5235,14 +5236,13 @@ Function WearAndName(Actor akWearer, Form akRing)
 EndFunction
 
 Bool Function KeepRingsOnThroughOutfits(Actor akWearer)
-    { SEVERACTIONS' EQUIPMENT BLACKLIST FOR OUR RINGS (2.5; the author,
-      2026-10-19). An outfit SeverActions enforces takes a ring off; a piece on
-      its blacklist it never takes off, through any outfit, lock or undress. That
-      list is the player's own SeverActions setting, so the player is asked, in
-      our own UI, the first time a ring meets such an outfit: yes puts both our
-      rings on it, for everyone, in this save; no is remembered and never asked
-      again in this save; "not now" asks again next time. True when our rings
-      are on it now. }
+    { SEVERACTIONS' EQUIPMENT BLACKLIST FOR OUR RINGS (2.5). An outfit
+      SeverActions enforces takes a ring off; a piece on its blacklist it never
+      takes off, through any outfit, lock or undress. The first time one of our
+      rings meets such an outfit, both go on it, without asking (the author,
+      2026-10-20: a question there landed in the middle of the wedding); the
+      player can take them off it in SeverActions, and once they have been put
+      there this save never puts them back. True when our rings are on it now. }
     Form engagement = EngagementRing()
     Form wedding = WeddingRing()
     If engagement == None || wedding == None
@@ -5251,34 +5251,15 @@ Bool Function KeepRingsOnThroughOutfits(Actor akWearer)
     If SNRom_SABio.OnBlacklist(engagement) && SNRom_SABio.OnBlacklist(wedding)
         Return True
     EndIf
-    If StorageUtil.GetIntValue(None, "SNRom_RingKeepDeclined", 0) == 1
-        Return False
+    If StorageUtil.GetIntValue(None, "SNRom_RingsBlacklisted", 0) == 1
+        Return False    ; the player took them off it again
     EndIf
-    String who = akWearer.GetDisplayName()
-    String body = Tr("ringkeep.body", "{0}'s SeverActions outfit puts itself back on, and that would take the ring off.", who) + \
-        SNRom_Choice.NL() + Tr("ringkeep.body2", "SeverActions can leave Relationships' engagement and wedding rings alone, for everyone in this playthrough: no outfit, lock or undress will take them off. It adds them to SeverActions' undress blacklist, where you can remove them again.")
-    String[] buttons = new String[3]
-    buttons[0] = Tr("ringkeep.yes", "Keep rings on")
-    buttons[1] = Tr("ringkeep.no", "No, leave outfits as they are")
-    buttons[2] = Tr("ringkeep.later", "Not now")
-    Int answer = -1
-    If _dashNatives >= 17
-        answer = SNRom_Choice.AskInView(Tr("ringkeep.title", "Marriage rings"), body, buttons)
-    Else
-        answer = SNRom_Choice.AskList(body, buttons)
-    EndIf
-    If answer == 0
-        SNRom_SABio.AddToBlacklist(engagement)
-        SNRom_SABio.AddToBlacklist(wedding)
-        Diag(LOG_INFO(), "Ring: the player put our engagement and wedding rings on SeverActions' equipment blacklist.")
-        Return SNRom_SABio.OnBlacklist(engagement)
-    ElseIf answer == 1
-        StorageUtil.SetIntValue(None, "SNRom_RingKeepDeclined", 1)
-        Diag(LOG_INFO(), "Ring: the player keeps SeverActions' outfits as they are; not asked again in this save.")
-    Else
-        Diag(LOG_INFO(), "Ring: no answer about SeverActions' blacklist; asked again next time.")
-    EndIf
-    Return False
+    StorageUtil.SetIntValue(None, "SNRom_RingsBlacklisted", 1)
+    SNRom_SABio.AddToBlacklist(engagement)
+    SNRom_SABio.AddToBlacklist(wedding)
+    Diag(LOG_INFO(), "Ring: " + akWearer.GetDisplayName() + "'s SeverActions outfit would take the ring off, so our " + \
+        "engagement and wedding rings are now on SeverActions' equipment blacklist (removable there).")
+    Return SNRom_SABio.OnBlacklist(engagement)
 EndFunction
 
 Function RingsBecomeWeddingRings(Actor akSpouse)
@@ -5405,71 +5386,167 @@ Function AcceptEngagementRing(Actor akActor, String asRing)
 EndFunction
 
 Function BlessUnion(Actor akOfficiant, String asBetrothed)
-    { Action BlessUnion: a priest, priestess or jarl marries the player to their
-      betrothed, here and now (eloping, spec 5.3). Eloping's checklist (5.3a):
-      the day is now, the officiant willing, both present; outfits optional. }
-    If akOfficiant == None || !_ready || _dashNatives < 16
+    { Action BlessUnion (MarriageBless): a priest, priestess or jarl begins to
+      marry the player to their betrothed, here and now (spec 5.3a, the
+      unplanned form). THE WEDDING IS SPOKEN (the author, 2026-10-20): this only
+      begins it. The officiant opens and asks the player; then the betrothed is
+      asked; then the officiant pronounces them married (Ceremony.h). Nothing is
+      asked in a box, and only the pronouncement records the marriage. }
+    If akOfficiant == None || !_ready || _dashNatives < 18
         Return
     EndIf
     String priest = akOfficiant.GetDisplayName()
     If !SNRom_Native.CanBless(akOfficiant)
-        Diag(LOG_WARN(), "Eloping: " + priest + " offered to marry the player, but nobody engaged to them is " + \
-            "here, or Mara has not granted another marriage. Not recorded.")
+        Diag(LOG_WARN(), "Ceremony: " + priest + " offered to marry the player, but nobody engaged to them is " + \
+            "here, or Mara has not granted another marriage. Not begun.")
         Return
     EndIf
+    ; The one named, else the one engaged to the player who is here. More than
+    ; one here and none named: the nearest.
     Actor[] here = SNRom_Native.BetrothedNear()
+    Actor player = Game.GetPlayer()
     Actor betrothed = None
+    Float nearest = 1000000.0
     Int i = 0
-    While i < here.Length && betrothed == None
-        If here[i] != akOfficiant && asBetrothed != "" && StringUtil.Find(here[i].GetDisplayName(), asBetrothed) >= 0
-            betrothed = here[i]
+    While i < here.Length
+        If here[i] != akOfficiant
+            If asBetrothed != "" && StringUtil.Find(here[i].GetDisplayName(), asBetrothed) >= 0
+                betrothed = here[i]
+                nearest = -1.0
+            ElseIf nearest >= 0.0 && here[i].GetDistance(player) < nearest
+                betrothed = here[i]
+                nearest = here[i].GetDistance(player)
+            EndIf
         EndIf
         i += 1
     EndWhile
     If betrothed == None
-        Actor[] others = PapyrusUtil.ActorArray(0)
-        i = 0
-        While i < here.Length
-            If here[i] != akOfficiant
-                others = PapyrusUtil.PushActor(others, here[i])
-            EndIf
-            i += 1
-        EndWhile
-        If others.Length == 1
-            betrothed = others[0]
-        ElseIf others.Length > 1
-            String[] names = Utility.CreateStringArray(others.Length + 1)
-            i = 0
-            While i < others.Length
-                names[i] = others[i].GetDisplayName()
-                i += 1
-            EndWhile
-            names[others.Length] = Tr("ring.notNow", "Not now")
-            Int picked = SNRom_Choice.AskList(Tr("elope.pick.body", "Who will {0} marry you to?", priest), names)
-            If picked < 0 || picked >= others.Length
-                Return
-            EndIf
-            betrothed = others[picked]
-        EndIf
+        Return
     EndIf
-    If betrothed == None
+    If !SNRom_Native.CeremonyBegin(akOfficiant, betrothed)
+        Diag(LOG_INFO(), "Ceremony: " + priest + " offered to begin, but a wedding is already under way.")
         Return
     EndIf
     String who = betrothed.GetDisplayName()
-    Int answer = SNRom_Choice.AskNow(Tr("elope.ask.body", "{0} will marry you and {1}, here and now.", priest, who), \
-        Tr("elope.ask.accept", "Marry now"), Tr("elope.ask.decline", "Not yet"), "")
-    If answer != SNRom_Choice.ANSWER_ACCEPT()
-        Diag(LOG_INFO(), "Eloping: the player did not go ahead with " + who + " before " + priest + ".")
+    Diag(LOG_INFO(), "Ceremony: " + priest + " begins to marry the player to " + who + ".")
+    ; The cues are for the model, whose prompts are English, not words the
+    ; player reads, so they are not translated (as the events are not).
+    String you = player.GetDisplayName()
+    SkyrimNetApi.DirectNarration(priest + " begins the wedding of " + you + " and " + who + ": a few words " + \
+        "fitting the moment, then " + priest + " asks " + you + ", in front of everyone here, whether they take " + \
+        who + " to be their " + SpouseWord(betrothed) + ".", akOfficiant, player)
+EndFunction
+
+String Function SpouseWord(Actor akActor)
+    { "wife" or "husband", for the officiant's question. }
+    If akActor.GetActorBase().GetSex() == 1
+        Return "wife"
+    EndIf
+    Return "husband"
+EndFunction
+
+Function CeremonyPlayerAnswered(Actor akOfficiant, String asAnswer)
+    { Action MarriageCeremonyAnswer: the officiant heard the player's answer to
+      "do you take...". Yes: the betrothed is asked next. No: the wedding stops,
+      and they stay engaged. }
+    If akOfficiant == None || !_ready || _dashNatives < 18 || SNRom_Native.CeremonyStage() != 1 || \
+       SNRom_Native.CeremonyOfficiant() != akOfficiant
         Return
     EndIf
-    ; Recorded as eloped: married without a planned wedding (Build B's), be it
-    ; a quiet blessing or a ceremony at court (Elisif, 2026-10-19).
+    Actor betrothed = SNRom_Native.CeremonyBetrothed()
+    Actor player = Game.GetPlayer()
+    If betrothed == None
+        Return
+    EndIf
+    String priest = akOfficiant.GetDisplayName()
+    String who = betrothed.GetDisplayName()
+    If StringUtil.Find(asAnswer, "yes") < 0 && StringUtil.Find(asAnswer, "Yes") < 0
+        SNRom_Native.CeremonyEnd(False, "the player did not say yes")
+        Return
+    EndIf
+    If SNRom_Native.CeremonyAdvance(2)
+        Diag(LOG_INFO(), "Ceremony: the player said yes; " + priest + " asks " + who + ".")
+        String you = player.GetDisplayName()
+        SkyrimNetApi.DirectNarration(you + " has said yes. " + priest + " turns to " + who + \
+            " and asks whether they take " + you + " to be their " + SpouseWord(player) + ".", akOfficiant, betrothed)
+    EndIf
+EndFunction
+
+Function CeremonyBetrothedSaidYes(Actor akActor)
+    { Action MarriageIDo: the betrothed said yes. The officiant pronounces them
+      married next. }
+    If akActor == None || !_ready || _dashNatives < 18 || SNRom_Native.CeremonyStage() != 2 || \
+       SNRom_Native.CeremonyBetrothed() != akActor
+        Return
+    EndIf
+    Actor officiant = SNRom_Native.CeremonyOfficiant()
+    If officiant == None || !SNRom_Native.CeremonyAdvance(3)
+        Return
+    EndIf
+    Actor player = Game.GetPlayer()
+    Diag(LOG_INFO(), "Ceremony: " + akActor.GetDisplayName() + " said yes; " + officiant.GetDisplayName() + " pronounces them married.")
+    SkyrimNetApi.DirectNarration("Both " + player.GetDisplayName() + " and " + akActor.GetDisplayName() + \
+        " have said yes. " + officiant.GetDisplayName() + " pronounces them married.", officiant, player)
+EndFunction
+
+Function CeremonyColdFeet(Actor akActor, String asWhy)
+    { Action MarriageColdFeet: the betrothed could not say yes. The wedding
+      stops; they stay engaged, and can begin again another day. }
+    If akActor == None || !_ready || _dashNatives < 18 || SNRom_Native.CeremonyStage() != 2 || \
+       SNRom_Native.CeremonyBetrothed() != akActor
+        Return
+    EndIf
+    String why = "they could not say yes"
+    If asWhy != ""
+        why = why + ": " + asWhy
+    EndIf
+    SNRom_Native.CeremonyEnd(False, why)
+EndFunction
+
+Function CeremonyPronounce(Actor akOfficiant)
+    { Action MarriagePronounce: both have said yes, and the officiant declares
+      them married. THE ONE PLACE A WEDDING IS RECORDED: married, the rings
+      become wedding rings (ChangeMarriage), and everyone here knows. }
+    If akOfficiant == None || !_ready || _dashNatives < 18 || SNRom_Native.CeremonyStage() != 3 || \
+       SNRom_Native.CeremonyOfficiant() != akOfficiant
+        Return
+    EndIf
+    Actor betrothed = SNRom_Native.CeremonyBetrothed()
+    If betrothed == None
+        Return
+    EndIf
+    SNRom_Native.CeremonyEnd(True, "")
+    String priest = akOfficiant.GetDisplayName()
+    String who = betrothed.GetDisplayName()
+    ; Recorded as eloped: married without a planned wedding (Build B's).
     If ChangeMarriage(betrothed, MARRIAGE_MARRIED(), "married by " + priest + ", unplanned", False, akOfficiant, True)
         Actor player = Game.GetPlayer()
         SkyrimNetApi.RegisterPersistentEvent(priest + " married " + player.GetDisplayName() + " and " + who + \
-            ".", akOfficiant, player)
+            ". Both said yes.", akOfficiant, player)
     EndIf
 EndFunction
+
+Event OnCeremonyEnded(String asEventName, String asWhy, Float afUnused, Form akSender)
+    { SNRom_CeremonyEnded: a wedding stopped short (Ceremony.h): a no, cold
+      feet, someone leaving, or nobody going on. They stay engaged; everyone
+      who saw it knows. }
+    Actor betrothed = akSender as Actor
+    Actor player = Game.GetPlayer()
+    String who = "their betrothed"
+    If betrothed != None
+        who = betrothed.GetDisplayName()
+    EndIf
+    String what = player.GetDisplayName() + " and " + who + " were not married after all"
+    If asWhy == "left"
+        what = what + ": one of them left before it was done"
+    ElseIf asWhy == "stalled"
+        what = what + ": the wedding went no further"
+    ElseIf asWhy != ""
+        what = what + ": " + asWhy
+    EndIf
+    SkyrimNetApi.RegisterPersistentEvent(what + ". They are still engaged.", betrothed, player)
+    Diag(LOG_INFO(), "Ceremony: " + what + ".")
+EndEvent
 
 ; ---- the dashboard's marriage operations -----------------------------------
 
@@ -7397,9 +7474,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 17
+    If natives < 18
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v17). Install the DLL from the same release.", True)
+            ", these need v18). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5
