@@ -167,34 +167,42 @@ namespace SNRom::Ceremony {
             });
         }
 
-        // The words of a cue: what the next speaker is to say, for the model
-        // (whose prompts are English), with the names in.
-        std::string CueText(Cue a_cue, bool a_again) {
+        // The words of a cue, with the names in, in English (the model's
+        // prompts are). FACTS, NEVER INSTRUCTIONS: DirectNarration stores its
+        // content word for word as an event every NPC reads back for the rest
+        // of the save (the lesson of snrom_question_raised.yaml, 2026-08-21),
+        // so a cue says what has just happened, true to keep. What the speaker
+        // should do now is in their own prompt, by step (0331 for the
+        // officiant, 0330 for the betrothed).
+        //
+        // a_again: the same step's speaker cued once more after silence. That
+        // stores nothing (DirectNarration with no content prompts a response
+        // without an event), unless it is a question asked again because the
+        // answer was unclear, which is itself a thing that happened.
+        std::string CueText(Cue a_cue, bool a_again, bool a_unclear = false) {
             const auto off = NameOf(g_officiant);
             const auto you = NameOf(0x14);
             const auto them = NameOf(g_betrothed);
+            if (a_again && !a_unclear) {
+                return {};
+            }
             switch (a_cue) {
             case Cue::kOpening:
-                return off + " begins the wedding of " + you + " and " + them + " before everyone here: a few words " +
-                       "fitting the moment, then " + off + " asks " + you + " to speak their vows to " + them + ".";
+                return off + " has begun the wedding of " + you + " and " + them + ".";
             case Cue::kBetrothedVows:
-                return you + " has spoken their vows to " + them + ". Now " + them + " speaks their own vows to " + you +
-                       ", in their own words. These are vows, not yet the answer to any question.";
+                return you + " has spoken their vows to " + them + ".";
             case Cue::kAskPlayer:
-                return a_again ? off + " did not hear a clear answer, and asks " + you + " again, plainly: do you take " +
-                                     them + " to be your " + SpouseWord(g_betrothed) + "?"
-                               : "Both have spoken their vows. " + off + " now asks " + you + ", plainly: do you take " +
-                                     them + " to be your " + SpouseWord(g_betrothed) + "?";
+                return a_unclear ? off + " did not hear a clear answer from " + you + "."
+                                 : you + " and " + them + " have both spoken their vows.";
             case Cue::kAskBetrothed:
-                return a_again ? off + " did not hear a clear answer, and asks " + them + " again: do you take " + you +
-                                     " to be your " + SpouseWord(0x14) + "?"
-                               : you + " has said yes. " + off + " turns to " + them + " and asks: do you take " + you +
-                                     " to be your " + SpouseWord(0x14) + "?";
+                return a_unclear ? off + " did not hear a clear answer from " + them + "."
+                                 : you + " has said yes, and takes " + them + " to be their " + SpouseWord(g_betrothed) +
+                                       ".";
             case Cue::kBetrothedAnswer:
                 return off + " has asked " + them + " whether they take " + you + " to be their " + SpouseWord(0x14) +
-                       ". " + them + " answers, as they truly feel.";
+                       ".";
             case Cue::kPronounce:
-                return "Both " + you + " and " + them + " have said yes. " + off + " pronounces them married.";
+                return you + " and " + them + " have both said yes.";
             default:
                 return {};
             }
@@ -204,7 +212,7 @@ namespace SNRom::Ceremony {
 
         // Begins step g_step: its rank, and its cue once the line before has
         // had time to be heard. Main thread.
-        void StartStep(bool a_again = false) {
+        void StartStep(bool a_unclear = false) {
             const auto& step = Script()[g_step];
             g_heard = false;
             g_judging = false;
@@ -218,7 +226,7 @@ namespace SNRom::Ceremony {
                 return;
             }
             const auto token = g_token;
-            const auto text = CueText(step.cue, a_again);
+            const auto text = CueText(step.cue, a_unclear, a_unclear);
             const auto speaker = IdOf(step.speaker);
             SendEvent("SNRom_CeremonyCue", text, static_cast<float>(token), speaker);
         }

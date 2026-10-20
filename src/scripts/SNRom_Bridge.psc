@@ -5435,11 +5435,12 @@ Function BlessUnion(Actor akOfficiant, String asBetrothed)
 EndFunction
 
 Event OnCeremonyCue(String asEventName, String asText, Float afToken, Form akSender)
-    { SNRom_CeremonyCue: the DLL's script says whose turn it is and what they
-      are to say (Ceremony.cpp, CueText). Once the line before has been heard
-      and the room is quiet, the speaker is cued, unless they have already
-      spoken on their own. The cue is for the model (English), not the
-      player's words. }
+    { SNRom_CeremonyCue: the DLL's script says whose turn it is (Ceremony.cpp).
+      Once the line before has been heard and the room is quiet, the speaker
+      is cued, unless they have already spoken on their own. asText is a FACT
+      ("Haruk has spoken their vows to Hroki"), since DirectNarration keeps it
+      as an event everyone reads back; what to say now is in the speaker's own
+      prompt. Empty for a cue repeated after silence, which keeps nothing. }
     Actor speaker = akSender as Actor
     Int token = afToken as Int
     If speaker == None || _dashNatives < 19
