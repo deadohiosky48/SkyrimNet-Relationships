@@ -455,6 +455,10 @@ namespace SNRom::Natives {
         void CeremonyCueSent(RE::StaticFunctionTag*, std::int32_t a_token) {
             Ceremony::CueSent(a_token);
         }
+        // VERSION 20.
+        void CeremonySetReplyWait(RE::StaticFunctionTag*, float a_seconds) {
+            Ceremony::SetReplyWait(a_seconds);
+        }
         void CeremonyStop(RE::StaticFunctionTag*, std::string a_why) {
             Ceremony::Stop(std::move(a_why));
         }
@@ -744,6 +748,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("CeremonyCueDelay", kScript, CeremonyCueDelay);
             a_vm->RegisterFunction("CeremonyCueSent", kScript, CeremonyCueSent);
             a_vm->RegisterFunction("CeremonyStop", kScript, CeremonyStop);
+            a_vm->RegisterFunction("CeremonySetReplyWait", kScript, CeremonySetReplyWait);
             a_vm->RegisterFunction("AskOpen", kScript, AskOpen, true);
             a_vm->RegisterFunction("AskAnswer", kScript, AskAnswer, true);
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
@@ -755,7 +760,7 @@ namespace SNRom::Natives {
                             "IsOfficiant, CanBless, BetrothedNear, RingNamed, RingGiftFilter, SnapshotRings, "
                             "RingGivenSince, SeverOutfitLockSetting, AskOpen, AskAnswer, CeremonyBegin, CeremonyStage, "
                             "CeremonyOfficiant, CeremonyBetrothed, CeremonyLastOfficiant, CeremonyCueTarget, "
-                            "CeremonyCueWanted, CeremonyCueDelay, CeremonyCueSent, CeremonyStop",
+                            "CeremonyCueWanted, CeremonyCueDelay, CeremonyCueSent, CeremonyStop, CeremonySetReplyWait",
                             kScript, kVersion);
             return true;
         });

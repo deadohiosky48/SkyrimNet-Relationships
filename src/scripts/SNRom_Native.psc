@@ -332,3 +332,8 @@ Function CeremonyCueSent(Int aiToken) Global Native
 
 Function CeremonyStop(String asWhy) Global Native
 {Over, short of a marriage: SNRom_CeremonyEnded (strArg asWhy, sender the betrothed).}
+
+Function CeremonySetReplyWait(Float afSeconds) Global Native
+{VERSION 20 (2.5). How long SkyrimNet waits for a dialogue reply (its dialogue
+ model's timeout): an NPC just spoken to is given that long, and three
+ seconds, to answer on their own before the ceremony cues them.}

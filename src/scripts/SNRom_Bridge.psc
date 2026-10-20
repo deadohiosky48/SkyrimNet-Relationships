@@ -5397,7 +5397,7 @@ Function BlessUnion(Actor akOfficiant, String asBetrothed)
       vows, the betrothed's, each "do you take...", the pronouncement. Nothing
       is asked in a box; only the pronouncement records the marriage
       (OnCeremonyMarried). }
-    If akOfficiant == None || !_ready || _dashNatives < 19
+    If akOfficiant == None || !_ready || _dashNatives < 20
         Return
     EndIf
     String priest = akOfficiant.GetDisplayName()
@@ -5427,12 +5427,32 @@ Function BlessUnion(Actor akOfficiant, String asBetrothed)
     If betrothed == None
         Return
     EndIf
+    SNRom_Native.CeremonySetReplyWait(DialogueReplyWaitSeconds())
     If !SNRom_Native.CeremonyBegin(akOfficiant, betrothed, VariantName())
         Diag(LOG_WARN(), "Ceremony: " + priest + " offered to begin, but a wedding is already under way, or " + \
             "SkyrimNet's dialogue events are missing (see SkyrimNetRelationships.log).")
         Return
     EndIf
     Diag(LOG_INFO(), "Ceremony: " + priest + " begins to marry the player to " + betrothed.GetDisplayName() + ".")
+EndFunction
+
+Float Function DialogueReplyWaitSeconds() Global
+    { How long SkyrimNet waits for a dialogue reply: its dialogue model's
+      timeout in OpenRouter.yaml (openrouter.timeout, the top-level model that
+      speaks for NPCs), or its first provider's request timeout if that is
+      longer. The player sets them; a reply through the router took 23 s
+      (2026-10-20). The ceremony gives an NPC who was just spoken to this long
+      to answer on their own before cueing them (Ceremony.cpp). 30 when
+      neither can be read. }
+    Int whole = SkyrimNetApi.GetConfigInt("OpenRouter", "openrouter.timeout", 30)
+    Int perCall = SkyrimNetApi.GetConfigInt("OpenRouter", "openrouter.model_params.0.request_timeout", 0)
+    If perCall > whole
+        whole = perCall
+    EndIf
+    If whole <= 0
+        whole = 30
+    EndIf
+    Return whole as Float
 EndFunction
 
 Event OnCeremonyCue(String asEventName, String asText, Float afToken, Form akSender)
@@ -5444,7 +5464,7 @@ Event OnCeremonyCue(String asEventName, String asText, Float afToken, Form akSen
       prompt. Empty for a cue repeated after silence, which keeps nothing. }
     Actor speaker = akSender as Actor
     Int token = afToken as Int
-    If speaker == None || _dashNatives < 19
+    If speaker == None || _dashNatives < 20
         Return
     EndIf
     Float delay = SNRom_Native.CeremonyCueDelay(token)
@@ -5505,7 +5525,7 @@ EndEvent
 Function CeremonyColdFeet(Actor akActor, String asWhy)
     { Action MarriageColdFeet: the betrothed stops the wedding themselves. They
       stay engaged, and can begin again another day. }
-    If akActor == None || !_ready || _dashNatives < 19 || SNRom_Native.CeremonyBetrothed() != akActor
+    If akActor == None || !_ready || _dashNatives < 20 || SNRom_Native.CeremonyBetrothed() != akActor
         Return
     EndIf
     String why = "they could not go through with it"
@@ -7463,9 +7483,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 19
+    If natives < 20
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v19). Install the DLL from the same release.", True)
+            ", these need v20). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5

@@ -4,11 +4,13 @@
 
 #include "Marriage.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cctype>
 #include <chrono>
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <vector>
 
@@ -63,12 +65,16 @@ namespace SNRom::Ceremony {
             return steps;
         }
 
-        // A NATURAL REPLY FIRST. SkyrimNet answers a line on its own, most
-        // often from the very person whose turn it is; a cue sent as well made
-        // them say it twice (every doubled question and "I do" in wpm19). So
-        // an NPC's step waits this long for them to speak by themselves, and
-        // is cued only if they have not, or if what they said was not the step.
-        constexpr auto kNaturalWait = std::chrono::seconds{ 9 };
+        // A NATURAL REPLY FIRST. SkyrimNet answers a line on its own, from
+        // the one it was said to; a cue sent as well made them say it twice
+        // (every doubled question and "I do" in wpm19). So an NPC's step whose
+        // speaker was just ADDRESSED waits for them as long as SkyrimNet waits
+        // for a reply: its dialogue model's timeout, which the player sets
+        // (OpenRouter.yaml; read by Papyrus, CeremonySetReplyWait). One reply
+        // took 23 s through the router (2026-10-20). A speaker nobody
+        // addressed gets a short wait: no reply of theirs is coming.
+        constexpr float kUnaddressedWait = 5.0f;
+        float           g_replyWait = 33.0f;   // the dialogue timeout, and a breath
 
         // An NPC's step: cued again once after this long without their line,
         // then the wedding is over. A player's step waits longer: they may be
@@ -111,6 +117,16 @@ namespace SNRom::Ceremony {
         std::string      g_variant;
         bool             g_heard = false;   // this step's line arrived
         bool             g_unclear = false; // this step asks again after an unclear answer
+        RE::FormID       g_lastTarget = 0;  // whom the last line heard was said to
+
+        // A line from the NEXT step's speaker that arrived while this step's
+        // line was being judged: looked at once the judging is done.
+        struct Line {
+            RE::FormID  speaker = 0;
+            RE::FormID  target = 0;
+            std::string text;
+        };
+        std::optional<Line> g_ahead;
         std::size_t      g_lastLength = 0;  // the last line heard, in characters
         bool             g_judging = false;
         bool             g_cued = false;
@@ -248,6 +264,7 @@ namespace SNRom::Ceremony {
             g_judging = false;
             g_cued = false;
             g_recued = false;
+            g_ahead.reset();
             g_unclear = a_unclear;
             g_still = 0.0f;
             ++g_token;
@@ -258,8 +275,14 @@ namespace SNRom::Ceremony {
                 return;
             }
             const auto token = g_token;
-            std::thread([token]() {
-                std::this_thread::sleep_for(kNaturalWait);
+            const bool addressed = g_lastTarget != 0 && g_lastTarget == IdOf(step.speaker);
+            const auto wait = std::chrono::milliseconds{ static_cast<long long>(
+                (addressed ? g_replyWait : kUnaddressedWait) * 1000.0f) };
+            SKSE::log::info("Ceremony: step {}: {} was {}addressed; waiting {:.0f} s for them before a cue", g_step + 1,
+                            NameOf(IdOf(step.speaker)), addressed ? "" : "not ",
+                            addressed ? g_replyWait : kUnaddressedWait);
+            std::thread([token, wait]() {
+                std::this_thread::sleep_for(wait);
                 SKSE::GetTaskInterface()->AddTask([token]() {
                     if (g_active && token == g_token && !g_heard) {
                         CueNow();
@@ -300,6 +323,8 @@ namespace SNRom::Ceremony {
             }
         }
 
+        void Heard(RE::FormID a_speaker, RE::FormID a_target, const std::string& a_line);
+
         // A line the step's check found wanting: not the step. Its speaker is
         // cued (once), and the step waits on. Main thread.
         void Checked(std::int32_t a_token, const std::string& a_verdict) {
@@ -313,7 +338,81 @@ namespace SNRom::Ceremony {
             }
             SKSE::log::info("Ceremony: step {}: that line was not the step ({})", g_step + 1, a_verdict);
             g_heard = false;
+            // The next speaker spoke while it was judged: the step may have
+            // happened after all (Heard, catching up).
+            if (g_ahead) {
+                const auto ahead = *g_ahead;
+                g_ahead.reset();
+                Heard(ahead.speaker, ahead.target, ahead.text);
+                if (g_heard || g_judging) {
+                    return;
+                }
+            }
             CueNow();
+        }
+
+        std::string Lower(std::string a_text) {
+            for (auto& c : a_text) {
+                c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            }
+            return a_text;
+        }
+
+        // The line names a_id: any word of their name but a title.
+        bool Names(const std::string& a_lowerLine, RE::FormID a_id) {
+            static const std::vector<std::string> titles{ "jarl", "the", "of", "thane", "lord", "lady", "high",
+                                                          "queen", "king", "sir", "fair" };
+            std::string word;
+            const auto  name = Lower(NameOf(a_id)) + " ";
+            for (const char c : name) {
+                if (std::isalpha(static_cast<unsigned char>(c))) {
+                    word += c;
+                    continue;
+                }
+                if (word.size() >= 3 && std::find(titles.begin(), titles.end(), word) == titles.end() &&
+                    a_lowerLine.find(word) != std::string::npos) {
+                    return true;
+                }
+                word.clear();
+            }
+            return false;
+        }
+
+        bool Has(const std::string& a_lowerLine, std::initializer_list<const char*> a_any) {
+            for (const auto* w : a_any) {
+                if (a_lowerLine.find(w) != std::string::npos) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // THE WORDS FIRST. The check is asked of the model only when plain
+        // words do not settle it, and the model can then only add a yes: in
+        // wpm20 it answered NO to "And Hroki, do you take Haruk to be your
+        // lawfully wedded husband...?" and the wedding never ended (2026-10-20).
+        bool WordsDo(Check a_check, const std::string& a_line) {
+            const auto line = Lower(a_line);
+            switch (a_check) {
+            case Check::kAskedForVows:
+                return Has(line, { "vow", "promise", "pledge", "oath" });
+            case Check::kSpokeVows:
+                return a_line.size() >= 20;   // whatever they say to the player now is their vow
+            // "Do you take <the other one>?": the name after "take" says who
+            // is being asked, since both questions name both of them.
+            case Check::kAskedPlayer:
+            case Check::kAskedBetrothed: {
+                const auto take = line.find("take");
+                const auto other = a_check == Check::kAskedPlayer ? g_betrothed : 0x14;
+                return take != std::string::npos && line.find('?') != std::string::npos &&
+                       Names(line.substr(take), other);
+            }
+            case Check::kPronounced:
+                return Has(line, { "pronounce", "husband and wife", "wife and husband", "man and wife",
+                                   "now married", "are married", "you are wed", "now wed" });
+            default:
+                return false;
+            }
         }
 
         // What the line must have done, as a question for the judge.
@@ -390,19 +489,48 @@ namespace SNRom::Ceremony {
         }
 
         // Someone spoke (SkyrimNet's dialogue events). Main thread.
-        void Heard(RE::FormID a_speaker, const std::string& a_line) {
-            if (!g_active || g_heard || g_judging) {
+        void Heard(RE::FormID a_speaker, RE::FormID a_target, const std::string& a_line) {
+            if (!g_active) {
                 return;
             }
             const auto& step = Script()[g_step];
+            const bool  hasNext = g_step + 1 < Script().size();
+            const bool  nextSpeaker = hasNext && a_speaker == IdOf(Script()[g_step + 1].speaker) &&
+                                     a_speaker != IdOf(step.speaker);
+            if (g_judging) {
+                if (nextSpeaker) {
+                    g_ahead = Line{ a_speaker, a_target, a_line };
+                }
+                return;
+            }
+            if (g_heard) {
+                return;
+            }
+            // CATCHING UP. The next step's speaker speaking means an NPC's step
+            // before it happened, recognised or not: Hroki saying "I do" means
+            // she was asked. So that step is taken as done, and the line is
+            // heard as the next step's. Never a player's step: those need the
+            // player.
+            if (nextSpeaker && step.check != Check::kNone) {
+                SKSE::log::info("Ceremony: step {} taken as done: {} spoke for the next", g_step + 1,
+                                NameOf(a_speaker));
+                ++g_step;
+                StartStep();
+                Heard(a_speaker, a_target, a_line);
+                return;
+            }
             if (a_speaker != IdOf(step.speaker)) {
                 return;
             }
             g_heard = true;
             g_lastLength = a_line.size();
+            g_lastTarget = a_target;
             SKSE::log::info("Ceremony: step {}: heard {}", g_step + 1, NameOf(a_speaker));
             if (step.judged) {
                 Judge(a_line);
+            } else if (step.check != Check::kNone && WordsDo(step.check, a_line)) {
+                SKSE::log::info("Ceremony: step {}: the words do it", g_step + 1);
+                Next();
             } else if (step.check != Check::kNone) {
                 Ask(false, NameOf(a_speaker), CheckQuestion(step.check), a_line, Checked);
             } else {
@@ -420,6 +548,7 @@ namespace SNRom::Ceremony {
             }
             const auto type = event.value("type", std::string{});
             RE::FormID speaker = type == "dialogue" ? event.value("originatingActorFormId", 0u) : 0x14u;
+            RE::FormID target = event.value("targetActorFormId", 0u);
             std::string line;
             if (const auto it = event.find("data"); it != event.end()) {
                 const auto data = it->is_string() ? json::parse(it->get<std::string>(), nullptr, false) : *it;
@@ -427,7 +556,7 @@ namespace SNRom::Ceremony {
                     line = data.value("dialogue", data.value("text", std::string{}));
                 }
             }
-            SKSE::GetTaskInterface()->AddTask([speaker, line]() { Heard(speaker, line); });
+            SKSE::GetTaskInterface()->AddTask([speaker, target, line]() { Heard(speaker, target, line); });
         }
 
         bool Here(RE::FormID a_id, RE::PlayerCharacter* a_player) {
@@ -539,6 +668,7 @@ namespace SNRom::Ceremony {
         g_variant = std::move(a_variant);
         g_step = 0;
         g_retries = 0;
+        g_lastTarget = 0;
         g_away = 0.0f;
         SetBusy(true);
         SKSE::log::info("Ceremony: {:08X} begins marrying the player to {:08X}", g_officiant, g_betrothed);
@@ -569,6 +699,11 @@ namespace SNRom::Ceremony {
             return nullptr;
         }
         return ActorOf(IdOf(Script()[g_step].target));
+    }
+
+    void SetReplyWait(float a_seconds) {
+        // SkyrimNet's own wait for a reply, and three seconds; within reason.
+        g_replyWait = std::clamp(a_seconds + 3.0f, 10.0f, 120.0f);
     }
 
     float CueDelay(std::int32_t a_token) {

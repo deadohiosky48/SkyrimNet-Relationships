@@ -56,6 +56,11 @@ namespace SNRom::Ceremony {
     // the step's patience.
     RE::Actor* CueTarget(std::int32_t a_token);
     bool       CueWanted(std::int32_t a_token);
+    // How long SkyrimNet waits for a dialogue reply (its dialogue model's
+    // timeout, OpenRouter.yaml), in seconds: an addressed speaker is given
+    // that long to answer on their own before a cue.
+    void SetReplyWait(float a_seconds);
+
     // Seconds to wait before cueing: the line before is still being said.
     float      CueDelay(std::int32_t a_token);
     void       CueSent(std::int32_t a_token);
