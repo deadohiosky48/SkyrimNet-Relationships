@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <atomic>
+#include <map>
+#include <deque>
 #include <cctype>
 #include <chrono>
 #include <functional>
@@ -74,6 +76,30 @@ namespace SNRom::Ceremony {
         // took 23 s through the router (2026-10-20). A speaker nobody
         // addressed gets a short wait: no reply of theirs is coming.
         constexpr float kUnaddressedWait = 5.0f;
+
+        // SKYRIMNET'S SPEECH BUDGET: an NPC who has spoken this many lines in
+        // this many seconds gets no natural reply (SkyrimNet.yaml,
+        // speech.maxRecentSpeechCount and recentSpeechTimeWindowSeconds; read
+        // by Papyrus, CeremonySetSpeechBudget). Our cue is not held to it. In
+        // wpm21 Elisif, three lines in 32 s, was waited for 33 s before the
+        // pronouncement for a reply that could not come (2026-10-20).
+        int   g_budgetLines = 3;
+        float g_budgetWindow = 60.0f;
+        std::map<RE::FormID, std::deque<std::chrono::steady_clock::time_point>> g_spoken;
+
+        bool AtSpeechLimit(RE::FormID a_id) {
+            const auto it = g_spoken.find(a_id);
+            if (it == g_spoken.end() || g_budgetLines <= 0) {
+                return false;
+            }
+            const auto since = std::chrono::steady_clock::now() -
+                               std::chrono::milliseconds{ static_cast<long long>(g_budgetWindow * 1000.0f) };
+            auto& times = it->second;
+            while (!times.empty() && times.front() < since) {
+                times.pop_front();
+            }
+            return static_cast<int>(times.size()) >= g_budgetLines;
+        }
         float           g_replyWait = 33.0f;   // the dialogue timeout, and a breath
 
         // An NPC's step: cued again once after this long without their line,
@@ -128,6 +154,7 @@ namespace SNRom::Ceremony {
         };
         std::optional<Line> g_ahead;
         std::size_t      g_lastLength = 0;  // the last line heard, in characters
+        std::chrono::steady_clock::time_point g_lastHeardAt{};  // and when
         bool             g_judging = false;
         bool             g_cued = false;
         bool             g_recued = false;
@@ -275,12 +302,16 @@ namespace SNRom::Ceremony {
                 return;
             }
             const auto token = g_token;
-            const bool addressed = g_lastTarget != 0 && g_lastTarget == IdOf(step.speaker);
+            const auto speakerId = IdOf(step.speaker);
+            const bool addressed = g_lastTarget != 0 && g_lastTarget == speakerId;
+            const bool limited = addressed && AtSpeechLimit(speakerId);
+            const bool longWait = addressed && !limited;
             const auto wait = std::chrono::milliseconds{ static_cast<long long>(
-                (addressed ? g_replyWait : kUnaddressedWait) * 1000.0f) };
-            SKSE::log::info("Ceremony: step {}: {} was {}addressed; waiting {:.0f} s for them before a cue", g_step + 1,
-                            NameOf(IdOf(step.speaker)), addressed ? "" : "not ",
-                            addressed ? g_replyWait : kUnaddressedWait);
+                (longWait ? g_replyWait : kUnaddressedWait) * 1000.0f) };
+            SKSE::log::info("Ceremony: step {}: {} was {}{}; waiting {:.0f} s for them before a cue", g_step + 1,
+                            NameOf(speakerId), addressed ? "" : "not ",
+                            limited ? "addressed but at SkyrimNet's speech limit" : "addressed",
+                            longWait ? g_replyWait : kUnaddressedWait);
             std::thread([token, wait]() {
                 std::this_thread::sleep_for(wait);
                 SKSE::GetTaskInterface()->AddTask([token]() {
@@ -490,6 +521,15 @@ namespace SNRom::Ceremony {
 
         // Someone spoke (SkyrimNet's dialogue events). Main thread.
         void Heard(RE::FormID a_speaker, RE::FormID a_target, const std::string& a_line) {
+            // Counted always: the lines just before a wedding count against
+            // SkyrimNet's budget too. Kept to the last few per speaker.
+            if (a_speaker != 0x14) {
+                auto& times = g_spoken[a_speaker];
+                times.push_back(std::chrono::steady_clock::now());
+                while (times.size() > 16) {
+                    times.pop_front();
+                }
+            }
             if (!g_active) {
                 return;
             }
@@ -524,7 +564,11 @@ namespace SNRom::Ceremony {
             }
             g_heard = true;
             g_lastLength = a_line.size();
-            g_lastTarget = a_target;
+            g_lastHeardAt = std::chrono::steady_clock::now();
+            // The player's line with no one named is said to the officiant:
+            // the ceremony is a conversation with them (wpm21's "I do" had no
+            // listener, so Elisif was cued over her own reply).
+            g_lastTarget = a_target != 0 ? a_target : (a_speaker == 0x14 ? g_officiant : 0);
             SKSE::log::info("Ceremony: step {}: heard {}", g_step + 1, NameOf(a_speaker));
             if (step.judged) {
                 Judge(a_line);
@@ -701,6 +745,11 @@ namespace SNRom::Ceremony {
         return ActorOf(IdOf(Script()[g_step].target));
     }
 
+    void SetSpeechBudget(std::int32_t a_lines, float a_windowSeconds) {
+        g_budgetLines = a_lines;
+        g_budgetWindow = a_windowSeconds > 0.0f ? a_windowSeconds : 60.0f;
+    }
+
     void SetReplyWait(float a_seconds) {
         // SkyrimNet's own wait for a reply, and three seconds; within reason.
         g_replyWait = std::clamp(a_seconds + 3.0f, 10.0f, 120.0f);
@@ -709,7 +758,14 @@ namespace SNRom::Ceremony {
     float CueDelay(std::int32_t a_token) {
         // The line before is still being said: about fifteen characters a
         // second, and a breath.
-        return a_token == g_token ? 1.0f + static_cast<float>(g_lastLength) / 15.0f : 0.0f;
+        // Counted from when the line was HEARD, not from the cue: wpm21 waited
+        // the line's whole length again after the natural-reply wait.
+        if (a_token != g_token) {
+            return 0.0f;
+        }
+        const float length = 1.0f + static_cast<float>(g_lastLength) / 15.0f;
+        const float since = std::chrono::duration<float>(std::chrono::steady_clock::now() - g_lastHeardAt).count();
+        return std::max(0.0f, length - since);
     }
 
     bool CueWanted(std::int32_t a_token) {

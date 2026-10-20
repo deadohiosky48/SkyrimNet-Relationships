@@ -31,7 +31,7 @@ INNER_RADIUS = 0.97       # the hole the finger passes through
 BAND_CENTRE = (0.03, -0.22)  # x, y off the bone's axis
 ALONG_FINGER = 1.75       # the engagement ring's centre, from the knuckle
 FINGER_BONE = 'NPC Finger30.L'  # left ring finger, first segment
-TRIS = {'EngagementRing': 1600, 'WeddingRing': 2800}
+TRIS = {'EngagementRing': 1600, 'WeddingRing': 2800, 'WeddingBand': 1200}
 
 # THE METAL'S COLOUR IS A VERTEX COLOUR. Vanilla's gold and silver rings share
 # one grey sheet; GoldRingDiamondGO.nif tints its metal vertices (1.0, 0.8,
@@ -76,10 +76,12 @@ def islands(bm):
     return out
 
 
-def build_mesh(name, keep_band):
-    """The engagement ring alone, or with its band; centred, scaled to fit,
-    reduced, and mapped onto vanilla's sheet. Returns (mesh, scale, z of the
-    engagement ring's centre after scaling)."""
+def build_mesh(name, part):
+    """part 'engagement': the engagement ring alone; 'both': with its band;
+    'band': the band alone (2.5: the wedding band the player is given at the
+    wedding), left where it sits beside the engagement ring, nearer the hand.
+    Centred, scaled to fit, reduced, and mapped onto vanilla's sheet. Returns
+    (mesh, scale, z of the engagement ring's centre after scaling)."""
     bm = bmesh.new()
     bm.from_mesh(full)
     bm.faces.ensure_lookup_table()
@@ -90,8 +92,10 @@ def build_mesh(name, keep_band):
     eng_verts = {v for f in engagement for v in f.verts}
     ez = sum(v.co.z for v in eng_verts) / len(eng_verts)
     inner = min(math.hypot(v.co.x, v.co.y) for f in engagement for v in f.verts if f.material_index != stone_index)
-    if not keep_band:
+    if part == 'engagement':
         bmesh.ops.delete(bm, geom=[f for g in band for f in g], context='FACES')
+    elif part == 'band':
+        bmesh.ops.delete(bm, geom=list(engagement), context='FACES')
     scale = INNER_RADIUS / inner
     bmesh.ops.scale(bm, vec=(scale, scale, scale), verts=bm.verts)
     bmesh.ops.triangulate(bm, faces=bm.faces[:])
@@ -175,8 +179,8 @@ def remove(objs):
 
 
 results = []
-for item, keep_band in (('EngagementRing', False), ('WeddingRing', True)):
-    me, scale, eng_z = build_mesh(item, keep_band)
+for item, part in (('EngagementRing', 'engagement'), ('WeddingRing', 'both'), ('WeddingBand', 'band')):
+    me, scale, eng_z = build_mesh(item, part)
 
     # ---------------- on the ground: vanilla's GO nif with our mesh in it
     go = import_nif(os.path.join(VANILLA, 'goldringdiamondgo.nif'))

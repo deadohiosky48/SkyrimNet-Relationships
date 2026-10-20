@@ -61,6 +61,10 @@ namespace SNRom::Ceremony {
     // that long to answer on their own before a cue.
     void SetReplyWait(float a_seconds);
 
+    // SkyrimNet's speech budget (SkyrimNet.yaml): an NPC with this many lines
+    // in this many seconds gets no natural reply, so they are cued sooner.
+    void SetSpeechBudget(std::int32_t a_lines, float a_windowSeconds);
+
     // Seconds to wait before cueing: the line before is still being said.
     float      CueDelay(std::int32_t a_token);
     void       CueSent(std::int32_t a_token);

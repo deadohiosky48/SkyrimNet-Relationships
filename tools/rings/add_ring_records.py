@@ -25,6 +25,10 @@ RINGS = [
      r'Relationships\Rings\EngagementRingGold.nif', r'Relationships\Rings\EngagementRingGoldGO.nif', 0xD6A),
     (0xD68, 0xD67, 'SNRom_WeddingRingGold', 'Gold Wedding Ring',
      r'Relationships\Rings\WeddingRingGold.nif', r'Relationships\Rings\WeddingRingGoldGO.nif', 0xD6B),
+    # The band alone (the author, 2026-10-20): what the player is given at the
+    # wedding when no engagement ring of ours became theirs.
+    (0xD74, 0xD73, 'SNRom_WeddingBandGold', 'Gold Wedding Band',
+     r'Relationships\Rings\WeddingBandGold.nif', r'Relationships\Rings\WeddingBandGoldGO.nif', 0xD6B),
 ]
 
 # A spouse is here with the player: 1 or 0, kept by the DLL (Rings.cpp) on

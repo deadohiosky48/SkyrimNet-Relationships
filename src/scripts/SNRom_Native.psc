@@ -337,3 +337,9 @@ Function CeremonySetReplyWait(Float afSeconds) Global Native
 {VERSION 20 (2.5). How long SkyrimNet waits for a dialogue reply (its dialogue
  model's timeout): an NPC just spoken to is given that long, and three
  seconds, to answer on their own before the ceremony cues them.}
+
+Function CeremonySetSpeechBudget(Int aiLines, Float afWindowSeconds) Global Native
+{VERSION 21 (2.5). SkyrimNet's speech budget (SkyrimNet.yaml,
+ speech.maxRecentSpeechCount and recentSpeechTimeWindowSeconds): an NPC with
+ that many lines in that window gets no natural reply, so the ceremony cues
+ them after a short wait instead of the full reply wait.}

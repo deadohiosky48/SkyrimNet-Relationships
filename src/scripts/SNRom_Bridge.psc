@@ -5151,6 +5151,12 @@ Form Function WeddingRing() Global
     Return Game.GetFormFromFile(0x00000D68, "SNRom_Integration.esl")
 EndFunction
 
+Form Function WeddingBand() Global
+    { SNRom_WeddingBandGold (2.5): the band alone, which the player is given at
+      the wedding when no engagement ring of ours became theirs. }
+    Return Game.GetFormFromFile(0x00000D74, "SNRom_Integration.esl")
+EndFunction
+
 Form Function RingSlotBlocker(Actor akWearer, Form akRing) Global
     { What holds akWearer's ring slot (36, mask 0x40) and would not give way to
       a ring: anything there but a ring, which a ring simply replaces. None if
@@ -5283,7 +5289,8 @@ Function RingsBecomeWeddingRings(Actor akSpouse)
         WearAndName(akSpouse, wedding)
         Diag(LOG_INFO(), "Ring: " + akSpouse.GetDisplayName() + "'s engagement ring is now a wedding ring.")
     EndIf
-    If SNRom_Native.MarriageRing(akSpouse, False) == engagement && player.GetItemCount(engagement) > 0
+    Form toPlayer = SNRom_Native.MarriageRing(akSpouse, False)
+    If toPlayer == engagement && player.GetItemCount(engagement) > 0
         Bool worn = player.IsEquipped(engagement)
         player.RemoveItem(engagement, 1, True)
         player.AddItem(wedding, 1, True)
@@ -5292,7 +5299,38 @@ Function RingsBecomeWeddingRings(Actor akSpouse)
         EndIf
         SNRom_Native.SetMarriageRing(akSpouse, False, wedding)
         Diag(LOG_INFO(), "Ring: the engagement ring " + akSpouse.GetDisplayName() + " gave you is now a wedding ring.")
+    ElseIf toPlayer != wedding || player.GetItemCount(wedding) == 0
+        GiveWeddingBand(akSpouse)
     EndIf
+EndFunction
+
+Function GiveWeddingBand(Actor akSpouse)
+    { THE PLAYER'S WEDDING BAND (the author, 2026-10-20: "the player should at
+      least get a wedding band"). Married, and no engagement ring of ours
+      became theirs: their spouse puts a band on their finger, named for them
+      ("Haruk's Gold Wedding Band"), with Mara's Grace and its "Together"
+      bonus. Once per marriage: not again when they already hold the band
+      from this spouse. Which rings each of them gets, and their styles, are
+      to be the player's choice later (BACKLOG). }
+    Form band = WeddingBand()
+    Actor player = Game.GetPlayer()
+    If band == None || akSpouse == None
+        Return
+    EndIf
+    Form recorded = SNRom_Native.MarriageRing(akSpouse, False)
+    If recorded == band && player.GetItemCount(band) > 0
+        Return
+    EndIf
+    player.AddItem(band, 1, True)
+    If recorded == None
+        SNRom_Native.SetMarriageRing(akSpouse, False, band)
+    EndIf
+    String who = akSpouse.GetDisplayName()
+    Debug.Notification(Tr("ring.band", "{0} put {1} on your finger.", who, band.GetName()))
+    SkyrimNetApi.RegisterPersistentEvent(who + " put a wedding band on " + player.GetDisplayName() + \
+        "'s finger.", akSpouse, player)
+    Diag(LOG_INFO(), "Ring: " + who + " gave the player " + band.GetName() + ".")
+    WearAndName(player, band)
 EndFunction
 
 Function GiveEngagementRing(Actor akActor)
@@ -5397,7 +5435,7 @@ Function BlessUnion(Actor akOfficiant, String asBetrothed)
       vows, the betrothed's, each "do you take...", the pronouncement. Nothing
       is asked in a box; only the pronouncement records the marriage
       (OnCeremonyMarried). }
-    If akOfficiant == None || !_ready || _dashNatives < 20
+    If akOfficiant == None || !_ready || _dashNatives < 21
         Return
     EndIf
     String priest = akOfficiant.GetDisplayName()
@@ -5428,6 +5466,10 @@ Function BlessUnion(Actor akOfficiant, String asBetrothed)
         Return
     EndIf
     SNRom_Native.CeremonySetReplyWait(DialogueReplyWaitSeconds())
+    ; SkyrimNet's speech budget (SkyrimNet.yaml): someone over it gets no
+    ; natural reply, so the ceremony cues them sooner.
+    SNRom_Native.CeremonySetSpeechBudget(SkyrimNetApi.GetConfigInt("game", "speech.maxRecentSpeechCount", 3), \
+        SkyrimNetApi.GetConfigFloat("game", "speech.recentSpeechTimeWindowSeconds", 60.0))
     If !SNRom_Native.CeremonyBegin(akOfficiant, betrothed, VariantName())
         Diag(LOG_WARN(), "Ceremony: " + priest + " offered to begin, but a wedding is already under way, or " + \
             "SkyrimNet's dialogue events are missing (see SkyrimNetRelationships.log).")
@@ -5464,7 +5506,7 @@ Event OnCeremonyCue(String asEventName, String asText, Float afToken, Form akSen
       prompt. Empty for a cue repeated after silence, which keeps nothing. }
     Actor speaker = akSender as Actor
     Int token = afToken as Int
-    If speaker == None || _dashNatives < 20
+    If speaker == None || _dashNatives < 21
         Return
     EndIf
     Float delay = SNRom_Native.CeremonyCueDelay(token)
@@ -5525,7 +5567,7 @@ EndEvent
 Function CeremonyColdFeet(Actor akActor, String asWhy)
     { Action MarriageColdFeet: the betrothed stops the wedding themselves. They
       stay engaged, and can begin again another day. }
-    If akActor == None || !_ready || _dashNatives < 20 || SNRom_Native.CeremonyBetrothed() != akActor
+    If akActor == None || !_ready || _dashNatives < 21 || SNRom_Native.CeremonyBetrothed() != akActor
         Return
     EndIf
     String why = "they could not go through with it"
@@ -7483,9 +7525,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 20
+    If natives < 21
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v20). Install the DLL from the same release.", True)
+            ", these need v21). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5
