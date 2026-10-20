@@ -426,12 +426,13 @@ namespace SNRom::Natives {
         // returns early without it. Read here so our scripts never name
         // SeverActions_Outfit, which drags its outfit scripts into our compile.
         // 1 on, 0 off, -1 unread (no SeverActions, or no such property).
-        // VERSION 18: the wedding, spoken (Ceremony.h).
-        bool CeremonyBegin(RE::StaticFunctionTag*, RE::Actor* a_officiant, RE::Actor* a_betrothed) {
-            return Ceremony::Begin(a_officiant, a_betrothed);
+        // VERSION 19: the wedding, spoken and directed (Ceremony.h).
+        bool CeremonyBegin(RE::StaticFunctionTag*, RE::Actor* a_officiant, RE::Actor* a_betrothed,
+                           std::string a_variant) {
+            return Ceremony::Begin(a_officiant, a_betrothed, std::move(a_variant));
         }
         std::int32_t CeremonyStage(RE::StaticFunctionTag*) {
-            return static_cast<std::int32_t>(Ceremony::Now());
+            return Ceremony::Now();
         }
         RE::Actor* CeremonyOfficiant(RE::StaticFunctionTag*) {
             return Ceremony::Officiant();
@@ -439,11 +440,23 @@ namespace SNRom::Natives {
         RE::Actor* CeremonyBetrothed(RE::StaticFunctionTag*) {
             return Ceremony::Betrothed();
         }
-        bool CeremonyAdvance(RE::StaticFunctionTag*, std::int32_t a_to) {
-            return Ceremony::Advance(static_cast<Ceremony::Stage>(a_to));
+        RE::Actor* CeremonyLastOfficiant(RE::StaticFunctionTag*) {
+            return Ceremony::LastOfficiant();
         }
-        void CeremonyEnd(RE::StaticFunctionTag*, bool a_married, std::string a_why) {
-            Ceremony::End(a_married, std::move(a_why));
+        RE::Actor* CeremonyCueTarget(RE::StaticFunctionTag*, std::int32_t a_token) {
+            return Ceremony::CueTarget(a_token);
+        }
+        bool CeremonyCueWanted(RE::StaticFunctionTag*, std::int32_t a_token) {
+            return Ceremony::CueWanted(a_token);
+        }
+        float CeremonyCueDelay(RE::StaticFunctionTag*, std::int32_t a_token) {
+            return Ceremony::CueDelay(a_token);
+        }
+        void CeremonyCueSent(RE::StaticFunctionTag*, std::int32_t a_token) {
+            Ceremony::CueSent(a_token);
+        }
+        void CeremonyStop(RE::StaticFunctionTag*, std::string a_why) {
+            Ceremony::Stop(std::move(a_why));
         }
 
         // VERSION 17: a question in our own UI (Dashboard::Ask).
@@ -720,12 +733,17 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("SeverOutfitLockSetting", kScript, SeverOutfitLockSetting, true);
             a_vm->RegisterFunction("CanBless", kScript, CanBless);            // main thread: positions
             a_vm->RegisterFunction("BetrothedNear", kScript, BetrothedNear);  // main thread: positions
-            a_vm->RegisterFunction("CeremonyBegin", kScript, CeremonyBegin);        // main thread: factions
-            a_vm->RegisterFunction("CeremonyStage", kScript, CeremonyStage, true);
-            a_vm->RegisterFunction("CeremonyOfficiant", kScript, CeremonyOfficiant, true);
-            a_vm->RegisterFunction("CeremonyBetrothed", kScript, CeremonyBetrothed, true);
-            a_vm->RegisterFunction("CeremonyAdvance", kScript, CeremonyAdvance);    // main thread: factions
-            a_vm->RegisterFunction("CeremonyEnd", kScript, CeremonyEnd);            // main thread: factions
+            // Main thread, all: the ceremony is the main thread's.
+            a_vm->RegisterFunction("CeremonyBegin", kScript, CeremonyBegin);
+            a_vm->RegisterFunction("CeremonyStage", kScript, CeremonyStage);
+            a_vm->RegisterFunction("CeremonyOfficiant", kScript, CeremonyOfficiant);
+            a_vm->RegisterFunction("CeremonyBetrothed", kScript, CeremonyBetrothed);
+            a_vm->RegisterFunction("CeremonyLastOfficiant", kScript, CeremonyLastOfficiant);
+            a_vm->RegisterFunction("CeremonyCueTarget", kScript, CeremonyCueTarget);
+            a_vm->RegisterFunction("CeremonyCueWanted", kScript, CeremonyCueWanted);
+            a_vm->RegisterFunction("CeremonyCueDelay", kScript, CeremonyCueDelay);
+            a_vm->RegisterFunction("CeremonyCueSent", kScript, CeremonyCueSent);
+            a_vm->RegisterFunction("CeremonyStop", kScript, CeremonyStop);
             a_vm->RegisterFunction("AskOpen", kScript, AskOpen, true);
             a_vm->RegisterFunction("AskAnswer", kScript, AskAnswer, true);
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
@@ -736,7 +754,8 @@ namespace SNRom::Natives {
                             "NoteProposalDeclined, SetMarriageFacts, MarriageRing, SetMarriageRing, RingsCarried, "
                             "IsOfficiant, CanBless, BetrothedNear, RingNamed, RingGiftFilter, SnapshotRings, "
                             "RingGivenSince, SeverOutfitLockSetting, AskOpen, AskAnswer, CeremonyBegin, CeremonyStage, "
-                            "CeremonyOfficiant, CeremonyBetrothed, CeremonyAdvance, CeremonyEnd",
+                            "CeremonyOfficiant, CeremonyBetrothed, CeremonyLastOfficiant, CeremonyCueTarget, "
+                            "CeremonyCueWanted, CeremonyCueDelay, CeremonyCueSent, CeremonyStop",
                             kScript, kVersion);
             return true;
         });

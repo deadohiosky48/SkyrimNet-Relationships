@@ -6,11 +6,12 @@
 # officiant and the betrothed; Ceremony.h). The full rules are the native ones,
 # which the Papyrus function asks when the action runs.
 #
-# THE WEDDING IS SPOKEN (the author, 2026-10-20): the officiant opens and asks
-# the player, then the betrothed, whether each takes the other, and
-# pronounces them married once both have said yes. One action per step,
-# offered only at its step; only the pronouncement records the marriage, and
-# no message box asks anything.
+# THE WEDDING IS SPOKEN AND DIRECTED (the author, 2026-10-20). The DLL runs
+# the ceremony as a fixed script (native/src/Ceremony.h) that moves on when it
+# hears the right person speak: vows, then each "do you take...", then the
+# pronouncement. In wpm17 each step was an action the model had to pick at
+# the right moment, and the betrothed's never was. Two actions remain:
+# beginning (the officiant agrees to marry them) and stopping (cold feet).
 #
 # NOT is_in_faction ON VANILLA'S JOB FACTIONS (rank -1 reads as not a member),
 # and NOT OUR OWN DECORATORS, which SkyrimNet's eligibility check held false.
@@ -20,7 +21,7 @@ name: MarriageBless
 description: |
   As a priest, priestess or jarl, you begin to marry {{ player.name }} to the one they are engaged to, here and now.
 
-  USE when they have asked you to marry them and you are willing to do it now, quietly or before whoever is here. This only begins it: you will say a few words fitting the moment and ask each of them in turn whether they take the other; nobody is married until both have said yes and you pronounce it. You may refuse, as yourself, for your own reasons; then do not use this, and say so.
+  USE when they have asked you to marry them and you are willing to do it now, quietly or before whoever is here. This only begins it: you will open with a few words and ask for their vows, then ask each of them whether they take the other, and pronounce them married once both have said yes. You may refuse, as yourself, for your own reasons; then do not use this, and say so.
 
 questEditorId: SNRom_Quest
 scriptName: SNRom_Bridge

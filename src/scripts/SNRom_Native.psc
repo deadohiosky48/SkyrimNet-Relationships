@@ -311,19 +311,24 @@ Int Function AskAnswer(Int aiId) Global Native
  when read), the index of the button chosen, -1 dismissed (closed without a
  choice), or -3 never shown (another menu kept the screen for a minute).}
 
-; VERSION 18 (2.5): THE WEDDING, SPOKEN (native/src/Ceremony.h). One at a time;
-; the step is mirrored as FACT SNRom_Ceremony's rank on both taking part.
-Bool Function CeremonyBegin(Actor akOfficiant, Actor akBetrothed) Global Native
-{Begins one at step 1 (the officiant asks the player). False when one is under way.}
+; VERSION 19 (2.5): THE WEDDING, SPOKEN AND DIRECTED (native/src/Ceremony.h).
+; The DLL runs the ceremony as a script that moves on when it hears the right
+; person speak; Papyrus begins it, cues speakers, and records the marriage.
+Bool Function CeremonyBegin(Actor akOfficiant, Actor akBetrothed, String asVariant) Global Native
+{Begins one. False when one is under way or SkyrimNet has no dialogue events. asVariant judges the answers.}
 
 Int Function CeremonyStage() Global Native
-{0 none, 1 asking the player, 2 asking the betrothed, 3 pronouncing.}
+{The step now, 1-8; 0 when none.}
 
 Actor Function CeremonyOfficiant() Global Native
 Actor Function CeremonyBetrothed() Global Native
+Actor Function CeremonyLastOfficiant() Global Native
+{The officiant of the last ceremony, for SNRom_CeremonyMarried.}
 
-Bool Function CeremonyAdvance(Int aiTo) Global Native
-{On to the next step only; False otherwise.}
+Actor Function CeremonyCueTarget(Int aiToken) Global Native
+Bool Function CeremonyCueWanted(Int aiToken) Global Native
+Float Function CeremonyCueDelay(Int aiToken) Global Native
+Function CeremonyCueSent(Int aiToken) Global Native
 
-Function CeremonyEnd(Bool abMarried, String asWhy) Global Native
-{Over. Not married: SNRom_CeremonyEnded (strArg asWhy, sender the betrothed).}
+Function CeremonyStop(String asWhy) Global Native
+{Over, short of a marriage: SNRom_CeremonyEnded (strArg asWhy, sender the betrothed).}

@@ -7,51 +7,65 @@ namespace RE {
     class Actor;
 }
 
-// THE WEDDING, SPOKEN (2.5; the author, 2026-10-20). The marriage happens in
-// dialogue, as weddings do: the officiant opens and asks the player, then the
-// betrothed, whether each takes the other, and pronounces them married once
-// both have said yes. Only the pronouncement records the marriage. Anyone may
-// stop short: a no, cold feet, or walking away ends the ceremony and leaves
-// them engaged, to begin again another time.
+// THE WEDDING, SPOKEN AND DIRECTED (2.5; the author, 2026-10-20). A wedding
+// runs as a fixed script, held here, that moves on when it HEARS the right
+// person speak (SkyrimNet's dialogue events), never on a model choosing an
+// action at the right moment: in wpm17 that never happened for the betrothed's
+// "I do", and the wedding stalled.
 //
-// One ceremony at a time. The stage is kept here and mirrored as the rank of
-// FACT SNRom_Ceremony on the officiant and the betrothed, which SkyrimNet's
-// eligibility rules read (its get_faction_rank, not our decorators), so each
-// step's action is offered only at its step. Papyrus runs the actions and
-// cues the next speaker (SkyrimNetApi.DirectNarration).
+// THE MINIMUM, for any ceremony (the author): the officiant opens and asks for
+// vows; the player says theirs; the betrothed says theirs; the officiant asks
+// the player "do you take..."; the player answers; the officiant asks the
+// betrothed; the betrothed answers; the officiant pronounces them married. The
+// two answers are judged yes, no or unclear by a small prompt of their own
+// (snrom_ceremony_judge): a no ends the wedding, an unclear answer is asked
+// again. More elaborate ceremonies add steps to the same list (and one day a
+// wedding planner composes it, STANDALONE_PLAN_2.5.md, M4w).
 //
-// This is the unplanned form, an elopement: opening words, the two questions,
-// the pronouncement. A planned wedding (Build B, M4w) adds to it.
+// The model writes every word. The DLL decides whose turn it is, cues them
+// (a ModEvent Papyrus turns into SkyrimNetApi.DirectNarration once the room is
+// quiet), and records the marriage only when the officiant has pronounced it.
+// A no, cold feet, someone leaving, or nobody going on ends it; they stay
+// engaged and can begin again another time.
+//
+// One at a time. The step number is also the rank of FACT SNRom_Ceremony on
+// the officiant and the betrothed, which the two remaining actions' eligibility
+// reads: MarriageBless (begin) and MarriageColdFeet (stop).
 namespace SNRom::Ceremony {
 
-    enum class Stage : std::int32_t {
-        kNone = 0,
-        kAskPlayer = 1,     // the officiant has opened and asks the player
-        kAskBetrothed = 2,  // the player said yes; the betrothed is asked
-        kPronounce = 3,     // both said yes; the officiant pronounces them wed
-    };
+    // kDataLoaded: SkyrimNet's dialogue events and custom prompts.
+    void Register();
 
-    // Begins one, or refuses (false) when one is under way or either is None.
-    bool Begin(RE::Actor* a_officiant, RE::Actor* a_betrothed);
+    // Begins one, or refuses (false) when one is under way, either is None, or
+    // SkyrimNet has no dialogue events. a_variant: the OpenRouter variant the
+    // answers are judged with (SNRom_Bridge.VariantName).
+    bool Begin(RE::Actor* a_officiant, RE::Actor* a_betrothed, std::string a_variant);
 
-    // The step now; kNone when nothing is under way.
-    Stage Now();
+    // The step now (1-based); 0 when nothing is under way.
+    std::int32_t Now();
 
-    // The two taking part, or null when nothing is under way.
+    // The two taking part, or null when nothing is under way. LastOfficiant
+    // outlives the ceremony, for SNRom_CeremonyMarried's handler.
     RE::Actor* Officiant();
     RE::Actor* Betrothed();
+    RE::Actor* LastOfficiant();
 
-    // On to a_to, which must be the next step. False, changing nothing,
-    // otherwise.
-    bool Advance(Stage a_to);
+    // A cue (SNRom_CeremonyCue, numArg the token): whom it addresses, and
+    // whether it is still wanted when the room has gone quiet (the step is
+    // still on, and its speaker has not spoken on their own). CueSent starts
+    // the step's patience.
+    RE::Actor* CueTarget(std::int32_t a_token);
+    bool       CueWanted(std::int32_t a_token);
+    // Seconds to wait before cueing: the line before is still being said.
+    float      CueDelay(std::int32_t a_token);
+    void       CueSent(std::int32_t a_token);
 
-    // Over. a_married: the officiant pronounced them; anything else ended it
-    // short, and SNRom_CeremonyEnded (strArg a_why, sender the betrothed) tells
-    // Papyrus, which records it.
-    void End(bool a_married, std::string a_why);
+    // Over, short of a marriage (cold feet, a no, someone gone):
+    // SNRom_CeremonyEnded (strArg a_why, sender the betrothed) tells Papyrus.
+    void Stop(std::string a_why);
 
-    // kPostLoadGame and kPreLoadGame: a ceremony is never carried across a
-    // load, and a rank a save kept from one is cleared from everyone near.
+    // kPostLoadGame: a ceremony is never carried across a load, and a rank a
+    // save kept from one is cleared from everyone near.
     void Reset();
 
     // For get_officiant and get_romance: a_actor's part in the ceremony under

@@ -463,6 +463,8 @@ Function RegisterEvents()
     RegisterForModEvent("maras_status_changed", "OnMarasStatusChanged")
     RegisterForModEvent("SNRom_MarriageChanged", "OnMarriageChanged")
     RegisterForModEvent("SNRom_CeremonyEnded", "OnCeremonyEnded")
+    RegisterForModEvent("SNRom_CeremonyCue", "OnCeremonyCue")
+    RegisterForModEvent("SNRom_CeremonyMarried", "OnCeremonyMarried")
     ; SkyrimNetRelationships.dll asks for the roster every time the dashboard
     ; opens (OnDashboardRefresh). Without the DLL it never fires, and this costs
     ; nothing.
@@ -5386,13 +5388,15 @@ Function AcceptEngagementRing(Actor akActor, String asRing)
 EndFunction
 
 Function BlessUnion(Actor akOfficiant, String asBetrothed)
-    { Action BlessUnion (MarriageBless): a priest, priestess or jarl begins to
-      marry the player to their betrothed, here and now (spec 5.3a, the
-      unplanned form). THE WEDDING IS SPOKEN (the author, 2026-10-20): this only
-      begins it. The officiant opens and asks the player; then the betrothed is
-      asked; then the officiant pronounces them married (Ceremony.h). Nothing is
-      asked in a box, and only the pronouncement records the marriage. }
-    If akOfficiant == None || !_ready || _dashNatives < 18
+    { Action BlessUnion (MarriageBless): a priest, priestess or jarl agrees to
+      marry the player to their betrothed, here and now. THE WEDDING IS SPOKEN
+      AND DIRECTED (the author, 2026-10-20): this begins it, and the DLL runs
+      the rest as a fixed script that moves on when it hears the right person
+      speak (native/src/Ceremony.h): the officiant's opening, the player's
+      vows, the betrothed's, each "do you take...", the pronouncement. Nothing
+      is asked in a box; only the pronouncement records the marriage
+      (OnCeremonyMarried). }
+    If akOfficiant == None || !_ready || _dashNatives < 19
         Return
     EndIf
     String priest = akOfficiant.GetDisplayName()
@@ -5401,8 +5405,7 @@ Function BlessUnion(Actor akOfficiant, String asBetrothed)
             "here, or Mara has not granted another marriage. Not begun.")
         Return
     EndIf
-    ; The one named, else the one engaged to the player who is here. More than
-    ; one here and none named: the nearest.
+    ; The one named, else the one engaged to the player who is nearest.
     Actor[] here = SNRom_Native.BetrothedNear()
     Actor player = Game.GetPlayer()
     Actor betrothed = None
@@ -5423,107 +5426,73 @@ Function BlessUnion(Actor akOfficiant, String asBetrothed)
     If betrothed == None
         Return
     EndIf
-    If !SNRom_Native.CeremonyBegin(akOfficiant, betrothed)
-        Diag(LOG_INFO(), "Ceremony: " + priest + " offered to begin, but a wedding is already under way.")
+    If !SNRom_Native.CeremonyBegin(akOfficiant, betrothed, VariantName())
+        Diag(LOG_WARN(), "Ceremony: " + priest + " offered to begin, but a wedding is already under way, or " + \
+            "SkyrimNet's dialogue events are missing (see SkyrimNetRelationships.log).")
         Return
     EndIf
-    String who = betrothed.GetDisplayName()
-    Diag(LOG_INFO(), "Ceremony: " + priest + " begins to marry the player to " + who + ".")
-    ; The cues are for the model, whose prompts are English, not words the
-    ; player reads, so they are not translated (as the events are not).
-    String you = player.GetDisplayName()
-    SkyrimNetApi.DirectNarration(priest + " begins the wedding of " + you + " and " + who + ": a few words " + \
-        "fitting the moment, then " + priest + " asks " + you + ", in front of everyone here, whether they take " + \
-        who + " to be their " + SpouseWord(betrothed) + ".", akOfficiant, player)
+    Diag(LOG_INFO(), "Ceremony: " + priest + " begins to marry the player to " + betrothed.GetDisplayName() + ".")
 EndFunction
 
-String Function SpouseWord(Actor akActor)
-    { "wife" or "husband", for the officiant's question. }
-    If akActor.GetActorBase().GetSex() == 1
-        Return "wife"
+Event OnCeremonyCue(String asEventName, String asText, Float afToken, Form akSender)
+    { SNRom_CeremonyCue: the DLL's script says whose turn it is and what they
+      are to say (Ceremony.cpp, CueText). Once the line before has been heard
+      and the room is quiet, the speaker is cued, unless they have already
+      spoken on their own. The cue is for the model (English), not the
+      player's words. }
+    Actor speaker = akSender as Actor
+    Int token = afToken as Int
+    If speaker == None || _dashNatives < 19
+        Return
     EndIf
-    Return "husband"
-EndFunction
+    Float delay = SNRom_Native.CeremonyCueDelay(token)
+    If delay > 0.0
+        Utility.Wait(delay)
+    EndIf
+    ; QUIET: nothing waiting to be spoken, and a moment since the last line
+    ; ended. Twenty seconds at most.
+    Float waited = 0.0
+    While waited < 20.0 && (SkyrimNetApi.GetSpeechQueueSize() > 0 || SkyrimNetApi.GetTimeSinceLastAudioEnded() < 800)
+        Utility.Wait(0.25)
+        waited += 0.25
+    EndWhile
+    If !SNRom_Native.CeremonyCueWanted(token)
+        Return    ; they spoke on their own, or the step has passed
+    EndIf
+    SkyrimNetApi.DirectNarration(asText, speaker, SNRom_Native.CeremonyCueTarget(token))
+    SNRom_Native.CeremonyCueSent(token)
+EndEvent
 
-Function CeremonyPlayerAnswered(Actor akOfficiant, String asAnswer)
-    { Action MarriageCeremonyAnswer: the officiant heard the player's answer to
-      "do you take...". Yes: the betrothed is asked next. No: the wedding stops,
-      and they stay engaged. }
-    If akOfficiant == None || !_ready || _dashNatives < 18 || SNRom_Native.CeremonyStage() != 1 || \
-       SNRom_Native.CeremonyOfficiant() != akOfficiant
+Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, Form akSender)
+    { SNRom_CeremonyMarried: the officiant has pronounced them married, the
+      last step of the script. THE ONE PLACE A WEDDING IS RECORDED: married,
+      the rings become wedding rings (ChangeMarriage), and everyone here
+      knows. }
+    Actor betrothed = akSender as Actor
+    Actor officiant = SNRom_Native.CeremonyLastOfficiant()
+    If betrothed == None || officiant == None
         Return
     EndIf
-    Actor betrothed = SNRom_Native.CeremonyBetrothed()
-    Actor player = Game.GetPlayer()
-    If betrothed == None
-        Return
+    String priest = officiant.GetDisplayName()
+    ; Recorded as eloped: married without a planned wedding (Build B's).
+    If ChangeMarriage(betrothed, MARRIAGE_MARRIED(), "married by " + priest + ", unplanned", False, officiant, True)
+        Actor player = Game.GetPlayer()
+        SkyrimNetApi.RegisterPersistentEvent(priest + " married " + player.GetDisplayName() + " and " + \
+            betrothed.GetDisplayName() + ". Both spoke their vows and said yes.", officiant, player)
     EndIf
-    String priest = akOfficiant.GetDisplayName()
-    String who = betrothed.GetDisplayName()
-    If StringUtil.Find(asAnswer, "yes") < 0 && StringUtil.Find(asAnswer, "Yes") < 0
-        SNRom_Native.CeremonyEnd(False, "the player did not say yes")
-        Return
-    EndIf
-    If SNRom_Native.CeremonyAdvance(2)
-        Diag(LOG_INFO(), "Ceremony: the player said yes; " + priest + " asks " + who + ".")
-        String you = player.GetDisplayName()
-        SkyrimNetApi.DirectNarration(you + " has said yes. " + priest + " turns to " + who + \
-            " and asks whether they take " + you + " to be their " + SpouseWord(player) + ".", akOfficiant, betrothed)
-    EndIf
-EndFunction
-
-Function CeremonyBetrothedSaidYes(Actor akActor)
-    { Action MarriageIDo: the betrothed said yes. The officiant pronounces them
-      married next. }
-    If akActor == None || !_ready || _dashNatives < 18 || SNRom_Native.CeremonyStage() != 2 || \
-       SNRom_Native.CeremonyBetrothed() != akActor
-        Return
-    EndIf
-    Actor officiant = SNRom_Native.CeremonyOfficiant()
-    If officiant == None || !SNRom_Native.CeremonyAdvance(3)
-        Return
-    EndIf
-    Actor player = Game.GetPlayer()
-    Diag(LOG_INFO(), "Ceremony: " + akActor.GetDisplayName() + " said yes; " + officiant.GetDisplayName() + " pronounces them married.")
-    SkyrimNetApi.DirectNarration("Both " + player.GetDisplayName() + " and " + akActor.GetDisplayName() + \
-        " have said yes. " + officiant.GetDisplayName() + " pronounces them married.", officiant, player)
-EndFunction
+EndEvent
 
 Function CeremonyColdFeet(Actor akActor, String asWhy)
-    { Action MarriageColdFeet: the betrothed could not say yes. The wedding
-      stops; they stay engaged, and can begin again another day. }
-    If akActor == None || !_ready || _dashNatives < 18 || SNRom_Native.CeremonyStage() != 2 || \
-       SNRom_Native.CeremonyBetrothed() != akActor
+    { Action MarriageColdFeet: the betrothed stops the wedding themselves. They
+      stay engaged, and can begin again another day. }
+    If akActor == None || !_ready || _dashNatives < 19 || SNRom_Native.CeremonyBetrothed() != akActor
         Return
     EndIf
-    String why = "they could not say yes"
+    String why = "they could not go through with it"
     If asWhy != ""
         why = why + ": " + asWhy
     EndIf
-    SNRom_Native.CeremonyEnd(False, why)
-EndFunction
-
-Function CeremonyPronounce(Actor akOfficiant)
-    { Action MarriagePronounce: both have said yes, and the officiant declares
-      them married. THE ONE PLACE A WEDDING IS RECORDED: married, the rings
-      become wedding rings (ChangeMarriage), and everyone here knows. }
-    If akOfficiant == None || !_ready || _dashNatives < 18 || SNRom_Native.CeremonyStage() != 3 || \
-       SNRom_Native.CeremonyOfficiant() != akOfficiant
-        Return
-    EndIf
-    Actor betrothed = SNRom_Native.CeremonyBetrothed()
-    If betrothed == None
-        Return
-    EndIf
-    SNRom_Native.CeremonyEnd(True, "")
-    String priest = akOfficiant.GetDisplayName()
-    String who = betrothed.GetDisplayName()
-    ; Recorded as eloped: married without a planned wedding (Build B's).
-    If ChangeMarriage(betrothed, MARRIAGE_MARRIED(), "married by " + priest + ", unplanned", False, akOfficiant, True)
-        Actor player = Game.GetPlayer()
-        SkyrimNetApi.RegisterPersistentEvent(priest + " married " + player.GetDisplayName() + " and " + who + \
-            ". Both said yes.", akOfficiant, player)
-    EndIf
+    SNRom_Native.CeremonyStop(why)
 EndFunction
 
 Event OnCeremonyEnded(String asEventName, String asWhy, Float afUnused, Form akSender)
@@ -7474,9 +7443,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 18
+    If natives < 19
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v18). Install the DLL from the same release.", True)
+            ", these need v19). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5

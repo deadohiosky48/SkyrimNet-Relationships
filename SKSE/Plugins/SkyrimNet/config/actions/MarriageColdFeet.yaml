@@ -6,11 +6,12 @@
 # officiant and the betrothed; Ceremony.h). The full rules are the native ones,
 # which the Papyrus function asks when the action runs.
 #
-# THE WEDDING IS SPOKEN (the author, 2026-10-20): the officiant opens and asks
-# the player, then the betrothed, whether each takes the other, and
-# pronounces them married once both have said yes. One action per step,
-# offered only at its step; only the pronouncement records the marriage, and
-# no message box asks anything.
+# THE WEDDING IS SPOKEN AND DIRECTED (the author, 2026-10-20). The DLL runs
+# the ceremony as a fixed script (native/src/Ceremony.h) that moves on when it
+# hears the right person speak: vows, then each "do you take...", then the
+# pronouncement. In wpm17 each step was an action the model had to pick at
+# the right moment, and the betrothed's never was. Two actions remain:
+# beginning (the officiant agrees to marry them) and stopping (cold feet).
 #
 # NOT is_in_faction ON VANILLA'S JOB FACTIONS (rank -1 reads as not a member),
 # and NOT OUR OWN DECORATORS, which SkyrimNet's eligibility check held false.
@@ -18,9 +19,9 @@
 customCategory: marriage
 name: MarriageColdFeet
 description: |
-  You are being married to {{ player.name }} now, and you have just been asked whether you take them. You cannot say yes - not today, perhaps not at all.
+  You are being married to {{ player.name }}, now, and you cannot go through with it - not today, perhaps not at all.
 
-  USE when your answer is no, or not now: you stop the wedding. You stay engaged unless you also end the engagement.
+  USE only when you stop the wedding yourself: you say you cannot, or you walk away from it. Not for nerves you push through, and not for a yes. You stay engaged unless you also end the engagement.
 
 questEditorId: SNRom_Quest
 scriptName: SNRom_Bridge
@@ -40,8 +41,8 @@ eligibilityRules:
   - conditions:
       - decoratorName: "get_faction_rank"
         arguments: ["currentActor", "SNRom_Ceremony"]
-        comparisonOperator: "=="
-        expectedValue: 2
+        comparisonOperator: ">="
+        expectedValue: 1
       - decoratorName: "get_faction_rank"
         arguments: ["currentActor", "SNRom_Marriage"]
         comparisonOperator: "=="

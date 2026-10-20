@@ -57,6 +57,7 @@ namespace {
             SNRom::Decorators::Register();
             SNRom::Rings::Register();
             SNRom::Officiant::MarkAll();
+            SNRom::Ceremony::Register();
             break;
         // Positions are real once a save has loaded: who is here now.
         case SKSE::MessagingInterface::kPostLoadGame:

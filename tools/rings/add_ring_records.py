@@ -84,7 +84,9 @@ FACTIONS = [
     (0xD71, 'SNRom_Officiant', 'Relationships Officiant', ['Officiant']),
     # The wedding under way (Ceremony.h): its step, on the officiant and the
     # betrothed; -1 when none.
-    (0xD72, 'SNRom_Ceremony', 'Relationships Ceremony', ['None', 'Asking the Player', 'Asking the Betrothed',
+    (0xD72, 'SNRom_Ceremony', 'Relationships Ceremony', ['None', 'Opening', 'Player Vows', 'Betrothed Vows',
+                                                          'Asking the Player', 'Player Answers',
+                                                          'Asking the Betrothed', 'Betrothed Answers',
                                                           'Pronouncing']),
 ]
 

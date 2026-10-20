@@ -726,20 +726,27 @@ You and {{ player.name }} are engaged: promised to each other. There is no hurry
 {% if default(rom.marriage.mayMarry, 1) == 0 %}
 {{ player.name }} is already married, and Mara has granted them no exception: no priest will marry the two of you while that stands.
 {% endif %}
-{# THE WEDDING UNDER WAY (Ceremony.h; the author, 2026-10-20): 1 the officiant
-   asks the player, 2 asks you, 3 is pronouncing. Your yes is yours to give;
-   cold feet are allowed, and leave you engaged. #}
+{# THE WEDDING UNDER WAY (Ceremony.h; the author, 2026-10-20), by step: 1 the
+   opening, 2 the player's vows, 3 yours, 4-5 the player is asked and
+   answers, 6-7 you are asked and answer, 8 the pronouncement. Vows before the
+   questions. Your yes is yours to give; cold feet are allowed, and leave you
+   engaged. #}
 {% set wed = default(rom.marriage.ceremony, 0) %}
 {% set wed_by = default(rom.marriage.ceremonyOfficiant, "the officiant") %}
-{% if wed == 1 %}
+{% if wed > 0 %}
 
-You are being married to {{ player.name }}, now, by {{ wed_by }}. {{ wed_by }} is asking {{ player.name }} first whether they take you; listen for their answer. It is not your turn to answer yet.
-{% elif wed == 2 %}
-
-You are being married to {{ player.name }}, now, by {{ wed_by }}. {{ player.name }} has said yes, and {{ wed_by }} is asking you whether you take {{ player.name }}. Answer as yourself, aloud: yes, if your heart says yes - or, if you cannot, say so, and the wedding stops here.
+You are being married to {{ player.name }}, now, by {{ wed_by }}: first the vows, {{ player.name }}'s and then yours, then {{ wed_by }} asks each of you in turn whether you take the other, then pronounces you married.
+{% if wed <= 2 %}
+Now: {{ wed_by }} has opened, and it is {{ player.name }}'s turn to speak their vows to you. Listen; it is not your turn yet.
 {% elif wed == 3 %}
-
-You are being married to {{ player.name }}, now, by {{ wed_by }}. You have both said yes; {{ wed_by }} is about to pronounce you married.
+Now: {{ player.name }} has spoken their vows. Speak your own vows to {{ player.name }}, in your own words. These are your vows, not yet an answer to any question.
+{% elif wed <= 5 %}
+Now: {{ wed_by }} is asking {{ player.name }} whether they take you. Listen for their answer; it is not your turn yet.
+{% elif wed <= 7 %}
+Now: {{ player.name }} has said yes, and {{ wed_by }} is asking you whether you take {{ player.name }}. Answer as yourself, aloud: yes, if your heart says yes - or, if you cannot, say so, and the wedding stops here.
+{% else %}
+Now: you have both said yes; {{ wed_by }} is pronouncing you married.
+{% endif %}
 {% endif %}
 {% elif mar_state == "married" or mar_state == "separated" %}
 

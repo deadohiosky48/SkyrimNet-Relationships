@@ -11,23 +11,36 @@
 {% if not is_player(actorUUID) %}
 {% if is_plugin_loaded("SNRom_Integration.esl") %}
 {% set off = get_officiant(actorUUID) %}
-{# THE WEDDING YOU ARE CONDUCTING (Ceremony.h), by step: 1 you have opened and
-   asked the player, 2 the player said yes and you ask the betrothed, 3 both
-   said yes and you pronounce them married. The author, 2026-10-20: spoken
-   like a real wedding, one question at a time, and nobody married until both
-   have said yes and you declare it. #}
+{# THE WEDDING YOU ARE CONDUCTING (Ceremony.h), by step, the minimum for any
+   ceremony (the author, 2026-10-20): 1 open and ask for the player's vows,
+   2 the player's vows, 3 the betrothed's vows, 4 ask the player "do you
+   take", 5 their answer, 6 ask the betrothed, 7 their answer, 8 pronounce
+   them married. Vows come BEFORE the questions (wpm17 asked for vows after,
+   and the betrothed answered the question twice). The DLL moves the steps on
+   when it hears each line; this says what this step is, so the words fit. #}
 {% if off and default(off.officiant, 0) == 1 and default(off.ceremony, 0) > 0 %}
 {% set them = default(off.marrying, "your betrothed") %}
+{% set step = off.ceremony %}
 
 ## The Wedding You Are Conducting
 
-You are marrying {{ player.name }} and {{ them }}, now, here, before whoever is present. It is a wedding, not a chat: speak as one who marries people, with the solemnity and warmth that are yours, and let each of them answer for themselves.
-{% if off.ceremony == 1 %}
-You have begun. Say a few words fitting the moment if you have not, then ask {{ player.name }}, plainly, whether they take {{ them }} to be their {% if default(off.marryingFemale, 0) == 1 %}wife{% else %}husband{% endif %} - and wait for their answer. Do not answer for them, and do not ask {{ them }} yet.
-{% elif off.ceremony == 2 %}
-{{ player.name }} has said yes. Now ask {{ them }} whether they take {{ player.name }}, and let {{ them }} answer for themselves. Do not pronounce anything yet.
-{% elif off.ceremony == 3 %}
-Both {{ player.name }} and {{ them }} have said yes. Pronounce them married, in your own words.
+You are marrying {{ player.name }} and {{ them }}, now, here, before whoever is present. It is a wedding, not a chat: speak as one who marries people, with the solemnity and warmth that are yours. It goes in this order: your opening, {{ player.name }}'s vows, {{ them }}'s vows, then you ask each of them in turn whether they take the other, then you pronounce them married. One step at a time; never run ahead.
+{% if step == 1 %}
+Now: open the wedding with a few words fitting the moment, then ask {{ player.name }} to speak their vows to {{ them }}.
+{% elif step == 2 %}
+Now: {{ player.name }} is speaking their vows. Listen; do not ask any question yet.
+{% elif step == 3 %}
+Now: {{ them }} is speaking their vows to {{ player.name }}. Listen; do not ask any question yet.
+{% elif step == 4 %}
+Now: both have spoken their vows. Ask {{ player.name }}, plainly, whether they take {{ them }} to be their {% if default(off.marryingFemale, 0) == 1 %}wife{% else %}husband{% endif %}.
+{% elif step == 5 %}
+Now: you have asked {{ player.name }}. Wait for their answer; do not answer for them, and do not ask {{ them }} yet.
+{% elif step == 6 %}
+Now: {{ player.name }} has said yes. Ask {{ them }} whether they take {{ player.name }}.
+{% elif step == 7 %}
+Now: you have asked {{ them }}. Let them answer for themselves; do not pronounce anything yet.
+{% elif step == 8 %}
+Now: both {{ player.name }} and {{ them }} have said yes. Pronounce them married, in your own words.
 {% endif %}
 {% elif off and default(off.officiant, 0) == 1 and existsIn(off, "betrothed") and length(off.betrothed) > 0 %}
 
