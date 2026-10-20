@@ -1,21 +1,38 @@
 [ system ]
 {# ══════════════════════════════════════════════════════════════════════════
-   THE ANSWER AT THE ALTAR (2.5; native/src/Ceremony.cpp). At a wedding the
-   officiant asked one of the two being married "do you take...?", and this
-   is what they said. The DLL moves the wedding on, stops it, or asks again,
-   on this one word. Rendered with ceremony_speaker, ceremony_question and
+   ONE LINE AT A WEDDING, JUDGED (2.5; native/src/Ceremony.cpp). The DLL runs
+   the ceremony as a script and asks this of a line in two ways:
+   - ceremony_mode "answer": someone was asked "do you take...?" and this is
+     what they said. YES moves the wedding on, NO ends it, UNCLEAR asks again.
+   - ceremony_mode "check": did this line do what its step needs (ask for the
+     vows, speak them, ask the question, pronounce them married)? Only YES
+     counts; anything else and the speaker is cued to do it.
+   Rendered with ceremony_mode, ceremony_speaker, ceremony_question and
    ceremony_answer (PublicSendCustomPromptToLLM). [ system ] and [ user ]
    markers are required: without them the messages array is empty.
    ══════════════════════════════════════════════════════════════════════════ #}
+{% if ceremony_mode == "check" %}
+You read one line spoken at a wedding and answer one question about it. Reply with exactly one word: YES or NO.
+
+- YES: the line plainly does what the question asks, in any words.
+- NO: it does not - it only praises, comments, waits, or does something else.
+{% else %}
 You judge one answer at a wedding. Reply with exactly one word: YES, NO or UNCLEAR.
 
 - YES: they agreed, in any words - "I do", "I will", "yes", "with all my heart", or vows that plainly accept.
 - NO: they refused, said not yet, said they cannot, or backed away.
 - UNCLEAR: anything else - a joke, a question, a change of subject, or words that neither accept nor refuse.
+{% endif %}
 
 [ user ]
+{% if ceremony_mode == "check" %}
+At a wedding, {{ ceremony_speaker }} said: "{{ ceremony_answer }}"
+
+{{ ceremony_question }} One word: YES or NO.
+{% else %}
 At a wedding, {{ ceremony_speaker }} was asked: "{{ ceremony_question }}"
 
 {{ ceremony_speaker }} answered: "{{ ceremony_answer }}"
 
 Did {{ ceremony_speaker }} say yes? One word: YES, NO or UNCLEAR.
+{% endif %}

@@ -34,26 +34,41 @@ namespace SNRom::Ceremony {
             kPronounce,
         };
 
+        // WHAT AN NPC'S LINE MUST HAVE DONE for its step to count. wpm19
+        // took any line from the right speaker: Elisif's "Well spoken, Hroki"
+        // passed as "do you take...", and the wedding waited on an answer to a
+        // question nobody had asked (2026-10-20). Each is asked of the line by
+        // snrom_ceremony_judge; a line that fails is not the step.
+        enum class Check { kNone, kAskedForVows, kSpokeVows, kAskedPlayer, kAskedBetrothed, kPronounced };
+
         struct Step {
-            Who  speaker;        // whose line ends this step
-            Cue  cue;            // what they are cued to say, if not the player
-            Who  target;         // whom the cue addresses
-            bool judged = false; // the line is an answer: yes, no or unclear
+            Who   speaker;              // whose line ends this step
+            Cue   cue;                  // what they are cued to say, if not the player
+            Who   target;               // whom the cue addresses
+            bool  judged = false;       // the line is an answer: yes, no or unclear
+            Check check = Check::kNone; // what the line must have done
         };
 
         const std::vector<Step>& Script() {
             static const std::vector<Step> steps{
-                { Who::kOfficiant, Cue::kOpening, Who::kPlayer },
+                { Who::kOfficiant, Cue::kOpening, Who::kPlayer, false, Check::kAskedForVows },
                 { Who::kPlayer, Cue::kNone, Who::kBetrothed },
-                { Who::kBetrothed, Cue::kBetrothedVows, Who::kPlayer },
-                { Who::kOfficiant, Cue::kAskPlayer, Who::kPlayer },
+                { Who::kBetrothed, Cue::kBetrothedVows, Who::kPlayer, false, Check::kSpokeVows },
+                { Who::kOfficiant, Cue::kAskPlayer, Who::kPlayer, false, Check::kAskedPlayer },
                 { Who::kPlayer, Cue::kNone, Who::kOfficiant, true },
-                { Who::kOfficiant, Cue::kAskBetrothed, Who::kBetrothed },
+                { Who::kOfficiant, Cue::kAskBetrothed, Who::kBetrothed, false, Check::kAskedBetrothed },
                 { Who::kBetrothed, Cue::kBetrothedAnswer, Who::kOfficiant, true },
-                { Who::kOfficiant, Cue::kPronounce, Who::kPlayer },
+                { Who::kOfficiant, Cue::kPronounce, Who::kPlayer, false, Check::kPronounced },
             };
             return steps;
         }
+
+        // A NATURAL REPLY FIRST. SkyrimNet answers a line on its own, most
+        // often from the very person whose turn it is; a cue sent as well made
+        // them say it twice (every doubled question and "I do" in wpm19). So
+        // an NPC's step waits this long for them to speak by themselves, and
+        // is cued only if they have not, or if what they said was not the step.
+        constexpr auto kNaturalWait = std::chrono::seconds{ 9 };
 
         // An NPC's step: cued again once after this long without their line,
         // then the wedding is over. A player's step waits longer: they may be
@@ -95,6 +110,7 @@ namespace SNRom::Ceremony {
         RE::FormID       g_lastOfficiant = 0;
         std::string      g_variant;
         bool             g_heard = false;   // this step's line arrived
+        bool             g_unclear = false; // this step asks again after an unclear answer
         std::size_t      g_lastLength = 0;  // the last line heard, in characters
         bool             g_judging = false;
         bool             g_cued = false;
@@ -210,25 +226,46 @@ namespace SNRom::Ceremony {
 
         void End(bool a_married, const std::string& a_why);
 
-        // Begins step g_step: its rank, and its cue once the line before has
-        // had time to be heard. Main thread.
+        // Cues this step's speaker, once. Main thread.
+        void CueNow() {
+            const auto& step = Script()[g_step];
+            if (!g_active || g_cued || g_judging || step.cue == Cue::kNone) {
+                return;
+            }
+            g_cued = true;
+            g_still = 0.0f;
+            SKSE::log::info("Ceremony: step {}: cueing {}", g_step + 1, NameOf(IdOf(step.speaker)));
+            SendEvent("SNRom_CeremonyCue", CueText(step.cue, g_unclear, g_unclear), static_cast<float>(g_token),
+                      IdOf(step.speaker));
+        }
+
+        // Begins step g_step: its rank; for an NPC's step, a cue if they have
+        // not spoken by themselves within kNaturalWait; for the player's, a
+        // word on screen that it is their turn. Main thread.
         void StartStep(bool a_unclear = false) {
             const auto& step = Script()[g_step];
             g_heard = false;
             g_judging = false;
             g_cued = false;
             g_recued = false;
+            g_unclear = a_unclear;
             g_still = 0.0f;
             ++g_token;
             SetRanks(static_cast<std::int32_t>(g_step) + 1);
             SKSE::log::info("Ceremony: step {} of {}", g_step + 1, Script().size());
             if (step.cue == Cue::kNone) {
+                SendEvent("SNRom_CeremonyYourTurn", step.judged ? "answer" : "vows", 0.0f, g_officiant);
                 return;
             }
             const auto token = g_token;
-            const auto text = CueText(step.cue, a_unclear, a_unclear);
-            const auto speaker = IdOf(step.speaker);
-            SendEvent("SNRom_CeremonyCue", text, static_cast<float>(token), speaker);
+            std::thread([token]() {
+                std::this_thread::sleep_for(kNaturalWait);
+                SKSE::GetTaskInterface()->AddTask([token]() {
+                    if (g_active && token == g_token && !g_heard) {
+                        CueNow();
+                    }
+                });
+            }).detach();
         }
 
         void Next() {
@@ -263,24 +300,64 @@ namespace SNRom::Ceremony {
             }
         }
 
-        void Judge(const std::string& a_line) {
-            const auto& step = Script()[g_step];
+        // A line the step's check found wanting: not the step. Its speaker is
+        // cued (once), and the step waits on. Main thread.
+        void Checked(std::int32_t a_token, const std::string& a_verdict) {
+            if (!g_active || a_token != g_token) {
+                return;
+            }
+            g_judging = false;
+            if (a_verdict == "yes") {
+                Next();
+                return;
+            }
+            SKSE::log::info("Ceremony: step {}: that line was not the step ({})", g_step + 1, a_verdict);
+            g_heard = false;
+            CueNow();
+        }
+
+        // What the line must have done, as a question for the judge.
+        std::string CheckQuestion(Check a_check) {
+            const auto off = NameOf(g_officiant);
+            const auto you = NameOf(0x14);
+            const auto them = NameOf(g_betrothed);
+            switch (a_check) {
+            case Check::kAskedForVows:
+                return "Did " + off + " ask or invite " + you + " to speak their vows?";
+            case Check::kSpokeVows:
+                return "Did " + them + " speak their vows, or promises, to " + you + "?";
+            case Check::kAskedPlayer:
+                return "Did " + off + " ask " + you + " whether they take " + them + " to be their " +
+                       SpouseWord(g_betrothed) + "?";
+            case Check::kAskedBetrothed:
+                return "Did " + off + " ask " + them + " whether they take " + you + " to be their " +
+                       SpouseWord(0x14) + "?";
+            case Check::kPronounced:
+                return "Did " + off + " pronounce or declare " + you + " and " + them + " married?";
+            default:
+                return {};
+            }
+        }
+
+        // One question of one line, to snrom_ceremony_judge: an ANSWER ("do
+        // you take...": yes, no or unclear) or a CHECK (did the line do its
+        // step: yes, or not). a_then hears YES, NO or UNCLEAR as "yes", "no"
+        // or "unclear", on the main thread.
+        void Ask(bool a_answer, const std::string& a_who, const std::string& a_question, const std::string& a_line,
+                 void (*a_then)(std::int32_t, const std::string&)) {
+            const auto token = g_token;
             if (!g_prompt) {
-                Judged(g_token, "yes");   // no way to judge: what was said stands
+                a_then(token, "yes");   // no way to judge: what was said stands
                 return;
             }
             g_judging = true;
-            const auto who = step.speaker == Who::kPlayer ? NameOf(0x14) : NameOf(g_betrothed);
-            const auto other = step.speaker == Who::kPlayer ? NameOf(g_betrothed) : NameOf(0x14);
-            const json ctx{ { "ceremony_speaker", who },
-                            { "ceremony_question", "Do you take " + other + " to be your " +
-                                                       SpouseWord(step.speaker == Who::kPlayer ? g_betrothed : 0x14) +
-                                                       "?" },
+            const json ctx{ { "ceremony_mode", a_answer ? "answer" : "check" },
+                            { "ceremony_speaker", a_who },
+                            { "ceremony_question", a_question },
                             { "ceremony_answer", a_line } };
-            const auto token = g_token;
             const bool queued = g_prompt("snrom_ceremony_judge", g_variant.c_str(),
                                          ctx.dump(-1, ' ', false, json::error_handler_t::replace).c_str(),
-                                         [token](const char* a_response, int a_success) {
+                                         [token, a_then](const char* a_response, int a_success) {
                                              // The first word of the reply: YES, NO or UNCLEAR.
                                              std::string word;
                                              for (const char* c = a_success && a_response ? a_response : ""; *c;
@@ -295,12 +372,21 @@ namespace SNRom::Ceremony {
                                              const std::string verdict = word == "yes" || word == "no" ? word
                                                                                                        : "unclear";
                                              SKSE::GetTaskInterface()->AddTask(
-                                                 [token, verdict]() { Judged(token, verdict); });
+                                                 [token, verdict, a_then]() { a_then(token, verdict); });
                                          });
             if (!queued) {
                 g_judging = false;
-                Judged(token, "unclear");
+                a_then(token, "unclear");
             }
+        }
+
+        void Judge(const std::string& a_line) {
+            const auto& step = Script()[g_step];
+            const bool  player = step.speaker == Who::kPlayer;
+            const auto  other = player ? NameOf(g_betrothed) : NameOf(0x14);
+            Ask(true, player ? NameOf(0x14) : NameOf(g_betrothed),
+                "Do you take " + other + " to be your " + SpouseWord(player ? g_betrothed : 0x14) + "?", a_line,
+                Judged);
         }
 
         // Someone spoke (SkyrimNet's dialogue events). Main thread.
@@ -317,6 +403,8 @@ namespace SNRom::Ceremony {
             SKSE::log::info("Ceremony: step {}: heard {}", g_step + 1, NameOf(a_speaker));
             if (step.judged) {
                 Judge(a_line);
+            } else if (step.check != Check::kNone) {
+                Ask(false, NameOf(a_speaker), CheckQuestion(step.check), a_line, Checked);
             } else {
                 Next();
             }

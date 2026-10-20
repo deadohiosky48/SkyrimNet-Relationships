@@ -465,6 +465,7 @@ Function RegisterEvents()
     RegisterForModEvent("SNRom_CeremonyEnded", "OnCeremonyEnded")
     RegisterForModEvent("SNRom_CeremonyCue", "OnCeremonyCue")
     RegisterForModEvent("SNRom_CeremonyMarried", "OnCeremonyMarried")
+    RegisterForModEvent("SNRom_CeremonyYourTurn", "OnCeremonyYourTurn")
     ; SkyrimNetRelationships.dll asks for the roster every time the dashboard
     ; opens (OnDashboardRefresh). Without the DLL it never fires, and this costs
     ; nothing.
@@ -5462,6 +5463,24 @@ Event OnCeremonyCue(String asEventName, String asText, Float afToken, Form akSen
     EndIf
     SkyrimNetApi.DirectNarration(asText, speaker, SNRom_Native.CeremonyCueTarget(token))
     SNRom_Native.CeremonyCueSent(token)
+EndEvent
+
+Event OnCeremonyYourTurn(String asEventName, String asWhat, Float afUnused, Form akSender)
+    { SNRom_CeremonyYourTurn: the wedding waits on the player, for their vows
+      or their answer. Said on screen, briefly: in wpm19 the officiant's
+      call for vows went by unnoticed and "We are ready" stood for them
+      (2026-10-20). Our own notice view replaces the toast later (M8c). }
+    Actor betrothed = SNRom_Native.CeremonyBetrothed()
+    Actor officiant = SNRom_Native.CeremonyOfficiant()
+    If betrothed == None || officiant == None
+        Return
+    EndIf
+    If asWhat == "answer"
+        Debug.Notification(Tr("ceremony.yourAnswer", "The wedding: {0} has asked whether you take {1}. Answer them.", \
+            officiant.GetDisplayName(), betrothed.GetDisplayName()))
+    Else
+        Debug.Notification(Tr("ceremony.yourVows", "The wedding: speak your vows to {0}.", betrothed.GetDisplayName()))
+    EndIf
 EndEvent
 
 Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, Form akSender)

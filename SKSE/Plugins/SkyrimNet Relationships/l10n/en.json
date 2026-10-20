@@ -276,6 +276,8 @@
   "bio.stirred-by.wit.title": "Stirred By: Wit",
   "bio.stirred-by.yielding.content": "Handing the decision to someone they trust, and being led. Given freely, never taken.\n\n**Characteristics**\n\n- Being told what happens next, by someone they chose, is a relief\n- The choice to yield is always theirs, and they know it",
   "bio.stirred-by.yielding.title": "Stirred By: Yielding",
+  "ceremony.yourAnswer": "The wedding: {0} has asked whether you take {1}. Answer them.",
+  "ceremony.yourVows": "The wedding: speak your vows to {0}.",
   "change.accepted": "You said yes",
   "change.began": "Something began",
   "change.ceiling": "Held at the Lover line",
