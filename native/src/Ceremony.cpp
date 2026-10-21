@@ -144,6 +144,37 @@ namespace SNRom::Ceremony {
         bool             g_heard = false;   // this step's line arrived
         bool             g_unclear = false; // this step asks again after an unclear answer
         RE::FormID       g_lastTarget = 0;  // whom the last line heard was said to
+        int              g_npcRun = 0;      // NPC lines since the player last spoke
+
+        // SKYRIMNET REPLIES ON ITS OWN ONLY SO FAR: after the player's line,
+        // two NPC lines in a row, then no third (wpm21 and wpm23 both: "I do"
+        // from the player, Elisif's question, Hroki's "I do", and Elisif then
+        // waited 33 s for a reply that never came, 2026-10-21). So after this
+        // many, nobody is waited for.
+        constexpr int kNaturalRun = 2;
+
+        // A question's line names who is asked better than SkyrimNet's
+        // listener does: Elisif's "And do you, Hroki, take Haruk...?" came
+        // tagged "to Haruk", Hroki was cued as unaddressed, and said "I do"
+        // twice (2026-10-21). So a line that passed as a question is taken as
+        // said to the one it asks.
+        RE::FormID AskedBy(Check a_check) {
+            switch (a_check) {
+            case Check::kAskedForVows:
+            case Check::kAskedPlayer:
+                return 0x14;
+            case Check::kAskedBetrothed:
+                return g_betrothed;
+            default:
+                return 0;
+            }
+        }
+
+        void Passed(Check a_check) {
+            if (const auto asked = AskedBy(a_check)) {
+                g_lastTarget = asked;
+            }
+        }
 
         // A line from the NEXT step's speaker that arrived while this step's
         // line was being judged: looked at once the judging is done.
@@ -305,12 +336,15 @@ namespace SNRom::Ceremony {
             const auto speakerId = IdOf(step.speaker);
             const bool addressed = g_lastTarget != 0 && g_lastTarget == speakerId;
             const bool limited = addressed && AtSpeechLimit(speakerId);
-            const bool longWait = addressed && !limited;
+            const bool runOut = addressed && g_npcRun >= kNaturalRun;
+            const bool longWait = addressed && !limited && !runOut;
             const auto wait = std::chrono::milliseconds{ static_cast<long long>(
                 (longWait ? g_replyWait : kUnaddressedWait) * 1000.0f) };
             SKSE::log::info("Ceremony: step {}: {} was {}{}; waiting {:.0f} s for them before a cue", g_step + 1,
                             NameOf(speakerId), addressed ? "" : "not ",
-                            limited ? "addressed but at SkyrimNet's speech limit" : "addressed",
+                            limited  ? "addressed but at SkyrimNet's speech limit"
+                            : runOut ? "addressed but after SkyrimNet's last natural reply"
+                                     : "addressed",
                             longWait ? g_replyWait : kUnaddressedWait);
             std::thread([token, wait]() {
                 std::this_thread::sleep_for(wait);
@@ -364,6 +398,7 @@ namespace SNRom::Ceremony {
             }
             g_judging = false;
             if (a_verdict == "yes") {
+                Passed(Script()[g_step].check);
                 Next();
                 return;
             }
@@ -523,6 +558,7 @@ namespace SNRom::Ceremony {
         void Heard(RE::FormID a_speaker, RE::FormID a_target, const std::string& a_line) {
             // Counted always: the lines just before a wedding count against
             // SkyrimNet's budget too. Kept to the last few per speaker.
+            g_npcRun = a_speaker == 0x14 ? 0 : g_npcRun + 1;
             if (a_speaker != 0x14) {
                 auto& times = g_spoken[a_speaker];
                 times.push_back(std::chrono::steady_clock::now());
@@ -574,6 +610,7 @@ namespace SNRom::Ceremony {
                 Judge(a_line);
             } else if (step.check != Check::kNone && WordsDo(step.check, a_line)) {
                 SKSE::log::info("Ceremony: step {}: the words do it", g_step + 1);
+                Passed(step.check);
                 Next();
             } else if (step.check != Check::kNone) {
                 Ask(false, NameOf(a_speaker), CheckQuestion(step.check), a_line, Checked);
