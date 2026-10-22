@@ -219,6 +219,17 @@ namespace SNRom::Natives {
             return Decorators::CanDeclineProposal(FormIdOfActor(a_actor)) == "true";
         }
 
+        // VERSION 24: a deeper bond lifts a no; and how long ago it was.
+        void ClearProposalDeclined(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+            if (const auto id = FormIdOfActor(a_actor)) {
+                Marriage::ClearDeclined(id);
+            }
+        }
+        float ProposalDaysSinceDeclined(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+            const auto id = FormIdOfActor(a_actor);
+            return id ? Marriage::DaysSinceDeclined(id) : -1.0f;
+        }
+
         void NoteProposalDeclined(RE::StaticFunctionTag*, RE::Actor* a_actor) {
             if (const auto id = FormIdOfActor(a_actor)) {
                 Marriage::NoteDeclined(id);
@@ -753,6 +764,8 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("CanAcceptProposal", kScript, CanAcceptProposal, true);
             a_vm->RegisterFunction("CanDeclineProposal", kScript, CanDeclineProposal, true);
             a_vm->RegisterFunction("NoteProposalDeclined", kScript, NoteProposalDeclined, true);
+            a_vm->RegisterFunction("ClearProposalDeclined", kScript, ClearProposalDeclined, true);
+            a_vm->RegisterFunction("ProposalDaysSinceDeclined", kScript, ProposalDaysSinceDeclined, true);
             a_vm->RegisterFunction("SetMarriageFacts", kScript, SetMarriageFacts, true);
             a_vm->RegisterFunction("MarriageRing", kScript, MarriageRing, true);
             a_vm->RegisterFunction("SetMarriageRing", kScript, SetMarriageRing, true);
@@ -796,7 +809,7 @@ namespace SNRom::Natives {
                             "RingGivenSince, SeverOutfitLockSetting, AskOpen, AskAnswer, CeremonyBegin, CeremonyStage, "
                             "CeremonyOfficiant, CeremonyBetrothed, CeremonyLastOfficiant, CeremonyCueTarget, "
                             "CeremonyCueWanted, CeremonyCueDelay, CeremonyCueSent, CeremonyStop, CeremonySetReplyWait, CeremonySetSpeechBudget, RingWeddingFor, RingBand, RingKindOf, "
-                            "RingMetalOf, RingAllOurs, CeremonySetChainDepth",
+                            "RingMetalOf, RingAllOurs, CeremonySetChainDepth, ClearProposalDeclined, ProposalDaysSinceDeclined",
                             kScript, kVersion);
             return true;
         });

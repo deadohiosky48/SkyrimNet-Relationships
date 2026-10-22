@@ -298,6 +298,18 @@ namespace SNRom::Marriage {
         SKSE::log::info("Marriage: {:08X} declined a proposal", static_cast<std::uint32_t>(a_formId));
     }
 
+    void ClearDeclined(std::int32_t a_formId) {
+        bool had = false;
+        {
+            const std::scoped_lock lock{ g_lock };
+            had = g_declined.erase(static_cast<std::uint32_t>(a_formId)) > 0;
+        }
+        if (had) {
+            SKSE::log::info("Marriage: {:08X}'s last no is lifted: the bond has deepened since",
+                            static_cast<std::uint32_t>(a_formId));
+        }
+    }
+
     float DaysSinceDeclined(std::int32_t a_formId) {
         const auto             day = GameDay();
         const std::scoped_lock lock{ g_lock };

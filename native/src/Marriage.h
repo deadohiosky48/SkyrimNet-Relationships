@@ -75,6 +75,13 @@ namespace SNRom::Marriage {
     void  NoteDeclined(std::int32_t a_formId);
     float DaysSinceDeclined(std::int32_t a_formId);
 
+    // A DEEPER BOND LIFTS A NO (the author, 2026-10-22). The wait after a no
+    // keeps a player from asking again until the answer changes; but when the
+    // bond's tier has risen since, things have changed, and the answer may be
+    // asked for again. Aia Arria said "not yet" at Tier 4, reached Spouse, said
+    // yes a game day later, and the wait refused it.
+    void ClearDeclined(std::int32_t a_formId);
+
     // What Papyrus knows and pushes (SNRom_Bridge.ApiPushDecoratorFacts):
     // the player's spouses across every record, and the cooldown after a no,
     // in game days (Bond Pace).

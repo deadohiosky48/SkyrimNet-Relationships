@@ -365,3 +365,10 @@ Form[] Function RingAllOurs() Global Native
 Function CeremonySetChainDepth(Int aiDepth) Global Native
 {VERSION 23 (2.5). How many NPC-to-NPC replies SkyrimNet lets follow one
  opening line (beta 28: Conversation.yaml, Max Chain Depth; beta 27: 2).}
+
+Function ClearProposalDeclined(Actor akActor) Global Native
+{VERSION 24 (2.5). Lifts akActor's last no to a proposal: their bond's tier has
+ risen since, and the answer may be asked for again.}
+
+Float Function ProposalDaysSinceDeclined(Actor akActor) Global Native
+{VERSION 24 (2.5). Game days since akActor last said no to a proposal; -1 for never.}

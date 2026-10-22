@@ -32,7 +32,7 @@ namespace SNRom::Natives {
     //      IsOfficiant, CanBless, BetrothedNear: proposals, rings and eloping
     //      (2.5, Build A; Officiant.h); RingNamed, RingGiftFilter,
     //      SnapshotRings, RingGivenSince: the ring chosen in the gift menu
-    inline constexpr std::int32_t kVersion = 23;
+    inline constexpr std::int32_t kVersion = 24;
 
     // Registers the natives declared in src/scripts/SNRom_Native.psc.
     void Register(const SKSE::PapyrusInterface* a_papyrus);

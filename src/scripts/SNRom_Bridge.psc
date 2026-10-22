@@ -1925,6 +1925,11 @@ Int Function ApplyDepth(Actor akActor, Int aiDelta, String asReason, Bool abShow
         RecordHistory(akActor, asKind, now - was, now, asReason)
         Int fromTier = TierForPoints(was)
         Int toTier = TierForPoints(now)
+        ; A DEEPER BOND LIFTS A NO (Marriage::ClearDeclined): a proposal turned
+        ; down before may be asked for again once the tier has risen.
+        If toTier > fromTier && _dashNatives >= 24
+            SNRom_Native.ClearProposalDeclined(akActor)
+        EndIf
         If abShowLevelUp && fromTier != toTier
             AnnounceTier(akActor, fromTier, toTier, asKind, asReason)
         EndIf
@@ -5054,6 +5059,12 @@ Float Function ProposalCooldownDays() Global
     Return 3.0 / PaceMultiplier()
 EndFunction
 
+String Function DaysText(Float afDays) Global
+    { A number of game days to one decimal place. }
+    Int tenths = Math.Floor(afDays * 10.0 + 0.5) as Int
+    Return (tenths / 10) + "." + (tenths % 10)
+EndFunction
+
 String Function ProposalRefusal(Actor akActor)
     { Why CanAcceptProposal said no, for the log. }
     If TierOf(akActor) < 5
@@ -5065,7 +5076,14 @@ String Function ProposalRefusal(Actor akActor)
     ElseIf SpouseCount() > 0 && !SNRom_Native.MaraException()
         Return "the player is married, and Mara has not granted an exception"
     EndIf
-    Return "a recent no, kin, or orientation"
+    If _dashNatives >= 24
+        Float since = SNRom_Native.ProposalDaysSinceDeclined(akActor)
+        If since >= 0.0 && since < ProposalCooldownDays()
+            Return "they said no " + DaysText(since) + " game days ago; asking again waits " + \
+                DaysText(ProposalCooldownDays() - since) + " more"
+        EndIf
+    EndIf
+    Return "kin, or orientation"
 EndFunction
 
 Function AgreeToMarry(Actor akActor, String asWords)
@@ -5076,8 +5094,12 @@ Function AgreeToMarry(Actor akActor, String asWords)
     EndIf
     String who = akActor.GetDisplayName()
     If !SNRom_Native.CanAcceptProposal(akActor)
+        String why = ProposalRefusal(akActor)
         Diag(LOG_WARN(), "Proposal: " + who + " agreed to marry, but the rules do not allow it now (" + \
-            ProposalRefusal(akActor) + "). Not recorded.")
+            why + "). Not recorded.")
+        ; SAID ON SCREEN (2026-10-22): a yes the rules refuse was only a log
+        ; line, and the player was left wondering why nothing happened.
+        Debug.Notification(Tr("marry.refused", "{0} said yes, but it was not recorded: {1}.", who, why))
         Return
     EndIf
     Int answer = SNRom_Choice.AskNow(Tr("marry.ask.body", "{0} has said yes. Are the two of you promised to each other?", who), \
@@ -7559,9 +7581,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 23
+    If natives < 24
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v23). Install the DLL from the same release.", True)
+            ", these need v24). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5

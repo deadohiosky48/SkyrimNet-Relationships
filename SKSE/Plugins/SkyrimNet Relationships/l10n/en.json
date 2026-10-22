@@ -407,6 +407,7 @@
   "marry.ask.body": "{0} has said yes. Are the two of you promised to each other?",
   "marry.ask.decline": "No, I spoke too soon",
   "marry.ask.defer": "Not yet",
+  "marry.refused": "{0} said yes, but it was not recorded: {1}.",
   "notice.blocksHidden": "Relationships: {0} of its bio blocks are hidden in SeverActions. Restore them from the Bio Blocks page, under Hidden.",
   "notice.cooled": "Your bond with {0} cooled: {1}",
   "notice.deepened": "Your bond with {0} deepened: {1}",
