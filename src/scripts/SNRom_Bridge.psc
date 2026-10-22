@@ -5452,7 +5452,7 @@ Function BlessUnion(Actor akOfficiant, String asBetrothed)
       vows, the betrothed's, each "do you take...", the pronouncement. Nothing
       is asked in a box; only the pronouncement records the marriage
       (OnCeremonyMarried). }
-    If akOfficiant == None || !_ready || _dashNatives < 21
+    If akOfficiant == None || !_ready || _dashNatives < 23
         Return
     EndIf
     String priest = akOfficiant.GetDisplayName()
@@ -5487,12 +5487,29 @@ Function BlessUnion(Actor akOfficiant, String asBetrothed)
     ; natural reply, so the ceremony cues them sooner.
     SNRom_Native.CeremonySetSpeechBudget(SkyrimNetApi.GetConfigInt("game", "speech.maxRecentSpeechCount", 3), \
         SkyrimNetApi.GetConfigFloat("game", "speech.recentSpeechTimeWindowSeconds", 60.0))
+    SNRom_Native.CeremonySetChainDepth(NpcReplyChainDepth())
     If !SNRom_Native.CeremonyBegin(akOfficiant, betrothed, VariantName())
         Diag(LOG_WARN(), "Ceremony: " + priest + " offered to begin, but a wedding is already under way, or " + \
             "SkyrimNet's dialogue events are missing (see SkyrimNetRelationships.log).")
         Return
     EndIf
-    Diag(LOG_INFO(), "Ceremony: " + priest + " begins to marry the player to " + betrothed.GetDisplayName() + ".")
+    Diag(LOG_INFO(), "Ceremony: " + priest + " begins to marry the player to " + betrothed.GetDisplayName() + \
+        ". SkyrimNet: reply wait " + DialogueReplyWaitSeconds() + " s, NPC replies chain to " + NpcReplyChainDepth() + ".")
+EndFunction
+
+Int Function NpcReplyChainDepth() Global
+    { How many NPC-to-NPC replies SkyrimNet lets follow one opening line. Beta
+      28 makes it the player's setting: Conversations > Turn Taking > Max Chain
+      Depth, kept in Conversation.yaml. Beta 27 has no such setting and stops
+      at 2 (seen in the logs, 2026-10-21), so 2 when it cannot be read. }
+    Int depth = SkyrimNetApi.GetConfigInt("Conversation", "turn_taking.max_chain_depth", -1)
+    If depth < 0
+        depth = SkyrimNetApi.GetConfigInt("Conversation", "max_chain_depth", -1)
+    EndIf
+    If depth < 0
+        depth = 2
+    EndIf
+    Return depth
 EndFunction
 
 Float Function DialogueReplyWaitSeconds() Global
@@ -7542,9 +7559,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 22
+    If natives < 23
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v22). Install the DLL from the same release.", True)
+            ", these need v23). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5

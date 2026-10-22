@@ -455,6 +455,11 @@ namespace SNRom::Natives {
         void CeremonySetReplyWait(RE::StaticFunctionTag*, float a_seconds) {
             Ceremony::SetReplyWait(a_seconds);
         }
+        // VERSION 23.
+        void CeremonySetChainDepth(RE::StaticFunctionTag*, std::int32_t a_depth) {
+            Ceremony::SetChainDepth(a_depth);
+        }
+
         // VERSION 22: the ring catalogue (RingCatalog.h).
         RE::TESForm* RingWeddingFor(RE::StaticFunctionTag*, RE::TESForm* a_engagement) {
             if (RingCatalog::KindOf(a_engagement) != static_cast<std::int32_t>(RingCatalog::Kind::kEngagement)) {
@@ -773,6 +778,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("CeremonyStop", kScript, CeremonyStop);
             a_vm->RegisterFunction("CeremonySetReplyWait", kScript, CeremonySetReplyWait);
             a_vm->RegisterFunction("CeremonySetSpeechBudget", kScript, CeremonySetSpeechBudget);
+            a_vm->RegisterFunction("CeremonySetChainDepth", kScript, CeremonySetChainDepth);
             a_vm->RegisterFunction("RingWeddingFor", kScript, RingWeddingFor, true);
             a_vm->RegisterFunction("RingBand", kScript, RingBand, true);
             a_vm->RegisterFunction("RingKindOf", kScript, RingKindOf, true);
@@ -790,7 +796,7 @@ namespace SNRom::Natives {
                             "RingGivenSince, SeverOutfitLockSetting, AskOpen, AskAnswer, CeremonyBegin, CeremonyStage, "
                             "CeremonyOfficiant, CeremonyBetrothed, CeremonyLastOfficiant, CeremonyCueTarget, "
                             "CeremonyCueWanted, CeremonyCueDelay, CeremonyCueSent, CeremonyStop, CeremonySetReplyWait, CeremonySetSpeechBudget, RingWeddingFor, RingBand, RingKindOf, "
-                            "RingMetalOf, RingAllOurs",
+                            "RingMetalOf, RingAllOurs, CeremonySetChainDepth",
                             kScript, kVersion);
             return true;
         });

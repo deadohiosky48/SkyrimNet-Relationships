@@ -147,11 +147,13 @@ namespace SNRom::Ceremony {
         int              g_npcRun = 0;      // NPC lines since the player last spoke
 
         // SKYRIMNET REPLIES ON ITS OWN ONLY SO FAR: after the player's line,
-        // two NPC lines in a row, then no third (wpm21 and wpm23 both: "I do"
-        // from the player, Elisif's question, Hroki's "I do", and Elisif then
-        // waited 33 s for a reply that never came, 2026-10-21). So after this
-        // many, nobody is waited for.
-        constexpr int kNaturalRun = 2;
+        // this many NPC lines in a row, then no more (wpm21 and wpm23 both:
+        // "I do" from the player, Elisif's question, Hroki's "I do", and Elisif
+        // then waited 33 s for a reply that never came, 2026-10-21). So after
+        // this many, nobody is waited for. Beta 28 makes it the player's
+        // setting, Conversation.yaml's Max Chain Depth (read by Papyrus,
+        // CeremonySetChainDepth); beta 27 has no setting and stops at 2.
+        int g_naturalRun = 2;
 
         // A question's line names who is asked better than SkyrimNet's
         // listener does: Elisif's "And do you, Hroki, take Haruk...?" came
@@ -336,7 +338,7 @@ namespace SNRom::Ceremony {
             const auto speakerId = IdOf(step.speaker);
             const bool addressed = g_lastTarget != 0 && g_lastTarget == speakerId;
             const bool limited = addressed && AtSpeechLimit(speakerId);
-            const bool runOut = addressed && g_npcRun >= kNaturalRun;
+            const bool runOut = addressed && g_npcRun >= g_naturalRun;
             const bool longWait = addressed && !limited && !runOut;
             const auto wait = std::chrono::milliseconds{ static_cast<long long>(
                 (longWait ? g_replyWait : kUnaddressedWait) * 1000.0f) };
@@ -780,6 +782,10 @@ namespace SNRom::Ceremony {
             return nullptr;
         }
         return ActorOf(IdOf(Script()[g_step].target));
+    }
+
+    void SetChainDepth(std::int32_t a_depth) {
+        g_naturalRun = a_depth >= 0 ? a_depth : 2;
     }
 
     void SetSpeechBudget(std::int32_t a_lines, float a_windowSeconds) {

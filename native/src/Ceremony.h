@@ -65,6 +65,11 @@ namespace SNRom::Ceremony {
     // in this many seconds gets no natural reply, so they are cued sooner.
     void SetSpeechBudget(std::int32_t a_lines, float a_windowSeconds);
 
+    // How many NPC-to-NPC replies SkyrimNet lets follow one opening line
+    // (beta 28: Conversation.yaml, Max Chain Depth; beta 27: 2). Past it, no
+    // natural reply comes, so the next speaker is cued after the short wait.
+    void SetChainDepth(std::int32_t a_depth);
+
     // Seconds to wait before cueing: the line before is still being said.
     float      CueDelay(std::int32_t a_token);
     void       CueSent(std::int32_t a_token);

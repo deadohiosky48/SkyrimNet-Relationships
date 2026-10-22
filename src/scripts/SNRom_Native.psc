@@ -361,3 +361,7 @@ Int Function RingMetalOf(Form akRing) Global Native
 
 Form[] Function RingAllOurs() Global Native
 {Every ring of ours.}
+
+Function CeremonySetChainDepth(Int aiDepth) Global Native
+{VERSION 23 (2.5). How many NPC-to-NPC replies SkyrimNet lets follow one
+ opening line (beta 28: Conversation.yaml, Max Chain Depth; beta 27: 2).}
