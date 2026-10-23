@@ -160,9 +160,16 @@ namespace SNRom::Decorators {
 
         // WHO MAY SAY YES TO A PROPOSAL (2.5, Build A, M3; spec 5.1, 5.2):
         // Spouse and above, enrolled, romance applicable (kin, minor and
-        // orientation), not already engaged or married to the player, not
-        // inside the wait after a no, and the household rule allows another
-        // spouse. AgreeToMarry's eligibility, and checked again when it runs.
+        // orientation), not already engaged or married to the player, and the
+        // household rule allows another spouse. AgreeToMarry's eligibility,
+        // and checked again when it runs.
+        //
+        // THE WAIT AFTER A NO DOES NOT VETO A YES (the author, 2026-10-23,
+        // wpm29). It is there so the player cannot ask until the answer gives
+        // way; 0330 tells them their no stands. But Aia Arria, told why the
+        // player wanted to be engaged now, changed her mind in the same
+        // conversation, and the wait refused the yes she gave. Their own yes
+        // is theirs to give.
         bool CanAccept(std::int32_t a_formId, const Row& a_row) {
             if (a_row.n[Model::kTier] < 5 || Applicability(a_formId, a_row) != 0) {
                 return false;
@@ -170,7 +177,7 @@ namespace SNRom::Decorators {
             if (Display::MarriedToPlayer(a_formId, a_row.engine, a_row.batch) || Marriage::Engaged(a_formId)) {
                 return false;
             }
-            return !Marriage::InCooldown(a_formId, a_row.n[Model::kTier]) && Marriage::MayMarryAnother();
+            return Marriage::MayMarryAnother();
         }
 
         // What 0330 says about marriage (spec 5.2a): the record, the rings,

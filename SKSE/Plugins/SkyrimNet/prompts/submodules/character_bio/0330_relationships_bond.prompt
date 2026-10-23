@@ -758,15 +758,22 @@ You were engaged to {{ player.name }} once, and it was broken off.
 
 You were married to {{ player.name }}, and you are divorced.
 {% elif default(rom.married, 0) != 1 and romance_na == 0 %}
+{# A YES IS NOT THE WEDDING (2026-10-23): Aia Arria said "not yet" three
+   times at Spouse, every time for the wedding - her hymn, the Jarl's court,
+   the ceremony. THE WAIT AFTER A NO STATES THE NO, it does not forbid a yes
+   (wpm29): she changed her mind in the same conversation, once told why. #}
 {% if default(rom.marriage.canAccept, 0) == 1 %}
+{% if default(rom.marriage.cooldown, 0) == 1 %}
+
+{{ player.name }} asked you to marry them not long ago and you said no. That answer stands, unless something has truly changed your mind since - something you had not heard or considered. If it has, you may say yes.
+{% else %}
 
 If {{ player.name }} asks you to marry them, the answer is yours to give - yes, or not yet - as you truly feel.
+{% endif %}
+A yes makes the two of you engaged, promised to each other; it is not the wedding. The wedding comes later, when and how you both want it, as grand or as quiet as you like.
 {% if default(rom.marriage.earlierNo, 0) == 1 %}
 You told {{ player.name }} "not yet" once, when the two of you were not as close as you are now. That answer belonged to then; it does not bind you. Answer as you feel now.
 {% endif %}
-{% elif default(rom.marriage.cooldown, 0) == 1 %}
-
-{{ player.name }} asked you to marry them not long ago and you said no. That answer still stands for now.
 {% elif rom_tier >= 5 and default(rom.marriage.mayMarry, 1) == 0 %}
 
 {{ player.name }} is already married, and Mara has granted them no exception. Whatever you feel, you cannot marry them, and no priest would.

@@ -5059,12 +5059,6 @@ Float Function ProposalCooldownDays() Global
     Return 3.0 / PaceMultiplier()
 EndFunction
 
-String Function DaysText(Float afDays) Global
-    { A number of game days to one decimal place. }
-    Int tenths = Math.Floor(afDays * 10.0 + 0.5) as Int
-    Return (tenths / 10) + "." + (tenths % 10)
-EndFunction
-
 String Function ProposalRefusal(Actor akActor)
     { Why CanAcceptProposal said no, for the log. }
     If TierOf(akActor) < 5
@@ -5076,13 +5070,7 @@ String Function ProposalRefusal(Actor akActor)
     ElseIf SpouseCount() > 0 && !SNRom_Native.MaraException()
         Return "the player is married, and Mara has not granted an exception"
     EndIf
-    If _dashNatives >= 24
-        Float since = SNRom_Native.ProposalDaysSinceDeclined(akActor)
-        If since >= 0.0 && since < ProposalCooldownDays()
-            Return "they said no " + DaysText(since) + " game days ago; asking again waits " + \
-                DaysText(ProposalCooldownDays() - since) + " more"
-        EndIf
-    EndIf
+    ; Not the wait after a no: since wpm29 it does not refuse a yes.
     Return "kin, or orientation"
 EndFunction
 
@@ -5109,6 +5097,8 @@ Function AgreeToMarry(Actor akActor, String asWords)
     Actor player = Game.GetPlayer()
     If answer == SNRom_Choice.ANSWER_ACCEPT()
         If ChangeMarriage(akActor, MARRIAGE_ENGAGED(), "agreed to marry: " + asWords)
+            ; Their yes answers any no before it.
+            SNRom_Native.ClearProposalDeclined(akActor)
             SkyrimNetApi.RegisterPersistentEvent(who + " and " + player.GetDisplayName() + \
                 " are engaged to be married.", akActor, player)
         EndIf
@@ -5123,7 +5113,8 @@ EndFunction
 
 Function DeclineProposal(Actor akActor, String asWhy)
     { Action DeclineProposal: they turned a proposal down. A no is an answer
-      for now (spec 5.2): AgreeToMarry is closed for ProposalCooldownDays. }
+      for now (spec 5.2): for ProposalCooldownDays 0330 tells them it stands,
+      though a yes of their own, their mind truly changed, is still taken. }
     If akActor == None || !_ready || _dashNatives < 16
         Return
     EndIf
