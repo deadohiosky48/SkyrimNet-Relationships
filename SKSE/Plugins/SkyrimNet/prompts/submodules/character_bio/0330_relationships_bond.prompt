@@ -761,6 +761,9 @@ You were married to {{ player.name }}, and you are divorced.
 {% if default(rom.marriage.canAccept, 0) == 1 %}
 
 If {{ player.name }} asks you to marry them, the answer is yours to give - yes, or not yet - as you truly feel.
+{% if default(rom.marriage.earlierNo, 0) == 1 %}
+You told {{ player.name }} "not yet" once, when the two of you were not as close as you are now. That answer belonged to then; it does not bind you. Answer as you feel now.
+{% endif %}
 {% elif default(rom.marriage.cooldown, 0) == 1 %}
 
 {{ player.name }} asked you to marry them not long ago and you said no. That answer still stands for now.

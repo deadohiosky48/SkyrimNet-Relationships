@@ -194,6 +194,11 @@ namespace SNRom::Decorators {
             }
             out["canAccept"] = CanAccept(a_formId, a_row) ? 1 : 0;
             out["cooldown"] = Marriage::InCooldown(a_formId, a_row.n[Model::kTier]) ? 1 : 0;
+            // A no given before, no longer holding: its wait over, or lifted
+            // because the bond has deepened since. 0330 tells them it does not
+            // bind them (Aia Arria kept to her Tier 4 "not yet" at Spouse,
+            // from memory, 2026-10-23).
+            out["earlierNo"] = Marriage::DaysSinceDeclined(a_formId) >= 0.0f && out["cooldown"] == 0 ? 1 : 0;
             out["spouses"] = Marriage::Spouses();
             out["exception"] = Marriage::Exception() ? 1 : 0;
             out["mayMarry"] = Marriage::MayMarryAnother() ? 1 : 0;
