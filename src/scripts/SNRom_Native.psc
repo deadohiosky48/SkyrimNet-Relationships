@@ -372,3 +372,8 @@ Function ClearProposalDeclined(Actor akActor) Global Native
 
 Float Function ProposalDaysSinceDeclined(Actor akActor) Global Native
 {VERSION 24 (2.5). Game days since akActor last said no to a proposal; -1 for never.}
+
+Function NoteProposalDeclinedAt(Actor akActor, Int aiTier) Global Native
+{VERSION 25 (2.5). A no to a proposal, at the bond's tier then: the wait after
+ it lifts once the tier rises above that. A no repeated during the wait keeps
+ the first one's day.}

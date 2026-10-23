@@ -14,7 +14,8 @@ namespace SNRom::Marriage {
 
         // Bump when the layout below changes, and keep reading the old one.
         // 2: the rings, and the declines after the records (Build A).
-        constexpr std::uint32_t kRecordVersion = 2;
+        // 3 (2.5, wpm27): each no keeps the tier it was given at.
+        constexpr std::uint32_t kRecordVersion = 3;
         constexpr std::size_t   kMaxWhy = 400;
         constexpr std::uint32_t kMaxRecords = 100000;
 
@@ -34,7 +35,13 @@ namespace SNRom::Marriage {
 
         std::mutex                         g_lock;
         std::map<std::uint32_t, Record>    g_records;
-        std::map<std::uint32_t, float>     g_declined;  // form id -> game day of the last no
+        // The last no: the game day, and the bond's tier then (-1 unknown: a
+        // save from before the tier was kept).
+        struct Declined {
+            float        day = 0.0f;
+            std::int32_t tier = -1;
+        };
+        std::map<std::uint32_t, Declined> g_declined;  // form id -> the last no
         bool                               g_exception = false;
         std::int32_t                       g_spouses = 0;
         float                              g_cooldownDays = 3.0f;
@@ -289,13 +296,26 @@ namespace SNRom::Marriage {
         return a_fromPlayer ? it->second.ringFromPlayer : it->second.ringToPlayer;
     }
 
-    void NoteDeclined(std::int32_t a_formId) {
+    void NoteDeclined(std::int32_t a_formId, std::int32_t a_tier) {
         const auto day = GameDay();
+        bool       restarted = true;
         {
             const std::scoped_lock lock{ g_lock };
-            g_declined[static_cast<std::uint32_t>(a_formId)] = day;
+            auto&                  no = g_declined[static_cast<std::uint32_t>(a_formId)];
+            // A NO REPEATED DURING THE WAIT DOES NOT RESTART IT (2026-10-23):
+            // Aia Arria, asked again inside it, said what she had said, and the
+            // three days began again. The first no keeps its day.
+            if (no.day > 0.0f && day - no.day < g_cooldownDays) {
+                restarted = false;
+                if (no.tier < 0) {
+                    no.tier = a_tier;
+                }
+            } else {
+                no = Declined{ day, a_tier };
+            }
         }
-        SKSE::log::info("Marriage: {:08X} declined a proposal", static_cast<std::uint32_t>(a_formId));
+        SKSE::log::info("Marriage: {:08X} declined a proposal at tier {}{}", static_cast<std::uint32_t>(a_formId),
+                        a_tier, restarted ? "" : " (within the wait after the last; it keeps its day)");
     }
 
     void ClearDeclined(std::int32_t a_formId) {
@@ -314,7 +334,7 @@ namespace SNRom::Marriage {
         const auto             day = GameDay();
         const std::scoped_lock lock{ g_lock };
         const auto             it = g_declined.find(static_cast<std::uint32_t>(a_formId));
-        return it == g_declined.end() ? -1.0f : std::max(0.0f, day - it->second);
+        return it == g_declined.end() ? -1.0f : std::max(0.0f, day - it->second.day);
     }
 
     void SetFacts(std::int32_t a_spouses, float a_cooldownDays) {
@@ -328,10 +348,22 @@ namespace SNRom::Marriage {
         return g_spouses;
     }
 
-    bool InCooldown(std::int32_t a_formId) {
+    bool InCooldown(std::int32_t a_formId, std::int32_t a_tierNow) {
         const auto             since = DaysSinceDeclined(a_formId);
         const std::scoped_lock lock{ g_lock };
-        return since >= 0.0f && since < g_cooldownDays;
+        if (since < 0.0f || since >= g_cooldownDays) {
+            return false;
+        }
+        // A DEEPER BOND LIFTS A NO, whenever it deepened: the tier now above
+        // the tier of the no. A no from a save that kept no tier is lifted at
+        // Spouse, the tier a proposal is answered at (Aia Arria's "not yet"
+        // came at Tier 4, 2026-10-22).
+        const auto it = g_declined.find(static_cast<std::uint32_t>(a_formId));
+        const auto then = it == g_declined.end() ? -1 : it->second.tier;
+        if (a_tierNow >= 0 && (then >= 0 ? a_tierNow > then : a_tierNow >= 5)) {
+            return false;
+        }
+        return true;
     }
 
     bool MayMarryAnother() {
@@ -382,9 +414,10 @@ namespace SNRom::Marriage {
             a_intfc->WriteRecordData(r.ringToPlayerDay);
         }
         a_intfc->WriteRecordData(static_cast<std::uint32_t>(g_declined.size()));
-        for (const auto& [formId, day] : g_declined) {
+        for (const auto& [formId, no] : g_declined) {
             a_intfc->WriteRecordData(formId);
-            a_intfc->WriteRecordData(day);
+            a_intfc->WriteRecordData(no.day);
+            a_intfc->WriteRecordData(no.tier);
         }
     }
 
@@ -463,13 +496,16 @@ namespace SNRom::Marriage {
             }
             for (std::uint32_t i = 0; i < declines; ++i) {
                 std::uint32_t savedId = 0;
-                float         day = 0.0f;
+                Declined      no;
                 if (a_intfc->ReadRecordData(savedId) != sizeof(savedId) ||
-                    a_intfc->ReadRecordData(day) != sizeof(day)) {
+                    a_intfc->ReadRecordData(no.day) != sizeof(no.day)) {
+                    return damaged();
+                }
+                if (a_version >= 3 && a_intfc->ReadRecordData(no.tier) != sizeof(no.tier)) {
                     return damaged();
                 }
                 if (const auto now = resolve(savedId)) {
-                    g_declined[static_cast<std::uint32_t>(now)] = day;
+                    g_declined[static_cast<std::uint32_t>(now)] = no;
                 }
             }
         }

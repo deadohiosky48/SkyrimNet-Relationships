@@ -5130,7 +5130,7 @@ Function DeclineProposal(Actor akActor, String asWhy)
     If !SNRom_Native.CanDeclineProposal(akActor)
         Return
     EndIf
-    SNRom_Native.NoteProposalDeclined(akActor)
+    SNRom_Native.NoteProposalDeclinedAt(akActor, TierOf(akActor))
     SkyrimNetApi.RegisterPersistentEvent(akActor.GetDisplayName() + " turned down " + \
         Game.GetPlayer().GetDisplayName() + "'s proposal. " + asWhy, akActor, Game.GetPlayer())
     Diag(LOG_INFO(), "Proposal: " + akActor.GetDisplayName() + " declined (" + asWhy + "); asking again waits " + \
@@ -7581,9 +7581,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 24
+    If natives < 25
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v24). Install the DLL from the same release.", True)
+            ", these need v25). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5

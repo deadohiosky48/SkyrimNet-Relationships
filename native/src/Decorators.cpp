@@ -170,7 +170,7 @@ namespace SNRom::Decorators {
             if (Display::MarriedToPlayer(a_formId, a_row.engine, a_row.batch) || Marriage::Engaged(a_formId)) {
                 return false;
             }
-            return !Marriage::InCooldown(a_formId) && Marriage::MayMarryAnother();
+            return !Marriage::InCooldown(a_formId, a_row.n[Model::kTier]) && Marriage::MayMarryAnother();
         }
 
         // What 0330 says about marriage (spec 5.2a): the record, the rings,
@@ -193,7 +193,7 @@ namespace SNRom::Decorators {
                 out["ringToPlayer"] = FormName(record.value("ringToPlayer", 0));
             }
             out["canAccept"] = CanAccept(a_formId, a_row) ? 1 : 0;
-            out["cooldown"] = Marriage::InCooldown(a_formId) ? 1 : 0;
+            out["cooldown"] = Marriage::InCooldown(a_formId, a_row.n[Model::kTier]) ? 1 : 0;
             out["spouses"] = Marriage::Spouses();
             out["exception"] = Marriage::Exception() ? 1 : 0;
             out["mayMarry"] = Marriage::MayMarryAnother() ? 1 : 0;

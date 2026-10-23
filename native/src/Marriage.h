@@ -72,7 +72,7 @@ namespace SNRom::Marriage {
     // A PROPOSAL DECLINED (spec 5.2): a no is an answer for now. Kept apart
     // from the records, since most who decline have none. Game days since the
     // last one, or -1 for never.
-    void  NoteDeclined(std::int32_t a_formId);
+    void  NoteDeclined(std::int32_t a_formId, std::int32_t a_tier = -1);
     float DaysSinceDeclined(std::int32_t a_formId);
 
     // A DEEPER BOND LIFTS A NO (the author, 2026-10-22). The wait after a no
@@ -87,7 +87,9 @@ namespace SNRom::Marriage {
     // in game days (Bond Pace).
     void         SetFacts(std::int32_t a_spouses, float a_cooldownDays);
     std::int32_t Spouses();
-    bool         InCooldown(std::int32_t a_formId);
+    // In the wait after a no, unless the bond's tier (a_tierNow, -1 unknown)
+    // has risen above the tier the no was given at.
+    bool         InCooldown(std::int32_t a_formId, std::int32_t a_tierNow = -1);
 
     // One more spouse allowed: none yet, or Mara's exception (spec 5.4).
     bool MayMarryAnother();
