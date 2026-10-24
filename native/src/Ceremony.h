@@ -51,26 +51,13 @@ namespace SNRom::Ceremony {
     RE::Actor* LastOfficiant();
 
     // A cue (SNRom_CeremonyCue, numArg the token): whom it addresses, and
-    // whether it is still wanted when the room has gone quiet (the step is
-    // still on, and its speaker has not spoken on their own). CueSent starts
-    // the step's patience.
+    // whether it is still wanted when it is sent (the step is still on, and
+    // its speaker has not spoken on their own). CueSent starts the step's
+    // patience.
     RE::Actor* CueTarget(std::int32_t a_token);
     bool       CueWanted(std::int32_t a_token);
-    // How long SkyrimNet waits for a dialogue reply (its dialogue model's
-    // timeout, OpenRouter.yaml), in seconds: an addressed speaker is given
-    // that long to answer on their own before a cue.
-    void SetReplyWait(float a_seconds);
-
-    // SkyrimNet's speech budget (SkyrimNet.yaml): an NPC with this many lines
-    // in this many seconds gets no natural reply, so they are cued sooner.
-    void SetSpeechBudget(std::int32_t a_lines, float a_windowSeconds);
-
-    // How many NPC-to-NPC replies SkyrimNet lets follow one opening line
-    // (beta 28: Conversation.yaml, Max Chain Depth; beta 27: 2). Past it, no
-    // natural reply comes, so the next speaker is cued after the short wait.
-    void SetChainDepth(std::int32_t a_depth);
-
-    // Seconds to wait before cueing: the line before is still being said.
+    // Seconds to hold a cue back: the line before is still being said, for
+    // longer than SkyrimNet's directed turn waits for the floor.
     float      CueDelay(std::int32_t a_token);
     void       CueSent(std::int32_t a_token);
 

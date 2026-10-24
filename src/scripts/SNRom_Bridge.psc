@@ -466,6 +466,8 @@ Function RegisterEvents()
     RegisterForModEvent("SNRom_CeremonyCue", "OnCeremonyCue")
     RegisterForModEvent("SNRom_CeremonyMarried", "OnCeremonyMarried")
     RegisterForModEvent("SNRom_CeremonyYourTurn", "OnCeremonyYourTurn")
+    ; A wedding is never carried across a load; neither is its hold.
+    ReleaseWeddingHold()
     ; SkyrimNetRelationships.dll asks for the roster every time the dashboard
     ; opens (OnDashboardRefresh). Without the DLL it never fires, and this costs
     ; nothing.
@@ -5495,59 +5497,53 @@ Function BlessUnion(Actor akOfficiant, String asBetrothed)
     If betrothed == None
         Return
     EndIf
-    SNRom_Native.CeremonySetReplyWait(DialogueReplyWaitSeconds())
-    ; SkyrimNet's speech budget (SkyrimNet.yaml): someone over it gets no
-    ; natural reply, so the ceremony cues them sooner.
-    SNRom_Native.CeremonySetSpeechBudget(SkyrimNetApi.GetConfigInt("game", "speech.maxRecentSpeechCount", 3), \
-        SkyrimNetApi.GetConfigFloat("game", "speech.recentSpeechTimeWindowSeconds", 60.0))
-    SNRom_Native.CeremonySetChainDepth(NpcReplyChainDepth())
     If !SNRom_Native.CeremonyBegin(akOfficiant, betrothed, VariantName())
         Diag(LOG_WARN(), "Ceremony: " + priest + " offered to begin, but a wedding is already under way, or " + \
             "SkyrimNet's dialogue events are missing (see SkyrimNetRelationships.log).")
         Return
     EndIf
-    Diag(LOG_INFO(), "Ceremony: " + priest + " begins to marry the player to " + betrothed.GetDisplayName() + \
-        ". SkyrimNet: reply wait " + DialogueReplyWaitSeconds() + " s, NPC replies chain to " + NpcReplyChainDepth() + ".")
+    HoldForWedding(akOfficiant, betrothed)
+    Diag(LOG_INFO(), "Ceremony: " + priest + " begins to marry the player to " + betrothed.GetDisplayName() + ".")
 EndFunction
 
-Int Function NpcReplyChainDepth() Global
-    { How many NPC-to-NPC replies SkyrimNet lets follow one opening line. Beta
-      28 makes it the player's setting: Conversations > Turn Taking > Max Chain
-      Depth, kept in Conversation.yaml. Beta 27 has no such setting and stops
-      at 2 (seen in the logs, 2026-10-21), so 2 when it cannot be read. }
-    Int depth = SkyrimNetApi.GetConfigInt("Conversation", "turn_taking.max_chain_depth", -1)
-    If depth < 0
-        depth = SkyrimNetApi.GetConfigInt("Conversation", "max_chain_depth", -1)
-    EndIf
-    If depth < 0
-        depth = 2
-    EndIf
-    Return depth
+; THE TWO AT THE ALTAR STAY THERE (SkyrimNet beta 28's package holds; the
+; author, 2026-10-24, wpm30). For the length of the wedding SkyrimNet applies
+; none of the officiant's or the betrothed's packages - following the player,
+; walking to someone to talk - so nobody wanders off mid-vow. A hold survives
+; a save, and a wedding never does (Ceremony::Reset), so the two held are kept
+; here and released on the next load too.
+Actor _weddingHeldA
+Actor _weddingHeldB
+
+String Function WeddingHolder() Global
+    Return "Relationships"
 EndFunction
 
-Float Function DialogueReplyWaitSeconds() Global
-    { How long SkyrimNet waits for a dialogue reply: its dialogue model's
-      timeout in OpenRouter.yaml (openrouter.timeout, the top-level model that
-      speaks for NPCs), or its first provider's request timeout if that is
-      longer. The player sets them; a reply through the router took 23 s
-      (2026-10-20). The ceremony gives an NPC who was just spoken to this long
-      to answer on their own before cueing them (Ceremony.cpp). 30 when
-      neither can be read. }
-    Int whole = SkyrimNetApi.GetConfigInt("OpenRouter", "openrouter.timeout", 30)
-    Int perCall = SkyrimNetApi.GetConfigInt("OpenRouter", "openrouter.model_params.0.request_timeout", 0)
-    If perCall > whole
-        whole = perCall
+Function HoldForWedding(Actor akOfficiant, Actor akBetrothed)
+    ReleaseWeddingHold()
+    _weddingHeldA = akOfficiant
+    _weddingHeldB = akBetrothed
+    Int a = SkyrimNetApi.HoldPackages(akOfficiant, WeddingHolder())
+    Int b = SkyrimNetApi.HoldPackages(akBetrothed, WeddingHolder())
+    Diag(LOG_INFO(), "Ceremony: SkyrimNet's packages held for the wedding (" + a + " and " + b + " rows).")
+EndFunction
+
+Function ReleaseWeddingHold()
+    If _weddingHeldA != None
+        SkyrimNetApi.ReleaseHeldPackages(_weddingHeldA, WeddingHolder())
     EndIf
-    If whole <= 0
-        whole = 30
+    If _weddingHeldB != None
+        SkyrimNetApi.ReleaseHeldPackages(_weddingHeldB, WeddingHolder())
     EndIf
-    Return whole as Float
+    _weddingHeldA = None
+    _weddingHeldB = None
 EndFunction
 
 Event OnCeremonyCue(String asEventName, String asText, Float afToken, Form akSender)
     { SNRom_CeremonyCue: the DLL's script says whose turn it is (Ceremony.cpp).
-      Once the line before has been heard and the room is quiet, the speaker
-      is cued, unless they have already spoken on their own. asText is a FACT
+      Sent at once: SkyrimNet beta 28 holds a DirectNarration until the floor
+      is free (up to 15 s), so the DLL holds back only a cue after a line
+      longer than that (CeremonyCueDelay). asText is a FACT
       ("Haruk has spoken their vows to Hroki"), since DirectNarration keeps it
       as an event everyone reads back; what to say now is in the speaker's own
       prompt. Empty for a cue repeated after silence, which keeps nothing. }
@@ -5560,13 +5556,6 @@ Event OnCeremonyCue(String asEventName, String asText, Float afToken, Form akSen
     If delay > 0.0
         Utility.Wait(delay)
     EndIf
-    ; QUIET: nothing waiting to be spoken, and a moment since the last line
-    ; ended. Twenty seconds at most.
-    Float waited = 0.0
-    While waited < 20.0 && (SkyrimNetApi.GetSpeechQueueSize() > 0 || SkyrimNetApi.GetTimeSinceLastAudioEnded() < 800)
-        Utility.Wait(0.25)
-        waited += 0.25
-    EndWhile
     If !SNRom_Native.CeremonyCueWanted(token)
         Return    ; they spoke on their own, or the step has passed
     EndIf
@@ -5597,6 +5586,7 @@ Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, For
       last step of the script. THE ONE PLACE A WEDDING IS RECORDED: married,
       the rings become wedding rings (ChangeMarriage), and everyone here
       knows. }
+    ReleaseWeddingHold()
     Actor betrothed = akSender as Actor
     Actor officiant = SNRom_Native.CeremonyLastOfficiant()
     If betrothed == None || officiant == None
@@ -5628,6 +5618,7 @@ Event OnCeremonyEnded(String asEventName, String asWhy, Float afUnused, Form akS
     { SNRom_CeremonyEnded: a wedding stopped short (Ceremony.h): a no, cold
       feet, someone leaving, or nobody going on. They stay engaged; everyone
       who saw it knows. }
+    ReleaseWeddingHold()
     Actor betrothed = akSender as Actor
     Actor player = Game.GetPlayer()
     String who = "their betrothed"
@@ -7572,9 +7563,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 25
+    If natives < 26
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v25). Install the DLL from the same release.", True)
+            ", these need v26). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5

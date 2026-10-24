@@ -67,40 +67,22 @@ namespace SNRom::Ceremony {
             return steps;
         }
 
-        // A NATURAL REPLY FIRST. SkyrimNet answers a line on its own, from
-        // the one it was said to; a cue sent as well made them say it twice
-        // (every doubled question and "I do" in wpm19). So an NPC's step whose
-        // speaker was just ADDRESSED waits for them as long as SkyrimNet waits
-        // for a reply: its dialogue model's timeout, which the player sets
-        // (OpenRouter.yaml; read by Papyrus, CeremonySetReplyWait). One reply
-        // took 23 s through the router (2026-10-20). A speaker nobody
-        // addressed gets a short wait: no reply of theirs is coming.
-        constexpr float kUnaddressedWait = 5.0f;
-
-        // SKYRIMNET'S SPEECH BUDGET: an NPC who has spoken this many lines in
-        // this many seconds gets no natural reply (SkyrimNet.yaml,
-        // speech.maxRecentSpeechCount and recentSpeechTimeWindowSeconds; read
-        // by Papyrus, CeremonySetSpeechBudget). Our cue is not held to it. In
-        // wpm21 Elisif, three lines in 32 s, was waited for 33 s before the
-        // pronouncement for a reply that could not come (2026-10-20).
-        int   g_budgetLines = 3;
-        float g_budgetWindow = 60.0f;
-        std::map<RE::FormID, std::deque<std::chrono::steady_clock::time_point>> g_spoken;
-
-        bool AtSpeechLimit(RE::FormID a_id) {
-            const auto it = g_spoken.find(a_id);
-            if (it == g_spoken.end() || g_budgetLines <= 0) {
-                return false;
-            }
-            const auto since = std::chrono::steady_clock::now() -
-                               std::chrono::milliseconds{ static_cast<long long>(g_budgetWindow * 1000.0f) };
-            auto& times = it->second;
-            while (!times.empty() && times.front() < since) {
-                times.pop_front();
-            }
-            return static_cast<int>(times.size()) >= g_budgetLines;
-        }
-        float           g_replyWait = 33.0f;   // the dialogue timeout, and a breath
+        // CUED AT ONCE (SkyrimNet beta 28; the author, 2026-10-24, wpm30).
+        // Beta 28 makes DirectNarration a directed turn of its own: it takes
+        // over a natural reply still waiting for the floor ("intent 67
+        // (P1-directed) takes over turn 60 (P4-continuation)", and turn 60
+        // ended without a line), passes cooldowns and the speech budget, and
+        // waits up to 15 s for the floor. So every NPC step is cued as it
+        // begins: never said twice, and never waited for. In wpm29 Elisif's
+        // pronouncement waited 33 s for a natural reply that SkyrimNet had
+        // dropped 6 s after Aia's "I do". Before beta 28 a cue sent while a
+        // natural reply was on its way doubled the line (wpm19); that is what
+        // the wait was for, and beta 27 is no longer supported.
+        //
+        // A cue held longer than the floor allows would be dropped, so one
+        // after a long line is sent a little before it ends (CueDelay).
+        constexpr float kFloorWait = 15.0f;
+        constexpr float kFloorMargin = 5.0f;
 
         // An NPC's step: cued again once after this long without their line,
         // then the wedding is over. A player's step waits longer: they may be
@@ -143,40 +125,6 @@ namespace SNRom::Ceremony {
         std::string      g_variant;
         bool             g_heard = false;   // this step's line arrived
         bool             g_unclear = false; // this step asks again after an unclear answer
-        RE::FormID       g_lastTarget = 0;  // whom the last line heard was said to
-        int              g_npcRun = 0;      // NPC lines since the player last spoke
-
-        // SKYRIMNET REPLIES ON ITS OWN ONLY SO FAR: after the player's line,
-        // this many NPC lines in a row, then no more (wpm21 and wpm23 both:
-        // "I do" from the player, Elisif's question, Hroki's "I do", and Elisif
-        // then waited 33 s for a reply that never came, 2026-10-21). So after
-        // this many, nobody is waited for. Beta 28 makes it the player's
-        // setting, Conversation.yaml's Max Chain Depth (read by Papyrus,
-        // CeremonySetChainDepth); beta 27 has no setting and stops at 2.
-        int g_naturalRun = 2;
-
-        // A question's line names who is asked better than SkyrimNet's
-        // listener does: Elisif's "And do you, Hroki, take Haruk...?" came
-        // tagged "to Haruk", Hroki was cued as unaddressed, and said "I do"
-        // twice (2026-10-21). So a line that passed as a question is taken as
-        // said to the one it asks.
-        RE::FormID AskedBy(Check a_check) {
-            switch (a_check) {
-            case Check::kAskedForVows:
-            case Check::kAskedPlayer:
-                return 0x14;
-            case Check::kAskedBetrothed:
-                return g_betrothed;
-            default:
-                return 0;
-            }
-        }
-
-        void Passed(Check a_check) {
-            if (const auto asked = AskedBy(a_check)) {
-                g_lastTarget = asked;
-            }
-        }
 
         // A line from the NEXT step's speaker that arrived while this step's
         // line was being judged: looked at once the judging is done.
@@ -315,9 +263,9 @@ namespace SNRom::Ceremony {
                       IdOf(step.speaker));
         }
 
-        // Begins step g_step: its rank; for an NPC's step, a cue if they have
-        // not spoken by themselves within kNaturalWait; for the player's, a
-        // word on screen that it is their turn. Main thread.
+        // Begins step g_step: its rank; for an NPC's step, its cue at once;
+        // for the player's, a word on screen that it is their turn. Main
+        // thread.
         void StartStep(bool a_unclear = false) {
             const auto& step = Script()[g_step];
             g_heard = false;
@@ -334,28 +282,7 @@ namespace SNRom::Ceremony {
                 SendEvent("SNRom_CeremonyYourTurn", step.judged ? "answer" : "vows", 0.0f, g_officiant);
                 return;
             }
-            const auto token = g_token;
-            const auto speakerId = IdOf(step.speaker);
-            const bool addressed = g_lastTarget != 0 && g_lastTarget == speakerId;
-            const bool limited = addressed && AtSpeechLimit(speakerId);
-            const bool runOut = addressed && g_npcRun >= g_naturalRun;
-            const bool longWait = addressed && !limited && !runOut;
-            const auto wait = std::chrono::milliseconds{ static_cast<long long>(
-                (longWait ? g_replyWait : kUnaddressedWait) * 1000.0f) };
-            SKSE::log::info("Ceremony: step {}: {} was {}{}; waiting {:.0f} s for them before a cue", g_step + 1,
-                            NameOf(speakerId), addressed ? "" : "not ",
-                            limited  ? "addressed but at SkyrimNet's speech limit"
-                            : runOut ? "addressed but after SkyrimNet's last natural reply"
-                                     : "addressed",
-                            longWait ? g_replyWait : kUnaddressedWait);
-            std::thread([token, wait]() {
-                std::this_thread::sleep_for(wait);
-                SKSE::GetTaskInterface()->AddTask([token]() {
-                    if (g_active && token == g_token && !g_heard) {
-                        CueNow();
-                    }
-                });
-            }).detach();
+            CueNow();
         }
 
         void Next() {
@@ -400,7 +327,6 @@ namespace SNRom::Ceremony {
             }
             g_judging = false;
             if (a_verdict == "yes") {
-                Passed(Script()[g_step].check);
                 Next();
                 return;
             }
@@ -558,16 +484,6 @@ namespace SNRom::Ceremony {
 
         // Someone spoke (SkyrimNet's dialogue events). Main thread.
         void Heard(RE::FormID a_speaker, RE::FormID a_target, const std::string& a_line) {
-            // Counted always: the lines just before a wedding count against
-            // SkyrimNet's budget too. Kept to the last few per speaker.
-            g_npcRun = a_speaker == 0x14 ? 0 : g_npcRun + 1;
-            if (a_speaker != 0x14) {
-                auto& times = g_spoken[a_speaker];
-                times.push_back(std::chrono::steady_clock::now());
-                while (times.size() > 16) {
-                    times.pop_front();
-                }
-            }
             if (!g_active) {
                 return;
             }
@@ -603,16 +519,11 @@ namespace SNRom::Ceremony {
             g_heard = true;
             g_lastLength = a_line.size();
             g_lastHeardAt = std::chrono::steady_clock::now();
-            // The player's line with no one named is said to the officiant:
-            // the ceremony is a conversation with them (wpm21's "I do" had no
-            // listener, so Elisif was cued over her own reply).
-            g_lastTarget = a_target != 0 ? a_target : (a_speaker == 0x14 ? g_officiant : 0);
             SKSE::log::info("Ceremony: step {}: heard {}", g_step + 1, NameOf(a_speaker));
             if (step.judged) {
                 Judge(a_line);
             } else if (step.check != Check::kNone && WordsDo(step.check, a_line)) {
                 SKSE::log::info("Ceremony: step {}: the words do it", g_step + 1);
-                Passed(step.check);
                 Next();
             } else if (step.check != Check::kNone) {
                 Ask(false, NameOf(a_speaker), CheckQuestion(step.check), a_line, Checked);
@@ -751,7 +662,6 @@ namespace SNRom::Ceremony {
         g_variant = std::move(a_variant);
         g_step = 0;
         g_retries = 0;
-        g_lastTarget = 0;
         g_away = 0.0f;
         SetBusy(true);
         SKSE::log::info("Ceremony: {:08X} begins marrying the player to {:08X}", g_officiant, g_betrothed);
@@ -784,20 +694,6 @@ namespace SNRom::Ceremony {
         return ActorOf(IdOf(Script()[g_step].target));
     }
 
-    void SetChainDepth(std::int32_t a_depth) {
-        g_naturalRun = a_depth >= 0 ? a_depth : 2;
-    }
-
-    void SetSpeechBudget(std::int32_t a_lines, float a_windowSeconds) {
-        g_budgetLines = a_lines;
-        g_budgetWindow = a_windowSeconds > 0.0f ? a_windowSeconds : 60.0f;
-    }
-
-    void SetReplyWait(float a_seconds) {
-        // SkyrimNet's own wait for a reply, and three seconds; within reason.
-        g_replyWait = std::clamp(a_seconds + 3.0f, 10.0f, 120.0f);
-    }
-
     float CueDelay(std::int32_t a_token) {
         // The line before is still being said: about fifteen characters a
         // second, and a breath.
@@ -806,9 +702,11 @@ namespace SNRom::Ceremony {
         if (a_token != g_token) {
             return 0.0f;
         }
+        // Only what the directed turn's floor wait cannot cover: a line still
+        // playing more than kFloorWait - kFloorMargin seconds from now.
         const float length = 1.0f + static_cast<float>(g_lastLength) / 15.0f;
         const float since = std::chrono::duration<float>(std::chrono::steady_clock::now() - g_lastHeardAt).count();
-        return std::max(0.0f, length - since);
+        return std::max(0.0f, length - since - (kFloorWait - kFloorMargin));
     }
 
     bool CueWanted(std::int32_t a_token) {

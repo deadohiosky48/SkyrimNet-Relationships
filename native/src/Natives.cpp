@@ -469,14 +469,9 @@ namespace SNRom::Natives {
         void CeremonyCueSent(RE::StaticFunctionTag*, std::int32_t a_token) {
             Ceremony::CueSent(a_token);
         }
-        // VERSION 20.
-        void CeremonySetReplyWait(RE::StaticFunctionTag*, float a_seconds) {
-            Ceremony::SetReplyWait(a_seconds);
-        }
-        // VERSION 23.
-        void CeremonySetChainDepth(RE::StaticFunctionTag*, std::int32_t a_depth) {
-            Ceremony::SetChainDepth(a_depth);
-        }
+        // VERSION 26: CeremonySetReplyWait (20), CeremonySetSpeechBudget (21)
+        // and CeremonySetChainDepth (23) are gone. On SkyrimNet beta 28 a cue
+        // is sent at once (Ceremony.cpp), so nothing waits on them.
 
         // VERSION 22: the ring catalogue (RingCatalog.h).
         RE::TESForm* RingWeddingFor(RE::StaticFunctionTag*, RE::TESForm* a_engagement) {
@@ -501,10 +496,6 @@ namespace SNRom::Natives {
             return RingCatalog::All();
         }
 
-        // VERSION 21.
-        void CeremonySetSpeechBudget(RE::StaticFunctionTag*, std::int32_t a_lines, float a_windowSeconds) {
-            Ceremony::SetSpeechBudget(a_lines, a_windowSeconds);
-        }
         void CeremonyStop(RE::StaticFunctionTag*, std::string a_why) {
             Ceremony::Stop(std::move(a_why));
         }
@@ -797,9 +788,6 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("CeremonyCueDelay", kScript, CeremonyCueDelay);
             a_vm->RegisterFunction("CeremonyCueSent", kScript, CeremonyCueSent);
             a_vm->RegisterFunction("CeremonyStop", kScript, CeremonyStop);
-            a_vm->RegisterFunction("CeremonySetReplyWait", kScript, CeremonySetReplyWait);
-            a_vm->RegisterFunction("CeremonySetSpeechBudget", kScript, CeremonySetSpeechBudget);
-            a_vm->RegisterFunction("CeremonySetChainDepth", kScript, CeremonySetChainDepth);
             a_vm->RegisterFunction("RingWeddingFor", kScript, RingWeddingFor, true);
             a_vm->RegisterFunction("RingBand", kScript, RingBand, true);
             a_vm->RegisterFunction("RingKindOf", kScript, RingKindOf, true);
@@ -816,8 +804,8 @@ namespace SNRom::Natives {
                             "IsOfficiant, CanBless, BetrothedNear, RingNamed, RingGiftFilter, SnapshotRings, "
                             "RingGivenSince, SeverOutfitLockSetting, AskOpen, AskAnswer, CeremonyBegin, CeremonyStage, "
                             "CeremonyOfficiant, CeremonyBetrothed, CeremonyLastOfficiant, CeremonyCueTarget, "
-                            "CeremonyCueWanted, CeremonyCueDelay, CeremonyCueSent, CeremonyStop, CeremonySetReplyWait, CeremonySetSpeechBudget, RingWeddingFor, RingBand, RingKindOf, "
-                            "RingMetalOf, RingAllOurs, CeremonySetChainDepth, ClearProposalDeclined, ProposalDaysSinceDeclined, NoteProposalDeclinedAt",
+                            "CeremonyCueWanted, CeremonyCueDelay, CeremonyCueSent, CeremonyStop, RingWeddingFor, RingBand, RingKindOf, "
+                            "RingMetalOf, RingAllOurs, ClearProposalDeclined, ProposalDaysSinceDeclined, NoteProposalDeclinedAt",
                             kScript, kVersion);
             return true;
         });

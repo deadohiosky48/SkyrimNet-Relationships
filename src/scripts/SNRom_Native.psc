@@ -333,17 +333,6 @@ Function CeremonyCueSent(Int aiToken) Global Native
 Function CeremonyStop(String asWhy) Global Native
 {Over, short of a marriage: SNRom_CeremonyEnded (strArg asWhy, sender the betrothed).}
 
-Function CeremonySetReplyWait(Float afSeconds) Global Native
-{VERSION 20 (2.5). How long SkyrimNet waits for a dialogue reply (its dialogue
- model's timeout): an NPC just spoken to is given that long, and three
- seconds, to answer on their own before the ceremony cues them.}
-
-Function CeremonySetSpeechBudget(Int aiLines, Float afWindowSeconds) Global Native
-{VERSION 21 (2.5). SkyrimNet's speech budget (SkyrimNet.yaml,
- speech.maxRecentSpeechCount and recentSpeechTimeWindowSeconds): an NPC with
- that many lines in that window gets no natural reply, so the ceremony cues
- them after a short wait instead of the full reply wait.}
-
 ; VERSION 22 (2.5): THE RING CATALOGUE (native/src/RingCatalog.h): four shapes
 ; (0 engagement ring, 1 wedding ring, 2 wedding band, 3 wide band) in three
 ; metals (0 gold, 1 silver, 2 ebony).
@@ -361,10 +350,6 @@ Int Function RingMetalOf(Form akRing) Global Native
 
 Form[] Function RingAllOurs() Global Native
 {Every ring of ours.}
-
-Function CeremonySetChainDepth(Int aiDepth) Global Native
-{VERSION 23 (2.5). How many NPC-to-NPC replies SkyrimNet lets follow one
- opening line (beta 28: Conversation.yaml, Max Chain Depth; beta 27: 2).}
 
 Function ClearProposalDeclined(Actor akActor) Global Native
 {VERSION 24 (2.5). Lifts akActor's last no to a proposal: their bond's tier has
