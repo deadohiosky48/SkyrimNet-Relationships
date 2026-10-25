@@ -458,6 +458,9 @@ namespace SNRom::Natives {
             return Ceremony::Begin(a_officiant, a_betrothed, std::move(a_variant), static_cast<std::uint32_t>(a_parts),
                                    true);
         }
+        void SetMarasOwns(RE::StaticFunctionTag*, bool a_owns) {
+            Marriage::SetMarasOwns(a_owns);
+        }
         bool CeremonyPlanned(RE::StaticFunctionTag*) {
             return Ceremony::Planned();
         }
@@ -969,6 +972,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("CeremonyStage", kScript, CeremonyStage);
             a_vm->RegisterFunction("CeremonyBeginPlanned", kScript, CeremonyBeginPlanned);
             a_vm->RegisterFunction("CeremonyPlanned", kScript, CeremonyPlanned, true);
+            a_vm->RegisterFunction("SetMarasOwns", kScript, SetMarasOwns, true);
             a_vm->RegisterFunction("IsWeddingPlanner", kScript, IsWeddingPlanner, true);
             a_vm->RegisterFunction("PersonNamed", kScript, PersonNamed);
             a_vm->RegisterFunction("OfficiantNamed", kScript, OfficiantNamed);
@@ -1021,7 +1025,7 @@ namespace SNRom::Natives {
                             "RingGivenSince, SeverOutfitLockSetting, AskOpen, AskAnswer, CeremonyBegin, CeremonyStage, "
                             "CeremonyOfficiant, CeremonyBetrothed, CeremonyLastOfficiant, CeremonyCueTarget, "
                             "CeremonyCueWanted, CeremonyCueDelay, CeremonyCueSent, CeremonyStop, RingWeddingFor, RingBand, RingKindOf, "
-                            "RingMetalOf, RingAllOurs, ClearProposalDeclined, ProposalDaysSinceDeclined, NoteProposalDeclinedAt, RemoveChange, AskOpenEx, AskPeek, AskCancel, CeremonyBeginPlanned, CeremonyPlanned, IsWeddingPlanner, PersonNamed, OfficiantNamed, "
+                            "RingMetalOf, RingAllOurs, ClearProposalDeclined, ProposalDaysSinceDeclined, NoteProposalDeclinedAt, RemoveChange, AskOpenEx, AskPeek, AskCancel, CeremonyBeginPlanned, CeremonyPlanned, SetMarasOwns, IsWeddingPlanner, PersonNamed, OfficiantNamed, "
                             "BetrothedNamed, PlanExists, PlanHire, PlanSetDay, PlanSetPlace, PlanSetOfficiant, PlanGuest, "
                             "PlanSetParts, PlanSetRings, PlanSetOutfit, PlanPostpone, PlanClear, PlanOpen, PlanOfficiant, PlanPlanner, "
                             "PlanGuests, PlanPlace, PlanOutfit, PlanParts, PlanRing, RingWeddingOfMetal",

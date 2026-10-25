@@ -716,9 +716,10 @@ This holds regardless of what you feel, how close you have become, or how the mo
    elopement with any priest, priestess or jarl. Below Spouse a proposal is
    refused in character, by tier; at Spouse the answer is theirs. One spouse
    unless Mara has granted the player her exception. #}
-{# MARAS OR RELATIONSHIPS (the author, 2026-10-25): with MARAS installed it
-   runs marriage, and none of this is said (Marriage::MarasOwns). #}
-{% if standing >= 0 and existsIn(rom, "marriage") and not is_plugin_loaded("TT_MARAS.esp") %}
+{# WHO RUNS MARRIAGE (the author, 2026-10-25): MARAS, while it is installed
+   and its marriages are not yet imported; then none of this is said
+   (marriageOurs 0, Marriage::MarasOwns). #}
+{% if standing >= 0 and existsIn(rom, "marriage") and default(rom.marriageOurs, 1) == 1 %}
 {% set mar_state = default(rom.marriage.state, "none") %}
 {% set ring_in = default(rom.marriage.ringFromPlayer, "") %}
 {% set ring_out = default(rom.marriage.ringToPlayer, "") %}

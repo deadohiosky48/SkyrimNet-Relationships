@@ -482,10 +482,15 @@ Function RegisterEvents()
     RegisterForModEvent("SNRom_CeremonyYourTurn", "OnCeremonyYourTurn")
     ; A wedding is never carried across a load; neither is its hold.
     ReleaseWeddingHold()
-    ; MARAS OR RELATIONSHIPS: with MARAS installed, our marriage actions are
-    ; not offered at all this session.
-    If MarasPresent()
+    ; WHO RUNS MARRIAGE: MARAS until its marriages are imported, then ours,
+    ; with MARAS silenced while it remains installed.
+    If _dashNatives >= 28
+        SNRom_Native.SetMarasOwns(MarriageStandsAside())
+    EndIf
+    If MarriageStandsAside()
         StandAsideForMaras()
+    ElseIf MarasPresent()
+        SilenceMaras()
     EndIf
     ; Build B (M4w): the planned wedding's day (WeddingPlan.h).
     RegisterForModEvent("SNRom_WeddingDay", "OnWeddingDay")
@@ -5652,11 +5657,44 @@ Int _planBandMetal = -1
 Int _planBandWide = -1
 
 Bool Function MarriageStandsAside()
-    { MARAS OR RELATIONSHIPS (the author, 2026-10-25): with MARAS installed,
-      MARAS runs marriage and every marriage feature of ours stands aside. The
-      import (ImportMarasMarriages) still works, so what MARAS holds can come
-      across before it is removed. }
-    Return MarasPresent()
+    { WHO RUNS MARRIAGE (the author, 2026-10-25). MARAS, only while it is
+      installed and its marriages have not been imported: then every marriage
+      feature of ours stands aside, and the player is invited to import
+      (Playthrough repairs). Once imported, Relationships runs marriage even
+      with MARAS still installed, and MARAS is silenced (SilenceMaras). }
+    Return MarasPresent() && StorageUtil.GetIntValue(None, "SNRom_MarasImported", 0) != 1
+EndFunction
+
+Function SilenceMaras()
+    { MARAS IS STILL INSTALLED, BUT ITS MARRIAGES ARE OURS NOW (the author,
+      2026-10-25: "effectively disable MARAS as much as possible"). Its
+      SkyrimNet actions are taken out of the action library for the session,
+      so its proposals, engagements and divorces are never offered (the
+      names as it registers them, for 0.x and 2.0); its proposals are closed
+      on everyone we know (MaintainProposalGate); and an engagement it makes
+      anyway is reversed (OnMarasStatusChanged). Removing MARAS is still the
+      clean end of it. }
+    String[] names = new String[10]
+    names[0] = "ACCEPTMARRIAGEPROPOSAL"
+    names[1] = "CANCELWEDDINGENGAGEMENT"
+    names[2] = "INITIATEDIVORCE"
+    names[3] = "AFFECTIONESTRANGEDDIVORCERESOLUTION"
+    names[4] = "ProposeEngagement"
+    names[5] = "ConsiderEngagementProposal"
+    names[6] = "CallOffEngagement"
+    names[7] = "Divorce"
+    names[8] = "PROPOSEENGAGEMENT"
+    names[9] = "CALLOFFENGAGEMENT"
+    Int removed = 0
+    Int i = 0
+    While i < names.Length
+        If SkyrimNetApi.IsActionRegistered(names[i]) && SkyrimNetApi.UnregisterAction(names[i]) == 0
+            removed += 1
+        EndIf
+        i += 1
+    EndWhile
+    Diag(LOG_INFO(), "MARAS is installed, but its marriages were imported, so Relationships runs marriage: " + \
+        removed + " of MARAS's marriage actions set aside. Removing MARAS is the clean end of it.")
 EndFunction
 
 Function StandAsideForMaras()
@@ -5693,8 +5731,9 @@ Function StandAsideForMaras()
         EndIf
         i += 1
     EndWhile
-    Diag(LOG_INFO(), "MARAS is installed, so MARAS runs marriage: " + removed + " of our marriage actions set aside. " + \
-        "To use Relationships' marriages, import MARAS's from the dashboard's playthrough repairs, then remove MARAS.")
+    Diag(LOG_INFO(), "MARAS runs marriage until its marriages are imported: " + removed + " of our marriage actions " + \
+        "set aside. To have Relationships run marriage, import MARAS's marriages from the dashboard's Playthrough " + \
+        "repairs, then restart the game.")
 EndFunction
 
 Book Function PlannerBook() Global
@@ -6329,6 +6368,15 @@ String Function ImportMarasMarriages()
     EndIf
     Diag(LOG_INFO(), "Import from MARAS: " + married + " married, " + engaged + " engaged, " + divorced + \
         " divorced, " + jilted + " jilted (run before: " + before + ").")
+    ; From now on Relationships runs marriage. This session's action library
+    ; still lacks ours and still has MARAS's: a restart sets both right.
+    If _dashNatives >= 28
+        SNRom_Native.SetMarasOwns(False)
+    EndIf
+    SilenceMaras()
+    If !before
+        summary += " " + Tr("act.import.next", "Relationships runs marriage now. Restart the game to have its marriage actions back; removing MARAS afterwards is the clean finish.")
+    EndIf
     Return summary
 EndFunction
 
@@ -6601,20 +6649,29 @@ Keyword Function IgnoreProposalKeyword() Global
 EndFunction
 
 Function MaintainProposalGate(Actor akActor)
-    { MARAS OR RELATIONSHIPS (the author, 2026-10-25). With MARAS installed it
-      runs marriage, so its proposals are open to everyone: the keyword earlier
-      builds put on people to close them (TTM_IgnoreProposal) comes off. Without
-      MARAS there is nothing to do. One HasKeyword per call, and a write only
-      the first time. }
+    { MARAS's own proposals (TTM_IgnoreProposal), by who runs marriage
+      (MarriageStandsAside): closed once its marriages are imported, open
+      while MARAS runs marriage. Without MARAS there is nothing to do. One
+      HasKeyword per call, and a write only when it changes. }
     If akActor == None || !_ready || !MarasPresent()
         Return
     EndIf
     Keyword kw = IgnoreProposalKeyword()
-    If kw == None || !akActor.HasKeyword(kw)
+    If kw == None
         Return
     EndIf
-    PO3_SKSEFunctions.RemoveKeywordFromRef(akActor, kw)
-    Diag(LOG_INFO(), "MARAS proposals open again for " + akActor.GetDisplayName() + " - MARAS runs marriage.")
+    ; Closed once MARAS's marriages are ours; open while MARAS runs marriage.
+    Bool closeIt = !MarriageStandsAside()
+    If closeIt == akActor.HasKeyword(kw)
+        Return
+    EndIf
+    If closeIt
+        PO3_SKSEFunctions.AddKeywordToRef(akActor, kw)
+        Diag(LOG_INFO(), "MARAS proposals closed for " + akActor.GetDisplayName() + " - Relationships runs marriage.")
+    Else
+        PO3_SKSEFunctions.RemoveKeywordFromRef(akActor, kw)
+        Diag(LOG_INFO(), "MARAS proposals open for " + akActor.GetDisplayName() + " - MARAS runs marriage until imported.")
+    EndIf
 EndFunction
 
 Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEnum, Form akSender)
@@ -6643,9 +6700,20 @@ Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEn
     EndIf
     String st = SNRom_Decorators.Upper(SNRom_Decorators.Trim(asStatus))
 
-    ; MARAS OR RELATIONSHIPS (the author, 2026-10-25): with MARAS installed,
-    ; MARAS runs marriage and its engagements stand. 2.5's builds reversed
-    ; them while both ran; that was the collision this choice ends.
+    ; ONCE ITS MARRIAGES ARE OURS, an engagement MARAS makes anyway is
+    ; reversed (the gate that holds; see SilenceMaras). Before the import,
+    ; MARAS runs marriage and its engagements stand. The call is MARAS 0.x's
+    ; two-argument form; on 2.0 it does not bind, its actions are already
+    ; gone, and removing MARAS is the answer.
+    If st == "ENGAGED" && !MarriageStandsAside()
+        If MARAS.PromoteNPCToStatus(who, "candidate")
+            Diag(LOG_INFO(), "Engagement reversed for " + who.GetDisplayName() + \
+                " - Relationships runs marriage, so a MARAS engagement does not stand." + MarasStateLine(who))
+        Else
+            Diag(LOG_ERROR(), "MARAS refused to undo " + who.GetDisplayName() + "'s engagement." + MarasStateLine(who))
+        EndIf
+        Return
+    EndIf
     If !IsEnrolled(who)
         Return
     EndIf

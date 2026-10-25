@@ -274,7 +274,7 @@
     // and MARAS is removed.
     var marasRuns = !!(snap.playthrough && snap.playthrough.marasOwnsMarriage);
     if (marasRuns && b.state !== "foreclosed") {
-      kind.appendChild(el("p", "blurb", t("detail.marasRuns", "MARAS is installed, so MARAS runs marriage. To use Relationships' marriages instead, import MARAS's from Playthrough repairs, then remove MARAS.")));
+      kind.appendChild(el("p", "blurb", t("detail.marasRuns", "MARAS runs marriage until its marriages are brought over. Import them from Playthrough repairs and restart the game: Relationships then runs marriage, and MARAS is set aside even while it stays installed. Removing MARAS afterwards is the clean finish.")));
     }
 
     // MARRIAGE (2.5, M8b): Relationships' own record, a section of its own.

@@ -82,10 +82,6 @@ namespace SNRom::Officiant {
             SKSE::log::warn("Officiants: SNRom_Officiant not found; no one can marry the player");
             return;
         }
-        if (Marriage::MarasOwns()) {
-            SKSE::log::info("Officiants: none marked; MARAS runs marriage");
-            return;
-        }
         g_officiants.clear();
         for (auto* npc : data->GetFormArray<RE::TESNPC>()) {
             if (npc && (Lists(npc, Priests()) || Lists(npc, Jarls()))) {

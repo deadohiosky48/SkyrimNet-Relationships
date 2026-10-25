@@ -272,6 +272,9 @@ namespace SNRom::Decorators {
                 { "blkDrawn", bio & 1 },
                 { "blkAttach", (bio & 4) >> 2 },
                 { "marriage", MarriageObject(a_formId, a_row) },
+                // 0 while MARAS runs marriage (Marriage::MarasOwns): 0330 then
+                // says nothing of ours.
+                { "marriageOurs", Marriage::MarasOwns() ? 0 : 1 },
             };
         }
 

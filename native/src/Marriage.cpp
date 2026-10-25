@@ -377,13 +377,18 @@ namespace SNRom::Marriage {
     void DetectMaras() {
         auto* data = RE::TESDataHandler::GetSingleton();
         g_marasOwns = data && data->LookupModByName("TT_MARAS.esp") != nullptr;
-        SKSE::log::info("Marriage: {}", g_marasOwns ? "MARAS is installed, so MARAS runs marriage and ours stands aside "
-                                                      "(the import still works)"
-                                                    : "Relationships runs marriage");
+        SKSE::log::info("Marriage: MARAS is {}installed", g_marasOwns ? "" : "not ");
     }
 
     bool MarasOwns() {
         return g_marasOwns.load();
+    }
+
+    void SetMarasOwns(bool a_owns) {
+        if (g_marasOwns.exchange(a_owns) != a_owns) {
+            SKSE::log::info("Marriage: {}", a_owns ? "MARAS runs marriage until its marriages are imported"
+                                                   : "Relationships runs marriage");
+        }
     }
 
     bool MayMarryAnother() {

@@ -391,6 +391,10 @@ Bool Function CeremonyBeginPlanned(Actor akOfficiant, Actor akBetrothed, String 
 {A planned wedding: CeremonyBegin with the plan's parts (1 the address, 2 a
  reading, 4 the rings, 8 the kiss) added to the minimum.}
 
+Function SetMarasOwns(Bool abOwns) Global Native
+{VERSION 28. Who runs marriage this session: MARAS (True) while it is installed
+ and its marriages have not been imported, else Relationships.}
+
 Bool Function CeremonyPlanned() Global Native
 {The wedding under way is a planned one, not an elopement.}
 
