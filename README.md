@@ -252,8 +252,29 @@ What this mod reads from MARAS, and why it never gates on it, is written up in
 
 ## Installation
 
-Install with a mod manager, or copy the contents over your `Data` folder.
-`SNRom_Integration.esl` is ESL-flagged and does not consume a load-order slot.
+Install with a mod manager. The installer asks which plugin file you want:
+
+- **`SNRom_Integration.esl`: most players.** It is light, so it takes no
+  load-order slot, and like every `.esl` it loads among the master files,
+  ahead of all `.esp` plugins.
+- **`SNRom_Integration.esp`, light-flagged: large load orders.** The same
+  plugin, also taking no slot, but it can load where you put it: put it
+  **last**. Choose it if you are adding Relationships to a playthrough you
+  already have and your load order has hundreds of light-flagged `.esp`
+  plugins, or if a save crashed on load after installing the `.esl`.
+  Installing an `.esl` gives every light-flagged `.esp` after it a new slot,
+  and some older mods do not follow their saved records to it (Schlongs of
+  Skyrim on 1.5.97 crashed on load). Loaded last, the `.esp` moves nothing.
+  SeverActions recognises Relationships by the `.esl` name when it switches
+  off its own Intimacy & Consent layer, so with the `.esp` turn that off in
+  SeverActions' settings if you want it off.
+
+Don't switch between the two in a playthrough that already uses one: a save
+remembers the plugin by its name, and switching loses what Relationships
+recorded in it.
+
+Installing by hand: copy `00 Core` and one of `10 Plugin as ESL` or
+`11 Plugin as ESP` over your `Data` folder.
 
 Settings appear in SkyrimNet's plugin panel under **SkyrimNet Relationships**.
 
