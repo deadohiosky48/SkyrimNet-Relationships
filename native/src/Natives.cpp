@@ -8,7 +8,6 @@
 #include "Dashboard.h"
 #include "Ceremony.h"
 #include "Decorators.h"
-#include "Maras.h"
 #include "Marriage.h"
 #include "History.h"
 #include "Hotkey.h"
@@ -463,6 +462,9 @@ namespace SNRom::Natives {
         bool IsWeddingPlanner(RE::StaticFunctionTag*, RE::Actor* a_actor) {
             return Officiant::IsPlanner(a_actor);
         }
+        RE::Actor* OfficiantNamed(RE::StaticFunctionTag*, std::string a_name) {
+            return Officiant::Named(a_name);
+        }
         RE::Actor* PersonNamed(RE::StaticFunctionTag*, std::string a_name) {
             return WeddingPlan::PersonNamed(a_name);
         }
@@ -624,11 +626,6 @@ namespace SNRom::Natives {
         void CeremonyCueSent(RE::StaticFunctionTag*, std::int32_t a_token) {
             Ceremony::CueSent(a_token);
         }
-        // VERSION 28 (Build B): MARAS called by its own shape (Maras.h).
-        bool MarasPromote(RE::StaticFunctionTag*, RE::Actor* a_actor, std::string a_status) {
-            return Maras::PromoteToStatus(a_actor, a_status);
-        }
-
         // VERSION 27: one change taken out of a bond's history (History.h).
         bool RemoveChange(RE::StaticFunctionTag*, RE::Actor* a_actor, std::int32_t a_index, std::int32_t a_delta,
                           std::int32_t a_total) {
@@ -952,7 +949,6 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("ClearProposalDeclined", kScript, ClearProposalDeclined, true);
             a_vm->RegisterFunction("NoteProposalDeclinedAt", kScript, NoteProposalDeclinedAt, true);
             a_vm->RegisterFunction("RemoveChange", kScript, RemoveChange, true);
-            a_vm->RegisterFunction("MarasPromote", kScript, MarasPromote);
             a_vm->RegisterFunction("ProposalDaysSinceDeclined", kScript, ProposalDaysSinceDeclined, true);
             a_vm->RegisterFunction("SetMarriageFacts", kScript, SetMarriageFacts, true);
             a_vm->RegisterFunction("MarriageRing", kScript, MarriageRing, true);
@@ -973,6 +969,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("CeremonyPlanned", kScript, CeremonyPlanned, true);
             a_vm->RegisterFunction("IsWeddingPlanner", kScript, IsWeddingPlanner, true);
             a_vm->RegisterFunction("PersonNamed", kScript, PersonNamed);
+            a_vm->RegisterFunction("OfficiantNamed", kScript, OfficiantNamed);
             a_vm->RegisterFunction("BetrothedNamed", kScript, BetrothedNamed);
             a_vm->RegisterFunction("PlanExists", kScript, PlanExists, true);
             a_vm->RegisterFunction("PlanHire", kScript, PlanHire, true);
@@ -1022,7 +1019,7 @@ namespace SNRom::Natives {
                             "RingGivenSince, SeverOutfitLockSetting, AskOpen, AskAnswer, CeremonyBegin, CeremonyStage, "
                             "CeremonyOfficiant, CeremonyBetrothed, CeremonyLastOfficiant, CeremonyCueTarget, "
                             "CeremonyCueWanted, CeremonyCueDelay, CeremonyCueSent, CeremonyStop, RingWeddingFor, RingBand, RingKindOf, "
-                            "RingMetalOf, RingAllOurs, ClearProposalDeclined, ProposalDaysSinceDeclined, NoteProposalDeclinedAt, RemoveChange, MarasPromote, AskOpenEx, AskPeek, AskCancel, CeremonyBeginPlanned, CeremonyPlanned, IsWeddingPlanner, PersonNamed, "
+                            "RingMetalOf, RingAllOurs, ClearProposalDeclined, ProposalDaysSinceDeclined, NoteProposalDeclinedAt, RemoveChange, AskOpenEx, AskPeek, AskCancel, CeremonyBeginPlanned, CeremonyPlanned, IsWeddingPlanner, PersonNamed, OfficiantNamed, "
                             "BetrothedNamed, PlanExists, PlanHire, PlanSetDay, PlanSetPlace, PlanSetOfficiant, PlanGuest, "
                             "PlanSetParts, PlanSetRings, PlanSetOutfit, PlanPostpone, PlanClear, PlanOpen, PlanOfficiant, PlanPlanner, "
                             "PlanGuests, PlanPlace, PlanOutfit, PlanParts, PlanRing, RingWeddingOfMetal",

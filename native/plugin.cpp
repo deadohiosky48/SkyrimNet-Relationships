@@ -59,6 +59,7 @@ namespace {
             // while these are live (Decorators.h).
             SNRom::Decorators::Register();
             SNRom::Rings::Register();
+            SNRom::Marriage::DetectMaras();
             SNRom::Officiant::MarkAll();
             SNRom::Family::Index();
             SNRom::WeddingPlan::Start();

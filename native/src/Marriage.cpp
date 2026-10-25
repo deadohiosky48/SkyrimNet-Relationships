@@ -2,6 +2,8 @@
 
 #include "PCH.h"
 
+#include <atomic>
+
 #include "Rings.h"
 
 #include <algorithm>
@@ -364,6 +366,22 @@ namespace SNRom::Marriage {
             return false;
         }
         return true;
+    }
+
+    namespace {
+        std::atomic<bool> g_marasOwns{ false };
+    }
+
+    void DetectMaras() {
+        auto* data = RE::TESDataHandler::GetSingleton();
+        g_marasOwns = data && data->LookupModByName("TT_MARAS.esp") != nullptr;
+        SKSE::log::info("Marriage: {}", g_marasOwns ? "MARAS is installed, so MARAS runs marriage and ours stands aside "
+                                                      "(the import still works)"
+                                                    : "Relationships runs marriage");
+    }
+
+    bool MarasOwns() {
+        return g_marasOwns.load();
     }
 
     bool MayMarryAnother() {

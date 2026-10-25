@@ -377,7 +377,7 @@ namespace SNRom::Decorators {
     }
 
     std::string OfficiantJson(RE::Actor* a_actor) {
-        if (!Officiant::Is(a_actor)) {
+        if (Marriage::MarasOwns() || !Officiant::Is(a_actor)) {
             return R"({"officiant":0})";
         }
         json names = json::array();
@@ -415,7 +415,7 @@ namespace SNRom::Decorators {
     // A WEDDING PLANNER'S VIEW (Build B, M4p): the couples they could plan
     // for, which they were hired for, and each plan as it stands.
     std::string PlannerJson(RE::Actor* a_actor) {
-        if (!Officiant::IsPlanner(a_actor)) {
+        if (Marriage::MarasOwns() || !Officiant::IsPlanner(a_actor)) {
             return R"({"planner":0})";
         }
         json couples = json::array();

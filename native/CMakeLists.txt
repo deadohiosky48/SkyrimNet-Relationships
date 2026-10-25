@@ -88,7 +88,6 @@ set(SOURCES
     src/History.cpp
     src/Hotkey.cpp
     src/MagelightHost.cpp
-    src/Maras.cpp
     src/Marriage.cpp
     src/Officiant.cpp
     src/Rings.cpp

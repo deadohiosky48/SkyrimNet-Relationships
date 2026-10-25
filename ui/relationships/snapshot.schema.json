@@ -38,6 +38,7 @@
       "required": ["id", "store", "storeDecision"],
       "description": "Which per-playthrough store is live, for the playthrough repairs (StartFreshStore, AdoptLegacyStore). All three are null until the first full refresh after a load answers: Papyrus pushes them with SNRom_Native.PutPlaythrough, from values SNRom_Bridge.ArmDashboard cached at bootstrap (the refresh may not ask SkyrimNet, since the dashboard pauses the game).",
       "properties": {
+        "marasOwnsMarriage": { "type": "boolean", "description": "2.5: MARAS is installed, so MARAS runs marriage and Relationships' marriage features stand aside (Marriage::MarasOwns). Optional." },
         "id": {
           "type": ["string", "null"],
           "description": "SNRom_Bridge.PlaythroughId(): SkyrimNet's GetSaveUniqueID for this playthrough. Re-read every time, never stored (StorageUtil strings do not survive a reload). Empty while SkyrimNet has not answered."

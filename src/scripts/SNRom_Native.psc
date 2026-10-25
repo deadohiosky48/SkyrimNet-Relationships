@@ -369,11 +369,6 @@ Bool Function RemoveChange(Actor akActor, Int aiIndex, Int aiDelta, Int aiTotal)
  points. The newer changes' totals lose its delta. False otherwise. The points
  are the caller's to move (SNRom_Bridge.UndoChange).}
 
-Bool Function MarasPromote(Actor akActor, String asStatus) Global Native
-{VERSION 28 (2.5, Build B). MARAS.PromoteNPCToStatus(akActor, asStatus), called
- with as many arguments as the installed MARAS declares (2.0 added sendEvent).
- True when sent; MARAS's own answer is logged in SkyrimNetRelationships.log.}
-
 Int Function AskOpenEx(String asTitle, String asBody, String[] asButtons, Int aiDefault, Float afSeconds) Global Native
 {VERSION 28 (2.5, Build B, M8c). AskOpen with a default and a timer: asked on its
  own, the question waits for a calm moment (out of combat, no menu, no wedding
@@ -401,6 +396,9 @@ Bool Function CeremonyPlanned() Global Native
 
 Bool Function IsWeddingPlanner(Actor akActor) Global Native
 {One of the wedding planners (FACT SNRom_WeddingPlanner).}
+
+Actor Function OfficiantNamed(String asName) Global Native
+{A priest, priestess or jarl by name, wherever they are; None when none.}
 
 Actor Function PersonNamed(String asName) Global Native
 {Someone by name: anyone loaded, then anyone on the roster. None when no one.}

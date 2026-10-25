@@ -115,6 +115,126 @@ FACTIONS = [
 ]
 
 
+# THE WEDDING PLANNER'S BOOK (Build B; the author, 2026-10-25). Planning is
+# by conversation, so the choices are set down here, given when a planner is
+# hired (SNRom_Bridge.HireWeddingPlanner). Its model and art are The Dowry's;
+# its text ours. The officiants are listed by hand (Skyrim.esm's names live in
+# its string tables, not the plugin); the DLL logs any name here that is not an
+# officiant it knows (Officiant.cpp, kBookOfficiants), and the planner accepts
+# any priest, priestess or jarl by name besides.
+VANILLA_BOOK = 0x0001ACF2   # Book3ValuableTheDowry
+BOOKS = [
+    (0xD88, 'SNRom_WeddingPlannerBook', "A Wedding Planner's Book", 25),
+]
+BOOK_TEXT = """<p align="center"><font size='40'>A Wedding Planner's Book</font></p>
+<p align="center">Kept by the planners of the temples of Skyrim</p>
+
+Everything a wedding can hold is set down here, with the choices for each. Read it at your leisure, then tell your planner, or the one you are to marry, what you want. Nothing is settled until you say it, and anything can be changed the same way.
+
+[pagebreak]
+<p align="center"><font size='30'>The Day</font></p>
+
+Choose a day, and a time: morning, noon, afternoon, evening or night. Your planner will see that everyone knows it.
+
+If the day will not do after all, say so before it comes, and another is set. There is no shame in moving a wedding. A wedding missed without a word is another matter.
+
+On the day, those who are coming make their way to the place a few hours ahead. Be there in good time; you will be waited for, but not forever.
+
+[pagebreak]
+<p align="center"><font size='30'>The Place</font></p>
+
+Any place one can walk to, and that means something to you both. Among those often chosen:
+
+The Temple of Mara, Riften
+The Temple of the Divines, Solitude
+The Temple of Kynareth, Whiterun
+The Temple of Dibella, Markarth
+The Temple of Talos, Windhelm
+
+Dragonsreach, Whiterun
+The Blue Palace, Solitude
+The Palace of the Kings, Windhelm
+Mistveil Keep, Riften
+Understone Keep, Markarth
+
+[pagebreak]
+<p align="center"><font size='30'>Who Marries You</font></p>
+
+Any priest, priestess or jarl of Skyrim. Your planner sends word, and they come on the day.
+
+Of Mara, in Riften: Maramal, Dinya Balu
+Of the Divines, in Solitude: Rorlund, Silana Petreia, Freir
+Of Kynareth, in Whiterun: Danica Pure-Spring
+Of Dibella, in Markarth: Hamal, Senna
+Of Talos, in Windhelm: Jora, Lortheim
+Of Arkay: Andurs in Whiterun, Styrr in Solitude, Brother Verulus in Markarth, Helgird in Windhelm, Runil in Falkreath
+
+[pagebreak]
+<p align="center"><font size='30'>Who Marries You (the Jarls)</font></p>
+
+Balgruuf the Greater or Vignar Gray-Mane, Whiterun
+Elisif the Fair, Solitude
+Ulfric Stormcloak or Brunwulf Free-Winter, Windhelm
+Laila Law-Giver or Maven Black-Briar, Riften
+Igmund or Thongvor Silver-Blood, Markarth
+Siddgeir or Dengeir of Stuhn, Falkreath
+Idgrod Ravencrone or Sorli the Builder, Morthal
+Skald the Elder or Brina Merilis, Dawnstar
+Korir or Kraldar, Winterhold
+
+Whoever holds the hall when you marry.
+
+[pagebreak]
+<p align="center"><font size='30'>The Guests</font></p>
+
+Anyone you know: friends, family, companions of the road. Name them, and each is told. Each decides for themselves whether to come; those who do will keep their places until you are wed.
+
+<p align="center"><font size='30'>The Ceremony</font></p>
+
+At its heart, always: your vows, then each of you asked, "Do you take...?", then the pronouncement. Beyond that, by your choice:
+
+An address to everyone gathered
+A reading, or a blessing
+The rings exchanged
+The kiss
+
+All four are yours unless you say otherwise.
+
+[pagebreak]
+<p align="center"><font size='30'>The Rings</font></p>
+
+For the one you marry: a wedding ring, the engagement ring and its band together, in gold, silver or ebony.
+
+For you: a band, in gold, silver or ebony, wide and plain, or braided.
+
+They are made for the wedding, and put on during it.
+
+<p align="center"><font size='30'>What You Wear</font></p>
+
+Ask the one you marry to choose what they will wear; they will keep it for the day. What you wear is yours to choose; do not leave it to the morning.
+"""
+
+
+def make_book(header, body, form_id, edid, name, value):
+    out = b''
+    for t, d in subrecords(body):
+        if t == 'EDID':
+            out += pack_sub('EDID', zstr(edid))
+        elif t == 'FULL':
+            out += pack_sub('FULL', zstr(name))
+        elif t == 'DESC':
+            out += pack_sub('DESC', zstr(BOOK_TEXT))
+        elif t == 'DATA':
+            # flags, type, unused, teaches (none), value, weight.
+            weight = struct.unpack_from('<f', d, 12)[0] if len(d) >= 16 else 1.0
+            out += pack_sub('DATA', struct.pack('<BBHiIf', 0, 0, 0, -1, value, weight))
+        elif t in ('VMAD', 'CNAM'):
+            continue   # no scripts; CNAM is a localized string id in Skyrim.esm
+        else:
+            out += pack_sub(t, d)
+    return record(header, form_id, out)
+
+
 def make_fact(form_id, edid, name, ranks):
     # As SNRom_Bond is: no flags, no crime values, no vendor.
     body = (pack_sub('EDID', zstr(edid)) + pack_sub('FULL', zstr(name)) + pack_sub('DATA', bytes(4)) +
@@ -293,7 +413,7 @@ def main(esm_path, esl_path):
 
     # Our own records are master index 1 (Skyrim.esm is 0).
     own = 0x01000000
-    new = {'ARMO': [], 'ARMA': [], 'GLOB': [], 'ENCH': [], 'MGEF': [], 'FACT': []}
+    new = {'ARMO': [], 'ARMA': [], 'GLOB': [], 'ENCH': [], 'MGEF': [], 'FACT': [], 'BOOK': []}
     ours = set()
     for fact_id, edid, name, ranks in FACTIONS:
         assert 0x800 <= fact_id <= 0xFFF, 'ESL FormIDs are 0x800-0xFFF'
@@ -303,6 +423,11 @@ def main(esm_path, esl_path):
         mh, mb = find_record(esm, vanilla)
         new['MGEF'].append(make_mgef(mh, mb, own | mgef_id, edid, name, description))
         ours.add(own | mgef_id)
+    book_h, book_b = find_record(esm, VANILLA_BOOK)
+    for book_id, edid, name, value in BOOKS:
+        assert 0x800 <= book_id <= 0xFFF, 'ESL FormIDs are 0x800-0xFFF'
+        new['BOOK'].append(make_book(book_h, book_b, own | book_id, edid, name, value))
+        ours.add(own | book_id)
     glob_id = own | SPOUSE_HERE[0]
     new['GLOB'].append(make_global(glob_id, SPOUSE_HERE[1]))
     ours.add(glob_id)

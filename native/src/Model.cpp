@@ -562,6 +562,9 @@ namespace SNRom::Model {
         } else {
             snap["playthrough"] = { { "id", nullptr }, { "store", nullptr }, { "storeDecision", nullptr } };
         }
+        // MARAS OR RELATIONSHIPS (2026-10-25): with MARAS installed, MARAS
+        // runs marriage, and the page says so.
+        snap["playthrough"]["marasOwnsMarriage"] = Marriage::MarasOwns();
         snap["ladder"] = { { "thresholds", kThresholds }, { "below", kBelow }, { "floor", kFloor } };
         snap["player"] = player;
         // The words (2.3, WP-L): the language's code, and its table for the

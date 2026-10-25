@@ -1,0 +1,51 @@
+# 2.5, Build B (M4p): PLANNING THE WEDDING, in conversation (spec 5.3a). Each
+# part of the plan is an action taken when it is agreed, over as many
+# conversations as it takes; the plan is kept natively (WeddingPlan.h) and
+# every prompt reads it as it stands. Eligibility on factions the DLL keeps:
+# SNRom_Marriage (1 engaged), SNRom_WeddingPlanner (the five planners) and
+# SNRom_Officiant (every priest, priestess and jarl). Who may change what is
+# checked again in Papyrus (SNRom_Bridge.MayPlan): the betrothed, the planner
+# hired for it, and for the day and the place the officiant who agreed.
+
+customCategory: wedding
+name: WeddingChooseOfficiant
+description: |
+  Who will marry {{ player.name }} and the one they are engaged to is chosen: any priest, priestess or jarl in Skyrim. As the planner hired for it, you send word and arrange it, and they will come to the wedding on the day.
+
+  USE when they have chosen, in this conversation.
+
+questEditorId: SNRom_Quest
+scriptName: SNRom_Bridge
+executionFunctionName: ChooseWeddingOfficiant
+
+parameterMapping:
+  - type: speaker
+    name: akSpeaker
+    description: you
+  - type: dynamic
+    name: asFor
+    description: "the name of the one {{ player.name }} is to marry, when you are not them yourself; empty if you are"
+    optional: true
+    default: ""
+  - type: dynamic
+    name: asOfficiant
+    description: "the name of the priest, priestess or jarl chosen, e.g. 'Maramal' or 'Jarl Elisif the Fair'"
+
+eligibilityRules:
+  - conditions:
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "SNRom_Marriage"]
+        comparisonOperator: "=="
+        expectedValue: 1
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "SNRom_WeddingPlanner"]
+        comparisonOperator: ">="
+        expectedValue: 0
+    logicalOperator: "OR"
+    required: true
+
+eventString: "{{ actor.name }} and {{ player.name }} chose who will marry them."
+isShortLived: true
+
+enabled: true
+defaultPriority: 1

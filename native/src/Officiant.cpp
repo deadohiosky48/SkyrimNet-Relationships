@@ -4,6 +4,8 @@
 
 #include "Marriage.h"
 
+#include <cctype>
+
 namespace SNRom::Officiant {
 
     namespace {
@@ -44,6 +46,17 @@ namespace SNRom::Officiant {
                                                   "Jora" };
         std::vector<RE::TESNPC*> g_planners;
 
+        // THE PLANNER'S BOOK lists these by hand (tools/rings/
+        // add_ring_records.py, BOOK_TEXT): checked once at kDataLoaded, so a
+        // name the book gets wrong is in the log, not discovered in play.
+        constexpr const char* kBookOfficiants[] = {
+            "Maramal", "Dinya Balu", "Rorlund", "Silana Petreia", "Freir", "Danica Pure-Spring", "Hamal", "Senna",
+            "Jora", "Lortheim", "Andurs", "Styrr", "Brother Verulus", "Helgird", "Runil", "Balgruuf the Greater",
+            "Vignar Gray-Mane", "Elisif the Fair", "Ulfric Stormcloak", "Brunwulf Free-Winter", "Laila Law-Giver",
+            "Maven Black-Briar", "Igmund", "Thongvor Silver-Blood", "Siddgeir", "Dengeir of Stuhn",
+            "Idgrod Ravencrone", "Sorli the Builder", "Skald the Elder", "Brina Merilis", "Korir", "Kraldar"
+        };
+
         void Mark(RE::TESNPC* a_npc, RE::TESFaction* a_ours);
 
         // The record lists a_faction, at any rank.
@@ -65,6 +78,10 @@ namespace SNRom::Officiant {
         auto* ours = Ours();
         if (!data || !ours) {
             SKSE::log::warn("Officiants: SNRom_Officiant not found; no one can marry the player");
+            return;
+        }
+        if (Marriage::MarasOwns()) {
+            SKSE::log::info("Officiants: none marked; MARAS runs marriage");
             return;
         }
         g_officiants.clear();
@@ -93,6 +110,20 @@ namespace SNRom::Officiant {
             }
         }
         SKSE::log::info("Officiants: {} wedding planners", g_planners.size());
+
+        std::string missing;
+        for (const auto* name : kBookOfficiants) {
+            const bool known = std::any_of(g_officiants.begin(), g_officiants.end(), [name](RE::TESNPC* a_npc) {
+                const char* full = a_npc ? a_npc->GetFullName() : nullptr;
+                return full && _stricmp(full, name) == 0;
+            });
+            if (!known) {
+                missing += (missing.empty() ? "" : ", ") + std::string(name);
+            }
+        }
+        if (!missing.empty()) {
+            SKSE::log::warn("Officiants: the planner's book names some who are not officiants here: {}", missing);
+        }
     }
 
     void Remark() {
@@ -116,6 +147,43 @@ namespace SNRom::Officiant {
             }
         }
         SKSE::log::info("Officiants: {} marked again after the load (their factions came from the save)", again);
+    }
+
+    RE::Actor* Named(const std::string& a_name) {
+        std::string wanted;
+        for (const char c : a_name) {
+            if (!std::isspace(static_cast<unsigned char>(c)) || !wanted.empty()) {
+                wanted += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            }
+        }
+        while (!wanted.empty() && std::isspace(static_cast<unsigned char>(wanted.back()))) {
+            wanted.pop_back();
+        }
+        if (wanted.empty()) {
+            return nullptr;
+        }
+        RE::Actor* partial = nullptr;
+        for (auto* npc : g_officiants) {
+            const char* name = npc ? npc->GetFullName() : nullptr;
+            if (!name || !*name) {
+                continue;
+            }
+            std::string lower;
+            for (const char* c = name; *c; ++c) {
+                lower += static_cast<char>(std::tolower(static_cast<unsigned char>(*c)));
+            }
+            auto* actor = npc->GetUniqueActor();
+            if (!actor || actor->IsDead()) {
+                continue;
+            }
+            if (lower == wanted) {
+                return actor;
+            }
+            if (!partial && (lower.starts_with(wanted) || lower.find(wanted) != std::string::npos)) {
+                partial = actor;
+            }
+        }
+        return partial;
     }
 
     bool IsPlanner(RE::Actor* a_actor) {

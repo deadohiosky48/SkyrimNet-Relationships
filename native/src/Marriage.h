@@ -94,6 +94,17 @@ namespace SNRom::Marriage {
     // One more spouse allowed: none yet, or Mara's exception (spec 5.4).
     bool MayMarryAnother();
 
+    // MARAS OR RELATIONSHIPS, NOT BOTH (the author, 2026-10-25). MARAS 2.0
+    // overlaps Relationships and Kinship in too much (dating, affairs,
+    // pregnancy, spouses' homes) to manage every collision, so the player
+    // chooses. With MARAS installed it runs marriage, and every marriage
+    // feature of ours stands aside: no proposals, weddings or planners, and
+    // no marriage in the prompts. Only the import (M9) works then, so the
+    // marriages it holds can come across before MARAS is removed. Read once
+    // at kDataLoaded (DetectMaras).
+    void DetectMaras();
+    bool MarasOwns();
+
     // Everyone engaged to the player, ascending form id.
     std::vector<std::int32_t> AllEngaged();
 

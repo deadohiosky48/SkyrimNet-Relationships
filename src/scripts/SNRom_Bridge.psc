@@ -468,6 +468,11 @@ Function RegisterEvents()
     RegisterForModEvent("SNRom_CeremonyYourTurn", "OnCeremonyYourTurn")
     ; A wedding is never carried across a load; neither is its hold.
     ReleaseWeddingHold()
+    ; MARAS OR RELATIONSHIPS: with MARAS installed, our marriage actions are
+    ; not offered at all this session.
+    If MarasPresent()
+        StandAsideForMaras()
+    EndIf
     ; Build B (M4w): the planned wedding's day (WeddingPlan.h).
     RegisterForModEvent("SNRom_WeddingDay", "OnWeddingDay")
     RegisterForModEvent("SNRom_WeddingBegin", "OnWeddingBegin")
@@ -5131,6 +5136,9 @@ EndFunction
 Function AgreeToMarry(Actor akActor, String asWords)
     { Action AgreeToMarry: they said yes to marrying the player, or proposed and
       heard yes. The player confirms; then ENGAGED. }
+    If MarriageStandsAside()
+        Return
+    EndIf
     If akActor == None || !_ready || _dashNatives < 16
         Return
     EndIf
@@ -5169,6 +5177,9 @@ Function DeclineProposal(Actor akActor, String asWhy)
     { Action DeclineProposal: they turned a proposal down. A no is an answer
       for now (spec 5.2): for ProposalCooldownDays 0330 tells them it stands,
       though a yes of their own, their mind truly changed, is still taken. }
+    If MarriageStandsAside()
+        Return
+    EndIf
     If akActor == None || !_ready || _dashNatives < 16
         Return
     EndIf
@@ -5186,6 +5197,9 @@ EndFunction
 Function EndEngagement(Actor akActor, String asWhy)
     { Action EndEngagement: the engagement is off, by either of them. Rings
       already given stay where they are; giving one back is its own moment. }
+    If MarriageStandsAside()
+        Return
+    EndIf
     If akActor == None || !_ready || OurMarriage(akActor) != MARRIAGE_ENGAGED()
         Return
     EndIf
@@ -5443,6 +5457,9 @@ EndFunction
 Function GiveEngagementRing(Actor akActor)
     { Action GiveEngagementRing: they give the player a ring. One they carry and
       are not wearing, or the placeholder, had made for the purpose. }
+    If MarriageStandsAside()
+        Return
+    EndIf
     If akActor == None || !_ready || _dashNatives < 16 || OurMarriage(akActor) != MARRIAGE_ENGAGED()
         Return
     EndIf
@@ -5480,6 +5497,9 @@ Function AcceptEngagementRing(Actor akActor, String asRing)
       menu, filtered to rings, which lists every one they carry however many
       (a message box shows only what fits). Then it is theirs, and they put
       it on. }
+    If MarriageStandsAside()
+        Return
+    EndIf
     If akActor == None || !_ready || _dashNatives < 16 || OurMarriage(akActor) != MARRIAGE_ENGAGED()
         Return
     EndIf
@@ -5542,6 +5562,9 @@ Function BlessUnion(Actor akOfficiant, String asBetrothed)
       vows, the betrothed's, each "do you take...", the pronouncement. Nothing
       is asked in a box; only the pronouncement records the marriage
       (OnCeremonyMarried). }
+    If MarriageStandsAside()
+        Return
+    EndIf
     If akOfficiant == None || !_ready || _dashNatives < 23
         Return
     EndIf
@@ -5598,6 +5621,7 @@ Function HoldForWedding(Actor akOfficiant, Actor akBetrothed)
     ReleaseWeddingHold()
     _weddingHeldA = akOfficiant
     _weddingHeldB = akBetrothed
+    StandToWatch(akOfficiant)
     Int a = SkyrimNetApi.HoldPackages(akOfficiant, WeddingHolder())
     Int b = SkyrimNetApi.HoldPackages(akBetrothed, WeddingHolder())
     Diag(LOG_INFO(), "Ceremony: SkyrimNet's packages held for the wedding (" + a + " and " + b + " rows).")
@@ -5613,10 +5637,132 @@ Int _planRingMetal = -1
 Int _planBandMetal = -1
 Int _planBandWide = -1
 
+Bool Function MarriageStandsAside()
+    { MARAS OR RELATIONSHIPS (the author, 2026-10-25): with MARAS installed,
+      MARAS runs marriage and every marriage feature of ours stands aside. The
+      import (ImportMarasMarriages) still works, so what MARAS holds can come
+      across before it is removed. }
+    Return MarasPresent()
+EndFunction
+
+Function StandAsideForMaras()
+    { Bootstrap, with MARAS installed: our marriage and wedding actions are
+      taken out of SkyrimNet's action library for the session, so they are
+      never offered beside MARAS's own (a reload of actions from disk brings
+      them back, and each refuses when it runs). The DLL marks no officiants
+      or planners either (Officiant::MarkAll). }
+    String[] names = new String[19]
+    names[0] = "MarriageAgree"
+    names[1] = "MarriageDecline"
+    names[2] = "MarriageGiveRing"
+    names[3] = "MarriageAcceptRing"
+    names[4] = "MarriageEndEngagement"
+    names[5] = "MarriageBless"
+    names[6] = "MarriageColdFeet"
+    names[7] = "WeddingHirePlanner"
+    names[8] = "WeddingSetDay"
+    names[9] = "WeddingSetPlace"
+    names[10] = "WeddingOfficiate"
+    names[11] = "WeddingChooseOfficiant"
+    names[12] = "WeddingGuests"
+    names[13] = "WeddingCeremony"
+    names[14] = "WeddingRings"
+    names[15] = "WeddingOutfit"
+    names[16] = "WeddingPostpone"
+    names[17] = "Marriage"
+    names[18] = "Wedding"
+    Int removed = 0
+    Int i = 0
+    While i < names.Length
+        If SkyrimNetApi.IsActionRegistered(names[i]) && SkyrimNetApi.UnregisterAction(names[i]) == 0
+            removed += 1
+        EndIf
+        i += 1
+    EndWhile
+    Diag(LOG_INFO(), "MARAS is installed, so MARAS runs marriage: " + removed + " of our marriage actions set aside. " + \
+        "To use Relationships' marriages, import MARAS's from the dashboard's playthrough repairs, then remove MARAS.")
+EndFunction
+
+Book Function PlannerBook() Global
+    { The wedding planner's book (Build B): what can be chosen for a wedding,
+      and from what. Given when a planner is hired. }
+    Return Game.GetFormFromFile(0x00000D88, "SNRom_Integration.esl") as Book
+EndFunction
+
+Function ChooseWeddingOfficiant(Actor akSpeaker, String asFor, String asOfficiant)
+    { Action WeddingChooseOfficiant: the planner (or the betrothed) chooses who
+      will marry them, from every priest, priestess and jarl (the author,
+      2026-10-25: assumed willing, and they travel to the wedding on the day,
+      jarls too). Anyone may still be asked in person (WeddingOfficiate). }
+    Actor betrothed = PlanTarget(akSpeaker, asFor)
+    If betrothed == None || !MayPlan(akSpeaker, betrothed, False)
+        Return
+    EndIf
+    Actor officiant = SNRom_Native.OfficiantNamed(asOfficiant)
+    If officiant == None
+        Diag(LOG_INFO(), "Wedding plan: no priest, priestess or jarl called '" + asOfficiant + "' was found.")
+        Return
+    EndIf
+    If officiant == betrothed
+        Return
+    EndIf
+    If SNRom_Native.PlanSetOfficiant(betrothed, officiant)
+        Actor player = Game.GetPlayer()
+        SkyrimNetApi.RegisterPersistentEvent(officiant.GetDisplayName() + " will marry " + player.GetDisplayName() + \
+            " and " + betrothed.GetDisplayName() + " at their wedding.", officiant, player)
+        PlanNoted(betrothed, officiant.GetDisplayName() + " chosen to marry them.")
+    EndIf
+EndFunction
+
+Actor[] _weddingWatchers
+
+Function StandToWatch(Actor akWho)
+    { STAYING FOR THE CEREMONY (the author, 2026-10-25): the officiant and the
+      guests keep their places and watch the couple until it is over, then are
+      released (ReleaseWeddingHold). Kept here, so a load releases them too. }
+    If akWho == None || akWho.IsDead() || akWho == Game.GetPlayer()
+        Return
+    EndIf
+    If _weddingWatchers == None || _weddingWatchers.Length == 0
+        _weddingWatchers = new Actor[48]
+    EndIf
+    Int i = 0
+    While i < _weddingWatchers.Length
+        If _weddingWatchers[i] == akWho
+            Return
+        ElseIf _weddingWatchers[i] == None
+            _weddingWatchers[i] = akWho
+            akWho.SetDontMove(True)
+            akWho.SetLookAt(Game.GetPlayer())
+            Return
+        EndIf
+        i += 1
+    EndWhile
+EndFunction
+
+Function ReleaseWatchers()
+    If _weddingWatchers == None
+        Return
+    EndIf
+    Int i = 0
+    While i < _weddingWatchers.Length
+        Actor who = _weddingWatchers[i]
+        If who != None
+            who.SetDontMove(False)
+            who.ClearLookAt()
+            _weddingWatchers[i] = None
+        EndIf
+        i += 1
+    EndWhile
+EndFunction
+
 Actor Function PlanTarget(Actor akSpeaker, String asFor)
     { Whose wedding a planning action is about: the speaker's own when they are
       engaged to the player; else the betrothed named, or the only one. None
       without natives v28. }
+    If MarriageStandsAside()
+        Return None
+    EndIf
     If _dashNatives < 28
         Return None
     EndIf
@@ -5677,6 +5823,9 @@ Function HireWeddingPlanner(Actor akPlanner, String asFor)
     { Action WeddingHirePlanner: a wedding planner takes on the wedding, for
       their fee (the author, 2026-10-20: about 50 gold). The ceremony then has
       every part a planner can add until the couple says otherwise. }
+    If MarriageStandsAside()
+        Return
+    EndIf
     If akPlanner == None || !_ready || _dashNatives < 28 || !SNRom_Native.IsWeddingPlanner(akPlanner)
         Return
     EndIf
@@ -5700,6 +5849,12 @@ Function HireWeddingPlanner(Actor akPlanner, String asFor)
     player.RemoveItem(gold, fee, False, akPlanner)
     SkyrimNetApi.RegisterPersistentEvent(akPlanner.GetDisplayName() + " is planning the wedding of " + \
         player.GetDisplayName() + " and " + betrothed.GetDisplayName() + ".", akPlanner, player)
+    ; THE PLANNER'S BOOK (the author, 2026-10-25): everything a wedding can
+    ; have, and the choices for each, for the player to read and then say.
+    Book guide = PlannerBook()
+    If guide != None && player.GetItemCount(guide) == 0
+        player.AddItem(guide, 1, False)
+    EndIf
     PlanNoted(betrothed, akPlanner.GetDisplayName() + " hired to plan it.")
 EndFunction
 
@@ -5730,6 +5885,9 @@ Function AgreeToOfficiate(Actor akOfficiant, String asFor)
     { Action WeddingOfficiate: a priest, priestess or jarl agrees to marry them
       on the day they planned. Only the officiant's own action sets it: they
       agree for themselves. }
+    If MarriageStandsAside()
+        Return
+    EndIf
     If akOfficiant == None || !_ready || _dashNatives < 28 || !SNRom_Native.IsOfficiant(akOfficiant)
         Return
     EndIf
@@ -5830,6 +5988,9 @@ Function SaveWeddingOutfit(Actor akBetrothed)
     { Action WeddingOutfit (M4o): the betrothed keeps what they wear now for
       the wedding, as a SeverActions outfit preset named "wedding", put on on
       the day. Without SeverActions they wear what they wear. }
+    If MarriageStandsAside()
+        Return
+    EndIf
     If akBetrothed == None || !_ready || _dashNatives < 28 || OurMarriage(akBetrothed) != MARRIAGE_ENGAGED()
         Return
     EndIf
@@ -5915,6 +6076,16 @@ Event OnWeddingBegin(String asEventName, String asUnused, Float afUnused, Form a
     EndIf
     If SNRom_Native.CeremonyBeginPlanned(officiant, betrothed, VariantName(), SNRom_Native.PlanParts(betrothed))
         HoldForWedding(officiant, betrothed)
+        ; The guests who came keep their places and watch.
+        Actor[] guests = SNRom_Native.PlanGuests(betrothed)
+        Actor player = Game.GetPlayer()
+        Int g = 0
+        While g < guests.Length
+            If guests[g] != None && guests[g].Is3DLoaded() && guests[g].GetDistance(player) < 4000.0
+                StandToWatch(guests[g])
+            EndIf
+            g += 1
+        EndWhile
         Diag(LOG_INFO(), "Ceremony: " + officiant.GetDisplayName() + " begins the planned wedding of the player and " + \
             betrothed.GetDisplayName() + " (parts " + SNRom_Native.PlanParts(betrothed) + ").")
     EndIf
@@ -5950,6 +6121,7 @@ Event OnWeddingLapsed(String asEventName, String asUnused, Float afUnused, Form 
 EndEvent
 
 Function ReleaseWeddingHold()
+    ReleaseWatchers()
     If _weddingHeldA != None
         SkyrimNetApi.ReleaseHeldPackages(_weddingHeldA, WeddingHolder())
     EndIf
@@ -6415,53 +6587,20 @@ Keyword Function IgnoreProposalKeyword() Global
 EndFunction
 
 Function MaintainProposalGate(Actor akActor)
-    { Close MARAS's proposals on this person. 2.5 (M2): Relationships owns
-      marriage, so while MARAS is still installed it proposes to no one; before
-      2.5 this opened at Spouse and MARAS ran the proposal.
-
-      THIS IS THE SECONDARY GATE, NOT THE PRIMARY ONE, and that is worth saying
-      plainly. MARAS consults the keyword in two places - a CK condition on its
-      vanilla dialogue topic, and AcceptProposalIsElgigible for the SkyrimNet
-      action. On a SkyrimNet setup NEITHER runs:
-
-        - the vanilla topic is suppressed while TTM_MCM_AllowAIDial is on, which
-          is why no proposal option appears in her dialogue at all
-        - the action's eligibility is a Papyrus call, and SkyrimNet refuses
-          Papyrus calls while the game is paused - which it always is during
-          dialogue. Measured 2026-08-31: "CheckActionEligibility: Blocking VM
-          call for action ACCEPTMARRIAGEPROPOSAL because game is paused", 40
-          times in one session, and the action is then offered ANYWAY. Eligibility
-          fails OPEN.
-
-      So this is maintained for the setups where it does bite, and because it
-      costs almost nothing. The gate that actually holds is the event handler.
-
-      CHEAP BY CONSTRUCTION. One HasKeyword native, and it writes once per
-      person - so the steady state is a single read per point change. }
+    { MARAS OR RELATIONSHIPS (the author, 2026-10-25). With MARAS installed it
+      runs marriage, so its proposals are open to everyone: the keyword earlier
+      builds put on people to close them (TTM_IgnoreProposal) comes off. Without
+      MARAS there is nothing to do. One HasKeyword per call, and a write only
+      the first time. }
     If akActor == None || !_ready || !MarasPresent()
         Return
     EndIf
     Keyword kw = IgnoreProposalKeyword()
-    If kw == None
-        ; Once per session is enough; this is a broken-integration warning, not a
-        ; per-award one.
-        If StorageUtil.GetIntValue(None, "SNRom_WarnedNoProposalKw", 0) != \
-           StorageUtil.GetIntValue(None, "SNRom_SessionId", 0)
-            StorageUtil.SetIntValue(None, "SNRom_WarnedNoProposalKw", \
-                StorageUtil.GetIntValue(None, "SNRom_SessionId", 0))
-            Diag(LOG_ERROR(), "TTM_IgnoreProposal did not resolve, so the marriage " + \
-                "gate cannot be applied. Either MARAS is absent - in which case this " + \
-                "is harmless - or the keyword has been renamed and the gate is now " + \
-                "silently inert.")
-        EndIf
+    If kw == None || !akActor.HasKeyword(kw)
         Return
     EndIf
-    If akActor.HasKeyword(kw)
-        Return                                  ; already closed - the common case
-    EndIf
-    PO3_SKSEFunctions.AddKeywordToRef(akActor, kw)
-    Diag(LOG_INFO(), "MARAS proposals closed for " + akActor.GetDisplayName() + \
-        " - Relationships handles marriage.")
+    PO3_SKSEFunctions.RemoveKeywordFromRef(akActor, kw)
+    Diag(LOG_INFO(), "MARAS proposals open again for " + akActor.GetDisplayName() + " - MARAS runs marriage.")
 EndFunction
 
 Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEnum, Form akSender)
@@ -6490,36 +6629,9 @@ Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEn
     EndIf
     String st = SNRom_Decorators.Upper(SNRom_Decorators.Trim(asStatus))
 
-    ; -- THE MARRIAGE GATE THAT ACTUALLY HOLDS ------------------------------
-    ; Relationships owns marriage (2.5, M2), so MARAS engages nobody, enrolled
-    ; or not. The keyword MaintainProposalGate sets is the polite version of
-    ; that, and on a SkyrimNet setup it never fires: the vanilla topic is
-    ; suppressed by AllowAIDial, and the action's Papyrus eligibility is SKIPPED
-    ; while the game is paused, which it always is during dialogue. Eligibility
-    ; fails open. So the enforcement has to happen after the fact, on an event,
-    ; which runs unpaused.
-    ;
-    ; ENGAGEMENT IS THE INTERCEPT, not marriage. MARAS goes candidate ->
-    ; engaged -> married, and CANCELWEDDINGENGAGEMENT exists as a separate
-    ; action, so engagement is a real distinct step. Reversing it costs a
-    ; status field. Reversing a COMPLETED marriage would mean unpicking spouse
-    ; assets, hierarchy rank and house tenancy across 13 registered homes, and
-    ; a mod that quietly dissolves marriages is worse than one that leaks.
-    ; A MARRIAGE MARAS MAKES ANYWAY still stands and still counts (below).
-    If st == "ENGAGED"
-        ; NATIVE, BY MARAS'S OWN SHAPE (Build B): MARAS 2.0 added a parameter
-        ; to PromoteNPCToStatus, which a call compiled here could not follow.
-        ; MARAS's own answer comes back later, in SkyrimNetRelationships.log.
-        If SNRom_Native.MarasPromote(who, "candidate")
-            Diag(LOG_INFO(), "Engagement reversal sent for " + who.GetDisplayName() + \
-                " - Relationships handles marriage, so a MARAS engagement does not stand." + \
-                MarasStateLine(who))
-        Else
-            Diag(LOG_ERROR(), "Could not ask MARAS to demote " + who.GetDisplayName() + \
-                " from engaged (see SkyrimNetRelationships.log), so the marriage gate has leaked." + MarasStateLine(who))
-        EndIf
-        Return
-    EndIf
+    ; MARAS OR RELATIONSHIPS (the author, 2026-10-25): with MARAS installed,
+    ; MARAS runs marriage and its engagements stand. 2.5's builds reversed
+    ; them while both ran; that was the collision this choice ends.
     If !IsEnrolled(who)
         Return
     EndIf

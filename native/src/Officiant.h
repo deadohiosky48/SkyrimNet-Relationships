@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace RE {
@@ -34,6 +35,12 @@ namespace SNRom::Officiant {
     // One of the wedding planners (Build B, M4p), FACT SNRom_WeddingPlanner
     // rank 0 on their records, put there by MarkAll and Remark.
     bool IsPlanner(RE::Actor* a_actor);
+
+    // A priest, priestess or jarl by name, wherever they are (their unique
+    // actor), for a planner choosing who will marry a couple (the author,
+    // 2026-10-25: any of them, assumed willing, travels to the wedding).
+    // None when no officiant has that name, or they are dead.
+    RE::Actor* Named(const std::string& a_name);
 
     // Everyone engaged to the player who is here: loaded, alive, and within
     // a_range units of the player. Eloping needs both of them present.

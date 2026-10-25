@@ -269,9 +269,17 @@
     kind.appendChild(dl2);
     scroll.appendChild(kind);
 
+    // MARAS OR RELATIONSHIPS (2026-10-25): with MARAS installed it runs
+    // marriage, and our record stands aside until its marriages are imported
+    // and MARAS is removed.
+    var marasRuns = !!(snap.playthrough && snap.playthrough.marasOwnsMarriage);
+    if (marasRuns && b.state !== "foreclosed") {
+      kind.appendChild(el("p", "blurb", t("detail.marasRuns", "MARAS is installed, so MARAS runs marriage. To use Relationships' marriages instead, import MARAS's from Playthrough repairs, then remove MARAS.")));
+    }
+
     // MARRIAGE (2.5, M8b): Relationships' own record, a section of its own.
     var m = b.marriage;
-    if (m && m.state !== "none" && b.state !== "foreclosed") {
+    if (m && m.state !== "none" && b.state !== "foreclosed" && !marasRuns) {
       var ms = section(t("detail.marriageSection", "Marriage"));
       var mdl = el("dl");
       var MARRIAGE = { none: t("marriage.none", "None"), engaged: t("marriage.engaged", "Engaged"),
