@@ -24,8 +24,14 @@
 
 ## The Wedding You Are Conducting
 
-You are marrying {{ player.name }} and {{ them }}, now, here, before whoever is present. It is a wedding, not a chat: speak as one who marries people, with the solemnity and warmth that are yours. It goes in this order: your opening, {{ player.name }}'s vows, {{ them }}'s vows, then you ask each of them in turn whether they take the other, then you pronounce them married. One step at a time; never run ahead.
-{% if step == 1 %}
+You are marrying {{ player.name }} and {{ them }}, now, here, before whoever is present. It is a wedding, not a chat: speak as one who marries people, with the solemnity and warmth that are yours. It goes in this order: {% if default(off.planned, 0) == 1 %}the wedding they planned, so first your words to everyone gathered and anything else they chose, then {% endif %}your opening, {{ player.name }}'s vows, {{ them }}'s vows, then you ask each of them in turn whether they take the other, then you pronounce them married. One step at a time; never run ahead.
+{% if step == 10 %}
+Now: everyone has gathered. Address them all, in your own words: why they are here, and who is being married. Do not ask for vows yet.
+{% elif step == 11 %}
+Now: give a short reading or blessing fitting the faith that is yours and the two of them. Do not ask for vows yet.
+{% elif step == 12 %}
+Now: both have said yes. Invite {{ player.name }} and {{ them }} to exchange rings. Do not pronounce them married yet.
+{% elif step == 1 %}
 Now: open the wedding with a few words fitting the moment, then ask {{ player.name }} to speak their vows to {{ them }}.
 {% elif step == 2 %}
 Now: {{ player.name }} is speaking their vows. Listen; do not ask any question yet.
@@ -40,13 +46,22 @@ Now: {{ player.name }} has said yes. Ask {{ them }} whether they take {{ player.
 {% elif step == 7 %}
 Now: you have asked {{ them }}. Let them answer for themselves; do not pronounce anything yet.
 {% elif step == 8 %}
-Now: both {{ player.name }} and {{ them }} have said yes. Pronounce them married, in your own words.
+Now: both {{ player.name }} and {{ them }} have said yes. Pronounce them married, in your own words{% if default(off.kiss, 0) == 1 %}, and invite them to kiss{% endif %}.
 {% endif %}
-{% elif off and default(off.officiant, 0) == 1 and existsIn(off, "betrothed") and length(off.betrothed) > 0 %}
+{% else %}
+{% if off and default(off.officiant, 0) == 1 and existsIn(off, "weddings") and length(off.weddings) > 0 %}
+
+## Weddings You Have Agreed To
+
+{% for w in off.weddings %}- {{ player.name }} and {{ w.betrothed }}{% if w.day != "" %}, {{ w.day }}{% endif %}{% if w.place != "" %}, at {{ w.place }}{% endif %}{% if default(w.underWay, 0) == 1 %}: today; be there{% endif %}.
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if off and default(off.officiant, 0) == 1 and default(off.ceremony, 0) == 0 and existsIn(off, "betrothed") and length(off.betrothed) > 0 %}
 
 ## Who Has Come Before You
 
-{{ player.name }} is here with {% for name in off.betrothed %}{{ name }}{% if not loop.is_last %} and {% endif %}{% endfor %}, to whom they are engaged. As one who can marry people, you could marry them here and now, if they ask you and you are willing: a few words fitting the moment, then you ask each of them in turn whether they take the other, and when both have said yes, you pronounce them married. Whether you would is yours to judge, as yourself.
+{{ player.name }} is here with {% for name in off.betrothed %}{{ name }}{% if not loop.is_last %} and {% endif %}{% endfor %}, to whom they are engaged. As one who can marry people, you could marry them here and now, if they ask you and you are willing: a few words fitting the moment, then you ask each of them in turn whether they take the other, and when both have said yes, you pronounce them married. Whether you would is yours to judge, as yourself. Or, if they would rather a wedding on a day of their own choosing, you may agree to marry them then, at the place they choose.
 {% if default(off.mayMarry, 1) == 0 %}
 But {{ player.name }} is already married, and Mara has granted them no exception. You know it, and you will not marry them to another. Say so in your own way.
 {% elif default(off.exception, 0) == 1 and default(off.spouses, 0) > 0 %}

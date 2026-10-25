@@ -31,6 +31,10 @@ namespace SNRom::Officiant {
     // A living adult priest, priestess or jarl.
     bool Is(RE::Actor* a_actor);
 
+    // One of the wedding planners (Build B, M4p), FACT SNRom_WeddingPlanner
+    // rank 0 on their records, put there by MarkAll and Remark.
+    bool IsPlanner(RE::Actor* a_actor);
+
     // Everyone engaged to the player who is here: loaded, alive, and within
     // a_range units of the player. Eloping needs both of them present.
     std::vector<RE::Actor*> BetrothedNear(float a_range);

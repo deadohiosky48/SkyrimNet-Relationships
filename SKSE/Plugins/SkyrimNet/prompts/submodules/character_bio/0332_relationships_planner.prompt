@@ -1,0 +1,36 @@
+{% if render_mode == "full" or render_mode == "thoughts" or render_mode == "target" %}
+{# render_mode guard MUST be within the first 5 lines (see 0330). #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{# Relationships - the wedding planner (2.5, Build B, M4p; the author,         #}
+{# 2026-10-20)                                                                #}
+{#                                                                            #}
+{# Five priestesses plan weddings for a fee (Officiant.cpp, kPlannerNames).   #}
+{# Hired, they help the couple settle the plan and compose the ceremony;      #}
+{# the rings are chosen here, except for an elopement. Silent unless the      #}
+{# player is engaged. get_wedding_planner is native.                          #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{% if not is_player(actorUUID) %}
+{% if is_plugin_loaded("SNRom_Integration.esl") %}
+{% set wp = get_wedding_planner(actorUUID) %}
+{% if wp and default(wp.planner, 0) == 1 and existsIn(wp, "couples") and length(wp.couples) > 0 %}
+
+## Weddings
+
+Beside your duties, you plan weddings: for a fee of {{ wp.fee }} gold you help a couple settle everything a wedding needs, and compose the ceremony with them.
+{% for c in wp.couples %}
+{% if default(c.hired, 0) == 1 %}
+
+{{ player.name }} has hired you to plan their wedding to {{ c.betrothed }}. As it stands: {% if c.plan.day != "" %}{{ c.plan.day }}{% else %}no day yet{% endif %}; {% if c.plan.place != "" %}at {{ c.plan.place }}{% else %}no place yet{% endif %}; {% if c.plan.officiant != "" %}{{ c.plan.officiant }} will marry them{% else %}no one has agreed to marry them yet: a priest, priestess or jarl must agree to it themselves, and you may be the one if you are willing{% endif %}.{% if length(c.plan.guests) > 0 %} Invited: {% for g in c.plan.guests %}{{ g }}{% if not loop.is_last %}, {% endif %}{% endfor %}.{% endif %}
+The ceremony, as chosen so far: {% if c.plan.address == 1 %}an address to everyone gathered, {% endif %}{% if c.plan.reading == 1 %}a reading or blessing, {% endif %}the vows and each "do you take"{% if c.plan.rings == 1 %}, the rings exchanged{% endif %}, the pronouncement{% if c.plan.kiss == 1 %} and the kiss{% endif %}.
+{% if c.plan.ring == "" %}The rings are not chosen yet: {{ c.betrothed }}'s wedding ring and {{ player.name }}'s band, each in gold, silver or ebony, the band wide and plain or braided.{% else %}The rings: {{ c.betrothed }}'s wedding ring in {{ c.plan.ring }}, {{ player.name }}'s band in {{ c.plan.band }}.{% endif %}
+{% if length(c.plan.open) > 0 %}Still needed before the day can come: {% for o in c.plan.open %}{% if o == "day" %}the day{% elif o == "place" %}where{% else %}who will marry them{% endif %}{% if not loop.is_last %}, {% endif %}{% endfor %}.{% endif %}
+Help them settle what is open, as one who knows weddings: places that might suit them, who might come, what the ceremony could hold. What they choose is theirs.
+{% else %}
+
+{{ player.name }} is engaged to {{ c.betrothed }}{% if c.plan.planner != "" %}, and {{ c.plan.planner }} is planning their wedding{% endif %}. If they ask, you could plan it for them, for your fee.
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}

@@ -411,6 +411,15 @@ button, input, select { font: inherit; color: inherit; }
 .sub-head { margin: 0.9rem 0 0.35rem; color: var(--faint); font-size: calc(0.72rem * var(--t)); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
 .change-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
 .change { display: grid; grid-template-columns: 3.6em 1fr auto; column-gap: 0.6rem; align-items: baseline; }
+/* THE WEDDING PLAN (M4p): an open required item stands out. */
+.plan { margin-top: 0.6rem; }
+.plan-list .kv.is-open dt, .plan-list .kv.is-open dd { color: var(--s-interested); }
+
+/* FAMILY (M8b). */
+.family-list { list-style: none; margin: 0.3rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.family-child { display: flex; gap: 0.6rem; align-items: baseline; flex-wrap: wrap; }
+.family-child .family-name { color: var(--text); }
+.family-child .family-what { color: var(--muted); font-size: calc(0.86rem * var(--t)); }
 .change .change-undo { min-height: 0; padding: 0.1rem 0.55rem; font-size: calc(0.78rem * var(--t)); color: var(--muted); }
 .change .delta { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .change .when { color: var(--faint); font-size: calc(0.78rem * var(--t)); }
@@ -531,6 +540,21 @@ kbd {
    dashboard stays out of sight behind it. */
 body.ask-only .panel, body.ask-only .toasts { visibility: hidden; }
 .dialog[data-kind="ask"] p { color: var(--text); }
+
+/* FLOATING (M8c): alone, the question is the only thing drawn. No dark page,
+   no scrim; a box low and centred over the game, which keeps playing. */
+html.ask-only, body.ask-only { background: transparent; }
+body.ask-only .scrim { display: none !important; }
+body.ask-only .dialog {
+  top: auto; bottom: 9vh;
+  transform: translate(-50%, 0);
+  width: calc(30rem * var(--t));
+  padding: 0.9rem 1.1rem 0.85rem;
+  background: rgba(16, 20, 28, 0.92);
+}
+body.ask-only .dialog h2:empty { display: none; }
+.ask-timer { height: 0.25rem; margin-top: 0.8rem; border-radius: 2px; background: #262e3b; overflow: hidden; }
+.ask-timer-fill { height: 100%; width: 100%; background: var(--accent); transition-property: width; transition-timing-function: linear; }
 
 /* ---------------------------------------------------------------- toasts */
 

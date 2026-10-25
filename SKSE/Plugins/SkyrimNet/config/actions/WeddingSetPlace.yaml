@@ -1,0 +1,55 @@
+# 2.5, Build B (M4p): PLANNING THE WEDDING, in conversation (spec 5.3a). Each
+# part of the plan is an action taken when it is agreed, over as many
+# conversations as it takes; the plan is kept natively (WeddingPlan.h) and
+# every prompt reads it as it stands. Eligibility on factions the DLL keeps:
+# SNRom_Marriage (1 engaged), SNRom_WeddingPlanner (the five planners) and
+# SNRom_Officiant (every priest, priestess and jarl). Who may change what is
+# checked again in Papyrus (SNRom_Bridge.MayPlan): the betrothed, the planner
+# hired for it, and for the day and the place the officiant who agreed.
+
+customCategory: wedding
+name: WeddingSetPlace
+description: |
+  Where the wedding will be is agreed, or changed: as the one {{ player.name }} is marrying, as the planner hired for it, or as the one who will marry them.
+
+  USE when a place is settled in this conversation. Name it as a real place one could walk to: a temple, a hall, an inn, a spot that means something to them.
+
+questEditorId: SNRom_Quest
+scriptName: SNRom_Bridge
+executionFunctionName: PlanWeddingPlace
+
+parameterMapping:
+  - type: speaker
+    name: akSpeaker
+    description: you
+  - type: dynamic
+    name: asFor
+    description: "the name of the one {{ player.name }} is to marry, when you are not them yourself; empty if you are"
+    optional: true
+    default: ""
+  - type: dynamic
+    name: asPlace
+    description: "the place's proper name, e.g. 'Temple of Mara, Riften' or 'Dragonsreach'; add the town when names repeat"
+
+eligibilityRules:
+  - conditions:
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "SNRom_Marriage"]
+        comparisonOperator: "=="
+        expectedValue: 1
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "SNRom_WeddingPlanner"]
+        comparisonOperator: ">="
+        expectedValue: 0
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "SNRom_Officiant"]
+        comparisonOperator: ">="
+        expectedValue: 0
+    logicalOperator: "OR"
+    required: true
+
+eventString: "{{ actor.name }} and {{ player.name }} settled where the wedding will be."
+isShortLived: true
+
+enabled: true
+defaultPriority: 1

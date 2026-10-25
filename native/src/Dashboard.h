@@ -84,7 +84,10 @@ namespace SNRom::Dashboard {
     //
     // Ask returns the question's id, or 0 when there is no dashboard view (no
     // UI framework): the caller then asks some other way.
-    std::int32_t Ask(std::string a_title, std::string a_body, std::vector<std::string> a_buttons);
+    // a_default: the button a running-out timer of a_seconds chooses (-1:
+    // none, so it is dismissed; 0 seconds: no timer). M8c.
+    std::int32_t Ask(std::string a_title, std::string a_body, std::vector<std::string> a_buttons,
+                     std::int32_t a_default = -1, float a_seconds = 0.0f);
 
     // kAskPending until answered; then, ONCE (the answer is forgotten when
     // read), the button's index, kAskDismissed (closed without a choice), or
@@ -93,4 +96,11 @@ namespace SNRom::Dashboard {
     inline constexpr std::int32_t kAskDismissed = -1;
     inline constexpr std::int32_t kAskUnshown = -3;
     std::int32_t AskAnswer(std::int32_t a_id);
+
+    // As AskAnswer, but the answer stays to be read (SNRom_Choice's
+    // non-blocking questions, which look before they take).
+    std::int32_t AskPeek(std::int32_t a_id);
+
+    // Withdraws a question: off the queue, or off the screen.
+    void AskCancel(std::int32_t a_id);
 }

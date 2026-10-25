@@ -1,0 +1,44 @@
+# 2.5, Build B (M4p): PLANNING THE WEDDING, in conversation (spec 5.3a). Each
+# part of the plan is an action taken when it is agreed, over as many
+# conversations as it takes; the plan is kept natively (WeddingPlan.h) and
+# every prompt reads it as it stands. Eligibility on factions the DLL keeps:
+# SNRom_Marriage (1 engaged), SNRom_WeddingPlanner (the five planners) and
+# SNRom_Officiant (every priest, priestess and jarl). Who may change what is
+# checked again in Papyrus (SNRom_Bridge.MayPlan): the betrothed, the planner
+# hired for it, and for the day and the place the officiant who agreed.
+
+customCategory: wedding
+name: WeddingHirePlanner
+description: |
+  As a wedding planner, you take on {{ player.name }}'s wedding, for your fee of 50 gold, which they pay you now.
+
+  USE ONLY when {{ player.name }} has asked you to plan their wedding and agreed to your fee. Not for talk of weddings in general.
+
+questEditorId: SNRom_Quest
+scriptName: SNRom_Bridge
+executionFunctionName: HireWeddingPlanner
+
+parameterMapping:
+  - type: speaker
+    name: akPlanner
+    description: you, the planner
+  - type: dynamic
+    name: asFor
+    description: "the name of the one {{ player.name }} is to marry, when you are not them yourself; empty if you are"
+    optional: true
+    default: ""
+
+eligibilityRules:
+  - conditions:
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "SNRom_WeddingPlanner"]
+        comparisonOperator: ">="
+        expectedValue: 0
+    logicalOperator: "AND"
+    required: true
+
+eventString: "{{ actor.name }} agreed to plan {{ player.name }}'s wedding."
+isShortLived: false
+
+enabled: true
+defaultPriority: 1

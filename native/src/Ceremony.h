@@ -39,10 +39,22 @@ namespace SNRom::Ceremony {
     // Begins one, or refuses (false) when one is under way, either is None, or
     // SkyrimNet has no dialogue events. a_variant: the OpenRouter variant the
     // answers are judged with (SNRom_Bridge.VariantName).
-    bool Begin(RE::Actor* a_officiant, RE::Actor* a_betrothed, std::string a_variant);
+    // a_planned: a planned wedding (Build B, M4p), with a_parts
+    // (WeddingPlan::Part) added to the minimum; otherwise an elopement, the
+    // minimum alone.
+    bool Begin(RE::Actor* a_officiant, RE::Actor* a_betrothed, std::string a_variant, std::uint32_t a_parts = 0,
+               bool a_planned = false);
 
-    // The step now (1-based); 0 when nothing is under way.
+    // WHAT IS HAPPENING NOW, as a step's kind (Ceremony.cpp, Kind): 1 the
+    // opening, 2 the player's vows, 3 the betrothed's, 4-5 the player asked
+    // and answering, 6-7 the betrothed, 8 the pronouncement; a planned
+    // wedding's 10 the address, 11 a reading, 12 the rings. 0 when nothing is
+    // under way. Also the FACT SNRom_Ceremony rank.
     std::int32_t Now();
+
+    // The wedding under way is a planned one, and its parts.
+    bool          Planned();
+    std::uint32_t Parts();
 
     // The two taking part, or null when nothing is under way. LastOfficiant
     // outlives the ceremony, for SNRom_CeremonyMarried's handler.

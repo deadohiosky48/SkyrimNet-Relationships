@@ -368,3 +368,81 @@ Bool Function RemoveChange(Actor akActor, Int aiIndex, Int aiDelta, Int aiTotal)
  (0 = newest), if its delta and total are still aiDelta and aiTotal and it moved
  points. The newer changes' totals lose its delta. False otherwise. The points
  are the caller's to move (SNRom_Bridge.UndoChange).}
+
+Bool Function MarasPromote(Actor akActor, String asStatus) Global Native
+{VERSION 28 (2.5, Build B). MARAS.PromoteNPCToStatus(akActor, asStatus), called
+ with as many arguments as the installed MARAS declares (2.0 added sendEvent).
+ True when sent; MARAS's own answer is logged in SkyrimNetRelationships.log.}
+
+Int Function AskOpenEx(String asTitle, String asBody, String[] asButtons, Int aiDefault, Float afSeconds) Global Native
+{VERSION 28 (2.5, Build B, M8c). AskOpen with a default and a timer: asked on its
+ own, the question waits for a calm moment (out of combat, no menu, no wedding
+ under way) and floats low on the screen over a game that keeps playing; when
+ afSeconds run out the page chooses aiDefault (-1: none, so it is dismissed).
+ 0 seconds: no timer.}
+
+Int Function AskPeek(Int aiId) Global Native
+{VERSION 28. AskAnswer without forgetting the answer: -2 pending, -1 dismissed,
+ -3 unshown, or the button's index.}
+
+Function AskCancel(Int aiId) Global Native
+{VERSION 28. Withdraws a question, waiting or on screen.}
+
+; ---------------------------------------------------------------------------
+; VERSION 28 (2.5, Build B, M4p and M4w): THE WEDDING PLAN (WeddingPlan.h).
+; ---------------------------------------------------------------------------
+
+Bool Function CeremonyBeginPlanned(Actor akOfficiant, Actor akBetrothed, String asVariant, Int aiParts) Global Native
+{A planned wedding: CeremonyBegin with the plan's parts (1 the address, 2 a
+ reading, 4 the rings, 8 the kiss) added to the minimum.}
+
+Bool Function CeremonyPlanned() Global Native
+{The wedding under way is a planned one, not an elopement.}
+
+Bool Function IsWeddingPlanner(Actor akActor) Global Native
+{One of the wedding planners (FACT SNRom_WeddingPlanner).}
+
+Actor Function PersonNamed(String asName) Global Native
+{Someone by name: anyone loaded, then anyone on the roster. None when no one.}
+
+Actor Function BetrothedNamed(String asName) Global Native
+{The one engaged to the player named asName; else the only one engaged, or the
+ nearest loaded of several. None when nobody is engaged.}
+
+Bool Function PlanExists(Actor akBetrothed) Global Native
+Bool Function PlanHire(Actor akBetrothed, Actor akPlanner) Global Native
+{A planner hired for this wedding: the plan gets every part of the ceremony.}
+
+Bool Function PlanSetDay(Actor akBetrothed, Int aiDaysFromNow, String asTimeOfDay) Global Native
+{The day, in whole days from today (0 today), and the hour from words
+ ("morning", "noon", "evening") or digits; noon when the words mean nothing.}
+
+Bool Function PlanSetPlace(Actor akBetrothed, String asPlace) Global Native
+Bool Function PlanSetOfficiant(Actor akBetrothed, Actor akOfficiant) Global Native
+Bool Function PlanGuest(Actor akBetrothed, Actor akGuest, Bool abAdd) Global Native
+Bool Function PlanSetParts(Actor akBetrothed, Int aiParts) Global Native
+Bool Function PlanSetRings(Actor akBetrothed, Int aiRingMetal, Int aiBandMetal, Int aiBandWide) Global Native
+{Metals 0 gold, 1 silver, 2 ebony, -1 left as it is; aiBandWide 1 wide, 0
+ braided, -1 as the player's sex has it.}
+
+Bool Function PlanSetOutfit(Actor akBetrothed, Bool abSaved) Global Native
+Bool Function PlanPostpone(Actor akBetrothed) Global Native
+{The day cleared, the rest of the plan kept.}
+
+Function PlanClear(Actor akBetrothed) Global Native
+String Function PlanOpen(Actor akBetrothed) Global Native
+{The required items still open, comma-separated: "day", "place", "officiant".}
+
+Actor Function PlanOfficiant(Actor akBetrothed) Global Native
+Actor Function PlanPlanner(Actor akBetrothed) Global Native
+Actor[] Function PlanGuests(Actor akBetrothed) Global Native
+String Function PlanPlace(Actor akBetrothed) Global Native
+Bool Function PlanOutfit(Actor akBetrothed) Global Native
+Int Function PlanParts(Actor akBetrothed) Global Native
+Int Function PlanRing(Actor akBetrothed, Int aiWhich) Global Native
+{aiWhich 0: the betrothed's wedding ring's metal; 1: the player's band's; 2:
+ whether the band is wide. -1 when the plan leaves it.}
+
+Form Function RingWeddingOfMetal(Int aiMetal) Global Native
+{VERSION 28. Our wedding ring in a metal: 0 gold, 1 silver, 2 ebony; None
+ otherwise.}

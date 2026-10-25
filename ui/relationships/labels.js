@@ -190,6 +190,7 @@
       accepted: { label: t("change.accepted", "You said yes"), player: "show" },
       declined: { label: t("change.declined", "You said no"), player: "show" },
       ended: { label: t("change.ended", "It ended"), player: "show" },
+      missed: { label: t("change.missed", "You missed the wedding"), player: "show" },
       "import": { label: t("change.import", "Brought over"), player: "show" },
       spark: { label: t("change.spark", "Something shifted"), player: "plain" },
       released: { label: t("change.released", "Counted at last"), player: "plain" },
@@ -298,6 +299,14 @@
     return t("time.day", "day {0}", Math.floor(time));
   }
 
+  // A day to come, from now: "today", "tomorrow", "in 3 days".
+  function daysAhead(then, now) {
+    var d = Math.floor(then) - Math.floor(now);
+    if (d <= 0) return t("time.today", "today");
+    if (d === 1) return t("time.tomorrow", "tomorrow");
+    return t("time.inDays", "in {0} days", d);
+  }
+
   function daysAgo(then, now) {
     var d = Math.floor(now - then);
     if (d <= 0) return t("time.today", "today");
@@ -334,6 +343,7 @@
     number: number,
     gameDay: gameDay,
     daysAgo: daysAgo,
+    daysAhead: daysAhead,
     CHANGE: CHANGE,
     changeKind: changeKind,
     visibleChanges: visibleChanges,

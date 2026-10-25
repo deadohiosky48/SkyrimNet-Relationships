@@ -53,10 +53,10 @@ namespace SNRom {
 
             bool Show() override { return _api->Show(_view); }
 
-            FocusOutcome Focus() override {
+            FocusOutcome Focus(bool a_pause = true) override {
                 // TryFocus never steals focus from another mod's Meridian
                 // view; it answers Busy instead.
-                switch (_api->TryFocus(_view, View::FocusMode::PauseGame)) {
+                switch (_api->TryFocus(_view, a_pause ? View::FocusMode::PauseGame : View::FocusMode::Unpaused)) {
                 case View::FocusResult::Granted:
                 case View::FocusResult::AlreadyFocused:
                     return FocusOutcome::Granted;

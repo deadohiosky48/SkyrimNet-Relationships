@@ -8,6 +8,7 @@
 #include "Marriage.h"
 #include "Model.h"
 #include "Officiant.h"
+#include "WeddingPlan.h"
 
 #include <atomic>
 #include <cctype>
@@ -216,7 +217,12 @@ namespace SNRom::Decorators {
                 const char* name = officiant ? officiant->GetDisplayFullName() : nullptr;
                 out["ceremony"] = static_cast<std::int32_t>(Ceremony::Now());
                 out["ceremonyOfficiant"] = name ? name : "";
+                out["ceremonyPlanned"] = Ceremony::Planned() ? 1 : 0;
             }
+            // Build B (M4p): the wedding plan as it stands, while engaged.
+            // Always an object, so a prompt tests plan.exists, never a null.
+            auto plan = Marriage::Engaged(a_formId) ? WeddingPlan::ForPrompt(a_formId) : json(nullptr);
+            out["plan"] = plan.is_object() ? std::move(plan) : json{ { "exists", 0 } };
             return out;
         }
 
@@ -383,6 +389,8 @@ namespace SNRom::Decorators {
         }
         json out{ { "officiant", 1 },
                   { "betrothed", names },
+                  // Build B (M4p): the weddings they agreed to marry.
+                  { "weddings", WeddingPlan::OfficiatingFor(a_actor->GetFormID()) },
                   { "spouses", Marriage::Spouses() },
                   { "exception", Marriage::Exception() ? 1 : 0 },
                   { "mayMarry", Marriage::MayMarryAnother() ? 1 : 0 },
@@ -398,7 +406,31 @@ namespace SNRom::Decorators {
                                             betrothed->GetActorBase()->GetSex() == RE::SEX::kFemale
                                         ? 1
                                         : 0;
+            out["planned"] = Ceremony::Planned() ? 1 : 0;
+            out["kiss"] = (Ceremony::Parts() & WeddingPlan::kKiss) ? 1 : 0;
         }
+        return out.dump(-1, ' ', false, json::error_handler_t::replace);
+    }
+
+    // A WEDDING PLANNER'S VIEW (Build B, M4p): the couples they could plan
+    // for, which they were hired for, and each plan as it stands.
+    std::string PlannerJson(RE::Actor* a_actor) {
+        if (!Officiant::IsPlanner(a_actor)) {
+            return R"({"planner":0})";
+        }
+        json couples = json::array();
+        for (const auto id : Marriage::AllEngaged()) {
+            auto*       actor = RE::TESForm::LookupByID<RE::Actor>(static_cast<RE::FormID>(id));
+            const char* name = actor ? actor->GetDisplayFullName() : nullptr;
+            if (!name || !*name || actor == a_actor) {
+                continue;
+            }
+            const auto plan = WeddingPlan::Get(id);
+            couples.push_back({ { "betrothed", name },
+                                { "hired", plan && plan->planner == a_actor->GetFormID() ? 1 : 0 },
+                                { "plan", plan ? WeddingPlan::ForPrompt(id) : json{ { "exists", 0 } } } });
+        }
+        json out{ { "planner", 1 }, { "fee", WeddingPlan::kPlannerFee }, { "couples", couples } };
         return out.dump(-1, ' ', false, json::error_handler_t::replace);
     }
 
@@ -440,6 +472,9 @@ namespace SNRom::Decorators {
             { "get_officiant",
               reg("get_officiant", "Relationships: what a priest or jarl knows of the player's engagements, as JSON",
                   [](RE::Actor* a_actor) { return OfficiantJson(a_actor); }) },
+            { "get_wedding_planner",
+              reg("get_wedding_planner", "Relationships: what a wedding planner knows of the player's weddings, as JSON",
+                  [](RE::Actor* a_actor) { return PlannerJson(a_actor); }) },
         };
         for (const auto& [name, ok] : marriage) {
             SKSE::log::info("Decorators: native {} {}", name, ok ? "registered" : "REFUSED");

@@ -20,6 +20,7 @@
 // ---------------------------------------------------------------------------
 
 #include "Api.h"
+#include "Ceremony.h"
 #include "MagelightHost.h"
 #include "MeridianHost.h"
 #include "Model.h"
@@ -395,6 +396,10 @@ namespace SNRom::Dashboard {
             std::string              title;
             std::string              body;
             std::vector<std::string> buttons;
+            // M8c: the button a running-out timer chooses (-1: none, so it is
+            // dismissed), and the timer's seconds (0: no timer).
+            std::int32_t             defaultButton = -1;
+            float                    seconds = 0.0f;
         };
 
         std::mutex                         g_askLock;
@@ -411,6 +416,24 @@ namespace SNRom::Dashboard {
         constexpr auto kAskRetry = std::chrono::milliseconds{ 500 };
         constexpr int  kAskMaxTries = 120;
 
+        // A CALM MOMENT (M8c; the author, 2026-10-20: "never mid-scene"; the
+        // ring question in the middle of the wedding was the wrong place). A
+        // question asked on its own waits, for as long as it takes, until the
+        // player is out of combat, in no menu or conversation, and no wedding
+        // is under way. Over an open dashboard it is asked at once. Main
+        // thread.
+        bool Calm() {
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            auto* ui = RE::UI::GetSingleton();
+            if (!player || !ui) {
+                return false;
+            }
+            if (player->IsInCombat() || ui->GameIsPaused() || ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME)) {
+                return false;
+            }
+            return Ceremony::Now() == 0;
+        }
+
         void ShowNextAsk();
 
         void SendAsk(const Question& a_q, bool a_alone) {
@@ -421,6 +444,8 @@ namespace SNRom::Dashboard {
                        { "title", a_q.title },
                        { "body", a_q.body },
                        { "buttons", a_q.buttons },
+                       { "defaultButton", a_q.defaultButton },
+                       { "seconds", a_q.seconds },
                        { "standalone", a_alone } } } });
         }
 
@@ -483,11 +508,17 @@ namespace SNRom::Dashboard {
                 shown(false);
                 return;
             }
-            // Otherwise the view opens with the question alone. The page
+            // Otherwise the view opens with the question alone, once the
+            // moment is calm: a small box low on the screen over a game that
+            // keeps playing (M8c), not a pause behind a dark screen. The page
             // hears it first, so it never shows the dashboard for a moment.
+            if (!Calm()) {
+                RetryAskSoon();
+                return;
+            }
             SendAsk(next, true);
             g_host->Show();
-            if (g_host->Focus() == FocusOutcome::Granted) {
+            if (g_host->Focus(false) == FocusOutcome::Granted) {
                 shown(true);
                 return;
             }
@@ -870,19 +901,50 @@ namespace SNRom::Dashboard {
         ResendIfOpen();
     }
 
-    std::int32_t Ask(std::string a_title, std::string a_body, std::vector<std::string> a_buttons) {
+    std::int32_t Ask(std::string a_title, std::string a_body, std::vector<std::string> a_buttons,
+                     std::int32_t a_default, float a_seconds) {
         if (!g_host || !g_created || a_buttons.empty()) {
             return 0;
+        }
+        if (a_default < -1 || a_default >= static_cast<std::int32_t>(a_buttons.size())) {
+            a_default = -1;
         }
         std::int32_t id = 0;
         {
             const std::scoped_lock lock{ g_askLock };
             id = g_nextAsk++;
             g_answers[id] = kAskPending;
-            g_askQueue.push_back(Question{ id, std::move(a_title), std::move(a_body), std::move(a_buttons) });
+            g_askQueue.push_back(Question{ id, std::move(a_title), std::move(a_body), std::move(a_buttons), a_default,
+                                           std::clamp(a_seconds, 0.0f, 600.0f) });
         }
         SKSE::GetTaskInterface()->AddTask([]() { ShowNextAsk(); });
         return id;
+    }
+
+    std::int32_t AskPeek(std::int32_t a_id) {
+        const std::scoped_lock lock{ g_askLock };
+        const auto             it = g_answers.find(a_id);
+        return it == g_answers.end() ? kAskDismissed : it->second;
+    }
+
+    void AskCancel(std::int32_t a_id) {
+        {
+            const std::scoped_lock lock{ g_askLock };
+            g_answers.erase(a_id);
+            std::erase_if(g_askQueue, [a_id](const Question& a_q) { return a_q.id == a_id; });
+        }
+        SKSE::GetTaskInterface()->AddTask([a_id]() {
+            if (g_asking && g_asking->id == a_id) {
+                SKSE::log::info("Question {} withdrawn", a_id);
+                g_asking.reset();
+                Send({ { "v", kProtocol }, { "kind", "askEnd" } });
+                if (g_askAlone && g_host && g_created) {
+                    g_host->Hide();
+                }
+                g_askAlone = false;
+                ShowNextAsk();
+            }
+        });
     }
 
     std::int32_t AskAnswer(std::int32_t a_id) {

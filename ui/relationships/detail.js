@@ -35,6 +35,46 @@
     return row;
   }
 
+  // "A", "A and B", "A, B and C".
+  function names(list) {
+    if (list.length < 2) return list.join("");
+    return t("list.and", "{0} and {1}", list.slice(0, -1).join(", "), list[list.length - 1]);
+  }
+
+  // MARRIED, ENGAGED OR SEPARATED in Relationships' own record (2.5).
+  function wedded(b) {
+    var m = b.marriage;
+    return !!m && (m.state === "engaged" || m.state === "married" || m.state === "separated");
+  }
+
+  // A PARTNER: wedded, or courting at Lover or above.
+  function partner(b) {
+    return wedded(b) || (b.state === "courting" && b.depth.tier >= 4);
+  }
+
+  // THE COMMITMENT LINE (2.5, M8b; the author, 2026-10-17): for everyone
+  // the Marriage section does not cover, what the bond already records -
+  // courting, a partner worded by their sex, and more than two together,
+  // named. Living together waits for the household phase. Null for nothing.
+  function commitmentWords(b, snap) {
+    if (b.commitment === "candidate") return L.COMMITMENT.candidate;
+    if (b.state !== "courting") return b.commitment !== "none" ? L.COMMITMENT[b.commitment] : null;
+    if (b.depth.tier < 4) return t("commitment.courting", "Courting");
+    var sex = b.subject.sex;
+    var word = sex === "female" ? t("commitment.girlfriend", "Girlfriend") :
+      sex === "male" ? t("commitment.boyfriend", "Boyfriend") : t("commitment.partner", "Partner");
+    var others = (snap.bonds || []).filter(function (o) { return o !== b && partner(o); })
+      .map(function (o) { return o.subject.name; });
+    return others.length ? t("commitment.together", "{0}, with {1} too", word, names(others)) : word;
+  }
+
+  var STAGES = null;
+  function stageWord(stage) {
+    STAGES = STAGES || [t("stage.newborn", "newborn"), t("stage.infant", "infant"), t("stage.toddler", "toddler"),
+      t("stage.child", "child"), t("stage.adolescent", "adolescent"), t("stage.grown", "grown")];
+    return stage >= 0 && stage < STAGES.length ? STAGES[stage] : "";
+  }
+
   function chip(cls, text, title) {
     var c = el("span", "chip " + cls, text);
     if (title) c.title = title;
@@ -221,24 +261,65 @@
           : (b.spark.decided ? t("detail.spark.no", "Judged: nothing romantic") : t("detail.spark.notYet", "Not judged yet"));
         kv(dl2, t("detail.spark", "Spark"), spark);
       }
-      if (b.commitment !== "none") kv(dl2, t("detail.commitment", "Commitment"), L.COMMITMENT[b.commitment]);
-      // 2.5, Build A: Relationships' own marriage record.
-      var m = b.marriage;
-      if (m) {
-        var MARRIAGE = { none: t("marriage.none", "None"), engaged: t("marriage.engaged", "Engaged"),
-          married: t("marriage.married", "Married"), broken_off: t("marriage.broken_off", "Broken off"),
-          divorced: t("marriage.divorced", "Divorced"), widowed: t("marriage.widowed", "Widowed"),
-          separated: t("marriage.separated", "Separated") };
-        var mState = MARRIAGE[m.state] || m.state;
-        if (m.since !== null) mState += " (" + L.daysAgo(m.since, snap.generatedAt) + ")";
-        kv(dl2, t("detail.marriage", "Marriage"), mState);
-        if (m.officiant) kv(dl2, m.eloped ? t("detail.elopedBy", "Eloped, married by") : t("detail.marriedBy", "Married by"), m.officiant);
-        if (m.ringFromPlayer) kv(dl2, t("detail.ringFromYou", "Your ring to them"), m.ringFromPlayer);
-        if (m.ringToPlayer) kv(dl2, t("detail.ringToYou", "Their ring to you"), m.ringToPlayer);
-      }
+      // While engaged or married the Marriage section says it, and this
+      // row does not (M8b).
+      var together = wedded(b) ? null : commitmentWords(b, snap);
+      if (together) kv(dl2, t("detail.commitment", "Commitment"), together);
     }
     kind.appendChild(dl2);
     scroll.appendChild(kind);
+
+    // MARRIAGE (2.5, M8b): Relationships' own record, a section of its own.
+    var m = b.marriage;
+    if (m && m.state !== "none" && b.state !== "foreclosed") {
+      var ms = section(t("detail.marriageSection", "Marriage"));
+      var mdl = el("dl");
+      var MARRIAGE = { none: t("marriage.none", "None"), engaged: t("marriage.engaged", "Engaged"),
+        married: t("marriage.married", "Married"), broken_off: t("marriage.broken_off", "Broken off"),
+        divorced: t("marriage.divorced", "Divorced"), widowed: t("marriage.widowed", "Widowed"),
+        separated: t("marriage.separated", "Separated") };
+      var mState = MARRIAGE[m.state] || m.state;
+      if (m.since !== null) mState += " (" + L.daysAgo(m.since, snap.generatedAt) + ")";
+      kv(mdl, t("detail.marriageState", "Now"), mState);
+      if (m.officiant) kv(mdl, m.eloped ? t("detail.elopedBy", "Eloped, married by") : t("detail.marriedBy", "Married by"), m.officiant);
+      if (m.ringFromPlayer) kv(mdl, t("detail.ringFromYou", "Your ring to them"), m.ringFromPlayer);
+      if (m.ringToPlayer) kv(mdl, t("detail.ringToYou", "Their ring to you"), m.ringToPlayer);
+      ms.appendChild(mdl);
+      if (m.plan) ms.appendChild(this.planBlock(m.plan, snap));
+      scroll.appendChild(ms);
+    }
+
+    // FAMILY (2.5, M8b): parents, and children born or adopted, each with
+    // the other parent. A child with no body in the world is still listed.
+    var fam = b.family;
+    if (fam && (fam.parents.length || fam.children.length)) {
+      var fs = section(t("detail.family", "Family"));
+      if (fam.parents.length) {
+        var pdl = el("dl");
+        kv(pdl, t("detail.parents", "Parents"), names(fam.parents.map(function (p) { return p.name; })));
+        fs.appendChild(pdl);
+      }
+      if (fam.children.length) {
+        fs.appendChild(el("h4", "sub-head", t("detail.children", "Children")));
+        var cl = el("ul", "family-list");
+        fam.children.forEach(function (c) {
+          var li = el("li", "family-child");
+          li.appendChild(el("span", "family-name", c.name));
+          var bits = [];
+          var kindWord = c.child === "daughter" ? t("family.daughter", "daughter") : c.child === "son" ? t("family.son", "son") : t("family.child", "child");
+          if (c.adopted) kindWord = t("family.adopted", "adopted {0}", kindWord);
+          var stage = stageWord(c.stage);
+          bits.push(stage && stage !== kindWord ? kindWord + ", " + stage : kindWord);
+          if (c.withPlayer) bits.push(t("family.withYou", "with you"));
+          else if (c.otherParent) bits.push(t("family.with", "with {0}", c.otherParent));
+          if (!c.inWorld) bits.push(t("family.recordOnly", "not yet in the world"));
+          li.appendChild(el("span", "family-what", bits.join(" · ")));
+          cl.appendChild(li);
+        });
+        fs.appendChild(cl);
+      }
+      scroll.appendChild(fs);
+    }
 
     // Character: the traits in words, then the prose.
     var ch = section(t("detail.whoTheyAre", "Who they are"));
@@ -315,6 +396,39 @@
       var target = this.root.querySelector(refocus);
       if (target && !target.disabled) target.focus();
     }
+  };
+
+  // THE WEDDING PLAN (2.5, Build B, M4p): a checklist, open items first.
+  // Required: the day, the place, an officiant who agreed. The rest never
+  // gates the day.
+  Detail.prototype.planBlock = function (p, snap) {
+    var wrap = el("div", "plan");
+    wrap.appendChild(el("h4", "sub-head", p.status === "underWay" ? t("plan.today", "The wedding: today") : t("plan.title", "The wedding plan")));
+    var hours = p.hour >= 0 ? (p.hour < 11 ? t("plan.morning", "morning") : p.hour < 14 ? t("plan.noon", "noon") :
+      p.hour < 17 ? t("plan.afternoon", "afternoon") : p.hour < 21 ? t("plan.evening", "evening") : t("plan.night", "night")) : "";
+    var rows = [
+      { open: p.day === null, k: t("plan.day", "Day"), v: p.day === null ? t("plan.notSet", "not set") : L.daysAhead(p.day, snap.generatedAt) + (hours ? ", " + hours : "") },
+      { open: !p.place, k: t("plan.place", "Place"), v: p.place || t("plan.notSet", "not set") },
+      { open: !p.officiant, k: t("plan.officiant", "Marrying you"), v: p.officiant || t("plan.notAgreed", "no one has agreed yet") },
+      { k: t("plan.guests", "Guests"), v: p.guests.length ? names(p.guests) : t("plan.noGuests", "none invited") },
+      { k: t("plan.ceremony", "Ceremony"), v: [p.parts.address ? t("plan.address", "address") : null, p.parts.reading ? t("plan.reading", "reading") : null,
+          t("plan.vows", "vows"), p.parts.rings ? t("plan.rings", "rings") : null, p.parts.kiss ? t("plan.kiss", "kiss") : null]
+          .filter(function (x) { return x; }).join(", ") },
+      { k: t("plan.ringsChosen", "Rings"), v: p.ring ? t("plan.ringsAre", "theirs {0}, yours {1}", p.ring, (p.band || p.ring) + (p.bandWide === 1 ? " " + t("plan.wide", "wide") : p.bandWide === 0 ? " " + t("plan.braided", "braided") : "")) : t("plan.ringsNot", "not chosen") },
+      { k: t("plan.clothes", "Their clothes"), v: p.outfit ? t("plan.clothesChosen", "chosen") : t("plan.clothesNot", "not chosen yet") }
+    ];
+    if (p.planner) rows.push({ k: t("plan.planner", "Planner"), v: p.planner });
+    rows.sort(function (a, c) { return (c.open ? 1 : 0) - (a.open ? 1 : 0); });
+    var dl = el("dl", "plan-list");
+    rows.forEach(function (r) {
+      var row = kv(dl, r.k, r.v);
+      if (r.open) row.className += " is-open";
+    });
+    wrap.appendChild(dl);
+    if (p.missedDay !== null && p.missedDay !== undefined) {
+      wrap.appendChild(el("p", "depth-note", t("plan.missed", "You did not come on the day you had set ({0}).", L.daysAgo(p.missedDay, snap.generatedAt))));
+    }
+    return wrap;
   };
 
   Detail.prototype.actionBlock = function (a, b, busy) {

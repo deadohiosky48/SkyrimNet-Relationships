@@ -726,6 +726,35 @@ You and {{ player.name }} are engaged: promised to each other. There is no hurry
 {% if default(rom.marriage.mayMarry, 1) == 0 %}
 {{ player.name }} is already married, and Mara has granted them no exception: no priest will marry the two of you while that stands.
 {% endif %}
+{# THE WEDDING PLAN (Build B, M4p; spec 5.3a; WeddingPlan.h), as it stands.
+   Planned by talking, over as many conversations as it takes; a checklist
+   whose required items are the day, the place, and an officiant who agreed.
+   The betrothed raises what is still open, the most important first, and
+   reminds the player to choose what to wear as the day nears (M4o). #}
+{% set plan = rom.marriage.plan %}
+{% if default(rom.marriage.ceremony, 0) == 0 %}
+{% if default(plan.exists, 0) == 1 %}
+{% if default(plan.underWay, 0) == 1 %}
+
+Your wedding to {{ player.name }} is today, at {{ plan.place }}{% if plan.officiant != "" %}, and {{ plan.officiant }} will marry you{% endif %}. Be there; when {{ player.name }} comes, it begins.
+{% else %}
+
+The wedding you and {{ player.name }} are planning: {% if plan.day != "" %}{{ plan.day }}{% else %}no day yet{% endif %}; {% if plan.place != "" %}at {{ plan.place }}{% else %}no place yet{% endif %}; {% if plan.officiant != "" %}{{ plan.officiant }} has agreed to marry you{% else %}no one has agreed to marry you yet{% endif %}.{% if length(plan.guests) > 0 %} Invited: {% for g in plan.guests %}{{ g }}{% if not loop.is_last %}, {% endif %}{% endfor %}.{% endif %}{% if plan.planner != "" %} {{ plan.planner }} is planning it with you.{% endif %}
+{% if length(plan.open) > 0 %}
+Still to settle before the day can come: {% for o in plan.open %}{% if o == "day" %}the day{% elif o == "place" %}where{% else %}who will marry you, who must agree to it themselves{% endif %}{% if not loop.is_last %}, {% endif %}{% endfor %}. Raise it when it is natural, the most pressing first.
+{% endif %}
+{% if default(plan.outfit, 0) == 0 %}You have not yet chosen what you will wear to it. {% endif %}As the day nears, remind {{ player.name }} to choose what they will wear, too.{% if default(plan.soon, 0) == 1 %} The day is close now.{% endif %}
+{% endif %}
+{% if default(plan.missed, 0) == 1 %}
+{{ player.name }} did not come to your wedding on the day you had set. It happened; how you feel about it, and whether you still want to marry them, is yours.
+{% endif %}
+{% if default(plan.lapsed, 0) == 1 %}
+The day you had set came and went before the wedding was ready, so it is put off; nobody is to blame. A new day can be set.
+{% endif %}
+{% else %}
+You have not begun planning a wedding. You can plan one together, settling the day, the place, who will marry you and who comes; a wedding planner can help, for a fee; or you can simply elope.
+{% endif %}
+{% endif %}
 {# THE WEDDING UNDER WAY (Ceremony.h; the author, 2026-10-20), by step: 1 the
    opening, 2 the player's vows, 3 yours, 4-5 the player is asked and
    answers, 6-7 you are asked and answer, 8 the pronouncement. Vows before the
@@ -736,7 +765,13 @@ You and {{ player.name }} are engaged: promised to each other. There is no hurry
 {% if wed > 0 %}
 
 You are being married to {{ player.name }}, now, by {{ wed_by }}: first the vows, {{ player.name }}'s and then yours, then {{ wed_by }} asks each of you in turn whether you take the other, then pronounces you married.
-{% if wed <= 2 %}
+{% if wed == 10 %}
+Now: {{ wed_by }} is addressing everyone gathered for your wedding. Listen; it is not your turn yet.
+{% elif wed == 11 %}
+Now: {{ wed_by }} is giving a reading, or a blessing. Listen; it is not your turn yet.
+{% elif wed == 12 %}
+Now: you have both said yes, and {{ wed_by }} invites the two of you to exchange rings. Give {{ player.name }} their ring, with a word if you wish.
+{% elif wed <= 2 %}
 Now: {{ wed_by }} has opened, and it is {{ player.name }}'s turn to speak their vows to you. Listen; it is not your turn yet.
 {% elif wed == 3 %}
 Now: {{ player.name }} has spoken their vows. Speak your own vows to {{ player.name }}, in your own words. These are your vows, not yet an answer to any question.

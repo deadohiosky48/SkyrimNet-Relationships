@@ -64,8 +64,14 @@ String Function NL() Global
     Return StringUtil.AsChar(10)
 EndFunction
 
-Int Function Open(String asBody, String asAccept, String asDecline, String asDefer) Global
+Int Function Open(String asBody, String asAccept, String asDecline, String asDefer, Int aiDefault = 2, \
+    Float afSeconds = 30.0) Global
     { Puts the box on screen and returns IMMEDIATELY with a box id.
+
+      IN OUR OWN VIEW FIRST (Build B, M8c): a negative id is our question
+      (SNRom_Native.AskOpenEx, waiting for a calm moment, then floating with a
+      timer that chooses aiDefault after afSeconds); a positive one is
+      SkyMessage's, when there is no view.
 
       Non-blocking on purpose. The caller is the follower sweep, which runs on a
       game-time update and must not sit in a wait loop holding a script thread
@@ -76,6 +82,12 @@ Int Function Open(String asBody, String asAccept, String asDecline, String asDef
       SkyMessage itself uses for "plugin not installed". Callers MUST test for
       it - a 0 id passed to IsAnswered() would poll forever on a box that does
       not exist, and the question would silently never be asked. }
+    If InView()
+        Int id = SNRom_Native.AskOpenEx("", asBody, Buttons(asAccept, asDecline, asDefer), aiDefault, afSeconds)
+        If id > 0
+            Return -id
+        EndIf
+    EndIf
     Return SkyMessage.Show_NonBlocking(asBody, asAccept, asDecline, asDefer)
 EndFunction
 
@@ -84,6 +96,8 @@ Bool Function IsAnswered(Int aiBoxId) Global
       Open() can never look like a pending question. }
     If aiBoxId == 0
         Return False
+    ElseIf aiBoxId < 0
+        Return SNRom_Native.AskPeek(-aiBoxId) != -2
     EndIf
     Return SkyMessage.IsMessageResultAvailable(aiBoxId)
 EndFunction
@@ -100,6 +114,12 @@ Int Function Take(Int aiBoxId) Global
       Returns ANSWER_NONE for an invalid id or an unanswered box. }
     If !IsAnswered(aiBoxId)
         Return ANSWER_NONE()
+    ElseIf aiBoxId < 0
+        Int answer = SNRom_Native.AskAnswer(-aiBoxId)
+        If answer < 0
+            Return ANSWER_NONE()
+        EndIf
+        Return answer
     EndIf
     Return SkyMessage.GetResultIndex(aiBoxId)
 EndFunction
@@ -108,13 +128,20 @@ Function Discard(Int aiBoxId) Global
     { Throw a pending box away without reading it - for when the subject dies,
       unenrolls, or the romance ends while the question is still on screen.
       Leaking ids is not catastrophic but they accumulate for the session. }
-    If aiBoxId != 0
+    If aiBoxId < 0
+        SNRom_Native.AskCancel(-aiBoxId)
+    ElseIf aiBoxId != 0
         SkyMessage.Delete(aiBoxId)
     EndIf
 EndFunction
 
-Int Function AskNow(String asBody, String asAccept, String asDecline, String asDefer, Float afTimeoutSeconds = 60.0) Global
+Int Function AskNow(String asBody, String asAccept, String asDecline, String asDefer, Float afTimeoutSeconds = 60.0, \
+    Int aiDefault = -1, Float afSeconds = 30.0) Global
     { Blocking convenience: shows the box and waits for an answer.
+
+      IN OUR OWN VIEW FIRST (Build B, M8c): floating, at a calm moment, its
+      timer choosing aiDefault after afSeconds (AskInViewEx). A message box
+      only when there is no view.
 
       For MANUAL dispatch and testing only - the sweep uses Open()/IsAnswered()/
       Take() instead. Kept because it makes the whole round trip testable from
@@ -123,7 +150,10 @@ Int Function AskNow(String asBody, String asAccept, String asDecline, String asD
 
       Timeout is real seconds and returns ANSWER_NONE, so a dispatched thread
       cannot be parked indefinitely if the player ignores the box. }
-    Int boxId = Open(asBody, asAccept, asDecline, asDefer)
+    If InView()
+        Return AskInViewEx("", asBody, Buttons(asAccept, asDecline, asDefer), aiDefault, afSeconds)
+    EndIf
+    Int boxId = SkyMessage.Show_NonBlocking(asBody, asAccept, asDecline, asDefer)
     If boxId == 0
         Return ANSWER_NONE()
     EndIf
@@ -161,6 +191,11 @@ Int Function AskList(String asBody, String[] asButtons, Float afTimeoutSeconds =
 EndFunction
 
 Int Function AskInView(String asTitle, String asBody, String[] asButtons) Global
+    { AskInViewEx with no default and no timer. }
+    Return AskInViewEx(asTitle, asBody, asButtons, -1, 0.0)
+EndFunction
+
+Int Function AskInViewEx(String asTitle, String asBody, String[] asButtons, Int aiDefault, Float afSeconds) Global
     { THE QUESTION IN OUR OWN UI (2.5; the author, 2026-10-19: "Use our UI for
       the confirmation box"), shown by the DLL in the dashboard's view
       (SNRom_Native.AskOpen). Returns the index of the button chosen, or
@@ -171,12 +206,24 @@ Int Function AskInView(String asTitle, String asBody, String[] asButtons) Global
       UI framework installed), or when another menu held the screen for a
       minute, the same question is asked in a message box instead.
 
-      Waits in menu time: the view pauses the game while it asks, and
-      Utility.Wait would not return until it closed. Ten minutes at most. }
+      FLOATING, AT A CALM MOMENT (Build B, M8c; the author, 2026-10-20): asked
+      on its own, the question waits until the player is out of combat, in no
+      menu or conversation and at no wedding, then floats low on the screen
+      while the game plays on, with a timer bar that chooses aiDefault after
+      afSeconds (-1: none). Over an open dashboard it is asked there, paused,
+      as before.
+
+      Waits in menu time, which counts whether or not a menu is open. Ten
+      minutes at most; a question still unasked then is withdrawn. }
     If asButtons.Length == 0
         Return ANSWER_NONE()
     EndIf
-    Int id = SNRom_Native.AskOpen(asTitle, asBody, asButtons)
+    Int id = 0
+    If SNRom_Native.Version() >= 28
+        id = SNRom_Native.AskOpenEx(asTitle, asBody, asButtons, aiDefault, afSeconds)
+    Else
+        id = SNRom_Native.AskOpen(asTitle, asBody, asButtons)
+    EndIf
     Int answer = -3
     If id > 0
         answer = SNRom_Native.AskAnswer(id)
@@ -185,6 +232,10 @@ Int Function AskInView(String asTitle, String asBody, String[] asButtons) Global
             Utility.WaitMenuMode(0.2)
             answer = SNRom_Native.AskAnswer(id)
         EndWhile
+        If answer == -2
+            SNRom_Native.AskCancel(id)
+            Return ANSWER_NONE()
+        EndIf
     EndIf
     If answer == -3 || id <= 0
         Return AskList(asTitle + NL() + NL() + asBody, asButtons)
@@ -193,4 +244,26 @@ Int Function AskInView(String asTitle, String asBody, String[] asButtons) Global
         Return ANSWER_NONE()
     EndIf
     Return answer
+EndFunction
+
+Bool Function InView() Global
+    { Our own view can ask (natives v28, M8c). Without the DLL, or one older,
+      SkyMessage asks. }
+    Return SNRom_Native.Version() >= 28
+EndFunction
+
+String[] Function Buttons(String asAccept, String asDecline, String asDefer) Global
+    { Two or three buttons, in SkyMessage's order: an empty asDefer leaves the
+      third out. }
+    Int count = 2
+    If asDefer != ""
+        count = 3
+    EndIf
+    String[] out = Utility.CreateStringArray(count)
+    out[0] = asAccept
+    out[1] = asDecline
+    If count == 3
+        out[2] = asDefer
+    EndIf
+    Return out
 EndFunction

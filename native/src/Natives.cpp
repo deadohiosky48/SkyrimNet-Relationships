@@ -8,11 +8,13 @@
 #include "Dashboard.h"
 #include "Ceremony.h"
 #include "Decorators.h"
+#include "Maras.h"
 #include "Marriage.h"
 #include "History.h"
 #include "Hotkey.h"
 #include "Notices.h"
 #include "Officiant.h"
+#include "WeddingPlan.h"
 #include "RingCatalog.h"
 #include "Settings.h"
 #include "SkyrimNetLink.h"
@@ -448,6 +450,159 @@ namespace SNRom::Natives {
         std::int32_t CeremonyStage(RE::StaticFunctionTag*) {
             return Ceremony::Now();
         }
+
+        // VERSION 28 (Build B, M4p and M4w): the wedding plan (WeddingPlan.h).
+        bool CeremonyBeginPlanned(RE::StaticFunctionTag*, RE::Actor* a_officiant, RE::Actor* a_betrothed,
+                                  std::string a_variant, std::int32_t a_parts) {
+            return Ceremony::Begin(a_officiant, a_betrothed, std::move(a_variant), static_cast<std::uint32_t>(a_parts),
+                                   true);
+        }
+        bool CeremonyPlanned(RE::StaticFunctionTag*) {
+            return Ceremony::Planned();
+        }
+        bool IsWeddingPlanner(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+            return Officiant::IsPlanner(a_actor);
+        }
+        RE::Actor* PersonNamed(RE::StaticFunctionTag*, std::string a_name) {
+            return WeddingPlan::PersonNamed(a_name);
+        }
+        // The one engaged to the player named a_name; with no name, or no
+        // match, the only one engaged, or the nearest of several loaded.
+        RE::Actor* BetrothedNamed(RE::StaticFunctionTag*, std::string a_name) {
+            const auto engaged = Marriage::AllEngaged();
+            std::vector<RE::Actor*> actors;
+            for (const auto id : engaged) {
+                if (auto* actor = RE::TESForm::LookupByID<RE::Actor>(static_cast<RE::FormID>(id));
+                    actor && !actor->IsDead()) {
+                    actors.push_back(actor);
+                }
+            }
+            if (!a_name.empty()) {
+                auto* named = WeddingPlan::PersonNamed(a_name);
+                if (named && std::find(actors.begin(), actors.end(), named) != actors.end()) {
+                    return named;
+                }
+            }
+            if (actors.size() == 1) {
+                return actors.front();
+            }
+            auto*      player = RE::PlayerCharacter::GetSingleton();
+            RE::Actor* nearest = nullptr;
+            float      best = 0.0f;
+            for (auto* actor : actors) {
+                if (!player || !actor->Is3DLoaded()) {
+                    continue;
+                }
+                const float d = actor->GetPosition().GetDistance(player->GetPosition());
+                if (!nearest || d < best) {
+                    nearest = actor;
+                    best = d;
+                }
+            }
+            return nearest;
+        }
+        bool PlanExists(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            return WeddingPlan::Get(FormIdOfActor(a_betrothed)).has_value();
+        }
+        bool PlanHire(RE::StaticFunctionTag*, RE::Actor* a_betrothed, RE::Actor* a_planner) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && a_planner && WeddingPlan::Hire(id, a_planner->GetFormID());
+        }
+        bool PlanSetDay(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::int32_t a_daysFromNow,
+                        std::string a_timeOfDay) {
+            const auto id = FormIdOfActor(a_betrothed);
+            const auto hour = WeddingPlan::HourOf(a_timeOfDay);
+            return id && WeddingPlan::SetDay(id, a_daysFromNow, hour < 0 ? 12 : hour);
+        }
+        bool PlanSetPlace(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::string a_place) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && WeddingPlan::SetPlace(id, std::move(a_place));
+        }
+        bool PlanSetOfficiant(RE::StaticFunctionTag*, RE::Actor* a_betrothed, RE::Actor* a_officiant) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && a_officiant && WeddingPlan::SetOfficiant(id, a_officiant->GetFormID());
+        }
+        bool PlanGuest(RE::StaticFunctionTag*, RE::Actor* a_betrothed, RE::Actor* a_guest, bool a_add) {
+            const auto id = FormIdOfActor(a_betrothed);
+            if (!id || !a_guest) {
+                return false;
+            }
+            return a_add ? WeddingPlan::AddGuest(id, a_guest->GetFormID())
+                         : WeddingPlan::RemoveGuest(id, a_guest->GetFormID());
+        }
+        bool PlanSetParts(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::int32_t a_parts) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && WeddingPlan::SetParts(id, static_cast<std::uint32_t>(a_parts));
+        }
+        bool PlanSetRings(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::int32_t a_ring, std::int32_t a_band,
+                          std::int32_t a_wide) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && WeddingPlan::SetRings(id, a_ring, a_band, a_wide);
+        }
+        bool PlanSetOutfit(RE::StaticFunctionTag*, RE::Actor* a_betrothed, bool a_saved) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && WeddingPlan::SetOutfit(id, a_saved);
+        }
+        bool PlanPostpone(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && WeddingPlan::Postpone(id);
+        }
+        void PlanClear(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            if (const auto id = FormIdOfActor(a_betrothed)) {
+                WeddingPlan::Clear(id);
+            }
+        }
+        std::string PlanOpen(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto plan = WeddingPlan::Get(FormIdOfActor(a_betrothed));
+            if (!plan) {
+                return "day,place,officiant";
+            }
+            std::string out;
+            for (const auto& item : WeddingPlan::Open(*plan)) {
+                out += (out.empty() ? "" : ",") + item;
+            }
+            return out;
+        }
+        RE::Actor* PlanPlanner(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto plan = WeddingPlan::Get(FormIdOfActor(a_betrothed));
+            return plan && plan->planner ? RE::TESForm::LookupByID<RE::Actor>(plan->planner) : nullptr;
+        }
+        RE::Actor* PlanOfficiant(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto plan = WeddingPlan::Get(FormIdOfActor(a_betrothed));
+            return plan && plan->officiant ? RE::TESForm::LookupByID<RE::Actor>(plan->officiant) : nullptr;
+        }
+        std::vector<RE::Actor*> PlanGuests(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            std::vector<RE::Actor*> out;
+            if (const auto plan = WeddingPlan::Get(FormIdOfActor(a_betrothed))) {
+                for (const auto guest : plan->guests) {
+                    if (auto* actor = RE::TESForm::LookupByID<RE::Actor>(guest); actor && !actor->IsDead()) {
+                        out.push_back(actor);
+                    }
+                }
+            }
+            return out;
+        }
+        std::string PlanPlace(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto plan = WeddingPlan::Get(FormIdOfActor(a_betrothed));
+            return plan ? plan->place : "";
+        }
+        bool PlanOutfit(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto plan = WeddingPlan::Get(FormIdOfActor(a_betrothed));
+            return plan && plan->outfit;
+        }
+        std::int32_t PlanParts(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto plan = WeddingPlan::Get(FormIdOfActor(a_betrothed));
+            return plan ? static_cast<std::int32_t>(plan->parts) : 0;
+        }
+        // 0 the betrothed's wedding ring's metal, 1 the player's band's, 2
+        // whether that band is wide; -1 when the plan leaves it.
+        std::int32_t PlanRing(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::int32_t a_which) {
+            const auto plan = WeddingPlan::Get(FormIdOfActor(a_betrothed));
+            if (!plan) {
+                return -1;
+            }
+            return a_which == 0 ? plan->ringMetal : a_which == 1 ? plan->bandMetal : plan->bandWide;
+        }
         RE::Actor* CeremonyOfficiant(RE::StaticFunctionTag*) {
             return Ceremony::Officiant();
         }
@@ -469,6 +624,11 @@ namespace SNRom::Natives {
         void CeremonyCueSent(RE::StaticFunctionTag*, std::int32_t a_token) {
             Ceremony::CueSent(a_token);
         }
+        // VERSION 28 (Build B): MARAS called by its own shape (Maras.h).
+        bool MarasPromote(RE::StaticFunctionTag*, RE::Actor* a_actor, std::string a_status) {
+            return Maras::PromoteToStatus(a_actor, a_status);
+        }
+
         // VERSION 27: one change taken out of a bond's history (History.h).
         bool RemoveChange(RE::StaticFunctionTag*, RE::Actor* a_actor, std::int32_t a_index, std::int32_t a_delta,
                           std::int32_t a_total) {
@@ -487,6 +647,13 @@ namespace SNRom::Natives {
             }
             return RingCatalog::Find(RingCatalog::Kind::kWedding,
                                      static_cast<RingCatalog::Metal>(RingCatalog::MetalOf(a_engagement)));
+        }
+        // VERSION 28 (Build B): a wedding ring by metal, as a planner chose it.
+        RE::TESForm* RingWeddingOfMetal(RE::StaticFunctionTag*, std::int32_t a_metal) {
+            if (a_metal < 0 || a_metal > 2) {
+                return nullptr;
+            }
+            return RingCatalog::Find(RingCatalog::Kind::kWedding, static_cast<RingCatalog::Metal>(a_metal));
         }
         RE::TESForm* RingBand(RE::StaticFunctionTag*, std::int32_t a_metal, bool a_wide) {
             const auto metal = a_metal >= 0 && a_metal <= 2 ? static_cast<RingCatalog::Metal>(a_metal)
@@ -515,6 +682,19 @@ namespace SNRom::Natives {
 
         std::int32_t AskAnswer(RE::StaticFunctionTag*, std::int32_t a_id) {
             return Dashboard::AskAnswer(a_id);
+        }
+
+        // VERSION 28 (Build B, M8c): a question with a default and a timer,
+        // floating over the game; looked at without taking; withdrawn.
+        std::int32_t AskOpenEx(RE::StaticFunctionTag*, std::string a_title, std::string a_body,
+                               std::vector<std::string> a_buttons, std::int32_t a_default, float a_seconds) {
+            return Dashboard::Ask(std::move(a_title), std::move(a_body), std::move(a_buttons), a_default, a_seconds);
+        }
+        std::int32_t AskPeek(RE::StaticFunctionTag*, std::int32_t a_id) {
+            return Dashboard::AskPeek(a_id);
+        }
+        void AskCancel(RE::StaticFunctionTag*, std::int32_t a_id) {
+            Dashboard::AskCancel(a_id);
         }
 
         std::int32_t SeverOutfitLockSetting(RE::StaticFunctionTag*) {
@@ -772,6 +952,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("ClearProposalDeclined", kScript, ClearProposalDeclined, true);
             a_vm->RegisterFunction("NoteProposalDeclinedAt", kScript, NoteProposalDeclinedAt, true);
             a_vm->RegisterFunction("RemoveChange", kScript, RemoveChange, true);
+            a_vm->RegisterFunction("MarasPromote", kScript, MarasPromote);
             a_vm->RegisterFunction("ProposalDaysSinceDeclined", kScript, ProposalDaysSinceDeclined, true);
             a_vm->RegisterFunction("SetMarriageFacts", kScript, SetMarriageFacts, true);
             a_vm->RegisterFunction("MarriageRing", kScript, MarriageRing, true);
@@ -788,6 +969,31 @@ namespace SNRom::Natives {
             // Main thread, all: the ceremony is the main thread's.
             a_vm->RegisterFunction("CeremonyBegin", kScript, CeremonyBegin);
             a_vm->RegisterFunction("CeremonyStage", kScript, CeremonyStage);
+            a_vm->RegisterFunction("CeremonyBeginPlanned", kScript, CeremonyBeginPlanned);
+            a_vm->RegisterFunction("CeremonyPlanned", kScript, CeremonyPlanned, true);
+            a_vm->RegisterFunction("IsWeddingPlanner", kScript, IsWeddingPlanner, true);
+            a_vm->RegisterFunction("PersonNamed", kScript, PersonNamed);
+            a_vm->RegisterFunction("BetrothedNamed", kScript, BetrothedNamed);
+            a_vm->RegisterFunction("PlanExists", kScript, PlanExists, true);
+            a_vm->RegisterFunction("PlanHire", kScript, PlanHire, true);
+            a_vm->RegisterFunction("PlanSetDay", kScript, PlanSetDay, true);
+            a_vm->RegisterFunction("PlanSetPlace", kScript, PlanSetPlace, true);
+            a_vm->RegisterFunction("PlanSetOfficiant", kScript, PlanSetOfficiant, true);
+            a_vm->RegisterFunction("PlanGuest", kScript, PlanGuest, true);
+            a_vm->RegisterFunction("PlanSetParts", kScript, PlanSetParts, true);
+            a_vm->RegisterFunction("PlanSetRings", kScript, PlanSetRings, true);
+            a_vm->RegisterFunction("PlanSetOutfit", kScript, PlanSetOutfit, true);
+            a_vm->RegisterFunction("PlanPostpone", kScript, PlanPostpone, true);
+            a_vm->RegisterFunction("PlanClear", kScript, PlanClear, true);
+            a_vm->RegisterFunction("PlanOpen", kScript, PlanOpen, true);
+            a_vm->RegisterFunction("PlanOfficiant", kScript, PlanOfficiant, true);
+            a_vm->RegisterFunction("PlanPlanner", kScript, PlanPlanner, true);
+            a_vm->RegisterFunction("PlanGuests", kScript, PlanGuests, true);
+            a_vm->RegisterFunction("PlanPlace", kScript, PlanPlace, true);
+            a_vm->RegisterFunction("PlanOutfit", kScript, PlanOutfit, true);
+            a_vm->RegisterFunction("PlanParts", kScript, PlanParts, true);
+            a_vm->RegisterFunction("PlanRing", kScript, PlanRing, true);
+            a_vm->RegisterFunction("RingWeddingOfMetal", kScript, RingWeddingOfMetal, true);
             a_vm->RegisterFunction("CeremonyOfficiant", kScript, CeremonyOfficiant);
             a_vm->RegisterFunction("CeremonyBetrothed", kScript, CeremonyBetrothed);
             a_vm->RegisterFunction("CeremonyLastOfficiant", kScript, CeremonyLastOfficiant);
@@ -803,6 +1009,9 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("RingAllOurs", kScript, RingAllOurs, true);
             a_vm->RegisterFunction("AskOpen", kScript, AskOpen, true);
             a_vm->RegisterFunction("AskAnswer", kScript, AskAnswer, true);
+            a_vm->RegisterFunction("AskOpenEx", kScript, AskOpenEx, true);
+            a_vm->RegisterFunction("AskPeek", kScript, AskPeek, true);
+            a_vm->RegisterFunction("AskCancel", kScript, AskCancel, true);
             SKSE::log::info("Registered {} v{}: Version, SetDashboardHotkey, SetDeveloperView, SetDisplaySettings, "
                             "PutBondNumbers, PutBondText, DropBond, FormIdOf, PutPlaythrough, PutRefreshFacts, "
                             "RefreshDone, ActionArgs, ActionDone, CheckBond, RecordChange, Announce, ObserversNear, AppendLog, "
@@ -813,7 +1022,10 @@ namespace SNRom::Natives {
                             "RingGivenSince, SeverOutfitLockSetting, AskOpen, AskAnswer, CeremonyBegin, CeremonyStage, "
                             "CeremonyOfficiant, CeremonyBetrothed, CeremonyLastOfficiant, CeremonyCueTarget, "
                             "CeremonyCueWanted, CeremonyCueDelay, CeremonyCueSent, CeremonyStop, RingWeddingFor, RingBand, RingKindOf, "
-                            "RingMetalOf, RingAllOurs, ClearProposalDeclined, ProposalDaysSinceDeclined, NoteProposalDeclinedAt, RemoveChange",
+                            "RingMetalOf, RingAllOurs, ClearProposalDeclined, ProposalDaysSinceDeclined, NoteProposalDeclinedAt, RemoveChange, MarasPromote, AskOpenEx, AskPeek, AskCancel, CeremonyBeginPlanned, CeremonyPlanned, IsWeddingPlanner, PersonNamed, "
+                            "BetrothedNamed, PlanExists, PlanHire, PlanSetDay, PlanSetPlace, PlanSetOfficiant, PlanGuest, "
+                            "PlanSetParts, PlanSetRings, PlanSetOutfit, PlanPostpone, PlanClear, PlanOpen, PlanOfficiant, PlanPlanner, "
+                            "PlanGuests, PlanPlace, PlanOutfit, PlanParts, PlanRing, RingWeddingOfMetal",
                             kScript, kVersion);
             return true;
         });

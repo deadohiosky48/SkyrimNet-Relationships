@@ -65,7 +65,7 @@ namespace SNRom {
                 return !_api->IsHidden(_view);
             }
 
-            FocusOutcome Focus() override {
+            FocusOutcome Focus(bool a_pause = true) override {
                 if (!g_domReady) {
                     return FocusOutcome::NotReady;
                 }
@@ -79,7 +79,7 @@ namespace SNRom {
                 if (_api->HasAnyActiveFocus()) {
                     return FocusOutcome::Busy;
                 }
-                return _api->Focus(_view, true) ? FocusOutcome::Granted : FocusOutcome::Failed;
+                return _api->Focus(_view, a_pause) ? FocusOutcome::Granted : FocusOutcome::Failed;
             }
 
             void Hide() override {

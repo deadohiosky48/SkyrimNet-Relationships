@@ -159,7 +159,8 @@
           "type": "string",
           "description": "The display name, read by SkyrimNetRelationships.dll from the engine (GetDisplayFullName). For showing only: the mod never resolves an actor by name, and neither may anything that reads this."
         },
-        "isPlayer": { "type": "boolean", "description": "True for the player. Always true for a bond's object until NPC-to-NPC bonds exist (design 3.3)." }
+        "isPlayer": { "type": "boolean", "description": "True for the player. Always true for a bond's object until NPC-to-NPC bonds exist (design 3.3)." },
+        "sex": { "enum": ["female", "male", ""], "description": "2.5 (M8b): the actor's base record's sex, for the words that follow it (girlfriend, boyfriend). Empty or absent when unknown." }
       }
     },
     "crosshairTarget": {
@@ -361,10 +362,69 @@
                 "officiant": { "type": "string", "description": "Who married them, by name; empty if unknown." },
                 "why": { "type": "string", "description": "Why the state last changed, at most 400 bytes." },
                 "ringFromPlayer": { "type": "string", "description": "The engagement ring the player gave them, by name; empty for none." },
-                "ringToPlayer": { "type": "string", "description": "The engagement ring they gave the player, by name; empty for none." }
+                "ringToPlayer": { "type": "string", "description": "The engagement ring they gave the player, by name; empty for none." },
+                "plan": {
+                  "description": "2.5, Build B (M4p; native/src/WeddingPlan.h): the wedding plan while engaged, or null for none. Optional: absent before Build B.",
+                  "anyOf": [
+                    { "type": "null" },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["planner", "day", "hour", "place", "officiant", "guests", "parts", "ring", "band", "bandWide", "outfit", "status", "open", "missedDay"],
+                      "properties": {
+                        "planner": { "type": "string", "description": "The planner hired, by name; empty for none." },
+                        "day": { "type": ["number", "null"], "description": "The game day (whole) of the wedding; null until set." },
+                        "hour": { "type": "integer", "minimum": -1, "maximum": 23 },
+                        "place": { "type": "string" },
+                        "officiant": { "type": "string", "description": "Who agreed to marry them, by name; empty until one has." },
+                        "guests": { "type": "array", "items": { "type": "string" } },
+                        "parts": {
+                          "type": "object", "additionalProperties": false, "required": ["address", "reading", "rings", "kiss"],
+                          "properties": { "address": { "type": "boolean" }, "reading": { "type": "boolean" }, "rings": { "type": "boolean" }, "kiss": { "type": "boolean" } }
+                        },
+                        "ring": { "enum": ["gold", "silver", "ebony", ""] },
+                        "band": { "enum": ["gold", "silver", "ebony", ""] },
+                        "bandWide": { "type": "integer", "minimum": -1, "maximum": 1 },
+                        "outfit": { "type": "boolean", "description": "The betrothed has saved what they will wear." },
+                        "status": { "enum": ["planning", "underWay"] },
+                        "open": { "type": "array", "items": { "enum": ["day", "place", "officiant"] } },
+                        "missedDay": { "type": ["number", "null"], "description": "The last wedding day the player did not come to." }
+                      }
+                    }
+                  ]
+                }
               }
             }
           ]
+        },
+        "family": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["parents", "children"],
+          "description": "2.5 (M8b; native/src/Family.h): their parents and children, from the plugins' own parent and child records, and their children with the player from SkyrimNet Kinship's read API. Optional: absent before 2.5.",
+          "properties": {
+            "parents": {
+              "type": "array",
+              "items": { "type": "object", "additionalProperties": false, "required": ["name"], "properties": { "name": { "type": "string" } } }
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "child", "withPlayer", "otherParent", "stage", "adopted", "inWorld"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "child": { "enum": ["son", "daughter", ""] },
+                  "withPlayer": { "type": "boolean", "description": "The player is the other parent (Kinship's record)." },
+                  "otherParent": { "type": "string", "description": "The other parent by name, or other adoptive parent; empty if unknown." },
+                  "stage": { "type": "integer", "minimum": -1, "maximum": 5, "description": "Kinship's 0 newborn to 5 adult; -1 unknown. From the plugins' records: 3 a child, 5 grown." },
+                  "adopted": { "type": "boolean" },
+                  "inWorld": { "type": "boolean", "description": "They have a body in the world; a child can be a record only." }
+                }
+              }
+            }
+          }
         }
       },
       "allOf": [

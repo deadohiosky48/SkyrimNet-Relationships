@@ -4,6 +4,7 @@
 #include "src/Cosave.h"
 #include "src/Dashboard.h"
 #include "src/Decorators.h"
+#include "src/Family.h"
 #include "src/History.h"
 #include "src/Hotkey.h"
 #include "src/L10n.h"
@@ -14,6 +15,7 @@
 #include "src/RingCatalog.h"
 #include "src/Rings.h"
 #include "src/Settings.h"
+#include "src/WeddingPlan.h"
 
 namespace {
 
@@ -58,6 +60,8 @@ namespace {
             SNRom::Decorators::Register();
             SNRom::Rings::Register();
             SNRom::Officiant::MarkAll();
+            SNRom::Family::Index();
+            SNRom::WeddingPlan::Start();
             SNRom::Ceremony::Register();
             SNRom::RingCatalog::StockJewelers();
             break;

@@ -433,23 +433,53 @@
   // the game reads as no answer yet, never as a choice.
   var asking = null;
 
+  // FLOATING, WITH A TIMER (2.5, M8c; the author, 2026-10-20). Asked on its
+  // own (standalone), the question is a small box low on the screen over a
+  // game that keeps playing, like SeverActions' confirmations, never a dark
+  // screen. A bar runs down for q.seconds and then chooses q.defaultButton
+  // (none: dismissed, which the game reads as no answer yet).
+  var askTimer = null;
+
   function showAsk(q) {
     if (!q || typeof q.id !== "number") return;
     asking = q;
     document.body.classList.toggle("ask-only", !!q.standalone);
+    document.documentElement.classList.toggle("ask-only", !!q.standalone);
     var body = String(q.body || "").split("\n").filter(function (x) { return x.trim() !== ""; })
       .map(function (x) { return para(x); });
+    var preferred = typeof q.defaultButton === "number" && q.defaultButton >= 0 ? q.defaultButton : 0;
     var buttons = (q.buttons || []).map(function (label, i) {
-      return { label: String(label), cls: i === 0 ? "btn-accent" : "", run: function () { answerAsk(i); } };
+      return { label: String(label), cls: i === preferred ? "btn-accent" : "", run: function () { answerAsk(i); } };
     });
+    var seconds = typeof q.seconds === "number" && q.seconds > 0 ? q.seconds : 0;
+    if (seconds) {
+      var track = document.createElement("div");
+      track.className = "ask-timer";
+      var fill = document.createElement("div");
+      fill.className = "ask-timer-fill";
+      fill.style.transitionDuration = seconds + "s";
+      track.appendChild(fill);
+      body.push(track);
+      // Started a frame later, so the bar runs down from full.
+      window.requestAnimationFrame(function () { window.requestAnimationFrame(function () { fill.style.width = "0%"; }); });
+      askTimer = window.setTimeout(function () {
+        askTimer = null;
+        answerAsk(typeof q.defaultButton === "number" && q.defaultButton >= 0 ? q.defaultButton : -1);
+      }, seconds * 1000);
+    }
     openDialog(String(q.title || ""), body, buttons, null);
     $("dialog").setAttribute("data-kind", "ask");
+    // The preferred answer has the focus, so Enter takes it.
+    var focusOn = $("dialog-buttons").children[preferred];
+    if (focusOn) focusOn.focus();
   }
 
   function endAsk() {
     if (!asking) return;
+    if (askTimer) { window.clearTimeout(askTimer); askTimer = null; }
     asking = null;
     document.body.classList.remove("ask-only");
+    document.documentElement.classList.remove("ask-only");
     if ($("dialog").getAttribute("data-kind") === "ask") closeDialog();
   }
 

@@ -27,9 +27,22 @@ namespace SNRom::Officiant {
             static auto* f = Faction(0xD71, "SNRom_Integration.esl");
             return f;
         }
+        RE::TESFaction* PlannerFaction() {
+            static auto* f = Faction(0xD87, "SNRom_Integration.esl");
+            return f;
+        }
 
         // Every officiant's record, found at kDataLoaded from the plugins.
         std::vector<RE::TESNPC*> g_officiants;
+
+        // THE WEDDING PLANNERS (Build B, M4p; the author, 2026-10-20: "a
+        // handful of base-game NPCs"). A priestess in each of five temples,
+        // so there is one in every major city's reach: Mara's in Riften, the
+        // Divines' in Solitude, Kynareth's in Whiterun, Dibella's in Markarth,
+        // Talos's in Windhelm. Found by name among the unique NPCs.
+        constexpr const char* kPlannerNames[] = { "Dinya Balu", "Silana Petreia", "Danica Pure-Spring", "Senna",
+                                                  "Jora" };
+        std::vector<RE::TESNPC*> g_planners;
 
         void Mark(RE::TESNPC* a_npc, RE::TESFaction* a_ours);
 
@@ -62,6 +75,24 @@ namespace SNRom::Officiant {
             }
         }
         SKSE::log::info("Officiants: {} priests, priestesses and jarls can marry the player", g_officiants.size());
+
+        g_planners.clear();
+        if (auto* planners = PlannerFaction()) {
+            for (auto* npc : data->GetFormArray<RE::TESNPC>()) {
+                const char* name = npc && npc->IsUnique() ? npc->GetFullName() : nullptr;
+                if (!name || !*name) {
+                    continue;
+                }
+                for (const auto* wanted : kPlannerNames) {
+                    if (_stricmp(name, wanted) == 0) {
+                        g_planners.push_back(npc);
+                        Mark(npc, planners);
+                        break;
+                    }
+                }
+            }
+        }
+        SKSE::log::info("Officiants: {} wedding planners", g_planners.size());
     }
 
     void Remark() {
@@ -76,7 +107,23 @@ namespace SNRom::Officiant {
                 ++again;
             }
         }
+        if (auto* planners = PlannerFaction()) {
+            for (auto* npc : g_planners) {
+                if (!Lists(npc, planners)) {
+                    Mark(npc, planners);
+                    ++again;
+                }
+            }
+        }
         SKSE::log::info("Officiants: {} marked again after the load (their factions came from the save)", again);
+    }
+
+    bool IsPlanner(RE::Actor* a_actor) {
+        if (!a_actor || a_actor->IsDead()) {
+            return false;
+        }
+        auto* base = a_actor->GetActorBase();
+        return base && std::find(g_planners.begin(), g_planners.end(), base) != g_planners.end();
     }
 
     bool Is(RE::Actor* a_actor) {

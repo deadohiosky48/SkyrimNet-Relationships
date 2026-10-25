@@ -148,7 +148,7 @@ namespace SNRom {
                 return _api->IsViewValid(g_view);
             }
 
-            FocusOutcome Focus() override {
+            FocusOutcome Focus(bool a_pause = true) override {
                 if (!EnsureView() || !g_domReady) {
                     return FocusOutcome::NotReady;
                 }
@@ -161,7 +161,7 @@ namespace SNRom {
                     return FocusOutcome::Busy;
                 }
                 _api->ShowView(g_view, true);
-                switch (_api->RequestUIMode(g_view, API::kUIModeFlagPause)) {
+                switch (_api->RequestUIMode(g_view, a_pause ? API::kUIModeFlagPause : 0u)) {
                 case API::Result::Ok:
                     return FocusOutcome::Granted;  // UIModeEntered confirms on the game thread
                 case API::Result::Busy:

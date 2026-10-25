@@ -1,0 +1,9 @@
+# Wedding category (2.5, Build B, M4p). A ROUTER, NOT A GATE: see cat_romance.yaml.
+# It names the situations concretely; the gates are the actions' eligibility
+# and the Papyrus checks behind them.
+
+customCategory: wedding
+actionType: category
+name: Wedding
+description: "Planning a wedding with the player: hiring a wedding planner, settling the day, the place, who will marry them, the guests, the ceremony, the rings or the clothes, or putting the day off. SELECT THIS whenever any part of a wedding is being arranged or changed. Choosing this commits you to nothing: you will see the options and may decline."
+enabled: true

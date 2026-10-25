@@ -468,6 +468,11 @@ Function RegisterEvents()
     RegisterForModEvent("SNRom_CeremonyYourTurn", "OnCeremonyYourTurn")
     ; A wedding is never carried across a load; neither is its hold.
     ReleaseWeddingHold()
+    ; Build B (M4w): the planned wedding's day (WeddingPlan.h).
+    RegisterForModEvent("SNRom_WeddingDay", "OnWeddingDay")
+    RegisterForModEvent("SNRom_WeddingBegin", "OnWeddingBegin")
+    RegisterForModEvent("SNRom_WeddingMissed", "OnWeddingMissed")
+    RegisterForModEvent("SNRom_WeddingLapsed", "OnWeddingLapsed")
     ; SkyrimNetRelationships.dll asks for the roster every time the dashboard
     ; opens (OnDashboardRefresh). Without the DLL it never fires, and this costs
     ; nothing.
@@ -2600,7 +2605,7 @@ Function AskTheQuestion(Actor akActor)
     Int answer = SNRom_Choice.AskNow(body, \
         Tr("ask.accept", "Tell them you feel the same"), \
         Tr("ask.decline", "Tell them you do not feel that way"), \
-        Tr("ask.defer", "Say nothing of it for now"))
+        Tr("ask.defer", "Say nothing of it for now"), 60.0, SNRom_Choice.ANSWER_DEFER(), 30.0)
 
     If answer == SNRom_Choice.ANSWER_ACCEPT()
         AcceptRomance(akActor)
@@ -4328,10 +4333,11 @@ Function OpenPendingBox()
     ; frame. The engine wraps well enough on its own; let it.
     String body = Tr("ask.body", "{0} has asked where the two of you stand. Whatever you answer, you will have answered it plainly.", who)
 
+    ; Unanswered, the timer says nothing for now: the question stays owed.
     Int id = SNRom_Choice.Open(body, \
         Tr("ask.accept", "Tell them you feel the same"), \
         Tr("ask.decline", "Tell them you do not feel that way"), \
-        Tr("ask.defer", "Say nothing of it for now"))
+        Tr("ask.defer", "Say nothing of it for now"), SNRom_Choice.ANSWER_DEFER(), 30.0)
     If id == 0
         _boxPending = None
         Diag(LOG_WARN(), "Could not open the question for " + who + \
@@ -5141,7 +5147,7 @@ Function AgreeToMarry(Actor akActor, String asWords)
     Int answer = SNRom_Choice.AskNow(Tr("marry.ask.body", "{0} has said yes. Are the two of you promised to each other?", who), \
         Tr("marry.ask.accept", "Yes, we are engaged"), \
         Tr("marry.ask.decline", "No, I spoke too soon"), \
-        Tr("marry.ask.defer", "Not yet"))
+        Tr("marry.ask.defer", "Not yet"), 60.0, SNRom_Choice.ANSWER_ACCEPT(), 30.0)
     Actor player = Game.GetPlayer()
     If answer == SNRom_Choice.ANSWER_ACCEPT()
         If ChangeMarriage(akActor, MARRIAGE_ENGAGED(), "agreed to marry: " + asWords)
@@ -5348,6 +5354,21 @@ Function RingsBecomeWeddingRings(Actor akSpouse)
     Actor player = Game.GetPlayer()
     Form fromPlayer = SNRom_Native.MarriageRing(akSpouse, True)
     Form wedding = SNRom_Native.RingWeddingFor(fromPlayer)
+    ; THE PLANNER'S CHOICE (Build B): a wedding ring in the metal chosen, in
+    ; place of the engagement ring's own metal, or added when the engagement
+    ; ring was none of ours.
+    If _planRingMetal >= 0 && _dashNatives >= 28
+        Form chosen = SNRom_Native.RingWeddingOfMetal(_planRingMetal)
+        If chosen != None && (wedding == None || akSpouse.GetItemCount(fromPlayer) == 0)
+            akSpouse.AddItem(chosen, 1, True)
+            SNRom_Native.SetMarriageRing(akSpouse, True, chosen)
+            WearAndName(akSpouse, chosen)
+            Diag(LOG_INFO(), "Ring: " + akSpouse.GetDisplayName() + " wears " + chosen.GetName() + ", as planned.")
+            wedding = None
+        ElseIf chosen != None
+            wedding = chosen
+        EndIf
+    EndIf
     If wedding != None && akSpouse.GetItemCount(fromPlayer) > 0
         akSpouse.RemoveItem(fromPlayer, 1, True)
         akSpouse.AddItem(wedding, 1, True)
@@ -5395,7 +5416,15 @@ Function GiveWeddingBand(Actor akSpouse)
     If metal < 0
         metal = 0
     EndIf
-    Form band = SNRom_Native.RingBand(metal, player.GetActorBase().GetSex() == 0)
+    Bool wide = player.GetActorBase().GetSex() == 0
+    ; The planner's choice (Build B), where one was made.
+    If _planBandMetal >= 0
+        metal = _planBandMetal
+    EndIf
+    If _planBandWide >= 0
+        wide = _planBandWide == 1
+    EndIf
+    Form band = SNRom_Native.RingBand(metal, wide)
     If band == None
         Return
     EndIf
@@ -5476,7 +5505,7 @@ Function AcceptEngagementRing(Actor akActor, String asRing)
     EndIf
     If ring != None
         Int answer = SNRom_Choice.AskNow(Tr("ring.give.body", "Give {0} your {1}?", who, ring.GetName()), \
-            Tr("ring.give.accept", "Give it"), Tr("ring.give.decline", "Choose another"), "")
+            Tr("ring.give.accept", "Give it"), Tr("ring.give.decline", "Choose another"), "",             60.0, SNRom_Choice.ANSWER_ACCEPT(), 30.0)
         If answer == SNRom_Choice.ANSWER_ACCEPT()
             player.RemoveItem(ring, 1, True, akActor)
         ElseIf answer == SNRom_Choice.ANSWER_DECLINE()
@@ -5574,6 +5603,352 @@ Function HoldForWedding(Actor akOfficiant, Actor akBetrothed)
     Diag(LOG_INFO(), "Ceremony: SkyrimNet's packages held for the wedding (" + a + " and " + b + " rows).")
 EndFunction
 
+; ---- THE WEDDING PLAN (2.5, Build B, M4p, M4o, M4w; WeddingPlan.h) ---------
+;
+; Everything planned by talking, each part an action taken when it is agreed,
+; over as many conversations as it takes. The plan lives in the DLL (in the
+; co-save); these carry out what the actions agree. The planner's choices of
+; rings, read at the wedding:
+Int _planRingMetal = -1
+Int _planBandMetal = -1
+Int _planBandWide = -1
+
+Actor Function PlanTarget(Actor akSpeaker, String asFor)
+    { Whose wedding a planning action is about: the speaker's own when they are
+      engaged to the player; else the betrothed named, or the only one. None
+      without natives v28. }
+    If _dashNatives < 28
+        Return None
+    EndIf
+    If akSpeaker != None && OurMarriage(akSpeaker) == MARRIAGE_ENGAGED()
+        Return akSpeaker
+    EndIf
+    Return SNRom_Native.BetrothedNamed(asFor)
+EndFunction
+
+Bool Function MayPlan(Actor akSpeaker, Actor akBetrothed, Bool abOfficiantToo)
+    { Whose plan this is to change: the betrothed's own, and the planner hired
+      for it; with abOfficiantToo, the officiant who agreed to marry them (the
+      day and the place are agreed with the officiant, spec 5.3). A planner
+      not hired, or anyone else, plans nothing. }
+    If akSpeaker == None || akSpeaker == akBetrothed
+        Return True
+    EndIf
+    If SNRom_Native.PlanPlanner(akBetrothed) == akSpeaker
+        Return True
+    EndIf
+    If abOfficiantToo && SNRom_Native.PlanOfficiant(akBetrothed) == akSpeaker
+        Return True
+    EndIf
+    Diag(LOG_INFO(), "Wedding plan: " + akSpeaker.GetDisplayName() + " is not planning " +         akBetrothed.GetDisplayName() + "'s wedding (not hired, and not the one marrying them); nothing planned.")
+    Return False
+EndFunction
+
+Function PlanNoted(Actor akBetrothed, String asWhat)
+    { One part of the plan agreed: logged, and the dashboard and the read API
+      told. The prompts read the plan as it stands, so nothing is kept as an
+      event that a later change would make untrue. }
+    Diag(LOG_INFO(), "Wedding plan for " + akBetrothed.GetDisplayName() + ": " + asWhat + \
+        " Still open: [" + SNRom_Native.PlanOpen(akBetrothed) + "].")
+    ApiTouch(akBetrothed)
+EndFunction
+
+Bool Function YesWord(String asText)
+    { "yes", "true", "1", "y", "on", "keep": yes. Action parameters arrive as
+      strings. }
+    String w = SNRom_Decorators.Trim(asText)
+    Return w == "yes" || w == "true" || w == "1" || w == "y" || w == "on" || w == "keep"
+EndFunction
+
+Int Function MetalWord(String asText)
+    { "gold", "silver", "ebony" to 0, 1, 2; -1 otherwise. }
+    String w = SNRom_Decorators.Trim(asText)
+    If StringUtil.Find(w, "gold") >= 0
+        Return 0
+    ElseIf StringUtil.Find(w, "silver") >= 0
+        Return 1
+    ElseIf StringUtil.Find(w, "ebony") >= 0
+        Return 2
+    EndIf
+    Return -1
+EndFunction
+
+Function HireWeddingPlanner(Actor akPlanner, String asFor)
+    { Action WeddingHirePlanner: a wedding planner takes on the wedding, for
+      their fee (the author, 2026-10-20: about 50 gold). The ceremony then has
+      every part a planner can add until the couple says otherwise. }
+    If akPlanner == None || !_ready || _dashNatives < 28 || !SNRom_Native.IsWeddingPlanner(akPlanner)
+        Return
+    EndIf
+    Actor betrothed = PlanTarget(None, asFor)
+    If betrothed == None
+        Diag(LOG_INFO(), "Wedding plan: " + akPlanner.GetDisplayName() + " offered to plan a wedding, but the player " + \
+            "is engaged to no one.")
+        Return
+    EndIf
+    Actor player = Game.GetPlayer()
+    MiscObject gold = Game.GetFormFromFile(0x0000000F, "Skyrim.esm") as MiscObject
+    Int fee = 50
+    If player.GetItemCount(gold) < fee
+        Debug.Notification(Tr("plan.noFee", "You do not have the {0} gold {1} asks.", fee, akPlanner.GetDisplayName()))
+        Diag(LOG_INFO(), "Wedding plan: the player could not pay " + akPlanner.GetDisplayName() + "'s fee.")
+        Return
+    EndIf
+    If !SNRom_Native.PlanHire(betrothed, akPlanner)
+        Return    ; already theirs to plan
+    EndIf
+    player.RemoveItem(gold, fee, False, akPlanner)
+    SkyrimNetApi.RegisterPersistentEvent(akPlanner.GetDisplayName() + " is planning the wedding of " + \
+        player.GetDisplayName() + " and " + betrothed.GetDisplayName() + ".", akPlanner, player)
+    PlanNoted(betrothed, akPlanner.GetDisplayName() + " hired to plan it.")
+EndFunction
+
+Function PlanWeddingDay(Actor akSpeaker, String asFor, String asDaysFromNow, String asTimeOfDay)
+    { Action WeddingSetDay: the day, in days from today, and the time of day. }
+    Actor betrothed = PlanTarget(akSpeaker, asFor)
+    If betrothed == None || !MayPlan(akSpeaker, betrothed, True)
+        Return
+    EndIf
+    Int days = SNRom_Decorators.Trim(asDaysFromNow) as Int
+    If SNRom_Native.PlanSetDay(betrothed, days, asTimeOfDay)
+        PlanNoted(betrothed, "the day set, " + days + " days from now, " + asTimeOfDay + ".")
+    EndIf
+EndFunction
+
+Function PlanWeddingPlace(Actor akSpeaker, String asFor, String asPlace)
+    { Action WeddingSetPlace. }
+    Actor betrothed = PlanTarget(akSpeaker, asFor)
+    If betrothed == None || !MayPlan(akSpeaker, betrothed, True)
+        Return
+    EndIf
+    If SNRom_Native.PlanSetPlace(betrothed, asPlace)
+        PlanNoted(betrothed, "the place set: " + asPlace + ".")
+    EndIf
+EndFunction
+
+Function AgreeToOfficiate(Actor akOfficiant, String asFor)
+    { Action WeddingOfficiate: a priest, priestess or jarl agrees to marry them
+      on the day they planned. Only the officiant's own action sets it: they
+      agree for themselves. }
+    If akOfficiant == None || !_ready || _dashNatives < 28 || !SNRom_Native.IsOfficiant(akOfficiant)
+        Return
+    EndIf
+    Actor betrothed = PlanTarget(None, asFor)
+    If betrothed == None || betrothed == akOfficiant
+        Return
+    EndIf
+    If SNRom_Native.PlanSetOfficiant(betrothed, akOfficiant)
+        Actor player = Game.GetPlayer()
+        SkyrimNetApi.RegisterPersistentEvent(akOfficiant.GetDisplayName() + " agreed to marry " + \
+            player.GetDisplayName() + " and " + betrothed.GetDisplayName() + " at their wedding.", akOfficiant, player)
+        PlanNoted(betrothed, akOfficiant.GetDisplayName() + " will marry them.")
+    EndIf
+EndFunction
+
+Function PlanWeddingGuests(Actor akSpeaker, String asFor, String asInvite, String asUninvite)
+    { Action WeddingGuests: names, separated by commas, invited or taken off
+      the list. Each one invited is told, and decides as themselves whether to
+      come. }
+    Actor betrothed = PlanTarget(akSpeaker, asFor)
+    If betrothed == None || !MayPlan(akSpeaker, betrothed, False)
+        Return
+    EndIf
+    Actor player = Game.GetPlayer()
+    String[] invite = StringUtil.Split(asInvite, ",")
+    Int i = 0
+    While i < invite.Length
+        Actor guest = SNRom_Native.PersonNamed(invite[i])
+        If guest != None && SNRom_Native.PlanGuest(betrothed, guest, True)
+            SkyrimNetApi.RegisterPersistentEvent(player.GetDisplayName() + " and " + betrothed.GetDisplayName() + \
+                " invited " + guest.GetDisplayName() + " to their wedding.", guest, player)
+            PlanNoted(betrothed, guest.GetDisplayName() + " invited.")
+        ElseIf guest == None && SNRom_Decorators.Trim(invite[i]) != ""
+            Diag(LOG_INFO(), "Wedding plan: no one called '" + invite[i] + "' could be found to invite.")
+        EndIf
+        i += 1
+    EndWhile
+    String[] uninvite = StringUtil.Split(asUninvite, ",")
+    i = 0
+    While i < uninvite.Length
+        Actor gone = SNRom_Native.PersonNamed(uninvite[i])
+        If gone != None && SNRom_Native.PlanGuest(betrothed, gone, False)
+            PlanNoted(betrothed, gone.GetDisplayName() + " no longer invited.")
+        EndIf
+        i += 1
+    EndWhile
+EndFunction
+
+Function PlanWeddingCeremony(Actor akPlanner, String asFor, String asAddress, String asReading, String asRings, \
+    String asKiss)
+    { Action WeddingCeremony: what the ceremony has beyond the minimum, as the
+      planner and the couple settle it. }
+    Actor betrothed = PlanTarget(akPlanner, asFor)
+    If betrothed == None || !MayPlan(akPlanner, betrothed, False)
+        Return
+    EndIf
+    Int parts = 0
+    If YesWord(asAddress)
+        parts += 1
+    EndIf
+    If YesWord(asReading)
+        parts += 2
+    EndIf
+    If YesWord(asRings)
+        parts += 4
+    EndIf
+    If YesWord(asKiss)
+        parts += 8
+    EndIf
+    If SNRom_Native.PlanSetParts(betrothed, parts)
+        PlanNoted(betrothed, "the ceremony's parts set (" + parts + ").")
+    EndIf
+EndFunction
+
+Function PlanWeddingRings(Actor akPlanner, String asFor, String asTheirRing, String asYourBand, String asBandStyle)
+    { Action WeddingRings: the rings, as a planner settles them (the author,
+      2026-10-20: the planner is where ring choices are made, except for an
+      elopement). Metals gold, silver or ebony; the player's band wide or
+      braided. Made at the wedding. }
+    Actor betrothed = PlanTarget(akPlanner, asFor)
+    If betrothed == None || !MayPlan(akPlanner, betrothed, False)
+        Return
+    EndIf
+    String style = SNRom_Decorators.Trim(asBandStyle)
+    Int wide = -1
+    If StringUtil.Find(style, "wide") >= 0
+        wide = 1
+    ElseIf StringUtil.Find(style, "braid") >= 0
+        wide = 0
+    EndIf
+    If SNRom_Native.PlanSetRings(betrothed, MetalWord(asTheirRing), MetalWord(asYourBand), wide)
+        PlanNoted(betrothed, "the rings chosen: theirs " + asTheirRing + ", the player's " + asYourBand + " " + \
+            asBandStyle + ".")
+    EndIf
+EndFunction
+
+Function SaveWeddingOutfit(Actor akBetrothed)
+    { Action WeddingOutfit (M4o): the betrothed keeps what they wear now for
+      the wedding, as a SeverActions outfit preset named "wedding", put on on
+      the day. Without SeverActions they wear what they wear. }
+    If akBetrothed == None || !_ready || _dashNatives < 28 || OurMarriage(akBetrothed) != MARRIAGE_ENGAGED()
+        Return
+    EndIf
+    If !SkyrimNetApi.IsActionRegistered("SaveOutfitPreset")
+        Diag(LOG_INFO(), "Wedding plan: no SeverActions outfits; " + akBetrothed.GetDisplayName() + \
+            " will wear what they wear.")
+        Return
+    EndIf
+    Int rc = SkyrimNetApi.ExecuteAction("SaveOutfitPreset", akBetrothed, "{\"presetName\":\"wedding\"}")
+    If SNRom_Native.PlanSetOutfit(akBetrothed, True)
+        PlanNoted(akBetrothed, "their wedding clothes saved (rc " + rc + ").")
+    EndIf
+EndFunction
+
+Function PostponeWedding(Actor akSpeaker, String asFor)
+    { Action WeddingPostpone: the day put off, agreed in conversation; the rest
+      of the plan kept. }
+    Actor betrothed = PlanTarget(akSpeaker, asFor)
+    If betrothed == None || !MayPlan(akSpeaker, betrothed, True)
+        Return
+    EndIf
+    If SNRom_Native.PlanPostpone(betrothed)
+        PlanNoted(betrothed, "the day put off.")
+    EndIf
+EndFunction
+
+Bool Function SendToWedding(Actor akWho, String asPlace)
+    { One person on their way to the wedding (M4w): SeverActions' TravelToPlace,
+      waiting there for the player, else IntelEngine's GoToLocation. Composed
+      over whichever is installed; without either they are not sent, and the
+      player brings them. }
+    If akWho == None || akWho.IsDead() || asPlace == ""
+        Return False
+    EndIf
+    String place = SNRom_Decorators.JsonEscape(asPlace)
+    Int rc = -1
+    If SkyrimNetApi.IsActionRegistered("TravelToPlace")
+        rc = SkyrimNetApi.ExecuteAction("TravelToPlace", akWho, "{\"destination\":\"" + place + \
+            "\",\"WaitHours\":24,\"stopFollowing\":true,\"Speed\":0,\"waitForPlayer\":true}")
+    ElseIf SkyrimNetApi.IsActionRegistered("GoToLocation")
+        rc = SkyrimNetApi.ExecuteAction("GoToLocation", akWho, "{\"destination\":\"" + place + "\"}")
+    EndIf
+    Diag(LOG_INFO(), "Wedding day: " + akWho.GetDisplayName() + " sent to " + asPlace + " (rc " + rc + ").")
+    Return rc == 0
+EndFunction
+
+Event OnWeddingDay(String asEventName, String asPlace, Float afUnused, Form akSender)
+    { SNRom_WeddingDay (WeddingPlan.h): the wedding is a few hours off. The
+      officiant, the betrothed and the guests go to the place; the betrothed
+      puts on their wedding clothes; and everyone knows it is today. }
+    Actor betrothed = akSender as Actor
+    If betrothed == None || _dashNatives < 28
+        Return
+    EndIf
+    Actor player = Game.GetPlayer()
+    String who = betrothed.GetDisplayName()
+    If SNRom_Native.PlanOutfit(betrothed) && SkyrimNetApi.IsActionRegistered("ApplyOutfitPreset")
+        SkyrimNetApi.ExecuteAction("ApplyOutfitPreset", betrothed, "{\"presetName\":\"wedding\"}")
+    EndIf
+    SendToWedding(SNRom_Native.PlanOfficiant(betrothed), asPlace)
+    SendToWedding(betrothed, asPlace)
+    Actor[] guests = SNRom_Native.PlanGuests(betrothed)
+    Int i = 0
+    While i < guests.Length
+        SendToWedding(guests[i], asPlace)
+        i += 1
+    EndWhile
+    SkyrimNetApi.RegisterPersistentEvent("Today is the wedding of " + player.GetDisplayName() + " and " + who + \
+        ", at " + asPlace + ".", betrothed, player)
+    Debug.Notification(Tr("plan.today", "Your wedding to {0} is today, at {1}.", who, asPlace))
+EndEvent
+
+Event OnWeddingBegin(String asEventName, String asUnused, Float afUnused, Form akSender)
+    { SNRom_WeddingBegin: the player is with the officiant and the betrothed
+      on the day. The wedding begins, with the planner's parts. }
+    Actor betrothed = akSender as Actor
+    If betrothed == None || _dashNatives < 28
+        Return
+    EndIf
+    Actor officiant = SNRom_Native.PlanOfficiant(betrothed)
+    If officiant == None
+        Return
+    EndIf
+    If SNRom_Native.CeremonyBeginPlanned(officiant, betrothed, VariantName(), SNRom_Native.PlanParts(betrothed))
+        HoldForWedding(officiant, betrothed)
+        Diag(LOG_INFO(), "Ceremony: " + officiant.GetDisplayName() + " begins the planned wedding of the player and " + \
+            betrothed.GetDisplayName() + " (parts " + SNRom_Native.PlanParts(betrothed) + ").")
+    EndIf
+EndEvent
+
+Event OnWeddingMissed(String asEventName, String asUnused, Float afUnused, Form akSender)
+    { SNRom_WeddingMissed: the day passed and the player never came. It
+      costs them with the betrothed, who knows it; whether the engagement
+      survives it is theirs to say, in conversation (MarriageEndEngagement).
+      The rest of the plan is kept for another day. }
+    Actor betrothed = akSender as Actor
+    If betrothed == None
+        Return
+    EndIf
+    Actor player = Game.GetPlayer()
+    String who = betrothed.GetDisplayName()
+    ApplyDepth(betrothed, -ScaleAward(150), player.GetDisplayName() + " never came to our wedding.", True, "missed")
+    SkyrimNetApi.RegisterPersistentEvent(player.GetDisplayName() + " did not come to their own wedding with " + who + \
+        ". It did not happen.", betrothed, player)
+    Debug.Notification(Tr("plan.missed", "You missed your wedding to {0}.", who))
+    Diag(LOG_INFO(), "Wedding plan: the player missed the wedding with " + who + ".")
+EndEvent
+
+Event OnWeddingLapsed(String asEventName, String asUnused, Float afUnused, Form akSender)
+    { SNRom_WeddingLapsed: the day came with the plan unfinished. Put off,
+      with no blame; the betrothed's prompt says so. }
+    Actor betrothed = akSender as Actor
+    If betrothed != None
+        Diag(LOG_INFO(), "Wedding plan: " + betrothed.GetDisplayName() + "'s wedding day came with the plan unfinished " + \
+            "(" + SNRom_Native.PlanOpen(betrothed) + "); put off.")
+        ApiTouch(betrothed)
+    EndIf
+EndEvent
+
 Function ReleaseWeddingHold()
     If _weddingHeldA != None
         SkyrimNetApi.ReleaseHeldPackages(_weddingHeldA, WeddingHolder())
@@ -5639,11 +6014,31 @@ Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, For
         Return
     EndIf
     String priest = officiant.GetDisplayName()
-    ; Recorded as eloped: married without a planned wedding (Build B's).
-    If ChangeMarriage(betrothed, MARRIAGE_MARRIED(), "married by " + priest + ", unplanned", False, officiant, True)
+    ; PLANNED OR ELOPED (Build B): asUnused is "planned" for a planned
+    ; wedding, whose rings the planner chose (read now, before the record
+    ; changes and the plan goes with the engagement).
+    Bool planned = asUnused == "planned"
+    String why = "married by " + priest + ", unplanned"
+    If planned && _dashNatives >= 28
+        _planRingMetal = SNRom_Native.PlanRing(betrothed, 0)
+        _planBandMetal = SNRom_Native.PlanRing(betrothed, 1)
+        _planBandWide = SNRom_Native.PlanRing(betrothed, 2)
+        String place = SNRom_Native.PlanPlace(betrothed)
+        why = "married by " + priest
+        If place != ""
+            why = why + " at " + place
+        EndIf
+    EndIf
+    If ChangeMarriage(betrothed, MARRIAGE_MARRIED(), why, False, officiant, !planned)
         Actor player = Game.GetPlayer()
         SkyrimNetApi.RegisterPersistentEvent(priest + " married " + player.GetDisplayName() + " and " + \
             betrothed.GetDisplayName() + ". Both spoke their vows and said yes.", officiant, player)
+    EndIf
+    _planRingMetal = -1
+    _planBandMetal = -1
+    _planBandWide = -1
+    If _dashNatives >= 28
+        SNRom_Native.PlanClear(betrothed)
     EndIf
 EndEvent
 
@@ -6112,13 +6507,16 @@ Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEn
     ; a mod that quietly dissolves marriages is worse than one that leaks.
     ; A MARRIAGE MARAS MAKES ANYWAY still stands and still counts (below).
     If st == "ENGAGED"
-        If MARAS.PromoteNPCToStatus(who, "candidate")
-            Diag(LOG_INFO(), "Engagement reversed for " + who.GetDisplayName() + \
+        ; NATIVE, BY MARAS'S OWN SHAPE (Build B): MARAS 2.0 added a parameter
+        ; to PromoteNPCToStatus, which a call compiled here could not follow.
+        ; MARAS's own answer comes back later, in SkyrimNetRelationships.log.
+        If SNRom_Native.MarasPromote(who, "candidate")
+            Diag(LOG_INFO(), "Engagement reversal sent for " + who.GetDisplayName() + \
                 " - Relationships handles marriage, so a MARAS engagement does not stand." + \
                 MarasStateLine(who))
         Else
-            Diag(LOG_ERROR(), "MARAS refused to demote " + who.GetDisplayName() + \
-                " from engaged, so the marriage gate has leaked." + MarasStateLine(who))
+            Diag(LOG_ERROR(), "Could not ask MARAS to demote " + who.GetDisplayName() + \
+                " from engaged (see SkyrimNetRelationships.log), so the marriage gate has leaked." + MarasStateLine(who))
         EndIf
         Return
     EndIf
@@ -7609,9 +8007,9 @@ Function ArmDashboard()
     ; would read like something else. The gates below that ask for 3 still
     ; hold: _dashNatives is 0 or at least 4.
     Int natives = SNRom_Native.Version()
-    If natives < 26
+    If natives < 28
         Diag(LOG_ERROR(), "SkyrimNetRelationships.dll is older than these scripts (natives v" + natives + \
-            ", these need v26). Install the DLL from the same release.", True)
+            ", these need v28). Install the DLL from the same release.", True)
         Say(Tr("say.dllOlder", "SkyrimNetRelationships.dll is older than the scripts - install both from the same release."))
     EndIf
     If natives < 5

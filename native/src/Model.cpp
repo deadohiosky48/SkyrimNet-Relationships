@@ -1,7 +1,9 @@
 #include "Model.h"
 
+#include "Family.h"
 #include "History.h"
 #include "Marriage.h"
+#include "WeddingPlan.h"
 #include "L10n.h"
 
 #include <algorithm>
@@ -179,7 +181,9 @@ namespace SNRom::Model {
                          { "officiant", FormName(record.value("officiant", 0)) },
                          { "why", record.value("why", "") },
                          { "ringFromPlayer", FormName(record.value("ringFromPlayer", 0)) },
-                         { "ringToPlayer", FormName(record.value("ringToPlayer", 0)) } };
+                         { "ringToPlayer", FormName(record.value("ringToPlayer", 0)) },
+                         // Build B (M4p): the wedding plan, while engaged.
+                         { "plan", WeddingPlan::ForSnapshot(a_formId) } };
         }
     }
 
@@ -187,6 +191,8 @@ namespace SNRom::Model {
         const bool foreclosed = Foreclosed(a_d);
         json       bond;
         bond["subject"] = Party(a_formId, a_d.name, false);
+        // 2.5, M8b: for words that follow it ("girlfriend", "boyfriend").
+        bond["subject"]["sex"] = Family::SexOf(a_formId);
         bond["object"] = a_player;
         bond["following"] = a_d.following;
         bond["nearby"] = a_d.nearby;
@@ -234,6 +240,8 @@ namespace SNRom::Model {
         // (History.h), so every snapshot has it as of now.
         bond["history"] = History::Recent(a_formId);
         bond["marriage"] = MarriageCard(a_formId);
+        // 2.5, M8b: parents and children, from the plugins and Kinship.
+        bond["family"] = Family::Of(a_formId);
         return bond;
     }
 

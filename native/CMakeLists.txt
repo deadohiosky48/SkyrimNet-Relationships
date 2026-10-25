@@ -84,9 +84,11 @@ set(SOURCES
     src/Dashboard.cpp
     src/Decorators.cpp
     src/Display.cpp
+    src/Family.cpp
     src/History.cpp
     src/Hotkey.cpp
     src/MagelightHost.cpp
+    src/Maras.cpp
     src/Marriage.cpp
     src/Officiant.cpp
     src/Rings.cpp
@@ -100,6 +102,7 @@ set(SOURCES
     src/PrismaHost.cpp
     src/Settings.cpp
     src/SkyrimNetLink.cpp
+    src/WeddingPlan.cpp
 )
 
 # add_commonlibsse_plugin, NOT add_library(SHARED).

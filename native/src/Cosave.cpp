@@ -4,6 +4,7 @@
 
 #include "History.h"
 #include "Marriage.h"
+#include "WeddingPlan.h"
 
 namespace SNRom::Cosave {
 
@@ -16,6 +17,7 @@ namespace SNRom::Cosave {
         void Save(SKSE::SerializationInterface* a_intfc) {
             History::Save(a_intfc);
             Marriage::Save(a_intfc);
+            WeddingPlan::Save(a_intfc);
         }
 
         void Load(SKSE::SerializationInterface* a_intfc) {
@@ -23,6 +25,7 @@ namespace SNRom::Cosave {
             // must not inherit the marriages of the save just left.
             History::Revert();
             Marriage::Revert();
+            WeddingPlan::Revert();
             std::uint32_t type = 0;
             std::uint32_t version = 0;
             std::uint32_t length = 0;
@@ -33,6 +36,9 @@ namespace SNRom::Cosave {
                     break;
                 case Marriage::kRecordType:
                     Marriage::Load(a_intfc, version);
+                    break;
+                case WeddingPlan::kRecordType:
+                    WeddingPlan::Load(a_intfc, version);
                     break;
                 default:
                     SKSE::log::warn("Co-save: a record of unknown type {:08X} skipped", type);
@@ -46,6 +52,7 @@ namespace SNRom::Cosave {
         void Revert(SKSE::SerializationInterface*) {
             History::Revert();
             Marriage::Revert();
+            WeddingPlan::Revert();
         }
     }
 

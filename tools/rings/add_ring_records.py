@@ -96,6 +96,7 @@ ENCHANTMENTS = [
 # - SNRom_Officiant: rank 0 on every priest, priestess and jarl, put on their
 #   records at kDataLoaded (Officiant.cpp, MarkAll), since vanilla lists jarls
 #   in JobJarlFaction at rank -1, which reads as not a member.
+# - SNRom_WeddingPlanner: rank 0 on the wedding planners (Build B).
 # (FormID, EditorID, name, rank titles from 0)
 FACTIONS = [
     (0xD70, 'SNRom_Marriage', 'Relationships Marriage',
@@ -106,7 +107,11 @@ FACTIONS = [
     (0xD72, 'SNRom_Ceremony', 'Relationships Ceremony', ['None', 'Opening', 'Player Vows', 'Betrothed Vows',
                                                           'Asking the Player', 'Player Answers',
                                                           'Asking the Betrothed', 'Betrothed Answers',
-                                                          'Pronouncing']),
+                                                          'Pronouncing', '', 'Address', 'Reading',
+                                                          'Rings']),
+    # Build B (M4p): the wedding planners, rank 0, put on their records at
+    # kDataLoaded (Officiant.cpp, MarkPlanners).
+    (0xD87, 'SNRom_WeddingPlanner', 'Relationships Wedding Planner', ['Planner']),
 ]
 
 

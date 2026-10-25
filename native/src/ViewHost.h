@@ -39,8 +39,10 @@ namespace SNRom {
 
         virtual bool Show() = 0;
 
-        // Takes input and pauses the game while the view has focus.
-        virtual FocusOutcome Focus() = 0;
+        // Takes input, and pauses the game while the view has focus unless
+        // a_pause is false: a question alone floats over a game still playing
+        // (M8c; the author, 2026-10-20).
+        virtual FocusOutcome Focus(bool a_pause = true) = 0;
 
         // Gives input back and hides the view. Safe to call when already hidden.
         virtual void Hide() = 0;

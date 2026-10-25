@@ -79,9 +79,11 @@
         if (params.ask && !asked) {
           asked = true;
           later(400, function () {
-            push("ask", { id: 1, title: "Marriage rings",
-              body: "Hroki's SeverActions outfit puts itself back on, and takes her ring off with it.\nSeverActions can leave marriage rings alone.",
-              buttons: ["Keep rings on", "Not now", "No"], standalone: params.ask === "alone" });
+            // M8c: a default and a timer, as SNRom_Choice asks the engagement.
+            push("ask", { id: 1, title: "",
+              body: "Ysolde Brightwater has said yes. Are the two of you promised to each other?",
+              buttons: ["Yes, we are engaged", "No, I spoke too soon", "Not yet"],
+              defaultButton: 0, seconds: Number(params.seconds) || 30, standalone: params.ask === "alone" });
           });
         }
         return state;

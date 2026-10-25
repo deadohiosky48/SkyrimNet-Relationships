@@ -3,6 +3,7 @@
 #include "PCH.h"
 
 #include "Marriage.h"
+#include "WeddingPlan.h"
 
 #include <algorithm>
 #include <atomic>
@@ -36,6 +37,10 @@ namespace SNRom::Ceremony {
             kAskBetrothed,
             kBetrothedAnswer,
             kPronounce,
+            // A planned wedding's (Build B, M4p), by the planner's choice:
+            kAddress,       // the officiant addresses everyone gathered
+            kReading,       // a reading or a blessing
+            kRings,         // the rings exchanged
         };
 
         // WHAT AN NPC'S LINE MUST HAVE DONE for its step to count. wpm19
@@ -43,7 +48,25 @@ namespace SNRom::Ceremony {
         // passed as "do you take...", and the wedding waited on an answer to a
         // question nobody had asked (2026-10-20). Each is asked of the line by
         // snrom_ceremony_judge; a line that fails is not the step.
-        enum class Check { kNone, kAskedForVows, kSpokeVows, kAskedPlayer, kAskedBetrothed, kPronounced };
+        enum class Check { kNone, kAskedForVows, kSpokeVows, kAskedPlayer, kAskedBetrothed, kPronounced, kRings };
+
+        // WHAT A STEP IS, as a number the prompts read (0330, 0331): the
+        // faction rank and Now(). 1-8 are the minimum, in order; a planned
+        // wedding adds 10-12 where they belong. Kept apart from the step's
+        // place in the script, which differs between ceremonies.
+        enum Kind : std::int32_t {
+            kKindOpening = 1,
+            kKindPlayerVows = 2,
+            kKindBetrothedVows = 3,
+            kKindAskPlayer = 4,
+            kKindPlayerAnswer = 5,
+            kKindAskBetrothed = 6,
+            kKindBetrothedAnswer = 7,
+            kKindPronounce = 8,
+            kKindAddress = 10,
+            kKindReading = 11,
+            kKindRings = 12,
+        };
 
         struct Step {
             Who   speaker;              // whose line ends this step
@@ -51,21 +74,46 @@ namespace SNRom::Ceremony {
             Who   target;               // whom the cue addresses
             bool  judged = false;       // the line is an answer: yes, no or unclear
             Check check = Check::kNone; // what the line must have done
+            std::int32_t kind = 0;      // Kind
         };
 
-        const std::vector<Step>& Script() {
-            static const std::vector<Step> steps{
-                { Who::kOfficiant, Cue::kOpening, Who::kPlayer, false, Check::kAskedForVows },
-                { Who::kPlayer, Cue::kNone, Who::kBetrothed },
-                { Who::kBetrothed, Cue::kBetrothedVows, Who::kPlayer, false, Check::kSpokeVows },
-                { Who::kOfficiant, Cue::kAskPlayer, Who::kPlayer, false, Check::kAskedPlayer },
-                { Who::kPlayer, Cue::kNone, Who::kOfficiant, true },
-                { Who::kOfficiant, Cue::kAskBetrothed, Who::kBetrothed, false, Check::kAskedBetrothed },
-                { Who::kBetrothed, Cue::kBetrothedAnswer, Who::kOfficiant, true },
-                { Who::kOfficiant, Cue::kPronounce, Who::kPlayer, false, Check::kPronounced },
-            };
+        // THIS CEREMONY'S SCRIPT, built at Begin: the minimum, with a planned
+        // wedding's parts (WeddingPlan::Part) in their places. The address
+        // and the reading come first; the rings after both have said yes,
+        // before the pronouncement; the kiss is invited with it (0331).
+        std::vector<Step> g_script;
+
+        std::vector<Step> Build(std::uint32_t a_parts) {
+            std::vector<Step> steps;
+            if (a_parts & WeddingPlan::kAddress) {
+                steps.push_back({ Who::kOfficiant, Cue::kAddress, Who::kPlayer, false, Check::kNone, kKindAddress });
+            }
+            if (a_parts & WeddingPlan::kReading) {
+                steps.push_back({ Who::kOfficiant, Cue::kReading, Who::kPlayer, false, Check::kNone, kKindReading });
+            }
+            steps.insert(steps.end(), {
+                { Who::kOfficiant, Cue::kOpening, Who::kPlayer, false, Check::kAskedForVows, kKindOpening },
+                { Who::kPlayer, Cue::kNone, Who::kBetrothed, false, Check::kNone, kKindPlayerVows },
+                { Who::kBetrothed, Cue::kBetrothedVows, Who::kPlayer, false, Check::kSpokeVows, kKindBetrothedVows },
+                { Who::kOfficiant, Cue::kAskPlayer, Who::kPlayer, false, Check::kAskedPlayer, kKindAskPlayer },
+                { Who::kPlayer, Cue::kNone, Who::kOfficiant, true, Check::kNone, kKindPlayerAnswer },
+                { Who::kOfficiant, Cue::kAskBetrothed, Who::kBetrothed, false, Check::kAskedBetrothed,
+                  kKindAskBetrothed },
+                { Who::kBetrothed, Cue::kBetrothedAnswer, Who::kOfficiant, true, Check::kNone, kKindBetrothedAnswer },
+            });
+            if (a_parts & WeddingPlan::kRings) {
+                steps.push_back({ Who::kOfficiant, Cue::kRings, Who::kPlayer, false, Check::kRings, kKindRings });
+            }
+            steps.push_back({ Who::kOfficiant, Cue::kPronounce, Who::kPlayer, false, Check::kPronounced, kKindPronounce });
             return steps;
         }
+
+        const std::vector<Step>& Script() {
+            return g_script;
+        }
+
+        bool          g_planned = false;  // a planned wedding, not an elopement
+        std::uint32_t g_parts = 0;        // its parts (WeddingPlan::Part)
 
         // CUED AT ONCE (SkyrimNet beta 28; the author, 2026-10-24, wpm30).
         // Beta 28 makes DirectNarration a directed turn of its own: it takes
@@ -242,6 +290,14 @@ namespace SNRom::Ceremony {
                 return off + " has asked " + them + " whether they take " + you + " to be their " + SpouseWord(0x14) +
                        ".";
             case Cue::kPronounce:
+                return (g_parts & WeddingPlan::kRings) ? you + " and " + them + " have exchanged rings."
+                                                       : you + " and " + them + " have both said yes.";
+            // A planned wedding's (M4p). Facts, as every cue is.
+            case Cue::kAddress:
+                return "Everyone has gathered for the wedding of " + you + " and " + them + ".";
+            case Cue::kReading:
+                return off + " has welcomed everyone to the wedding of " + you + " and " + them + ".";
+            case Cue::kRings:
                 return you + " and " + them + " have both said yes.";
             default:
                 return {};
@@ -276,7 +332,7 @@ namespace SNRom::Ceremony {
             g_unclear = a_unclear;
             g_still = 0.0f;
             ++g_token;
-            SetRanks(static_cast<std::int32_t>(g_step) + 1);
+            SetRanks(step.kind);
             SKSE::log::info("Ceremony: step {} of {}", g_step + 1, Script().size());
             if (step.cue == Cue::kNone) {
                 SendEvent("SNRom_CeremonyYourTurn", step.judged ? "answer" : "vows", 0.0f, g_officiant);
@@ -289,8 +345,9 @@ namespace SNRom::Ceremony {
             if (g_step + 1 >= Script().size()) {
                 g_lastOfficiant = g_officiant;
                 const auto betrothed = g_betrothed;
+                const bool planned = g_planned;
                 End(true, "");
-                SendEvent("SNRom_CeremonyMarried", "", 0.0f, betrothed);
+                SendEvent("SNRom_CeremonyMarried", planned ? "planned" : "", 0.0f, betrothed);
                 return;
             }
             ++g_step;
@@ -404,6 +461,8 @@ namespace SNRom::Ceremony {
             case Check::kPronounced:
                 return Has(line, { "pronounce", "husband and wife", "wife and husband", "man and wife",
                                    "now married", "are married", "you are wed", "now wed" });
+            case Check::kRings:
+                return Has(line, { "ring" });
             default:
                 return false;
             }
@@ -427,6 +486,8 @@ namespace SNRom::Ceremony {
                        SpouseWord(0x14) + "?";
             case Check::kPronounced:
                 return "Did " + off + " pronounce or declare " + you + " and " + them + " married?";
+            case Check::kRings:
+                return "Did " + off + " invite " + you + " and " + them + " to exchange rings?";
             default:
                 return {};
             }
@@ -649,10 +710,14 @@ namespace SNRom::Ceremony {
                         g_prompt ? "judged by snrom_ceremony_judge" : "not judged");
     }
 
-    bool Begin(RE::Actor* a_officiant, RE::Actor* a_betrothed, std::string a_variant) {
+    bool Begin(RE::Actor* a_officiant, RE::Actor* a_betrothed, std::string a_variant, std::uint32_t a_parts,
+               bool a_planned) {
         if (!a_officiant || !a_betrothed || a_officiant == a_betrothed || g_active || !g_hearing) {
             return false;
         }
+        g_script = Build(a_planned ? a_parts : 0);
+        g_planned = a_planned;
+        g_parts = a_planned ? a_parts : 0;
         {
             const std::scoped_lock lock{ g_lock };
             g_active = true;
@@ -672,7 +737,17 @@ namespace SNRom::Ceremony {
 
     std::int32_t Now() {
         const std::scoped_lock lock{ g_lock };
-        return g_active ? static_cast<std::int32_t>(g_step) + 1 : 0;
+        return g_active && g_step < g_script.size() ? g_script[g_step].kind : 0;
+    }
+
+    bool Planned() {
+        const std::scoped_lock lock{ g_lock };
+        return g_active && g_planned;
+    }
+
+    std::uint32_t Parts() {
+        const std::scoped_lock lock{ g_lock };
+        return g_active ? g_parts : 0;
     }
 
     RE::Actor* Officiant() {
