@@ -186,6 +186,26 @@ namespace SNRom::History {
         }
     }
 
+    bool Remove(std::int32_t a_formId, std::int32_t a_index, std::int32_t a_delta, std::int32_t a_total) {
+        const std::scoped_lock lock{ g_lock };
+        const auto it = g_bonds.find(static_cast<std::uint32_t>(a_formId));
+        if (it == g_bonds.end() || a_index < 0 || static_cast<std::size_t>(a_index) >= it->second.size()) {
+            return false;
+        }
+        auto&       entries = it->second;
+        const auto& e = entries[static_cast<std::size_t>(a_index)];
+        if (e.delta != a_delta || e.total != a_total || e.kind == "withheld") {
+            return false;
+        }
+        for (std::int32_t i = 0; i < a_index; ++i) {
+            entries[static_cast<std::size_t>(i)].total -= a_delta;
+        }
+        SKSE::log::info("History: {:08X}'s change of {} ({}) removed by the player", static_cast<std::uint32_t>(a_formId),
+                        a_delta, e.kind);
+        entries.erase(entries.begin() + a_index);
+        return true;
+    }
+
     nlohmann::json Recent(std::int32_t a_formId) {
         auto out = nlohmann::json::array();
         const std::scoped_lock lock{ g_lock };

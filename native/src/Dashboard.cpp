@@ -122,6 +122,9 @@ namespace SNRom::Dashboard {
                 true, {}, true },
             // 2.4: a garbled or unwanted ADDRESS, back to none.
             Op{ "ClearAddress", "SNRom_Bridge.ClearAddress(Actor)", OpScope::kBond },
+            // 2.5: one change taken back from a bond's history (History.h):
+            // where it is, its delta and its total, as the page showed it.
+            Op{ "UndoChange", "SNRom_Bridge.UndoChange(Actor, Int, Int, Int)", OpScope::kBond, false, {}, 3, 3 },
             // 2.5, Build A: marriage. A divorce by hand, for a marriage that
             // ended where nothing saw it (M6 makes it a conversation).
             Op{ "Divorce", "SNRom_Bridge.DivorceByHand(Actor)", OpScope::kBond },

@@ -362,3 +362,9 @@ Function NoteProposalDeclinedAt(Actor akActor, Int aiTier) Global Native
 {VERSION 25 (2.5). A no to a proposal, at the bond's tier then: the wait after
  it lifts once the tier rises above that. A no repeated during the wait keeps
  the first one's day.}
+
+Bool Function RemoveChange(Actor akActor, Int aiIndex, Int aiDelta, Int aiTotal) Global Native
+{VERSION 27 (2.5). Takes one change out of akActor's history: the one at aiIndex
+ (0 = newest), if its delta and total are still aiDelta and aiTotal and it moved
+ points. The newer changes' totals lose its delta. False otherwise. The points
+ are the caller's to move (SNRom_Bridge.UndoChange).}

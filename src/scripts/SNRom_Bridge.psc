@@ -1781,6 +1781,52 @@ Function RecordHistory(Actor akActor, String asKind, Int aiDelta, Int aiTotal, S
     EndIf
 EndFunction
 
+String Function UndoChange(Actor akActor, Int aiIndex, Int aiDelta, Int aiTotal)
+    { Dashboard: one change taken back, as if it never happened (the author,
+      2026-10-25). Illdi was hurt by a shout the player let slip; the player
+      deleted SkyrimNet's events of it rather than load a save, and the bond
+      still held what it cost: "I was terrified and physically hurt...".
+
+      The change leaves the history (SNRom_Native.RemoveChange, which checks
+      it is still the one shown) and its points are taken back. Whatever the
+      tier does follows, quietly: no announcement, as nothing happened.
+      Rising lifts an earlier no to a proposal, as any rise does; falling
+      below Stranger ends a romance, as any fall does. Nothing else the change
+      set off is undone: SkyrimNet's events and memories of it are the
+      player's to delete there, and the ledger keeps both rows, the change and
+      its undoing. The consent gate is not consulted: undoing a fall returns
+      the bond to where it stood. }
+    If akActor == None
+        Return "Nobody to undo a change for."
+    EndIf
+    String who = akActor.GetDisplayName()
+    If _dashNatives < 27
+        Return Tr("act.undo.needsDll", "Undoing a change needs the Relationships DLL from the same release.")
+    EndIf
+    If !SNRom_Native.RemoveChange(akActor, aiIndex, aiDelta, aiTotal)
+        Return Tr("act.undo.gone", "That change is no longer in {0}'s history as it was shown. Open the dashboard again and try once more.", who)
+    EndIf
+    Int was = StorageUtil.GetIntValue(akActor, "SNRom_Points", 0)
+    Int now = was - aiDelta
+    If now < POINTS_FLOOR()
+        now = POINTS_FLOOR()
+    EndIf
+    StorePoints(akActor, now)
+    SyncBondRank(akActor)
+    Int fromTier = TierForPoints(was)
+    Int toTier = TierForPoints(now)
+    If toTier > fromTier && _dashNatives >= 24
+        SNRom_Native.ClearProposalDeclined(akActor)
+    EndIf
+    If toTier < 0 && fromTier >= 0 && SNRom_Decorators.IsSparked(akActor)
+        EndRomance(akActor, "It fell below Stranger when a change was undone")
+    EndIf
+    LedgerRow(akActor, "undo", "", now - was, 1, "Undone by the player from the dashboard")
+    Diag(LOG_INFO(), "Undo: " + who + "'s change of " + aiDelta + " taken back by the player: " + was + " -> " + \
+        now + " pts.")
+    Return Tr("act.undo.done", "Undone. {0} is at {1} points, as if it never happened.", who, now)
+EndFunction
+
 Function JoinBondFaction(Actor akActor)
     { Enrollment's mark on the actor itself: into SNRom_Bond, at their tier.
       The caller sets SNRom_Enrolled, which is what the mod reads. }
@@ -7977,6 +8023,13 @@ Event OnDashboardAction(String asEventName, String asOp, Float afRequestId, Form
         Else
             answer = Tr("act.historySaved", "Saved your history with {0}. Their record is being read again with it.", whoName)
         EndIf
+    ElseIf asOp == "UndoChange"
+        Int[] undoArgs = SNRom_Native.ActionArgs(requestId)
+        If undoArgs.Length < 3
+            SNRom_Native.ActionDone(requestId, False, "Undo needs the change: where it is, its points and its total.")
+            Return
+        EndIf
+        answer = UndoChange(who, undoArgs[0], undoArgs[1], undoArgs[2])
     ElseIf asOp == "ClearAddress"
         ClearAddress(who)
         answer = Tr("act.addressCleared", "{0} no longer has a saved name for you.", whoName)

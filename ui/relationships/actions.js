@@ -80,6 +80,18 @@
       form: "historyText"
     },
     {
+      // Offered on each change in the detail's history, not in the actions
+      // list (scope "change": detail.js finds it by op).
+      op: "UndoChange",
+      scope: "change",
+      calls: "SNRom_Bridge.UndoChange(Actor, Int index, Int delta, Int total)",
+      label: t("action.undoChange.label", "Undo this change"),
+      help: t("action.undoChange.help", "Takes this change back, as if it never happened: it leaves their history and its points are returned or removed."),
+      needs: null,
+      needsNearby: false,
+      confirm: t("action.undoChange.confirm", "This change leaves their history and its points are taken back, as if it never happened. SkyrimNet's events and memories of it stay until you delete them there. There is no undo.")
+    },
+    {
       op: "ClearAddress",
       scope: "bond",
       calls: "SNRom_Bridge.ClearAddress(Actor)",

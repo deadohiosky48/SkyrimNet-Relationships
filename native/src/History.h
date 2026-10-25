@@ -39,6 +39,16 @@ namespace SNRom::History {
     // a bond with none.
     nlohmann::json Recent(std::int32_t a_formId);
 
+    // UNDO ONE CHANGE (the author, 2026-10-25). The player deleted the
+    // SkyrimNet events of an accident (a shout that hurt Illdi) to undo it,
+    // and the bond's history still held what it cost. Removes the change at
+    // a_index (0 = newest) when it is still the one the page showed, its
+    // delta and total as given; the newer changes' totals lose its delta.
+    // False when it is not there or not that change, or is a "withheld"
+    // change, which moved no points (banked ones are released by an answer,
+    // not here). The points themselves are SNRom_Bridge.UndoChange's.
+    bool Remove(std::int32_t a_formId, std::int32_t a_index, std::int32_t a_delta, std::int32_t a_total);
+
     // The co-save (Cosave.cpp dispatches to these). Load reads one record's
     // body after its header; Revert empties the history.
     inline constexpr std::uint32_t kRecordType = 'HIST';

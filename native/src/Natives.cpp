@@ -469,6 +469,13 @@ namespace SNRom::Natives {
         void CeremonyCueSent(RE::StaticFunctionTag*, std::int32_t a_token) {
             Ceremony::CueSent(a_token);
         }
+        // VERSION 27: one change taken out of a bond's history (History.h).
+        bool RemoveChange(RE::StaticFunctionTag*, RE::Actor* a_actor, std::int32_t a_index, std::int32_t a_delta,
+                          std::int32_t a_total) {
+            const auto id = FormIdOfActor(a_actor);
+            return id && History::Remove(id, a_index, a_delta, a_total);
+        }
+
         // VERSION 26: CeremonySetReplyWait (20), CeremonySetSpeechBudget (21)
         // and CeremonySetChainDepth (23) are gone. On SkyrimNet beta 28 a cue
         // is sent at once (Ceremony.cpp), so nothing waits on them.
@@ -764,6 +771,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("NoteProposalDeclined", kScript, NoteProposalDeclined, true);
             a_vm->RegisterFunction("ClearProposalDeclined", kScript, ClearProposalDeclined, true);
             a_vm->RegisterFunction("NoteProposalDeclinedAt", kScript, NoteProposalDeclinedAt, true);
+            a_vm->RegisterFunction("RemoveChange", kScript, RemoveChange, true);
             a_vm->RegisterFunction("ProposalDaysSinceDeclined", kScript, ProposalDaysSinceDeclined, true);
             a_vm->RegisterFunction("SetMarriageFacts", kScript, SetMarriageFacts, true);
             a_vm->RegisterFunction("MarriageRing", kScript, MarriageRing, true);
@@ -805,7 +813,7 @@ namespace SNRom::Natives {
                             "RingGivenSince, SeverOutfitLockSetting, AskOpen, AskAnswer, CeremonyBegin, CeremonyStage, "
                             "CeremonyOfficiant, CeremonyBetrothed, CeremonyLastOfficiant, CeremonyCueTarget, "
                             "CeremonyCueWanted, CeremonyCueDelay, CeremonyCueSent, CeremonyStop, RingWeddingFor, RingBand, RingKindOf, "
-                            "RingMetalOf, RingAllOurs, ClearProposalDeclined, ProposalDaysSinceDeclined, NoteProposalDeclinedAt",
+                            "RingMetalOf, RingAllOurs, ClearProposalDeclined, ProposalDaysSinceDeclined, NoteProposalDeclinedAt, RemoveChange",
                             kScript, kVersion);
             return true;
         });

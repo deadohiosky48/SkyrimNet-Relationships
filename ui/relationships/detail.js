@@ -156,6 +156,7 @@
     // WHAT MOVED IT: the last several changes, newest first, as the roster's
     // line shows the newest (labels.js, CHANGE, for what a player sees).
     var changes = L.visibleChanges(b.history, UI.mode.developer);
+    var undo = A.byOp("UndoChange");
     if (changes.length) {
       depth.appendChild(el("h4", "sub-head", t("detail.whatMoved", "What moved it")));
       var list = el("ol", "change-list");
@@ -168,6 +169,21 @@
         var text = L.changeText(e, UI.mode.developer);
         if (text !== L.changeKind(e.kind).label) body.appendChild(el("p", "why", text));
         li.appendChild(body);
+        // UNDO (2.5): a change that moved points can be taken back, by where
+        // it is in the whole history (not the visible list) and what it was,
+        // which the game checks before removing anything.
+        if (undo && e.delta !== 0 && e.kind !== "withheld") {
+          var ub = el("button", "btn btn-quiet change-undo", t("change.undo", "Undo"));
+          ub.type = "button";
+          ub.setAttribute("data-op", undo.op);
+          ub.title = undo.help;
+          ub.setAttribute("aria-label", t("change.undo.aria", "Undo this change of {0}", L.changeAmount(e)));
+          if (busy && busy[undo.op]) { ub.className += " is-busy"; ub.setAttribute("aria-busy", "true"); }
+          ub.addEventListener("click", function () {
+            self.onAction(undo, b, [b.history.indexOf(e), e.delta, e.total], ub);
+          });
+          li.appendChild(ub);
+        }
         list.appendChild(li);
       });
       depth.appendChild(list);
