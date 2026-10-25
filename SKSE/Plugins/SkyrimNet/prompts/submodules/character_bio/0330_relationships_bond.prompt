@@ -32,7 +32,7 @@
 {# an error.                                                                   #}
 {# ══════════════════════════════════════════════════════════════════════════ #}
 {% if not is_player(actorUUID) %}
-{% if is_plugin_loaded("SNRom_Integration.esl") %}
+{% if is_plugin_loaded("SNRom_Integration.esl") or is_plugin_loaded("SNRom_Integration.esp") %}
 {% set rom_tier = get_faction_rank(actorUUID, "SNRom_Bond") %}
 {% if rom_tier >= 0 %}
 {% set actor = decnpc(actorUUID) %}

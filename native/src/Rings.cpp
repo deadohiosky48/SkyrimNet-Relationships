@@ -2,6 +2,8 @@
 
 #include "PCH.h"
 
+#include "OurPlugin.h"
+
 #include "Marriage.h"
 #include "RingCatalog.h"
 
@@ -14,7 +16,6 @@ namespace SNRom::Rings {
 
     namespace {
 
-        constexpr auto kPlugin = "SNRom_Integration.esl";
         constexpr RE::FormID kSpouseHere = 0xD69;      // GLOB SNRom_SpouseHere
         constexpr float      kNear = 2048.0f;
         constexpr auto       kReequipDelay = std::chrono::seconds{ 2 };
@@ -23,7 +24,7 @@ namespace SNRom::Rings {
         template <class T>
         T* Ours(RE::FormID a_local) {
             auto* data = RE::TESDataHandler::GetSingleton();
-            return data ? data->LookupForm<T>(a_local, kPlugin) : nullptr;
+            return data ? data->LookupForm<T>(a_local, OurPlugin()) : nullptr;
         }
 
         bool IsMarriageRing(RE::FormID a_id) {

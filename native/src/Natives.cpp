@@ -2,6 +2,8 @@
 
 #include "PCH.h"
 
+#include "OurPlugin.h"
+
 #include "Api.h"
 #include "L10n.h"
 #include "BioPlan.h"
@@ -871,7 +873,7 @@ namespace SNRom::Natives {
             static RE::TESFaction* bond = nullptr;
             if (!bond) {
                 if (auto* data = RE::TESDataHandler::GetSingleton()) {
-                    bond = data->LookupForm<RE::TESFaction>(0xD63, "SNRom_Integration.esl");
+                    bond = data->LookupForm<RE::TESFaction>(0xD63, OurPlugin());
                 }
             }
             auto* player = RE::PlayerCharacter::GetSingleton();

@@ -10,7 +10,7 @@
 {# player is engaged. get_wedding_planner is native.                          #}
 {# ══════════════════════════════════════════════════════════════════════════ #}
 {% if not is_player(actorUUID) %}
-{% if is_plugin_loaded("SNRom_Integration.esl") %}
+{% if is_plugin_loaded("SNRom_Integration.esl") or is_plugin_loaded("SNRom_Integration.esp") %}
 {% set wp = get_wedding_planner(actorUUID) %}
 {% if wp and default(wp.planner, 0) == 1 and existsIn(wp, "couples") and length(wp.couples) > 0 %}
 

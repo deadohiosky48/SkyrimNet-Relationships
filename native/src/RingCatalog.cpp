@@ -2,6 +2,8 @@
 
 #include "PCH.h"
 
+#include "OurPlugin.h"
+
 #include <array>
 #include <unordered_set>
 
@@ -9,7 +11,6 @@ namespace SNRom::RingCatalog {
 
     namespace {
 
-        constexpr auto kPlugin = "SNRom_Integration.esl";
 
         struct Entry {
             RE::FormID local;   // the ARMO's FormID in our plugin
@@ -29,7 +30,7 @@ namespace SNRom::RingCatalog {
 
         const Entry* EntryOf(const RE::TESForm* a_form) {
             const auto* file = a_form ? a_form->GetFile(0) : nullptr;
-            if (!file || std::string_view(file->GetFilename()) != kPlugin) {
+            if (!file || std::string_view(file->GetFilename()) != OurPlugin()) {
                 return nullptr;
             }
             const auto local = a_form->GetLocalFormID();
@@ -43,7 +44,7 @@ namespace SNRom::RingCatalog {
 
         RE::TESForm* FormOf(const Entry& a_entry) {
             auto* data = RE::TESDataHandler::GetSingleton();
-            return data ? data->LookupForm(a_entry.local, kPlugin) : nullptr;
+            return data ? data->LookupForm(a_entry.local, OurPlugin()) : nullptr;
         }
 
         bool ListHas(const RE::BGSListForm* a_list, RE::FormID a_id) {
@@ -104,7 +105,7 @@ namespace SNRom::RingCatalog {
             if (e.kind == Kind::kWedding) {
                 continue;   // made at a wedding, never sold
             }
-            if (auto* armor = data->LookupForm<RE::TESObjectARMO>(e.local, kPlugin)) {
+            if (auto* armor = data->LookupForm<RE::TESObjectARMO>(e.local, OurPlugin())) {
                 stock.push_back(armor);
             }
         }

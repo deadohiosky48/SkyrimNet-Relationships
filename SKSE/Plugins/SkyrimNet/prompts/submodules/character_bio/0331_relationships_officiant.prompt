@@ -9,7 +9,7 @@
 {# player is here with them. Silent otherwise. get_officiant is native.        #}
 {# ══════════════════════════════════════════════════════════════════════════ #}
 {% if not is_player(actorUUID) %}
-{% if is_plugin_loaded("SNRom_Integration.esl") %}
+{% if is_plugin_loaded("SNRom_Integration.esl") or is_plugin_loaded("SNRom_Integration.esp") %}
 {% set off = get_officiant(actorUUID) %}
 {# THE WEDDING YOU ARE CONDUCTING (Ceremony.h), by step, the minimum for any
    ceremony (the author, 2026-10-20): 1 open and ask for the player's vows,

@@ -2,6 +2,8 @@
 
 #include "PCH.h"
 
+#include "OurPlugin.h"
+
 #include <atomic>
 
 #include "Rings.h"
@@ -95,7 +97,7 @@ namespace SNRom::Marriage {
         RE::TESFaction* StateFaction() {
             static auto* f = [] {
                 auto* data = RE::TESDataHandler::GetSingleton();
-                return data ? data->LookupForm<RE::TESFaction>(0xD70, "SNRom_Integration.esl") : nullptr;
+                return data ? data->LookupForm<RE::TESFaction>(0xD70, OurPlugin()) : nullptr;
             }();
             return f;
         }

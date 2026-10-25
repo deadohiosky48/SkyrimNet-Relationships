@@ -470,7 +470,117 @@ try {
         throw "Identifying strings would be published. Fix them, then re-run."
     }
 
-    # --- 8. zip ------------------------------------------------------------
+    # --- 8. the FOMOD (2.5; the author, 2026-10-25) -------------------------
+    # OUR PLUGIN AS AN .esl OR A LIGHT-FLAGGED .esp, the player's choice. The
+    # same file either way (SNRom_Bridge.OurPlugin, native/src/OurPlugin.h).
+    # An .esl always loads among the masters, so installing one moves every
+    # light-flagged .esp after it down a slot; on a large load order that broke
+    # an existing save for a mod that does not follow its saved forms. The
+    # .esp can be placed last, where it moves nothing.
+    #
+    # Everything staged and checked above becomes "00 Core". The plugin and
+    # the content layer's manifest (which names the plugin it requires) go
+    # into one folder per choice. Built from what was checked, so the checks
+    # above cover every file but the installer's own XML, which is ours.
+    $fomodStage = Join-Path $env:TEMP ("snrom_fomod_" + [guid]::NewGuid().ToString('N').Substring(0,8))
+    $core = Join-Path $fomodStage '00 Core'
+    New-Item -ItemType Directory -Force -Path $core | Out-Null
+    Get-ChildItem $stage -Force | Move-Item -Destination $core
+    $stagedPlugin = Join-Path $core 'SNRom_Integration.esl'
+    $extRel = "SKSE\Plugins\SkyrimNet\external\$PluginId\manifest.json"
+    $coreManifest = Join-Path $core $extRel
+    $manifestText = [System.IO.File]::ReadAllText($coreManifest)
+    foreach ($choice in @(@{ dir = '10 Plugin as ESL'; ext = 'esl' }, @{ dir = '11 Plugin as ESP'; ext = 'esp' })) {
+        $dir = Join-Path $fomodStage $choice.dir
+        New-Item -ItemType Directory -Force -Path (Split-Path (Join-Path $dir $extRel)) | Out-Null
+        Copy-Item $stagedPlugin (Join-Path $dir "SNRom_Integration.$($choice.ext)")
+        $text = $manifestText.Replace('"SNRom_Integration.esl"', "`"SNRom_Integration.$($choice.ext)`"")
+        if (-not $text.Contains("SNRom_Integration.$($choice.ext)")) { throw "manifest.json names no plugin for $($choice.dir)" }
+        [System.IO.File]::WriteAllText((Join-Path $dir $extRel), $text, (New-Object System.Text.UTF8Encoding($false)))
+    }
+    Remove-Item $stagedPlugin, $coreManifest -Force
+
+    $fomodDir = Join-Path $fomodStage 'fomod'
+    New-Item -ItemType Directory -Force -Path $fomodDir | Out-Null
+    $author = ($PluginId -split '\.')[0]
+    $info = @"
+<?xml version="1.0" encoding="UTF-8"?>
+<fomod>
+  <Name>Relationships</Name>
+  <Author>$author</Author>
+  <Version>$Version</Version>
+  <Description>Companions judge how you behaved, in their own words. For SkyrimNet.</Description>
+  <Groups>
+    <element>Gameplay</element>
+  </Groups>
+</fomod>
+"@
+    $eslText = @'
+The plugin as an .esl. Choose this unless one of the reasons under the other option applies to you.
+
+It is light, so it takes no regular plugin slot. Like every .esl, it loads among the master files, ahead of all .esp plugins: that is how the game treats the extension, and you cannot move it below them.
+
+That is right for a new playthrough, and for most load orders.
+'@
+    $espText = @'
+The same plugin, still light-flagged (it takes no regular slot either), but named .esp, so it can load wherever you place it. Place it LAST in your load order.
+
+Choose this if either applies:
+- You are adding Relationships to a playthrough you already have, and your load order has many light-flagged .esp plugins (hundreds or more, as large lists like Nolvus have).
+- A save crashed on load after you installed the .esl version.
+
+Why both are offered: an .esl loads ahead of every .esp, so installing one gives every light-flagged .esp after it a new slot. Most mods follow their saved records to the new slot; some older ones do not, and a save made before can then crash on load (Schlongs of Skyrim on Skyrim 1.5.97 did). Loaded last, the .esp moves nothing.
+
+One difference: SeverActions recognises Relationships by the .esl name when it stands its own Intimacy & Consent layer down. With the .esp it may keep running beside ours; you can turn it off in SeverActions' settings.
+'@
+    $switchText = 'Do not switch between the two in a playthrough that already uses one: a save remembers the plugin by its name, and switching loses what Relationships recorded in it (its factions, the rings, the planner''s book).'
+    $esc = { param($t) [System.Security.SecurityElement]::Escape($t) }
+    $config = @"
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+  <moduleName>Relationships</moduleName>
+  <requiredInstallFiles>
+    <folder source="00 Core" destination="" />
+  </requiredInstallFiles>
+  <installSteps order="Explicit">
+    <installStep name="Plugin">
+      <optionalFileGroups order="Explicit">
+        <group name="Which plugin file" type="SelectExactlyOne">
+          <plugins order="Explicit">
+            <plugin name="SNRom_Integration.esl (most players)">
+              <description>$(& $esc ($eslText.Trim() + "`n`n" + $switchText))</description>
+              <files>
+                <folder source="10 Plugin as ESL" destination="" />
+              </files>
+              <typeDescriptor>
+                <type name="Recommended" />
+              </typeDescriptor>
+            </plugin>
+            <plugin name="SNRom_Integration.esp, light-flagged (large load orders)">
+              <description>$(& $esc ($espText.Trim() + "`n`n" + $switchText))</description>
+              <files>
+                <folder source="11 Plugin as ESP" destination="" />
+              </files>
+              <typeDescriptor>
+                <type name="Optional" />
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+  </installSteps>
+</config>
+"@
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText((Join-Path $fomodDir 'info.xml'), $info, $utf8)
+    [System.IO.File]::WriteAllText((Join-Path $fomodDir 'ModuleConfig.xml'), $config, $utf8)
+    foreach ($x in 'info.xml', 'ModuleConfig.xml') {
+        try { [xml](Get-Content -Raw (Join-Path $fomodDir $x)) | Out-Null } catch { throw "fomod\$x is not well-formed XML: $_" }
+    }
+    Write-Host "  verified  FOMOD: core, the .esl and the .esp choices, XML well-formed"
+
+    # --- 9. zip ------------------------------------------------------------
     New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
     # HYPHENS, NOT SPACES. GitHub rewrites spaces to dots in release asset names,
     # so "SkyrimNet Relationships-0.9.0.zip" was published as
@@ -486,13 +596,13 @@ try {
     # version, where MO2 is meant to split.
     $zip = Join-Path $OutDir "Relationships-$Version.zip"
     if (Test-Path $zip) { Remove-Item $zip -Force }
-    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -CompressionLevel Optimal
+    Compress-Archive -Path (Join-Path $fomodStage '*') -DestinationPath $zip -CompressionLevel Optimal
 
     $size = [math]::Round((Get-Item $zip).Length / 1KB)
     Write-Host ""
     Write-Host "  Packaged  $zip" -ForegroundColor Green
     Write-Host "  Version   $Version"
-    Write-Host "  Plugin    SNRom_Integration.esl ($eslNote)"
+    Write-Host "  Plugin    SNRom_Integration.esl or .esp, the player's choice in the FOMOD ($eslNote)"
     Write-Host "  Scripts   $($pex.Count) compiled"
     Write-Host "  Dashboard $dashNote"
     Write-Host "  Size      $size KB"
@@ -501,4 +611,5 @@ try {
 }
 finally {
     Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
+    if ($fomodStage) { Remove-Item $fomodStage -Recurse -Force -ErrorAction SilentlyContinue }
 }

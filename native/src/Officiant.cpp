@@ -2,6 +2,8 @@
 
 #include "PCH.h"
 
+#include "OurPlugin.h"
+
 #include "Marriage.h"
 
 #include <cctype>
@@ -26,11 +28,11 @@ namespace SNRom::Officiant {
             return f;
         }
         RE::TESFaction* Ours() {
-            static auto* f = Faction(0xD71, "SNRom_Integration.esl");
+            static auto* f = Faction(0xD71, OurPlugin());
             return f;
         }
         RE::TESFaction* PlannerFaction() {
-            static auto* f = Faction(0xD87, "SNRom_Integration.esl");
+            static auto* f = Faction(0xD87, OurPlugin());
             return f;
         }
 

@@ -309,14 +309,14 @@ Function Bootstrap(Bool abForce = False)
     _bond = ResolveBondFaction()
     If _bond == None
         _ready = False
-        Diag(LOG_ERROR(), "SNRom_Bond unresolved - SNRom_Integration.esl is missing or older than " + \
+        Diag(LOG_ERROR(), "SNRom_Bond unresolved - SNRom_Integration.esl (or .esp) is missing or older than " + \
             "these scripts. Integration inert.")
         Return
     EndIf
 
     _enmity = ResolveEnmityFaction()
     If _enmity == None
-        Diag(LOG_WARN(), "SNRom_Enmity unresolved - SNRom_Integration.esl is older than these scripts. " + \
+        Diag(LOG_WARN(), "SNRom_Enmity unresolved - SNRom_Integration.esl (or .esp) is older than these scripts. " + \
             "Negative tiers still work; only the faction that publishes them is not written.")
     EndIf
 
@@ -410,15 +410,29 @@ Function Bootstrap(Bool abForce = False)
     ApiPublishAll()
 EndFunction
 
+String Function OurPlugin() Global
+    { OUR PLUGIN, AS AN .esl OR A LIGHT-FLAGGED .esp (2.5; the author,
+      2026-10-25). The same file either way, with the same FormIDs, chosen in
+      the installer. An .esl always loads among the masters, ahead of every
+      .esp, so adding one moves every light-flagged .esp after it down a slot;
+      on a large load order that broke a save for a mod that does not follow
+      its saved forms (Schlongs of Skyrim on 1.5.97). The .esp can be placed
+      last, where it moves nothing. The DLL's twin is native/src/OurPlugin.h. }
+    If Game.IsPluginInstalled("SNRom_Integration.esl")
+        Return "SNRom_Integration.esl"
+    EndIf
+    Return "SNRom_Integration.esp"
+EndFunction
+
 Faction Function ResolveBondFaction() Global
     { SNRom_Bond, from our own ESL by its plugin-local FormID; SKSE handles
       the ESL indirection, as it did for ROM_RomanceLevel for a year. }
-    Return Game.GetFormFromFile(0x00000D63, "SNRom_Integration.esl") as Faction
+    Return Game.GetFormFromFile(0x00000D63, OurPlugin()) as Faction
 EndFunction
 
 Faction Function ResolveEnmityFaction() Global
     { SNRom_Enmity (2.2), beside SNRom_Bond in our own ESL. }
-    Return Game.GetFormFromFile(0x00000D64, "SNRom_Integration.esl") as Faction
+    Return Game.GetFormFromFile(0x00000D64, OurPlugin()) as Faction
 EndFunction
 
 Faction Function RomantasyFaction() Global
@@ -5223,19 +5237,19 @@ EndFunction
 Form Function EngagementRing() Global
     { SNRom_EngagementRingGold (2.5): the engagement ring alone. Worn on the
       left ring finger; built by tools/rings from a modder's resource. }
-    Return Game.GetFormFromFile(0x00000D66, "SNRom_Integration.esl")
+    Return Game.GetFormFromFile(0x00000D66, OurPlugin())
 EndFunction
 
 Form Function WeddingRing() Global
     { SNRom_WeddingRingGold (2.5): the engagement ring with its band, which an
       engagement ring of ours becomes at the wedding. }
-    Return Game.GetFormFromFile(0x00000D68, "SNRom_Integration.esl")
+    Return Game.GetFormFromFile(0x00000D68, OurPlugin())
 EndFunction
 
 Form Function WeddingBand() Global
     { SNRom_WeddingBandGold (2.5): the band alone, which the player is given at
       the wedding when no engagement ring of ours became theirs. }
-    Return Game.GetFormFromFile(0x00000D74, "SNRom_Integration.esl")
+    Return Game.GetFormFromFile(0x00000D74, OurPlugin())
 EndFunction
 
 Form Function RingSlotBlocker(Actor akWearer, Form akRing) Global
@@ -5686,7 +5700,7 @@ EndFunction
 Book Function PlannerBook() Global
     { The wedding planner's book (Build B): what can be chosen for a wedding,
       and from what. Given when a planner is hired. }
-    Return Game.GetFormFromFile(0x00000D88, "SNRom_Integration.esl") as Book
+    Return Game.GetFormFromFile(0x00000D88, OurPlugin()) as Book
 EndFunction
 
 Function ChooseWeddingOfficiant(Actor akSpeaker, String asFor, String asOfficiant)
@@ -8641,7 +8655,7 @@ Event OnDashboardRefresh(String asEventName, String asScope, Float afGeneration,
     Int generation = afGeneration as Int
     If !_ready
         SNRom_Native.RefreshDone(generation, 0, "not ready: Relationships has not started. " + \
-            "SNRom_Integration.esl is missing or out of date (see snrom.log).")
+            "SNRom_Integration.esl (or .esp) is missing or out of date (see snrom.log).")
         Return
     EndIf
     Bool withText = asScope == "full"

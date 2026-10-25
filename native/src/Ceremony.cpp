@@ -2,6 +2,8 @@
 
 #include "PCH.h"
 
+#include "OurPlugin.h"
+
 #include "Marriage.h"
 #include "WeddingPlan.h"
 
@@ -195,7 +197,7 @@ namespace SNRom::Ceremony {
         RE::TESFaction* StageFaction() {
             static auto* f = [] {
                 auto* data = RE::TESDataHandler::GetSingleton();
-                return data ? data->LookupForm<RE::TESFaction>(0xD72, "SNRom_Integration.esl") : nullptr;
+                return data ? data->LookupForm<RE::TESFaction>(0xD72, OurPlugin()) : nullptr;
             }();
             return f;
         }
