@@ -12,11 +12,17 @@
 {% if not is_player(actorUUID) %}
 {% if is_plugin_loaded("SNRom_Integration.esl") or is_plugin_loaded("SNRom_Integration.esp") %}
 {% set wp = get_wedding_planner(actorUUID) %}
-{% if wp and default(wp.planner, 0) == 1 and existsIn(wp, "couples") and length(wp.couples) > 0 %}
+{# ALWAYS SAID TO A PLANNER (2026-10-25): Danica Pure-Spring, asked about
+   planning a wedding while the player was engaged to no one, did not know
+   she planned weddings. What she plans waits for an engagement. #}
+{% if wp and default(wp.planner, 0) == 1 %}
 
 ## Weddings
 
 Beside your duties, you plan weddings: for a fee of {{ wp.fee }} gold you help a couple settle everything a wedding needs, and compose the ceremony with them.
+{% if not existsIn(wp, "couples") or length(wp.couples) == 0 %}
+{{ player.name }} is not engaged to anyone that you know of. A wedding begins with an engagement; once {{ player.name }} has asked someone and they have said yes, you would gladly plan it.
+{% endif %}
 {% for c in wp.couples %}
 {% if default(c.hired, 0) == 1 %}
 
