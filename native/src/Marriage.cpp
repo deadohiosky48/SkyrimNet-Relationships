@@ -7,10 +7,12 @@
 #include <atomic>
 
 #include "Rings.h"
+#include "SkyrimNetLink.h"
 
 #include <algorithm>
 #include <map>
 #include <mutex>
+#include <thread>
 
 namespace SNRom::Marriage {
 
@@ -49,6 +51,13 @@ namespace SNRom::Marriage {
         bool                               g_exception = false;
         std::int32_t                       g_spouses = 0;
         float                              g_cooldownDays = 3.0f;
+        // Which load the records are from: a search for imported wedding days
+        // answers only the load that started it.
+        std::atomic<std::uint32_t>         g_loadGeneration{ 0 };
+
+        bool Imported(const Record& a_record) {
+            return a_record.why.starts_with("imported from MARAS");
+        }
 
         float GameDay() {
             const auto* calendar = RE::Calendar::GetSingleton();
@@ -505,8 +514,9 @@ namespace SNRom::Marriage {
                 r.ringToPlayer = resolve(toPlayer);
             }
             // Records the MARAS import made before 2.5 wpm41 carry the day of
-            // the import as their wedding day: unknown, as it always was.
-            if (r.why.starts_with("imported from MARAS") && r.weddingDay > 0.0f) {
+            // the import as their wedding day: unknown, as it always was. Only
+            // that day: one found since in SkyrimNet's events is the wedding's.
+            if (Imported(r) && r.weddingDay > 0.0f && r.weddingDay == r.since) {
                 r.weddingDay = 0.0f;
                 ++repaired;
             }
@@ -554,7 +564,65 @@ namespace SNRom::Marriage {
         }
     }
 
+    void FindImportedWeddingDaysSoon() {
+        struct Wanted {
+            std::uint32_t formId;
+            std::string   name;
+            float         since;
+        };
+        std::vector<Wanted> wanted;
+        {
+            const std::scoped_lock lock{ g_lock };
+            for (const auto& [formId, r] : g_records) {
+                if (Imported(r) && r.weddingDay == 0.0f &&
+                    (r.state == State::kMarried || r.state == State::kSeparated)) {
+                    wanted.push_back({ formId, {}, r.since });
+                }
+            }
+        }
+        if (wanted.empty()) {
+            return;
+        }
+        // Names on the main thread (the message handler); SkyrimNet off it.
+        for (auto& w : wanted) {
+            const auto* form = RE::TESForm::LookupByID(w.formId);
+            const char* name = form ? form->GetName() : nullptr;
+            w.name = name ? name : "";
+        }
+        const auto* player = RE::PlayerCharacter::GetSingleton();
+        const char* you = player ? player->GetName() : nullptr;
+        std::string me = you ? you : "";
+        const auto generation = g_loadGeneration.load();
+        std::thread([wanted = std::move(wanted), me = std::move(me), generation]() {
+            if (!SkyrimNetLink::WaitReady(120)) {
+                SKSE::log::info("Wedding days: SkyrimNet could not be asked; imported weddings stay undated");
+                return;
+            }
+            std::size_t found = 0;
+            for (const auto& w : wanted) {
+                const auto day = static_cast<float>(SkyrimNetLink::MarasWeddingDay(w.formId, w.name, me));
+                // Never later than the import itself: that is not their wedding.
+                if (day <= 0.0f || day > w.since) {
+                    continue;
+                }
+                const std::scoped_lock lock{ g_lock };
+                if (g_loadGeneration.load() != generation) {
+                    return;
+                }
+                const auto it = g_records.find(w.formId);
+                if (it != g_records.end() && Imported(it->second) && it->second.weddingDay == 0.0f) {
+                    it->second.weddingDay = day;
+                    ++found;
+                }
+            }
+            SKSE::log::info("Wedding days: {} of {} imported weddings found in SkyrimNet's events; the rest "
+                            "stay undated",
+                            found, wanted.size());
+        }).detach();
+    }
+
     void Revert() {
+        ++g_loadGeneration;
         const std::scoped_lock lock{ g_lock };
         g_records.clear();
         g_declined.clear();

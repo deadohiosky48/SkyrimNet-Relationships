@@ -70,6 +70,7 @@ namespace {
         case SKSE::MessagingInterface::kPostLoadGame:
             SNRom::Rings::UpdateSpouseHereSoon();
             SNRom::Marriage::SyncFactionsSoon();
+            SNRom::Marriage::FindImportedWeddingDaysSoon();
             SNRom::Officiant::Remark();
             SNRom::Ceremony::Reset();
             break;

@@ -288,8 +288,11 @@
         separated: t("marriage.separated", "Separated") };
       var mState = MARRIAGE[m.state] || m.state;
       // An imported record's "since" is the day of the import, not when it
-      // happened: said as brought over from MARAS instead.
-      if (m.imported) mState += " (" + t("marriage.imported", "brought over from MARAS") + ")";
+      // happened: said as brought over from MARAS instead, with the wedding's
+      // own day when SkyrimNet's events had it (wpm42).
+      if (m.imported && m.weddingDay !== null) mState += " (" + t("marriage.importedOn",
+        "{0}, brought over from MARAS", L.daysAgo(m.weddingDay, snap.generatedAt)) + ")";
+      else if (m.imported) mState += " (" + t("marriage.imported", "brought over from MARAS") + ")";
       else if (m.since !== null) mState += " (" + L.daysAgo(m.since, snap.generatedAt) + ")";
       kv(mdl, t("detail.marriageState", "Now"), mState);
       if (m.officiant) kv(mdl, m.eloped ? t("detail.elopedBy", "Eloped, married by") : t("detail.marriedBy", "Married by"), m.officiant);
