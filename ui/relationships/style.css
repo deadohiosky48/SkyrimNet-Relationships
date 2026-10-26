@@ -302,6 +302,7 @@ button, input, select { font: inherit; color: inherit; }
 .with-faces .c-name .face {
   display: block; flex: 0 0 auto; width: calc(2.6rem * var(--t)); height: calc(2.6rem * var(--t));
   border-radius: 50%; overflow: hidden; background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 1px rgba(214, 173, 87, 0.35);
 }
 .c-name .face img { display: block; width: 100%; height: 100%; }
 .with-faces .roster-head .c-name { padding-left: calc(2.6rem * var(--t) + 0.6rem); }
@@ -407,10 +408,16 @@ button, input, select { font: inherit; color: inherit; }
    move it too. */
 .detail-head { position: relative; padding-right: 1.25rem; }
 .detail-head .icon-btn { position: absolute; top: 0.6rem; right: 0.6rem; }
+/* Framed (asked 2026-10-26): a thin gold border, and a lit backdrop behind
+   the cutout's transparent ground, so the picture reads as a picture. */
 .detail-portrait {
   flex: 0 0 auto; width: calc(8.8rem * var(--t)); height: calc(11rem * var(--t));
   margin-right: 1.6rem; border-radius: 6px; overflow: hidden;
-  background: radial-gradient(ellipse at 50% 35%, rgba(255, 255, 255, 0.07), transparent 70%);
+  border: 1px solid rgba(214, 173, 87, 0.45);
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(241, 207, 126, 0.10), transparent 65%),
+    linear-gradient(180deg, var(--surface-hi), var(--panel-bottom));
+  box-shadow: inset 0 0 0 3px rgba(7, 9, 13, 0.55), 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 .detail-portrait[hidden] { display: none; }
 .depth-glance { margin-top: 0.9rem; }
