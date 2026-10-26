@@ -574,7 +574,10 @@ namespace SNRom::Model {
                                  { "month", cal->GetMonth() },
                                  { "day", static_cast<std::int32_t>(cal->GetDay()) },
                                  { "weekday", cal->GetDayOfWeek() },
-                                 { "hour", cal->GetHour() } };
+                                 { "hour", cal->GetHour() },
+                                 // The player's children, for their birthdays
+                                 // (the author, 2026-10-26; Kinship 1.10).
+                                 { "children", Family::PlayerChildren() } };
         }
         snap["ladder"] = { { "thresholds", kThresholds }, { "below", kBelow }, { "floor", kFloor } };
         snap["player"] = player;

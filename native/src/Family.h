@@ -29,6 +29,11 @@ namespace SNRom::Family {
     // child, 5 for anyone grown, which is all a record says. Main thread.
     nlohmann::json Of(std::int32_t a_formId);
 
+    // Every child of the player's that Kinship records (API v2), for the
+    // calendar's birthdays: [{ name, child, born (game days; 0 unknown),
+    // otherParent, adopted, stage }]. Empty without Kinship 1.10.
+    nlohmann::json PlayerChildren();
+
     // "female", "male", or "" when a_formId is no actor. Main thread.
     std::string SexOf(std::int32_t a_formId);
 }

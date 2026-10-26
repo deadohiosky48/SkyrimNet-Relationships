@@ -437,6 +437,8 @@ button, input, select { font: inherit; color: inherit; }
 .cal-mark.k-holiday { background: var(--muted); }
 .cal-mark.k-wedding { background: var(--accent); }
 .cal-mark.k-anniversary { background: #e07a8c; }
+.cal-mark.k-birthday { background: #7fb4e0; }
+.cal-event.k-birthday { color: #a9cdec; }
 .cal-info { margin-top: 0.8rem; }
 .cal-event, .cal-empty { margin: 0.25rem 0; }
 .cal-event.k-wedding { color: var(--accent); }

@@ -56,7 +56,7 @@ namespace SNRom::Officiant {
             "Jora", "Lortheim", "Andurs", "Styrr", "Brother Verulus", "Helgird", "Runil", "Balgruuf the Greater",
             "Vignar Gray-Mane", "Elisif the Fair", "Ulfric Stormcloak", "Brunwulf Free-Winter", "Laila Law-Giver",
             "Maven Black-Briar", "Igmund", "Thongvor Silver-Blood", "Siddgeir", "Dengeir of Stuhn",
-            "Idgrod Ravencrone", "Sorli the Builder", "Skald the Elder", "Brina Merilis", "Korir", "Kraldar"
+            "Idgrod Ravencrone", "Sorli the Builder", "Skald", "Brina Merilis", "Korir", "Kraldar"
         };
 
         void Mark(RE::TESNPC* a_npc, RE::TESFaction* a_ours);
@@ -193,7 +193,10 @@ namespace SNRom::Officiant {
             if (lower == wanted) {
                 return actor;
             }
-            if (!partial && (lower.starts_with(wanted) || lower.find(wanted) != std::string::npos)) {
+            // "Skald the Elder" asked of a record named "Skald": the record's
+            // name, then a space, begins what was asked.
+            if (!partial && (lower.starts_with(wanted) || lower.find(wanted) != std::string::npos ||
+                             wanted.starts_with(lower + " "))) {
                 partial = actor;
             }
         }

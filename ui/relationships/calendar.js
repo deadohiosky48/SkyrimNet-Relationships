@@ -8,7 +8,8 @@
    from today across the months' real lengths.
 
    WHAT IS ON IT: planned weddings, with the hour and the place; anniversaries
-   of every marriage in Relationships' record; and the holidays of Tamriel. New
+   of every marriage in Relationships' record; the player's children's
+   birthdays, from Kinship (1.10); and the holidays of Tamriel. New
    kinds of appointment (dates, the reception) add themselves in eventsFor. */
 
 (function (UI) {
@@ -89,6 +90,18 @@
     var out = {};
     function add(day, kind, text) { (out[day] = out[day] || []).push({ kind: kind, text: text }); }
     holidays().forEach(function (h) { if (h[0] === month) add(h[1], "holiday", h[2]); });
+    // The player's children (Kinship): each birthday, every year after the
+    // year they were born.
+    ((snap.calendar && snap.calendar.children) || []).forEach(function (c) {
+      if (!c.born) return;
+      var b = dateOfGameDay(now, c.born);
+      if (b.month !== month || year < b.year) return;
+      var age = year - b.year;
+      var text = age === 0 ? t("cal.born", "{0} was born", c.name) :
+        t("cal.birthday", "{0} turns {1}", c.name, age);
+      if (c.otherParent) text += " " + t("cal.withParent", "(with {0})", c.otherParent);
+      add(b.day, "birthday", text);
+    });
     (snap.bonds || []).forEach(function (b) {
       var m = b.marriage;
       if (!m) return;

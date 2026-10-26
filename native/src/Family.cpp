@@ -21,8 +21,16 @@ namespace SNRom::Family {
             std::uint32_t version;
             std::uint32_t (*ChildrenWith)(std::uint32_t a_parentFormId, char* a_out, std::uint32_t a_size);
         };
+        // Version 2 (Kinship 1.10): every child of the player's, with the day
+        // each was born, for the calendar's birthdays.
+        struct KinshipApiV2 {
+            std::uint32_t version;
+            std::uint32_t (*ChildrenWith)(std::uint32_t a_parentFormId, char* a_out, std::uint32_t a_size);
+            std::uint32_t (*AllChildren)(char* a_out, std::uint32_t a_size);
+        };
         std::once_flag      g_kinshipOnce;
         const KinshipApiV1* g_kinship = nullptr;
+        const KinshipApiV2* g_kinship2 = nullptr;
 
         const KinshipApiV1* Kinship() {
             std::call_once(g_kinshipOnce, []() {
@@ -30,6 +38,7 @@ namespace SNRom::Family {
                 const auto dll = GetModuleHandleW(L"SkyrimNetKinship.dll");
                 const auto fn = dll ? reinterpret_cast<Request>(GetProcAddress(dll, "SNKinship_RequestApi")) : nullptr;
                 g_kinship = fn ? static_cast<const KinshipApiV1*>(fn(1)) : nullptr;
+                g_kinship2 = fn ? static_cast<const KinshipApiV2*>(fn(2)) : nullptr;
                 SKSE::log::info("Family: {}", g_kinship ? "children with the player read from SkyrimNet Kinship" :
                                                           "SkyrimNet Kinship 1.10 or later is not installed; no "
                                                           "children with the player are shown");
@@ -156,6 +165,43 @@ namespace SNRom::Family {
                                             { "adopted", false },
                                             { "inWorld", true } });
             }
+        }
+        return out;
+    }
+
+    nlohmann::json PlayerChildren() {
+        auto out = nlohmann::json::array();
+        Kinship();
+        if (!g_kinship2) {
+            return out;
+        }
+        const auto  need = g_kinship2->AllChildren(nullptr, 0);
+        std::string text(need, '\0');
+        if (need == 0 || g_kinship2->AllChildren(text.data(), need) != need) {
+            return out;
+        }
+        text.resize(need - 1);
+        const auto kids = nlohmann::json::parse(text, nullptr, false);
+        if (!kids.is_array()) {
+            return out;
+        }
+        auto*       player = RE::PlayerCharacter::GetSingleton();
+        const char* you = player ? player->GetName() : nullptr;
+        const std::string me = you ? you : "";
+        for (const auto& k : kids) {
+            if (!k.is_object()) {
+                continue;
+            }
+            // The other parent: whichever of the two is not the player.
+            const auto mother = k.value("mother", std::string{});
+            const auto father = k.value("father", std::string{});
+            const auto other = _stricmp(mother.c_str(), me.c_str()) == 0 ? father : mother;
+            out.push_back({ { "name", k.value("name", "") },
+                            { "child", k.value("child", "") },
+                            { "born", k.value("born", 0.0) },
+                            { "otherParent", other },
+                            { "adopted", k.value("adopted", false) },
+                            { "stage", k.value("stage", -1) } });
         }
         return out;
     }
