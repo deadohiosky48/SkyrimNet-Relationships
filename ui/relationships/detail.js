@@ -287,7 +287,10 @@
         divorced: t("marriage.divorced", "Divorced"), widowed: t("marriage.widowed", "Widowed"),
         separated: t("marriage.separated", "Separated") };
       var mState = MARRIAGE[m.state] || m.state;
-      if (m.since !== null) mState += " (" + L.daysAgo(m.since, snap.generatedAt) + ")";
+      // An imported record's "since" is the day of the import, not when it
+      // happened: said as brought over from MARAS instead.
+      if (m.imported) mState += " (" + t("marriage.imported", "brought over from MARAS") + ")";
+      else if (m.since !== null) mState += " (" + L.daysAgo(m.since, snap.generatedAt) + ")";
       kv(mdl, t("detail.marriageState", "Now"), mState);
       if (m.officiant) kv(mdl, m.eloped ? t("detail.elopedBy", "Eloped, married by") : t("detail.marriedBy", "Married by"), m.officiant);
       if (m.ringFromPlayer) kv(mdl, t("detail.ringFromYou", "Your ring to them"), m.ringFromPlayer);

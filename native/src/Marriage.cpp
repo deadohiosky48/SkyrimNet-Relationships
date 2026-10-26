@@ -207,7 +207,11 @@ namespace SNRom::Marriage {
             record.since = GameDay();
             record.why = a_why;
             if (a_to == State::kMarried && from != State::kSeparated) {
-                record.weddingDay = record.since;
+                // A WEDDING DAY ONLY FOR A WEDDING (2026-10-26). A forced
+                // record (the MARAS import, a developer repair) is not one:
+                // all fourteen of the author's imported marriages showed the
+                // day of the import as their wedding, and as an anniversary.
+                record.weddingDay = a_force ? 0.0f : record.since;
                 record.eloped = a_eloped;
                 record.officiant = a_officiant;
             }
@@ -470,6 +474,7 @@ namespace SNRom::Marriage {
         }
         g_exception = exception == 1;
         std::size_t dropped = 0;
+        std::size_t repaired = 0;
         for (std::uint32_t i = 0; i < count; ++i) {
             std::uint32_t savedId = 0;
             std::int32_t  state = 0;
@@ -498,6 +503,12 @@ namespace SNRom::Marriage {
                 }
                 r.ringFromPlayer = resolve(fromPlayer);
                 r.ringToPlayer = resolve(toPlayer);
+            }
+            // Records the MARAS import made before 2.5 wpm41 carry the day of
+            // the import as their wedding day: unknown, as it always was.
+            if (r.why.starts_with("imported from MARAS") && r.weddingDay > 0.0f) {
+                r.weddingDay = 0.0f;
+                ++repaired;
             }
             r.state = static_cast<State>(state);
             r.previous = static_cast<State>(previous);
@@ -537,6 +548,10 @@ namespace SNRom::Marriage {
         SKSE::log::info("Marriage: {} records loaded from the save ({} dropped, their plugin gone); Mara's "
                         "exception {}",
                         g_records.size(), dropped, g_exception ? "granted" : "not granted");
+        if (repaired > 0) {
+            SKSE::log::info("Marriage: {} imported marriages lose the import's day as their wedding day (unknown)",
+                            repaired);
+        }
     }
 
     void Revert() {

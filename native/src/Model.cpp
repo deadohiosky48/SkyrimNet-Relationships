@@ -180,6 +180,9 @@ namespace SNRom::Model {
                          { "eloped", record.value("eloped", false) },
                          { "officiant", FormName(record.value("officiant", 0)) },
                          { "why", record.value("why", "") },
+                         // Brought over from MARAS: since is the import's day,
+                         // not when it happened, and is not shown as such.
+                         { "imported", record.value("why", std::string{}).starts_with("imported from MARAS") },
                          { "ringFromPlayer", FormName(record.value("ringFromPlayer", 0)) },
                          { "ringToPlayer", FormName(record.value("ringToPlayer", 0)) },
                          // Build B (M4p): the wedding plan, while engaged.
