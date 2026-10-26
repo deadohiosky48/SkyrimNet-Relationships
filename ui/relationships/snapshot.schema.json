@@ -32,6 +32,20 @@
         }
       }
     },
+    "calendar": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gameDay", "year", "month", "day", "weekday", "hour"],
+      "description": "2.5: today in Tamriel's reckoning (RE::Calendar), for the calendar view (calendar.js), which places anything dated in game days by counting days from here. Optional: absent before 2.5.",
+      "properties": {
+        "gameDay": { "type": "number", "description": "Calendar::GetCurrentGameTime(): game days passed, the unit plans and records are dated in." },
+        "year": { "type": "integer", "description": "The year of the Fourth Era." },
+        "month": { "type": "integer", "minimum": 0, "maximum": 11, "description": "0 Morning Star to 11 Evening Star." },
+        "day": { "type": "integer", "minimum": 1, "maximum": 31 },
+        "weekday": { "type": "integer", "minimum": 0, "maximum": 6, "description": "0 Sundas to 6 Loredas." },
+        "hour": { "type": "number", "minimum": 0, "maximum": 24 }
+      }
+    },
     "playthrough": {
       "type": "object",
       "additionalProperties": false,

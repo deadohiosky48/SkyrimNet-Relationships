@@ -411,6 +411,38 @@ button, input, select { font: inherit; color: inherit; }
 .sub-head { margin: 0.9rem 0 0.35rem; color: var(--faint); font-size: calc(0.72rem * var(--t)); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
 .change-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
 .change { display: grid; grid-template-columns: 3.6em 1fr auto; column-gap: 0.6rem; align-items: baseline; }
+/* THE CALENDAR (calendar.js). */
+.head-btn { margin-left: auto; margin-right: 0.6rem; }
+.dialog[data-kind="calendar"] { width: calc(46rem * var(--t)); max-height: 92vh; overflow-y: auto; }
+.cal-nav { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
+.cal-title { flex: 1; margin: 0; text-align: center; font-family: var(--serif); font-weight: normal; font-size: calc(1.15rem * var(--t)); }
+.cal-today { margin-left: 0.4rem; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.25rem; }
+.cal-wd { text-align: center; color: var(--faint); font-size: calc(0.78rem * var(--t)); padding-bottom: 0.2rem; }
+.cal-day {
+  min-height: calc(3.1rem * var(--t));
+  padding: 0.25rem 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface-2);
+  text-align: left;
+  display: flex; flex-wrap: wrap; align-content: flex-start; gap: 0.2rem;
+  cursor: pointer;
+}
+.cal-day:hover { border-color: var(--accent); }
+.cal-day.is-today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.cal-day.is-picked { background: rgba(214, 173, 87, 0.12); }
+.cal-num { width: 100%; font-variant-numeric: tabular-nums; color: var(--text); font-size: calc(0.86rem * var(--t)); }
+.cal-mark { width: 0.5rem; height: 0.5rem; border-radius: 50%; }
+.cal-mark.k-holiday { background: var(--muted); }
+.cal-mark.k-wedding { background: var(--accent); }
+.cal-mark.k-anniversary { background: #e07a8c; }
+.cal-info { margin-top: 0.8rem; }
+.cal-event, .cal-empty { margin: 0.25rem 0; }
+.cal-event.k-wedding { color: var(--accent); }
+.cal-event.k-anniversary { color: #f0a3b0; }
+.cal-none { color: var(--muted); }
+
 /* THE WEDDING PLAN (M4p): an open required item stands out. */
 .plan { margin-top: 0.6rem; }
 .plan-list .kv.is-open dt, .plan-list .kv.is-open dd { color: var(--s-interested); }

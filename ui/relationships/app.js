@@ -527,6 +527,15 @@
   }
 
   // The store repairs, where players find them. Never a developer tool.
+  // THE CALENDAR (2.5; calendar.js): Tamriel's months, today, planned
+  // weddings, anniversaries and the holidays, in the dialog made wide.
+  $("calendar-btn").addEventListener("click", function () {
+    if (!snap) return;
+    openDialog(t("calendar.title", "Calendar"), [UI.calendar.build(snap)],
+      [{ label: t("dialog.close", "Close"), id: "dialog-cancel", run: closeDialog }], $("calendar-btn"));
+    $("dialog").setAttribute("data-kind", "calendar");
+  });
+
   $("repairs-btn").addEventListener("click", function () {
     if (!snap) return;
     openDialog(t("repairs.title", "Playthrough repairs"), [

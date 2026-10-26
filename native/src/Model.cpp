@@ -565,6 +565,17 @@ namespace SNRom::Model {
         // MARAS OR RELATIONSHIPS (2026-10-25): with MARAS installed, MARAS
         // runs marriage, and the page says so.
         snap["playthrough"]["marasOwnsMarriage"] = Marriage::MarasOwns();
+        // THE CALENDAR (2.5; the author, 2026-10-26): today in Tamriel's own
+        // reckoning, so the page can lay out the months and place what the
+        // snapshot dates in game days (a wedding's day, a marriage's) on them.
+        if (const auto* cal = RE::Calendar::GetSingleton()) {
+            snap["calendar"] = { { "gameDay", cal->GetCurrentGameTime() },
+                                 { "year", cal->GetYear() },
+                                 { "month", cal->GetMonth() },
+                                 { "day", static_cast<std::int32_t>(cal->GetDay()) },
+                                 { "weekday", cal->GetDayOfWeek() },
+                                 { "hour", cal->GetHour() } };
+        }
         snap["ladder"] = { { "thresholds", kThresholds }, { "below", kBelow }, { "floor", kFloor } };
         snap["player"] = player;
         // The words (2.3, WP-L): the language's code, and its table for the
