@@ -109,18 +109,34 @@ namespace SNRom::Officiant {
         }
         SKSE::log::info("Officiants: {} wedding planners", g_planners.size());
 
+        // THE BOOK'S OFFICIANTS ARE OFFICIANTS (2026-10-25). Thirteen of those
+        // it names - Rorlund, Silana Petreia, Senna, Jora, the priests of
+        // Arkay, Skald the Elder - are in neither vanilla job faction, so the
+        // planner could not choose them. Each unique NPC by that name is
+        // marked as well; a name with no NPC at all is logged.
+        std::size_t added = 0;
         std::string missing;
         for (const auto* name : kBookOfficiants) {
-            const bool known = std::any_of(g_officiants.begin(), g_officiants.end(), [name](RE::TESNPC* a_npc) {
-                const char* full = a_npc ? a_npc->GetFullName() : nullptr;
-                return full && _stricmp(full, name) == 0;
-            });
-            if (!known) {
+            bool found = false;
+            for (auto* npc : data->GetFormArray<RE::TESNPC>()) {
+                const char* full = npc && npc->IsUnique() ? npc->GetFullName() : nullptr;
+                if (!full || _stricmp(full, name) != 0) {
+                    continue;
+                }
+                found = true;
+                if (std::find(g_officiants.begin(), g_officiants.end(), npc) == g_officiants.end()) {
+                    g_officiants.push_back(npc);
+                    Mark(npc, ours);
+                    ++added;
+                }
+            }
+            if (!found) {
                 missing += (missing.empty() ? "" : ", ") + std::string(name);
             }
         }
+        SKSE::log::info("Officiants: {} more from the planner's book, outside the job factions", added);
         if (!missing.empty()) {
-            SKSE::log::warn("Officiants: the planner's book names some who are not officiants here: {}", missing);
+            SKSE::log::warn("Officiants: the planner's book names some no NPC here has: {}", missing);
         }
     }
 

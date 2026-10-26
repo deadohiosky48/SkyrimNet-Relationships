@@ -491,6 +491,11 @@ Function RegisterEvents()
         StandAsideForMaras()
     ElseIf MarasPresent()
         SilenceMaras()
+        ; MARAS registers its actions from its own load handler, after ours
+        ; (TTM_PlayerScript.OnPlayerLoadGame; "0 set aside" in wpm35): again
+        ; once it has, on a stack of its own.
+        RegisterForModEvent("SNRom_SilenceMarasLater", "OnSilenceMarasLater")
+        SendModEvent("SNRom_SilenceMarasLater")
     EndIf
     ; Build B (M4w): the planned wedding's day (WeddingPlan.h).
     RegisterForModEvent("SNRom_WeddingDay", "OnWeddingDay")
@@ -5665,6 +5670,19 @@ Bool Function MarriageStandsAside()
     Return MarasPresent() && StorageUtil.GetIntValue(None, "SNRom_MarasImported", 0) != 1
 EndFunction
 
+Event OnSilenceMarasLater(String asEventName, String asUnused, Float afUnused, Form akSender)
+    { SilenceMaras again after MARAS's own load handler has registered its
+      actions: twenty seconds in, and a minute in. }
+    Utility.WaitMenuMode(20.0)
+    If MarasPresent() && !MarriageStandsAside()
+        SilenceMaras()
+    EndIf
+    Utility.WaitMenuMode(40.0)
+    If MarasPresent() && !MarriageStandsAside()
+        SilenceMaras()
+    EndIf
+EndEvent
+
 Function SilenceMaras()
     { MARAS IS STILL INSTALLED, BUT ITS MARRIAGES ARE OURS NOW (the author,
       2026-10-25: "effectively disable MARAS as much as possible"). Its
@@ -5693,8 +5711,10 @@ Function SilenceMaras()
         EndIf
         i += 1
     EndWhile
-    Diag(LOG_INFO(), "MARAS is installed, but its marriages were imported, so Relationships runs marriage: " + \
-        removed + " of MARAS's marriage actions set aside. Removing MARAS is the clean end of it.")
+    If removed > 0
+        Diag(LOG_INFO(), "MARAS is installed, but its marriages were imported, so Relationships runs marriage: " + \
+            removed + " of MARAS's marriage actions set aside. Removing MARAS is the clean end of it.")
+    EndIf
 EndFunction
 
 Function StandAsideForMaras()
@@ -7027,6 +7047,10 @@ Function SweepProposalGates()
     EndIf
     If IgnoreProposalKeyword() == None
         Return                                  ; MaintainProposalGate logs this once
+    EndIf
+    ; And MARAS's actions, should anything have registered them again.
+    If MarasPresent() && !MarriageStandsAside()
+        SilenceMaras()
     EndIf
     Int i = 0
     Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
