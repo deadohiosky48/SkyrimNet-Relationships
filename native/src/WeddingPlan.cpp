@@ -889,6 +889,20 @@ namespace SNRom::WeddingPlan {
                     continue;
                 }
             }
+            // A bare relation is the speaker's own: Olfina's "sister-wives".
+            if (!relational && a_speaker) {
+                const auto kin = Family::Relatives(a_speaker, lower);
+                if (!kin.empty()) {
+                    std::string names;
+                    for (auto* k : kin) {
+                        names += (names.empty() ? "" : ", ") + std::string(k->GetDisplayFullName());
+                        keep(k);
+                    }
+                    SKSE::log::info("Guests: '{}' is {} ({}'s {})", item, names, a_speaker->GetDisplayFullName(),
+                                    lower);
+                    continue;
+                }
+            }
             // 3. A name behind a title or a family word: "Uncle Vignar".
             std::string bare = lower;
             for (bool again = true; again;) {

@@ -2,6 +2,8 @@
 
 #include "PCH.h"
 
+#include "Marriage.h"
+
 #include <map>
 #include <mutex>
 #include <vector>
@@ -304,6 +306,56 @@ namespace SNRom::Family {
         }
         // The relation, singular, and the sex it asks for: 1 female, 0 male,
         // -1 either.
+        // THE PLAYER'S SPOUSES (wpm52; Olfina asked for her "sister-wives"):
+        // "wives", "husbands", "spouses" of the player, and "sister-wives" or
+        // "co-wives" of anyone married or engaged to them - the player's
+        // other spouses. From Relationships' marriage record, married or
+        // separated.
+        std::string key;
+        for (const char c : a_relation) {
+            if (c != ' ' && c != '-') {
+                key += c;
+            }
+        }
+        int spouseSex = -2;   // -2 not a spouse word; -1 either; 1 female; 0 male
+        bool coSpouse = false;
+        if (key == "wife" || key == "wives") {
+            spouseSex = 1;
+        } else if (key == "husband" || key == "husbands") {
+            spouseSex = 0;
+        } else if (key == "spouse" || key == "spouses") {
+            spouseSex = -1;
+        } else if (key == "sisterwife" || key == "sisterwives" || key == "cowife" || key == "cowives") {
+            spouseSex = 1, coSpouse = true;
+        } else if (key == "brotherhusband" || key == "brotherhusbands" || key == "cohusband" || key == "cohusbands" ||
+                   key == "cospouse" || key == "cospouses") {
+            spouseSex = key.starts_with("brother") || key.starts_with("cohusband") ? 0 : -1, coSpouse = true;
+        }
+        if (spouseSex != -2) {
+            const bool ofPlayer = a_of->IsPlayerRef();
+            const auto ownState = Marriage::StateOf(static_cast<std::int32_t>(a_of->GetFormID()));
+            const bool wedToPlayer = ownState == Marriage::State::kMarried || ownState == Marriage::State::kEngaged ||
+                                     ownState == Marriage::State::kSeparated;
+            if (!(ofPlayer && !coSpouse) && !(coSpouse && wedToPlayer)) {
+                return out;
+            }
+            std::vector<std::int32_t> spouses = Marriage::WithState(Marriage::State::kMarried);
+            for (const auto id : Marriage::WithState(Marriage::State::kSeparated)) {
+                spouses.push_back(id);
+            }
+            for (const auto id : spouses) {
+                auto* spouse = RE::TESForm::LookupByID<RE::Actor>(static_cast<RE::FormID>(id));
+                auto* spouseBase = spouse ? spouse->GetActorBase() : nullptr;
+                if (!spouse || spouse == a_of || spouse->IsDead() || !spouseBase) {
+                    continue;
+                }
+                if (spouseSex >= 0 && (spouseBase->GetSex() == RE::SEX::kFemale) != (spouseSex == 1)) {
+                    continue;
+                }
+                out.push_back(spouse);
+            }
+            return out;
+        }
         std::string rel = a_relation;
         if (rel.ends_with("ren")) {
             rel.resize(rel.size() - 3);   // children

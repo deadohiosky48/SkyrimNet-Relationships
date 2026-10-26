@@ -56,8 +56,11 @@ namespace SNRom::Family {
     // "mother", "father", "parents", "brother(s)", "sister(s)", "siblings",
     // "son(s)", "daughter(s)", "children" (also "kids"). From the game's
     // parent and child records (siblings are their parents' other children),
-    // and for the player their children from Kinship. The living only;
-    // empty for a relation it does not know. Main thread.
+    // and for the player their children from Kinship. And the player's
+    // spouses from the marriage record: the player's "wives", "husbands",
+    // "spouses", and "sister-wives" or "co-wives" of anyone wed or engaged
+    // to the player. The living only; empty for a relation it does not
+    // know. Main thread.
     std::vector<RE::Actor*> Relatives(RE::Actor* a_of, const std::string& a_relation);
 
     // "female", "male", or "" when a_formId is no actor. Main thread.
