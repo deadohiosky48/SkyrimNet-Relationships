@@ -461,15 +461,24 @@
     wrap.appendChild(el("h4", "sub-head", p.status === "underWay" ? t("plan.todayHeading", "The wedding: today") : t("plan.title", "The wedding plan")));
     var hours = p.hour >= 0 ? (p.hour < 11 ? t("plan.morning", "morning") : p.hour < 14 ? t("plan.noon", "noon") :
       p.hour < 17 ? t("plan.afternoon", "afternoon") : p.hour < 21 ? t("plan.evening", "evening") : t("plan.night", "night")) : "";
+    // Each of the couple's ring (wpm51): style and metal, the same choices
+    // for both.
+    function ringWords(r) {
+      if (!r || (r.style < 0 && !r.metal)) return t("plan.ringsNot", "not chosen");
+      var style = r.style === 1 ? t("plan.ringWide", "wide band") : r.style === 0 ? t("plan.ringSlim", "slim set") : "";
+      return [style, r.metal].filter(function (x) { return x; }).join(", ");
+    }
     var rows = [
-      { open: p.day === null, k: t("plan.day", "Day"), v: p.day === null ? t("plan.notSet", "not set") : L.daysAhead(p.day, snap.generatedAt) + (hours ? ", " + hours : "") },
+      { open: p.day === null || p.hour < 0, k: t("plan.day", "Day"), v: p.day === null ? t("plan.notSet", "not set") :
+        L.daysAhead(p.day, snap.generatedAt) + (hours ? ", " + hours : ", " + t("plan.hourNotSet", "hour not set")) },
       { open: !p.place, k: t("plan.place", "Place"), v: p.place || t("plan.notSet", "not set") },
       { open: !p.officiant, k: t("plan.officiant", "Marrying you"), v: p.officiant || t("plan.notAgreed", "no one has agreed yet") },
       { k: t("plan.guests", "Guests"), v: p.guests.length ? names(p.guests) : t("plan.noGuests", "none invited") },
       { k: t("plan.ceremony", "Ceremony"), v: [p.parts.address ? t("plan.address", "address") : null, p.parts.reading ? t("plan.reading", "reading") : null,
           t("plan.vows", "vows"), p.parts.rings ? t("plan.rings", "rings") : null, p.parts.kiss ? t("plan.kiss", "kiss") : null]
           .filter(function (x) { return x; }).join(", ") },
-      { k: t("plan.ringsChosen", "Rings"), v: p.ring ? t("plan.ringsAre", "theirs {0}, yours {1}", p.ring, (p.band || p.ring) + (p.bandWide === 1 ? " " + t("plan.wide", "wide") : p.bandWide === 0 ? " " + t("plan.braided", "braided") : "")) : t("plan.ringsNot", "not chosen") },
+      { k: t("plan.theirRing", "Their ring"), v: ringWords(p.theirRing) },
+      { k: t("plan.yourRing", "Your ring"), v: ringWords(p.yourRing) },
       { k: t("plan.clothes", "Their clothes"), v: p.outfit ? t("plan.clothesChosen", "chosen") : t("plan.clothesNot", "not chosen yet") }
     ];
     if (p.planner) rows.push({ k: t("plan.planner", "Planner"), v: p.planner });

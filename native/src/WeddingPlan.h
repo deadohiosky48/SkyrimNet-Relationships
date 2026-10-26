@@ -60,6 +60,26 @@ namespace SNRom::WeddingPlan {
         kUnderWay = 1,  // the day has begun: everyone sent to the place
     };
 
+    // THE WALKTHROUGH (wpm51; the author, 2026-10-26): the planner asks about
+    // each part of the plan not yet settled, one at a time. An optional part
+    // is settled once it has been answered, a "no" included ("no guests",
+    // "the usual ceremony"), so it is not asked again; anything can still be
+    // changed until the day. Rings are settled per person, when both their
+    // style and metal are chosen.
+    enum Settled : std::uint32_t {
+        kGuestsSettled = 1 << 0,
+        kCeremonySettled = 1 << 1,
+        kOutfitSettled = 1 << 2,
+    };
+
+    // A WEDDING RING'S STYLE (wpm51; the author: whoever gave whom an
+    // engagement ring, and whatever either of them is): each of the couple
+    // chooses the slim set - the engagement ring joined to its band when
+    // they wear one, else the braided band - or the wide plain band. Both
+    // may choose the same.
+    inline constexpr std::int32_t kSlim = 0;
+    inline constexpr std::int32_t kWide = 1;
+
     struct Plan {
         std::uint32_t              planner = 0;    // a hired planner's form id; 0 none
         float                      day = -1.0f;    // the game day (whole), -1 unset
@@ -68,10 +88,14 @@ namespace SNRom::WeddingPlan {
         std::uint32_t              officiant = 0;  // who agreed to marry them
         std::vector<std::uint32_t> guests;
         std::uint32_t              parts = 0;      // Part bits
-        std::int32_t               ringMetal = -1; // the betrothed's wedding ring: 0 gold, 1 silver, 2 ebony
-        std::int32_t               bandMetal = -1; // the player's band
-        std::int32_t               bandWide = -1;  // 1 wide, 0 braided, -1 as the player's sex has it
+        // The rings, per person: style kSlim or kWide, metal 0 gold, 1 silver,
+        // 2 ebony; -1 not chosen.
+        std::int32_t               theirStyle = -1;
+        std::int32_t               theirMetal = -1;
+        std::int32_t               yourStyle = -1;
+        std::int32_t               yourMetal = -1;
         bool                       outfit = false; // the betrothed has saved what they will wear
+        std::uint32_t              settled = 0;    // Settled bits
         Status                     status = Status::kPlanning;
         float                      missedDay = -1.0f;  // the last day the player did not come
         float                      lapsedDay = -1.0f;  // the last day that passed unready
@@ -83,22 +107,39 @@ namespace SNRom::WeddingPlan {
     // The setters. Each makes the plan if there is none; the caller has
     // checked a_betrothed is engaged to the player. False when nothing changed.
     bool Hire(std::int32_t a_betrothed, std::uint32_t a_planner);
+    // a_daysFromNow or a_hour -1: that one left as it is.
     bool SetDay(std::int32_t a_betrothed, std::int32_t a_daysFromNow, std::int32_t a_hour);
+    // THE DAY AS SAID (wpm51): a date ("the 4th of Sun's Height", "Loredas,
+    // 4 Sun's Height"), a weekday ("next Loredas"), or how far off
+    // ("tomorrow", "in a week", "7"), read against Skyrim's calendar; and a
+    // time of day. What cannot be read changes nothing, and is logged. A
+    // model that could not turn "4 Sun's Height" into a count of days sent
+    // nothing at all, and nothing read as today at noon (2026-10-26).
+    bool SetDayFromWords(std::int32_t a_betrothed, const std::string& a_day, const std::string& a_time);
+    // Days from today for a day as said; nothing when it cannot be read.
+    std::optional<std::int32_t> DaysFromWords(const std::string& a_words);
     bool SetPlace(std::int32_t a_betrothed, std::string a_place);
     bool SetOfficiant(std::int32_t a_betrothed, std::uint32_t a_officiant);
     bool AddGuest(std::int32_t a_betrothed, std::uint32_t a_guest);
     bool RemoveGuest(std::int32_t a_betrothed, std::uint32_t a_guest);
     bool SetParts(std::int32_t a_betrothed, std::uint32_t a_parts);
-    bool SetRings(std::int32_t a_betrothed, std::int32_t a_ringMetal, std::int32_t a_bandMetal, std::int32_t a_bandWide);
+    // Each -1 left as it is.
+    bool SetRings(std::int32_t a_betrothed, std::int32_t a_yourStyle, std::int32_t a_yourMetal,
+                  std::int32_t a_theirStyle, std::int32_t a_theirMetal);
+    // "No guests": the guests settled with none invited.
+    bool SettleGuests(std::int32_t a_betrothed);
     bool SetOutfit(std::int32_t a_betrothed, bool a_saved);
     // The day cleared, the rest kept: a postponement agreed in conversation.
     bool Postpone(std::int32_t a_betrothed);
     // Gone: married, broken off, or called off.
     void Clear(std::int32_t a_betrothed);
 
-    // The required items still open: "day", "place", "officiant", in that
-    // order. Empty when the day can happen.
+    // The required items still open, in the order a planner asks them:
+    // "place", "officiant", "day", "hour". Empty when the day can happen.
     std::vector<std::string> Open(const Plan& a_plan);
+    // The optional parts not yet settled, in order: "guests", "ceremony" (a
+    // planner's), "theirRing", "yourRing" (a planner's), "outfit".
+    std::vector<std::string> Unsettled(const Plan& a_plan);
 
     // What a prompt reads (0330, 0331, 0332), relative to now: the day in
     // words, the place, the officiant's and guests' names, what is open, and

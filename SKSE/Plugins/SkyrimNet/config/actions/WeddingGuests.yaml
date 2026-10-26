@@ -29,7 +29,7 @@ parameterMapping:
     default: ""
   - type: dynamic
     name: asInvite
-    description: "the names of those invited now, separated by commas; empty for none"
+    description: "the names of those invited now, separated by commas; 'none' when they want no guests at all; empty when no one new was invited"
     optional: true
     default: ""
   - type: dynamic

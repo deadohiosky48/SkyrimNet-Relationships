@@ -10,9 +10,9 @@
 customCategory: wedding
 name: WeddingRings
 description: |
-  As the wedding planner, you settle with {{ player.name }} the rings the two of them will wear once married: the betrothed's wedding ring, and {{ player.name }}'s band, in gold, silver or ebony; {{ player.name }}'s band wide and plain, or braided. They are made for the wedding.
+  As the wedding planner, you settle with {{ player.name }} the wedding ring each of the two will wear once married. Each chooses their own, whatever either of them is and whoever gave whom an engagement ring: the slim set (the engagement ring joined to its band, for one who wears an engagement ring; otherwise the slim braided band) or the wide plain band, in gold, silver or ebony. They may choose the same. The rings are made for the wedding.
 
-  USE when they have chosen, in this conversation.
+  USE when any of it is chosen, in this conversation; leave empty what was not said.
 
 questEditorId: SNRom_Quest
 scriptName: SNRom_Bridge
@@ -28,14 +28,25 @@ parameterMapping:
     optional: true
     default: ""
   - type: dynamic
-    name: asTheirRing
-    description: "the betrothed's wedding ring: gold, silver or ebony"
+    name: asYourStyle
+    description: "{{ player.name }}'s ring: slim or wide; empty when not said"
+    optional: true
+    default: ""
   - type: dynamic
-    name: asYourBand
-    description: "{{ player.name }}'s band: gold, silver or ebony"
+    name: asYourMetal
+    description: "{{ player.name }}'s ring: gold, silver or ebony; empty when not said"
+    optional: true
+    default: ""
   - type: dynamic
-    name: asBandStyle
-    description: "{{ player.name }}'s band: wide or braided"
+    name: asTheirStyle
+    description: "the ring of the one {{ player.name }} is marrying: slim or wide; empty when not said"
+    optional: true
+    default: ""
+  - type: dynamic
+    name: asTheirMetal
+    description: "the ring of the one {{ player.name }} is marrying: gold, silver or ebony; empty when not said"
+    optional: true
+    default: ""
 
 eligibilityRules:
   - conditions:

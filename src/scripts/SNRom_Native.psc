@@ -415,17 +415,26 @@ Bool Function PlanExists(Actor akBetrothed) Global Native
 Bool Function PlanHire(Actor akBetrothed, Actor akPlanner) Global Native
 {A planner hired for this wedding: the plan gets every part of the ceremony.}
 
-Bool Function PlanSetDay(Actor akBetrothed, Int aiDaysFromNow, String asTimeOfDay) Global Native
-{The day, in whole days from today (0 today), and the hour from words
- ("morning", "noon", "evening") or digits; noon when the words mean nothing.}
+Bool Function PlanSetDay(Actor akBetrothed, String asDay, String asTimeOfDay) Global Native
+{VERSION 29. The day as said - a date ("the 4th of Sun's Height"), a weekday
+ ("next Loredas"), or how far off ("tomorrow", "in a week", "7") - and the hour
+ from words ("morning", "noon", "evening") or digits. Either may be empty to
+ leave it as it is; what cannot be read changes nothing (logged). False when
+ nothing was set.}
 
 Bool Function PlanSetPlace(Actor akBetrothed, String asPlace) Global Native
 Bool Function PlanSetOfficiant(Actor akBetrothed, Actor akOfficiant) Global Native
 Bool Function PlanGuest(Actor akBetrothed, Actor akGuest, Bool abAdd) Global Native
 Bool Function PlanSetParts(Actor akBetrothed, Int aiParts) Global Native
-Bool Function PlanSetRings(Actor akBetrothed, Int aiRingMetal, Int aiBandMetal, Int aiBandWide) Global Native
-{Metals 0 gold, 1 silver, 2 ebony, -1 left as it is; aiBandWide 1 wide, 0
- braided, -1 as the player's sex has it.}
+Bool Function PlanSetRings(Actor akBetrothed, Int aiYourStyle, Int aiYourMetal, Int aiTheirStyle, Int aiTheirMetal) Global Native
+{VERSION 29. Each of the couple's wedding ring: style 0 the slim set (the
+ engagement ring joined to its band when one is worn, else the braided band),
+ 1 the wide plain band; metal 0 gold, 1 silver, 2 ebony. -1 leaves one as it
+ is.}
+
+Bool Function PlanSettleGuests(Actor akBetrothed) Global Native
+{VERSION 29. The guests settled with none invited ("no guests"), so the
+ planner does not ask again.}
 
 Bool Function PlanSetOutfit(Actor akBetrothed, Bool abSaved) Global Native
 Bool Function PlanPostpone(Actor akBetrothed) Global Native
@@ -442,8 +451,9 @@ String Function PlanPlace(Actor akBetrothed) Global Native
 Bool Function PlanOutfit(Actor akBetrothed) Global Native
 Int Function PlanParts(Actor akBetrothed) Global Native
 Int Function PlanRing(Actor akBetrothed, Int aiWhich) Global Native
-{aiWhich 0: the betrothed's wedding ring's metal; 1: the player's band's; 2:
- whether the band is wide. -1 when the plan leaves it.}
+{aiWhich 0: the betrothed's ring's metal; 1: the player's ring's metal; 2: the
+ player's ring's style; 3 (v29): the betrothed's ring's style. Style 0 slim,
+ 1 wide. -1 when the plan leaves it.}
 
 Form Function RingWeddingOfMetal(Int aiMetal) Global Native
 {VERSION 28. Our wedding ring in a metal: 0 gold, 1 silver, 2 ebony; None

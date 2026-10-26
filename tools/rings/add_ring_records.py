@@ -243,11 +243,11 @@ The kiss</p>
 [pagebreak]
 <p align="center"><font size='30'>The Rings</font></p>
 
-<p align="left">For the one you marry: a wedding ring, the engagement ring and its band together, in gold, silver or ebony.</p>
+<p align="left">Each of you chooses your own: the slim set, or the wide plain band. You may choose the same.</p>
 
-<p align="left">For you: a band, in gold, silver or ebony, wide and plain, or braided.</p>
+<p align="left">The slim set is the engagement ring joined to its band, for one who wears an engagement ring, or else the slim braided band.</p>
 
-<p align="left">They are made for the wedding, and put on during it.</p>
+<p align="left">Each in gold, silver or ebony. They are made for the wedding, and put on during it.</p>
 [pagebreak]
 <p align="center"><font size='30'>What You Wear</font></p>
 

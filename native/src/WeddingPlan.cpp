@@ -8,7 +8,10 @@
 #include "Officiant.h"
 
 #include <algorithm>
+#include <array>
 #include <atomic>
+#include <format>
+#include <optional>
 #include <cctype>
 #include <cmath>
 #include <map>
@@ -21,7 +24,8 @@ namespace SNRom::WeddingPlan {
 
         using json = nlohmann::json;
 
-        constexpr std::uint32_t kRecordVersion = 1;
+        // 2 (wpm51): the rings per person, and what is settled.
+        constexpr std::uint32_t kRecordVersion = 2;
         constexpr std::size_t   kMaxPlace = 120;
         constexpr std::size_t   kMaxGuests = 40;
 
@@ -101,6 +105,111 @@ namespace SNRom::WeddingPlan {
                 out += std::string(" ") + time;
             }
             return out;
+        }
+
+        // THE CALENDAR (RE::Calendar: month 0 Morning Star to 11 Evening Star,
+        // day of the month from 1, weekday 0 Sundas to 6 Loredas).
+        constexpr std::array<std::int32_t, 12> kMonthLength{ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+        // As said, lowercased with spaces and apostrophes taken out.
+        constexpr std::array<const char*, 12> kMonthKeys{ "morningstar", "sunsdawn", "firstseed", "rainshand",
+                                                          "secondseed", "midyear", "sunsheight", "lastseed",
+                                                          "hearthfire", "frostfall", "sunsdusk", "eveningstar" };
+        constexpr std::array<const char*, 12> kMonthNames{ "Morning Star", "Sun's Dawn", "First Seed", "Rain's Hand",
+                                                           "Second Seed", "Midyear", "Sun's Height", "Last Seed",
+                                                           "Hearthfire", "Frostfall", "Sun's Dusk", "Evening Star" };
+        constexpr std::array<const char*, 7> kWeekdays{ "sundas", "morndas", "tirdas", "middas",
+                                                        "turdas", "fredas", "loredas" };
+        constexpr std::array<const char*, 7> kWeekdayNames{ "Sundas", "Morndas", "Tirdas", "Middas",
+                                                            "Turdas", "Fredas", "Loredas" };
+
+        std::int32_t DayOfYear(std::int32_t a_month, std::int32_t a_day) {
+            std::int32_t n = 0;
+            for (std::int32_t m = 0; m < a_month; ++m) {
+                n += kMonthLength[static_cast<std::size_t>(m)];
+            }
+            return n + a_day - 1;
+        }
+
+        struct Today {
+            std::int32_t month = 0;
+            std::int32_t day = 1;
+            std::int32_t weekday = 0;
+        };
+        Today TodayIs() {
+            Today t;
+            if (const auto* cal = RE::Calendar::GetSingleton()) {
+                t.month = std::clamp(static_cast<std::int32_t>(cal->GetMonth()), 0, 11);
+                t.day = std::clamp(static_cast<std::int32_t>(cal->GetDay()), 1, 31);
+                t.weekday = std::clamp(static_cast<std::int32_t>(cal->GetDayOfWeek()), 0, 6);
+            }
+            return t;
+        }
+
+        // "Loredas, the 4th of Sun's Height": the date a_in days from today.
+        std::string DateWords(std::int32_t a_in) {
+            const auto t = TodayIs();
+            auto       doy = (DayOfYear(t.month, t.day) + a_in) % 365;
+            std::int32_t month = 0;
+            while (doy >= kMonthLength[static_cast<std::size_t>(month)]) {
+                doy -= kMonthLength[static_cast<std::size_t>(month)];
+                ++month;
+            }
+            const auto day = doy + 1;
+            const char* suffix = (day % 10 == 1 && day != 11) ? "st" : (day % 10 == 2 && day != 12) ? "nd" :
+                                 (day % 10 == 3 && day != 13) ? "rd" : "th";
+            return std::format("{}, the {}{} of {}", kWeekdayNames[static_cast<std::size_t>((t.weekday + a_in) % 7)],
+                               day, suffix, kMonthNames[static_cast<std::size_t>(month)]);
+        }
+
+        // The words split on anything not a letter or digit, lowercased,
+        // apostrophes dropped ("sun's" is "suns").
+        std::vector<std::string> Words(const std::string& a_text) {
+            std::vector<std::string> out;
+            std::string              word;
+            for (const char raw : a_text) {
+                const auto c = static_cast<unsigned char>(raw);
+                if (c == '\'' || c >= 0x80) {
+                    continue;   // ' and the bytes of a curly one
+                }
+                if (std::isalnum(c)) {
+                    word += static_cast<char>(std::tolower(c));
+                } else if (!word.empty()) {
+                    out.push_back(std::move(word));
+                    word.clear();
+                }
+            }
+            if (!word.empty()) {
+                out.push_back(std::move(word));
+            }
+            return out;
+        }
+
+        // "4", "4th", "four", "fourth": the number; -1 otherwise.
+        std::int32_t NumberIn(const std::string& a_word) {
+            static constexpr std::array<const char*, 11> kCardinal{ "zero", "one", "two",   "three", "four", "five",
+                                                                    "six",  "seven", "eight", "nine",  "ten" };
+            static constexpr std::array<const char*, 11> kOrdinal{ "", "first", "second", "third", "fourth", "fifth",
+                                                                   "sixth", "seventh", "eighth", "ninth", "tenth" };
+            for (std::size_t i = 0; i < kCardinal.size(); ++i) {
+                if (a_word == kCardinal[i] || (i > 0 && a_word == kOrdinal[i])) {
+                    return static_cast<std::int32_t>(i);
+                }
+            }
+            if (a_word == "a" || a_word == "an") {
+                return 1;
+            }
+            std::size_t digits = 0;
+            while (digits < a_word.size() && std::isdigit(static_cast<unsigned char>(a_word[digits]))) {
+                ++digits;
+            }
+            if (digits == 0 || digits > 3) {
+                return -1;
+            }
+            const auto rest = a_word.substr(digits);
+            if (!rest.empty() && rest != "st" && rest != "nd" && rest != "rd" && rest != "th") {
+                return -1;
+            }
+            return std::stoi(a_word.substr(0, digits));
         }
 
         const char* MetalWord(std::int32_t a_metal) {
@@ -252,15 +361,130 @@ namespace SNRom::WeddingPlan {
     }
 
     bool SetDay(std::int32_t a_betrothed, std::int32_t a_daysFromNow, std::int32_t a_hour) {
-        if (a_daysFromNow < 0 || a_daysFromNow > 365 || a_hour < 0 || a_hour > 23) {
+        if (a_daysFromNow > 365 || a_hour > 23 || (a_daysFromNow < 0 && a_hour < 0)) {
             return false;
         }
         const std::scoped_lock lock{ g_lock };
         auto&                  plan = Make(a_betrothed);
-        plan.day = std::floor(Now()) + static_cast<float>(a_daysFromNow);
-        plan.hour = a_hour;
+        if (a_daysFromNow >= 0) {
+            plan.day = std::floor(Now()) + static_cast<float>(a_daysFromNow);
+        }
+        if (a_hour >= 0) {
+            plan.hour = a_hour;
+        }
         plan.status = Status::kPlanning;
         return true;
+    }
+
+    std::optional<std::int32_t> DaysFromWords(const std::string& a_words) {
+        const auto words = Words(a_words);
+        if (words.empty()) {
+            return std::nullopt;
+        }
+        std::string joined;
+        for (const auto& w : words) {
+            joined += w;
+        }
+        const auto has = [&](const char* a_word) { return std::ranges::find(words, a_word) != words.end(); };
+        const auto t = TodayIs();
+        const bool today = has("today");
+
+        // A MONTH NAMED: that date, this year or the next.
+        int month = -1;
+        for (std::size_t m = 0; m < kMonthKeys.size(); ++m) {
+            if (joined.find(kMonthKeys[m]) != std::string::npos) {
+                month = static_cast<int>(m);
+                break;
+            }
+        }
+        int weekday = -1;
+        for (std::size_t d = 0; d < kWeekdays.size(); ++d) {
+            if (has(kWeekdays[d])) {
+                weekday = static_cast<int>(d);
+                break;
+            }
+        }
+        if (month >= 0) {
+            std::int32_t day = -1;
+            for (const auto& w : words) {
+                if (const auto n = NumberIn(w); n >= 1 && n <= kMonthLength[static_cast<std::size_t>(month)]) {
+                    day = n;
+                    break;
+                }
+            }
+            if (day < 0) {
+                return std::nullopt;
+            }
+            auto in = DayOfYear(month, day) - DayOfYear(t.month, t.day);
+            if (in < 0) {
+                in += 365;
+            }
+            if (weekday >= 0 && (t.weekday + in) % 7 != weekday) {
+                SKSE::log::warn("Wedding plan: '{}' names {}, but that date is a {}; the date is kept", a_words,
+                                kWeekdayNames[static_cast<std::size_t>(weekday)],
+                                kWeekdayNames[static_cast<std::size_t>((t.weekday + in) % 7)]);
+            }
+            return in;
+        }
+        // A WEEKDAY ALONE: the next one ("Loredas", "next Loredas"); today's
+        // own only when today is said.
+        if (weekday >= 0) {
+            auto in = (weekday - t.weekday + 7) % 7;
+            if (in == 0 && !today) {
+                in = 7;
+            }
+            return in;
+        }
+        // HOW FAR OFF.
+        if (today) {
+            return 0;
+        }
+        if (has("tomorrow")) {
+            return has("after") ? 2 : 1;
+        }
+        if (has("fortnight")) {
+            return 14;
+        }
+        for (std::size_t i = 0; i < words.size(); ++i) {
+            const auto n = NumberIn(words[i]);
+            if (n < 0) {
+                continue;
+            }
+            const auto unit = i + 1 < words.size() ? words[i + 1] : std::string{};
+            if (unit == "week" || unit == "weeks") {
+                return n * 7 <= 365 ? std::optional<std::int32_t>{ n * 7 } : std::nullopt;
+            }
+            if (unit.empty() || unit == "day" || unit == "days") {
+                return n <= 365 ? std::optional<std::int32_t>{ n } : std::nullopt;
+            }
+        }
+        if (has("week")) {
+            return 7;
+        }
+        return std::nullopt;
+    }
+
+    bool SetDayFromWords(std::int32_t a_betrothed, const std::string& a_day, const std::string& a_time) {
+        const bool daySaid = !Trim(a_day).empty();
+        const bool timeSaid = !Trim(a_time).empty();
+        const auto days = daySaid ? DaysFromWords(a_day) : std::nullopt;
+        const auto hour = timeSaid ? HourOf(a_time) : -1;
+        if (daySaid && !days) {
+            SKSE::log::warn("Wedding plan: '{}' is not a day this can read; the day is not changed", a_day);
+        }
+        if (timeSaid && hour < 0) {
+            SKSE::log::warn("Wedding plan: '{}' is not a time of day this can read; the hour is not changed", a_time);
+        }
+        if (!days && hour < 0) {
+            SKSE::log::info("Wedding plan: {:08X}: no day or hour to set", static_cast<std::uint32_t>(a_betrothed));
+            return false;
+        }
+        // TEST LOG (wpm51): how a day as said was read; remove once validated.
+        SKSE::log::info("Wedding plan: {:08X}: '{}' at '{}' read as {}, hour {}",
+                        static_cast<std::uint32_t>(a_betrothed), a_day, a_time,
+                        days ? std::format("{} days from today ({})", *days, DateWords(*days)) : "the day as it was",
+                        hour >= 0 ? std::to_string(hour) : "as it was");
+        return SetDay(a_betrothed, days ? *days : -1, hour);
     }
 
     bool SetPlace(std::int32_t a_betrothed, std::string a_place) {
@@ -296,6 +520,7 @@ namespace SNRom::WeddingPlan {
         }
         const std::scoped_lock lock{ g_lock };
         auto&                  plan = Make(a_betrothed);
+        plan.settled |= kGuestsSettled;
         if (std::find(plan.guests.begin(), plan.guests.end(), a_guest) != plan.guests.end() ||
             plan.guests.size() >= kMaxGuests) {
             return false;
@@ -310,33 +535,56 @@ namespace SNRom::WeddingPlan {
         if (it == g_plans.end()) {
             return false;
         }
+        it->second.settled |= kGuestsSettled;
         return std::erase(it->second.guests, a_guest) > 0;
+    }
+
+    bool SettleGuests(std::int32_t a_betrothed) {
+        const std::scoped_lock lock{ g_lock };
+        auto&                  plan = Make(a_betrothed);
+        if (plan.settled & kGuestsSettled) {
+            return false;
+        }
+        plan.settled |= kGuestsSettled;
+        return true;
     }
 
     bool SetParts(std::int32_t a_betrothed, std::uint32_t a_parts) {
         const std::scoped_lock lock{ g_lock };
         auto&                  plan = Make(a_betrothed);
         a_parts &= kAllParts;
+        // Said, even as it was ("the usual is fine"): settled.
+        const bool wasSettled = (plan.settled & kCeremonySettled) != 0;
+        plan.settled |= kCeremonySettled;
         if (plan.parts == a_parts) {
-            return false;
+            return !wasSettled;
         }
         plan.parts = a_parts;
         return true;
     }
 
-    bool SetRings(std::int32_t a_betrothed, std::int32_t a_ringMetal, std::int32_t a_bandMetal, std::int32_t a_bandWide) {
-        const auto metal = [](std::int32_t a_m) { return a_m >= 0 && a_m <= 2 ? a_m : -1; };
+    bool SetRings(std::int32_t a_betrothed, std::int32_t a_yourStyle, std::int32_t a_yourMetal,
+                  std::int32_t a_theirStyle, std::int32_t a_theirMetal) {
         const std::scoped_lock lock{ g_lock };
         auto&                  plan = Make(a_betrothed);
-        plan.ringMetal = metal(a_ringMetal);
-        plan.bandMetal = metal(a_bandMetal);
-        plan.bandWide = a_bandWide < 0 ? -1 : (a_bandWide ? 1 : 0);
-        return true;
+        bool                   changed = false;
+        const auto set = [&](std::int32_t& a_field, std::int32_t a_value, std::int32_t a_max) {
+            if (a_value >= 0 && a_value <= a_max && a_field != a_value) {
+                a_field = a_value;
+                changed = true;
+            }
+        };
+        set(plan.yourStyle, a_yourStyle, kWide);
+        set(plan.yourMetal, a_yourMetal, 2);
+        set(plan.theirStyle, a_theirStyle, kWide);
+        set(plan.theirMetal, a_theirMetal, 2);
+        return changed;
     }
 
     bool SetOutfit(std::int32_t a_betrothed, bool a_saved) {
         const std::scoped_lock lock{ g_lock };
         auto&                  plan = Make(a_betrothed);
+        plan.settled |= kOutfitSettled;
         if (plan.outfit == a_saved) {
             return false;
         }
@@ -365,16 +613,40 @@ namespace SNRom::WeddingPlan {
 
     std::vector<std::string> Open(const Plan& a_plan) {
         std::vector<std::string> open;
-        if (a_plan.day < 0.0f || a_plan.hour < 0) {
-            open.emplace_back("day");
-        }
         if (a_plan.place.empty()) {
             open.emplace_back("place");
         }
         if (!a_plan.officiant) {
             open.emplace_back("officiant");
         }
+        if (a_plan.day < 0.0f) {
+            open.emplace_back("day");
+        }
+        if (a_plan.hour < 0) {
+            open.emplace_back("hour");
+        }
         return open;
+    }
+
+    std::vector<std::string> Unsettled(const Plan& a_plan) {
+        std::vector<std::string> out;
+        const bool planner = a_plan.planner != 0;
+        if (!(a_plan.settled & kGuestsSettled)) {
+            out.emplace_back("guests");
+        }
+        if (planner && !(a_plan.settled & kCeremonySettled)) {
+            out.emplace_back("ceremony");
+        }
+        if (planner && (a_plan.theirStyle < 0 || a_plan.theirMetal < 0)) {
+            out.emplace_back("theirRing");
+        }
+        if (planner && (a_plan.yourStyle < 0 || a_plan.yourMetal < 0)) {
+            out.emplace_back("yourRing");
+        }
+        if (!(a_plan.settled & kOutfitSettled)) {
+            out.emplace_back("outfit");
+        }
+        return out;
     }
 
     json ForPrompt(std::int32_t a_betrothed) {
@@ -389,8 +661,14 @@ namespace SNRom::WeddingPlan {
             }
         }
         const float now = Now();
+        const auto  ring = [](std::int32_t a_style, std::int32_t a_metal) {
+            return json{ { "style", a_style == kWide ? "the wide plain band" : a_style == kSlim ? "the slim set" : "" },
+                         { "metal", MetalWord(a_metal) } };
+        };
+        const auto in = plan->day >= 0.0f ? static_cast<std::int32_t>(plan->day - std::floor(now)) : -1;
         return { { "exists", 1 },
                  { "day", DayWords(*plan) },
+                 { "date", in >= 0 ? DateWords(in) : std::string{} },
                  { "place", plan->place },
                  { "officiant", NameOf(plan->officiant) },
                  { "guests", guests },
@@ -399,11 +677,11 @@ namespace SNRom::WeddingPlan {
                  { "reading", (plan->parts & kReading) ? 1 : 0 },
                  { "rings", (plan->parts & kRings) ? 1 : 0 },
                  { "kiss", (plan->parts & kKiss) ? 1 : 0 },
-                 { "ring", MetalWord(plan->ringMetal) },
-                 { "band", MetalWord(plan->bandMetal) },
-                 { "bandWide", plan->bandWide },
+                 { "theirRing", ring(plan->theirStyle, plan->theirMetal) },
+                 { "yourRing", ring(plan->yourStyle, plan->yourMetal) },
                  { "outfit", plan->outfit ? 1 : 0 },
                  { "open", Open(*plan) },
+                 { "unsettled", Unsettled(*plan) },
                  { "underWay", plan->status == Status::kUnderWay ? 1 : 0 },
                  { "soon", plan->day >= 0.0f && When(*plan) - now <= 1.5f ? 1 : 0 },
                  { "missed", plan->missedDay >= 0.0f ? 1 : 0 },
@@ -451,12 +729,12 @@ namespace SNRom::WeddingPlan {
                               { "reading", (plan->parts & kReading) != 0 },
                               { "rings", (plan->parts & kRings) != 0 },
                               { "kiss", (plan->parts & kKiss) != 0 } } },
-                 { "ring", MetalWord(plan->ringMetal) },
-                 { "band", MetalWord(plan->bandMetal) },
-                 { "bandWide", plan->bandWide },
+                 { "theirRing", { { "style", plan->theirStyle }, { "metal", MetalWord(plan->theirMetal) } } },
+                 { "yourRing", { { "style", plan->yourStyle }, { "metal", MetalWord(plan->yourMetal) } } },
                  { "outfit", plan->outfit },
                  { "status", plan->status == Status::kUnderWay ? "underWay" : "planning" },
                  { "open", Open(*plan) },
+                 { "unsettled", Unsettled(*plan) },
                  { "missedDay", plan->missedDay >= 0.0f ? json(plan->missedDay) : json(nullptr) } };
     }
 
@@ -560,9 +838,11 @@ namespace SNRom::WeddingPlan {
                 a_intfc->WriteRecordData(guest);
             }
             a_intfc->WriteRecordData(p.parts);
-            a_intfc->WriteRecordData(p.ringMetal);
-            a_intfc->WriteRecordData(p.bandMetal);
-            a_intfc->WriteRecordData(p.bandWide);
+            a_intfc->WriteRecordData(p.theirStyle);
+            a_intfc->WriteRecordData(p.theirMetal);
+            a_intfc->WriteRecordData(p.yourStyle);
+            a_intfc->WriteRecordData(p.yourMetal);
+            a_intfc->WriteRecordData(p.settled);
             a_intfc->WriteRecordData(static_cast<std::uint8_t>(p.outfit ? 1 : 0));
             a_intfc->WriteRecordData(static_cast<std::int32_t>(p.status));
             a_intfc->WriteRecordData(p.missedDay);
@@ -573,7 +853,7 @@ namespace SNRom::WeddingPlan {
     void Load(SKSE::SerializationInterface* a_intfc, std::uint32_t a_version) {
         const std::scoped_lock lock{ g_lock };
         g_plans.clear();
-        if (a_version != kRecordVersion) {
+        if (a_version != 1 && a_version != kRecordVersion) {
             SKSE::log::warn("Wedding plan: co-save record version {} is not one this DLL reads; skipped", a_version);
             return;
         }
@@ -610,16 +890,44 @@ namespace SNRom::WeddingPlan {
                     p.guests.push_back(now);
                 }
             }
-            if (a_intfc->ReadRecordData(p.parts) != sizeof(p.parts) ||
-                a_intfc->ReadRecordData(p.ringMetal) != sizeof(p.ringMetal) ||
-                a_intfc->ReadRecordData(p.bandMetal) != sizeof(p.bandMetal) ||
-                a_intfc->ReadRecordData(p.bandWide) != sizeof(p.bandWide) ||
-                a_intfc->ReadRecordData(outfit) != sizeof(outfit) || a_intfc->ReadRecordData(status) != sizeof(status) ||
+            if (a_intfc->ReadRecordData(p.parts) != sizeof(p.parts)) {
+                return damaged();
+            }
+            if (a_version == 1) {
+                // v1: the betrothed's wedding ring (the slim set, by its
+                // metal), and the player's band (metal, 1 wide, 0 braided).
+                // What was chosen counts as settled.
+                std::int32_t ringMetal = -1, bandMetal = -1, bandWide = -1;
+                if (a_intfc->ReadRecordData(ringMetal) != sizeof(ringMetal) ||
+                    a_intfc->ReadRecordData(bandMetal) != sizeof(bandMetal) ||
+                    a_intfc->ReadRecordData(bandWide) != sizeof(bandWide)) {
+                    return damaged();
+                }
+                p.theirMetal = ringMetal;
+                p.theirStyle = ringMetal >= 0 ? kSlim : -1;
+                p.yourMetal = bandMetal;
+                p.yourStyle = bandWide;
+            } else if (a_intfc->ReadRecordData(p.theirStyle) != sizeof(p.theirStyle) ||
+                       a_intfc->ReadRecordData(p.theirMetal) != sizeof(p.theirMetal) ||
+                       a_intfc->ReadRecordData(p.yourStyle) != sizeof(p.yourStyle) ||
+                       a_intfc->ReadRecordData(p.yourMetal) != sizeof(p.yourMetal) ||
+                       a_intfc->ReadRecordData(p.settled) != sizeof(p.settled)) {
+                return damaged();
+            }
+            if (a_intfc->ReadRecordData(outfit) != sizeof(outfit) || a_intfc->ReadRecordData(status) != sizeof(status) ||
                 a_intfc->ReadRecordData(p.missedDay) != sizeof(p.missedDay) ||
                 a_intfc->ReadRecordData(p.lapsedDay) != sizeof(p.lapsedDay)) {
                 return damaged();
             }
             p.outfit = outfit != 0;
+            if (a_version == 1) {
+                if (!p.guests.empty()) {
+                    p.settled |= kGuestsSettled;
+                }
+                if (p.outfit) {
+                    p.settled |= kOutfitSettled;
+                }
+            }
             p.status = status == 1 ? Status::kUnderWay : Status::kPlanning;
             p.planner = resolve(p.planner);
             p.officiant = resolve(p.officiant);

@@ -5105,7 +5105,10 @@ Bool Function ChangeMarriage(Actor akActor, Int aiState, String asWhy, Bool abFo
             akActor.SetRelationshipRank(Game.GetPlayer(), 4)
         EndIf
     EndIf
-    If aiState == MARRIAGE_MARRIED()
+    ; Rings at a wedding, never for a record forced (the MARAS import, a
+    ; developer repair): an import of fourteen marriages is not fourteen
+    ; weddings (wpm51).
+    If aiState == MARRIAGE_MARRIED() && !abForce
         RingsBecomeWeddingRings(akActor)
     ElseIf (aiState == MARRIAGE_DIVORCED() || aiState == MARRIAGE_WIDOWED()) && married != None
         akActor.RemoveFromFaction(married)
@@ -5387,101 +5390,76 @@ Bool Function KeepRingsOnThroughOutfits(Actor akWearer)
 EndFunction
 
 Function RingsBecomeWeddingRings(Actor akSpouse)
-    { At the wedding (the author, 2026-10-18): an engagement ring of ours that
-      either of them gave becomes the wedding ring of the same metal, the band
-      added to it, and is put on. Any other ring is left as it was given: it is
-      theirs, and it means what it meant. The player, unless an engagement ring
-      of ours became theirs, is given a band (GiveWeddingBand). }
+    { At the wedding, each of them comes away wearing one wedding ring of
+      ours (the author, 2026-10-18 and 2026-10-26), worked out the same way for
+      both: whoever gave whom an engagement ring, and whatever either of them
+      is. Each wears their style: the slim set - the engagement ring of ours
+      they wear, joined to its band, or the slim braided band when they wear
+      none - or the wide plain band. In the metal chosen, else the engagement
+      ring's, else gold. The planner's choices where a plan made them (Build
+      B, wpm51); otherwise the slim set, which presumes nothing of anyone. }
     If akSpouse == None || _dashNatives < 22
         Return
     EndIf
-    Actor player = Game.GetPlayer()
-    Form fromPlayer = SNRom_Native.MarriageRing(akSpouse, True)
-    Form wedding = SNRom_Native.RingWeddingFor(fromPlayer)
-    ; THE PLANNER'S CHOICE (Build B): a wedding ring in the metal chosen, in
-    ; place of the engagement ring's own metal, or added when the engagement
-    ; ring was none of ours.
-    If _planRingMetal >= 0 && _dashNatives >= 28
-        Form chosen = SNRom_Native.RingWeddingOfMetal(_planRingMetal)
-        If chosen != None && (wedding == None || akSpouse.GetItemCount(fromPlayer) == 0)
-            akSpouse.AddItem(chosen, 1, True)
-            SNRom_Native.SetMarriageRing(akSpouse, True, chosen)
-            WearAndName(akSpouse, chosen)
-            Diag(LOG_INFO(), "Ring: " + akSpouse.GetDisplayName() + " wears " + chosen.GetName() + ", as planned.")
-            wedding = None
-        ElseIf chosen != None
-            wedding = chosen
-        EndIf
-    EndIf
-    If wedding != None && akSpouse.GetItemCount(fromPlayer) > 0
-        akSpouse.RemoveItem(fromPlayer, 1, True)
-        akSpouse.AddItem(wedding, 1, True)
-        SNRom_Native.SetMarriageRing(akSpouse, True, wedding)
-        WearAndName(akSpouse, wedding)
-        Diag(LOG_INFO(), "Ring: " + akSpouse.GetDisplayName() + "'s engagement ring is now " + wedding.GetName() + ".")
-    EndIf
-    Form toPlayer = SNRom_Native.MarriageRing(akSpouse, False)
-    Form playerWedding = SNRom_Native.RingWeddingFor(toPlayer)
-    If playerWedding != None && player.GetItemCount(toPlayer) > 0
-        Bool worn = player.IsEquipped(toPlayer)
-        player.RemoveItem(toPlayer, 1, True)
-        player.AddItem(playerWedding, 1, True)
-        If worn
-            player.EquipItem(playerWedding, False, True)
-        EndIf
-        SNRom_Native.SetMarriageRing(akSpouse, False, playerWedding)
-        Diag(LOG_INFO(), "Ring: the engagement ring " + akSpouse.GetDisplayName() + " gave you is now " + \
-            playerWedding.GetName() + ".")
-    ElseIf SNRom_Native.RingKindOf(toPlayer) != 1 || player.GetItemCount(toPlayer) == 0
-        GiveWeddingBand(akSpouse)
-    EndIf
+    WeddingRingFor(akSpouse, akSpouse, True, _planTheirStyle, _planRingMetal)
+    WeddingRingFor(Game.GetPlayer(), akSpouse, False, _planBandWide, _planBandMetal)
 EndFunction
 
-Function GiveWeddingBand(Actor akSpouse)
-    { THE PLAYER'S WEDDING BAND (the author, 2026-10-20: "the player should at
-      least get a wedding band"). Married, and no engagement ring of ours
-      became theirs: their spouse puts a band on their finger, named for them,
-      with Mara's Grace and its "Together" bonus. In the metal of the spouse's
-      own ring when that is one of ours, else gold; the wide band for a man,
-      the braided band for a woman. Once per marriage: not again when they
-      already hold a band of ours from this spouse. Which rings each of them
-      gets, and their styles, are the wedding planner's to settle later; at an
-      elopement, this. }
-    Actor player = Game.GetPlayer()
-    If akSpouse == None
+Function WeddingRingFor(Actor akWearer, Actor akSpouse, Bool abSpouseWears, Int aiStyle, Int aiMetal)
+    { One of the two wedding rings (RingsBecomeWeddingRings). abSpouseWears:
+      the spouse's ring, which the marriage record keeps as the one from the
+      player; else the player's. Ring kinds: 0 engagement ring, 1 wedding ring
+      (the engagement ring joined to its band), 2 braided band, 3 wide band.
+      Once per marriage: someone already wearing one of our wedding rings from
+      this marriage keeps it. }
+    If akWearer == None
         Return
     EndIf
-    Form recorded = SNRom_Native.MarriageRing(akSpouse, False)
-    Int recordedKind = SNRom_Native.RingKindOf(recorded)
-    If (recordedKind == 2 || recordedKind == 3) && player.GetItemCount(recorded) > 0
+    Form recorded = SNRom_Native.MarriageRing(akSpouse, abSpouseWears)
+    Int kind = SNRom_Native.RingKindOf(recorded)
+    Bool held = recorded != None && akWearer.GetItemCount(recorded) > 0
+    If held && kind >= 1
         Return
     EndIf
-    Int metal = SNRom_Native.RingMetalOf(SNRom_Native.MarriageRing(akSpouse, True))
+    Bool engaged = held && kind == 0
+    Int metal = aiMetal
+    If metal < 0
+        metal = SNRom_Native.RingMetalOf(recorded)
+    EndIf
     If metal < 0
         metal = 0
     EndIf
-    Bool wide = player.GetActorBase().GetSex() == 0
-    ; The planner's choice (Build B), where one was made.
-    If _planBandMetal >= 0
-        metal = _planBandMetal
+    Form ring = None
+    If aiStyle == 1
+        ring = SNRom_Native.RingBand(metal, True)
+    ElseIf engaged
+        ring = SNRom_Native.RingWeddingOfMetal(metal)
+    Else
+        ring = SNRom_Native.RingBand(metal, False)
     EndIf
-    If _planBandWide >= 0
-        wide = _planBandWide == 1
-    EndIf
-    Form band = SNRom_Native.RingBand(metal, wide)
-    If band == None
+    If ring == None
         Return
     EndIf
-    player.AddItem(band, 1, True)
-    If recorded == None
-        SNRom_Native.SetMarriageRing(akSpouse, False, band)
+    If engaged && aiStyle != 1
+        ; The engagement ring becomes the wedding ring: its band joined to it.
+        akWearer.RemoveItem(recorded, 1, True)
+    ElseIf engaged
+        ; The wide band takes the finger; the engagement ring is kept.
+        akWearer.UnequipItem(recorded, False, True)
     EndIf
+    akWearer.AddItem(ring, 1, True)
+    SNRom_Native.SetMarriageRing(akSpouse, abSpouseWears, ring)
+    Actor player = Game.GetPlayer()
     String who = akSpouse.GetDisplayName()
-    Debug.Notification(Tr("ring.band", "{0} put {1} on your finger.", who, band.GetName()))
-    SkyrimNetApi.RegisterPersistentEvent(who + " put a wedding band on " + player.GetDisplayName() + \
-        "'s finger.", akSpouse, player)
-    Diag(LOG_INFO(), "Ring: " + who + " gave the player " + band.GetName() + ".")
-    WearAndName(player, band)
+    If abSpouseWears
+        Diag(LOG_INFO(), "Ring: " + who + " wears " + ring.GetName() + ".")
+    Else
+        Debug.Notification(Tr("ring.band", "{0} put {1} on your finger.", who, ring.GetName()))
+        SkyrimNetApi.RegisterPersistentEvent(who + " put a wedding ring on " + player.GetDisplayName() + \
+            "'s finger.", akSpouse, player)
+        Diag(LOG_INFO(), "Ring: " + who + " gave the player " + ring.GetName() + ".")
+    EndIf
+    WearAndName(akWearer, ring)
 EndFunction
 
 Function GiveEngagementRing(Actor akActor)
@@ -5665,7 +5643,8 @@ EndFunction
 ; rings, read at the wedding:
 Int _planRingMetal = -1
 Int _planBandMetal = -1
-Int _planBandWide = -1
+Int _planBandWide = -1      ; the player's ring's style: 0 slim, 1 wide
+Int _planTheirStyle = -1    ; the betrothed's (wpm51)
 
 Bool Function MarriageStandsAside()
     { WHO RUNS MARRIAGE (the author, 2026-10-25). MARAS, only while it is
@@ -5937,15 +5916,22 @@ Function HireWeddingPlanner(Actor akPlanner, String asFor)
     PlanNoted(betrothed, akPlanner.GetDisplayName() + " hired to plan it.")
 EndFunction
 
-Function PlanWeddingDay(Actor akSpeaker, String asFor, String asDaysFromNow, String asTimeOfDay)
-    { Action WeddingSetDay: the day, in days from today, and the time of day. }
+Function PlanWeddingDay(Actor akSpeaker, String asFor, String asDay, String asTimeOfDay)
+    { Action WeddingSetDay: the day as said and the time of day, read by the
+      DLL against Skyrim's calendar (v29). THE DAY AS SAID (2026-10-26): the
+      action took a count of days, a model holding "Loredas, 4 Sun's Height"
+      sent nothing, and nothing was read as today at noon. Now a date, a
+      weekday or how far off is read, and what cannot be read changes
+      nothing. }
     Actor betrothed = PlanTarget(akSpeaker, asFor)
     If betrothed == None || !MayPlan(akSpeaker, betrothed, True)
         Return
     EndIf
-    Int days = SNRom_Decorators.Trim(asDaysFromNow) as Int
-    If SNRom_Native.PlanSetDay(betrothed, days, asTimeOfDay)
-        PlanNoted(betrothed, "the day set, " + days + " days from now, " + asTimeOfDay + ".")
+    If _dashNatives < 29
+        Return
+    EndIf
+    If SNRom_Native.PlanSetDay(betrothed, asDay, asTimeOfDay)
+        PlanNoted(betrothed, "the day set: '" + asDay + "', '" + asTimeOfDay + "'.")
     EndIf
 EndFunction
 
@@ -5991,6 +5977,14 @@ Function PlanWeddingGuests(Actor akSpeaker, String asFor, String asInvite, Strin
         Return
     EndIf
     Actor player = Game.GetPlayer()
+    ; NO GUESTS IS AN ANSWER (wpm51): said, the planner does not ask again.
+    String noGuests = SNRom_Decorators.Upper(SNRom_Decorators.Trim(asInvite))
+    If noGuests == "NONE" || noGuests == "NO ONE" || noGuests == "NOBODY" || noGuests == "NO GUESTS"
+        If _dashNatives >= 29 && SNRom_Native.PlanSettleGuests(betrothed)
+            PlanNoted(betrothed, "no guests.")
+        EndIf
+        Return
+    EndIf
     String[] invite = StringUtil.Split(asInvite, ",")
     Int i = 0
     While i < invite.Length
@@ -6041,26 +6035,43 @@ Function PlanWeddingCeremony(Actor akPlanner, String asFor, String asAddress, St
     EndIf
 EndFunction
 
-Function PlanWeddingRings(Actor akPlanner, String asFor, String asTheirRing, String asYourBand, String asBandStyle)
-    { Action WeddingRings: the rings, as a planner settles them (the author,
-      2026-10-20: the planner is where ring choices are made, except for an
-      elopement). Metals gold, silver or ebony; the player's band wide or
-      braided. Made at the wedding. }
+Function PlanWeddingRings(Actor akPlanner, String asFor, String asYourStyle, String asYourMetal, \
+    String asTheirStyle, String asTheirMetal)
+    { Action WeddingRings: each of the couple's wedding ring, as a planner
+      settles them (the author, 2026-10-20: the planner is where ring choices
+      are made, except for an elopement). THE SAME CHOICE FOR EACH OF THEM
+      (the author, 2026-10-26): whoever gave whom an engagement ring, and
+      whatever either of them is, each chooses the slim set or the wide plain
+      band, in gold, silver or ebony; both may choose the same. Anything left
+      empty is left as it is. Made at the wedding. }
     Actor betrothed = PlanTarget(akPlanner, asFor)
-    If betrothed == None || !MayPlan(akPlanner, betrothed, False)
+    If betrothed == None || !MayPlan(akPlanner, betrothed, False) || _dashNatives < 29
         Return
     EndIf
-    String style = SNRom_Decorators.Trim(asBandStyle)
-    Int wide = -1
-    If StringUtil.Find(style, "wide") >= 0
-        wide = 1
-    ElseIf StringUtil.Find(style, "braid") >= 0
-        wide = 0
+    If SNRom_Native.PlanSetRings(betrothed, RingStyleWord(asYourStyle), MetalWord(asYourMetal), \
+        RingStyleWord(asTheirStyle), MetalWord(asTheirMetal))
+        PlanNoted(betrothed, "the rings chosen: the player's " + asYourStyle + " " + asYourMetal + ", theirs " + \
+            asTheirStyle + " " + asTheirMetal + ".")
     EndIf
-    If SNRom_Native.PlanSetRings(betrothed, MetalWord(asTheirRing), MetalWord(asYourBand), wide)
-        PlanNoted(betrothed, "the rings chosen: theirs " + asTheirRing + ", the player's " + asYourBand + " " + \
-            asBandStyle + ".")
+EndFunction
+
+Int Function RingStyleWord(String asWords) Global
+    { A wedding ring's style as said: 1 the wide plain band ("wide", "plain",
+      "broad", "masculine"), 0 the slim set ("slim", "braided", "thin",
+      "feminine", "set", "with the engagement ring"); -1 for nothing said. }
+    String s = SNRom_Decorators.Upper(SNRom_Decorators.Trim(asWords))
+    If s == ""
+        Return -1
     EndIf
+    If StringUtil.Find(s, "WIDE") >= 0 || StringUtil.Find(s, "PLAIN") >= 0 || StringUtil.Find(s, "BROAD") >= 0 || \
+        StringUtil.Find(s, "MASCULINE") >= 0
+        Return 1
+    EndIf
+    If StringUtil.Find(s, "SLIM") >= 0 || StringUtil.Find(s, "BRAID") >= 0 || StringUtil.Find(s, "THIN") >= 0 || \
+        StringUtil.Find(s, "FEMININE") >= 0 || StringUtil.Find(s, "SET") >= 0 || StringUtil.Find(s, "ENGAGEMENT") >= 0
+        Return 0
+    EndIf
+    Return -1
 EndFunction
 
 Function SaveWeddingOutfit(Actor akBetrothed)
@@ -6270,10 +6281,19 @@ Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, For
     ; changes and the plan goes with the engagement).
     Bool planned = asUnused == "planned"
     String why = "married by " + priest + ", unplanned"
+    ; Never another wedding's choices (wpm51): these were set for a planned
+    ; wedding and kept, so an elopement after one wore that couple's rings.
+    _planRingMetal = -1
+    _planBandMetal = -1
+    _planBandWide = -1
+    _planTheirStyle = -1
     If planned && _dashNatives >= 28
         _planRingMetal = SNRom_Native.PlanRing(betrothed, 0)
         _planBandMetal = SNRom_Native.PlanRing(betrothed, 1)
         _planBandWide = SNRom_Native.PlanRing(betrothed, 2)
+        If _dashNatives >= 29
+            _planTheirStyle = SNRom_Native.PlanRing(betrothed, 3)
+        EndIf
         String place = SNRom_Native.PlanPlace(betrothed)
         why = "married by " + priest
         If place != ""

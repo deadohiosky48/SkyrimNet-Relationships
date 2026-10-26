@@ -32,7 +32,10 @@ namespace SNRom::Natives {
     //      IsOfficiant, CanBless, BetrothedNear: proposals, rings and eloping
     //      (2.5, Build A; Officiant.h); RingNamed, RingGiftFilter,
     //      SnapshotRings, RingGivenSince: the ring chosen in the gift menu
-    inline constexpr std::int32_t kVersion = 28;
+    //  29  PlanSetDay reads the day as said (a date, a weekday, how far off);
+    //      PlanSetRings takes each of the couple's style and metal;
+    //      PlanSettleGuests (2.5, wpm51)
+    inline constexpr std::int32_t kVersion = 29;
 
     // Registers the natives declared in src/scripts/SNRom_Native.psc.
     void Register(const SKSE::PapyrusInterface* a_papyrus);

@@ -515,11 +515,11 @@ namespace SNRom::Natives {
             const auto id = FormIdOfActor(a_betrothed);
             return id && a_planner && WeddingPlan::Hire(id, a_planner->GetFormID());
         }
-        bool PlanSetDay(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::int32_t a_daysFromNow,
-                        std::string a_timeOfDay) {
+        // v29: the day as said, read here (WeddingPlan::SetDayFromWords).
+        // Nothing unread becomes today or noon.
+        bool PlanSetDay(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::string a_day, std::string a_timeOfDay) {
             const auto id = FormIdOfActor(a_betrothed);
-            const auto hour = WeddingPlan::HourOf(a_timeOfDay);
-            return id && WeddingPlan::SetDay(id, a_daysFromNow, hour < 0 ? 12 : hour);
+            return id && WeddingPlan::SetDayFromWords(id, a_day, a_timeOfDay);
         }
         bool PlanSetPlace(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::string a_place) {
             const auto id = FormIdOfActor(a_betrothed);
@@ -541,10 +541,15 @@ namespace SNRom::Natives {
             const auto id = FormIdOfActor(a_betrothed);
             return id && WeddingPlan::SetParts(id, static_cast<std::uint32_t>(a_parts));
         }
-        bool PlanSetRings(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::int32_t a_ring, std::int32_t a_band,
-                          std::int32_t a_wide) {
+        // v29: the rings per person, each -1 left as it is.
+        bool PlanSetRings(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::int32_t a_yourStyle,
+                          std::int32_t a_yourMetal, std::int32_t a_theirStyle, std::int32_t a_theirMetal) {
             const auto id = FormIdOfActor(a_betrothed);
-            return id && WeddingPlan::SetRings(id, a_ring, a_band, a_wide);
+            return id && WeddingPlan::SetRings(id, a_yourStyle, a_yourMetal, a_theirStyle, a_theirMetal);
+        }
+        bool PlanSettleGuests(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && WeddingPlan::SettleGuests(id);
         }
         bool PlanSetOutfit(RE::StaticFunctionTag*, RE::Actor* a_betrothed, bool a_saved) {
             const auto id = FormIdOfActor(a_betrothed);
@@ -608,7 +613,9 @@ namespace SNRom::Natives {
             if (!plan) {
                 return -1;
             }
-            return a_which == 0 ? plan->ringMetal : a_which == 1 ? plan->bandMetal : plan->bandWide;
+            // 0 their metal, 1 your metal, 2 your style, 3 their style.
+            return a_which == 0 ? plan->theirMetal : a_which == 1 ? plan->yourMetal :
+                   a_which == 2 ? plan->yourStyle : plan->theirStyle;
         }
         RE::Actor* CeremonyOfficiant(RE::StaticFunctionTag*) {
             return Ceremony::Officiant();
@@ -985,6 +992,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("PlanGuest", kScript, PlanGuest, true);
             a_vm->RegisterFunction("PlanSetParts", kScript, PlanSetParts, true);
             a_vm->RegisterFunction("PlanSetRings", kScript, PlanSetRings, true);
+            a_vm->RegisterFunction("PlanSettleGuests", kScript, PlanSettleGuests, true);
             a_vm->RegisterFunction("PlanSetOutfit", kScript, PlanSetOutfit, true);
             a_vm->RegisterFunction("PlanPostpone", kScript, PlanPostpone, true);
             a_vm->RegisterFunction("PlanClear", kScript, PlanClear, true);

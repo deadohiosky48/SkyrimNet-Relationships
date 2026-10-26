@@ -12,7 +12,7 @@ name: WeddingSetDay
 description: |
   The wedding's day and hour are agreed, or changed: as the one {{ player.name }} is marrying, as the planner hired for it, or as the one who will marry them.
 
-  USE when a day is settled in this conversation ("three days from now, at dusk"). Not for a day only floated or wondered about.
+  USE when a day is settled in this conversation ("Loredas, the 4th of Sun's Height", "three days from now, at dusk"), or only the hour. Not for a day only floated or wondered about.
 
 questEditorId: SNRom_Quest
 scriptName: SNRom_Bridge
@@ -28,11 +28,15 @@ parameterMapping:
     optional: true
     default: ""
   - type: dynamic
-    name: asDaysFromNow
-    description: "whole days from today: 0 for today, 1 for tomorrow, 7 for a week"
+    name: asDay
+    description: "the day as it was said: a date ('the 4th of Sun's Height'), a weekday ('next Loredas'), or how far off ('tomorrow', 'in a week'); empty when only the hour changed"
+    optional: true
+    default: ""
   - type: dynamic
     name: asTimeOfDay
-    description: "morning, noon, afternoon, evening, dusk or night"
+    description: "morning, noon, afternoon, evening, dusk or night; empty when it was not said"
+    optional: true
+    default: ""
 
 eligibilityRules:
   - conditions:
