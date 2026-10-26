@@ -656,7 +656,7 @@ You expected one person and one life, because that is what people expect - not b
    as particular as what they want.
 
    Note this is NOT gated on tier, spark or physical availability. A limit is
-   not a stage anyone graduates from; it holds at Spouse the same as at
+   not a stage anyone graduates from; it holds at Beloved the same as at
    Stranger. That is the whole point of it being separate from the ladders. #}
 {# ── What you call them ────────────────────────────────────────────────────
    FIRST in this block, before the ladders and before LIMIT, because it applies
@@ -713,8 +713,8 @@ This holds regardless of what you feel, how close you have become, or how the mo
 {# ── Marriage (2.5, Build A; spec 5.1-5.4) ─────────────────────────────────
    From the record Relationships keeps (rom.marriage, native). Engaged is a
    state of its own, with no deadline: from it, a planned wedding or an
-   elopement with any priest, priestess or jarl. Below Spouse a proposal is
-   refused in character, by tier; at Spouse the answer is theirs. One spouse
+   elopement with any priest, priestess or jarl. Below Beloved a proposal is
+   refused in character, by tier; at Beloved the answer is theirs. One spouse
    unless Mara has granted the player her exception. #}
 {# WHO RUNS MARRIAGE (the author, 2026-10-25): MARAS, while it is installed
    and its marriages are not yet imported; then none of this is said
@@ -797,7 +797,7 @@ You were engaged to {{ player.name }} once, and it was broken off.
 You were married to {{ player.name }}, and you are divorced.
 {% elif default(rom.married, 0) != 1 and romance_na == 0 %}
 {# A YES IS NOT THE WEDDING (2026-10-23): Aia Arria said "not yet" three
-   times at Spouse, every time for the wedding - her hymn, the Jarl's court,
+   times at Beloved, every time for the wedding - her hymn, the Jarl's court,
    the ceremony. THE WAIT AFTER A NO STATES THE NO, it does not forbid a yes
    (wpm29): she changed her mind in the same conversation, once told why. #}
 {% if default(rom.marriage.canAccept, 0) == 1 %}

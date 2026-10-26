@@ -41,7 +41,7 @@ variants:
 schema:
   fields:
     # ── Point economy ────────────────────────────────────────────────────────
-    # A tier is 500 points and Spouse is 2,500. These caps keep one
+    # A tier is 500 points and Beloved is 2,500. These caps keep one
     # LLM-awarded emotional beat meaningful without letting it stand in for
     # the time two people actually spend together.
     - name: "Max Points Per Award"
@@ -250,7 +250,7 @@ schema:
     - name: "Most Points a Seed Can Grant"
       path: "seedMaxPoints"
       type: "int"
-      description: "Ceiling on the head start any one person can be given, so no accumulated history can hand out the top of the ladder. Tiers are 500 apart and Spouse is 2500, so the default stops one full tier short. Someone the game records as your actual spouse is exempt and seeds to Spouse regardless - a completed marriage is not history to be weighed, it is the relationship itself. Default: 2000."
+      description: "Ceiling on the head start any one person can be given, so no accumulated history can hand out the top of the ladder. Tiers are 500 apart and Beloved is 2500, so the default stops one full tier short. Someone the game records as your actual spouse is exempt and seeds to Beloved regardless - a completed marriage is not history to be weighed, it is the relationship itself. Default: 2000."
       defaultValue: 2000
       category: "Seeding"
 

@@ -1464,8 +1464,11 @@ String Function TierName(Int aiTier) Global
       points (LevelNameForPoints). The platonic track's own names are the
       dashboard's; this is the ladder the prompts and the log have always
       used. }
+    ; BELOVED, not Spouse (wpm50, the author): the top romantic rung is
+    ; depth, not a wedding. "Spouse" told everyone at it they were married to
+    ; the player; the commitment says whether they are.
     If aiTier >= 5
-        Return "Spouse"
+        Return "Beloved"
     ElseIf aiTier == 4
         Return "Lover"
     ElseIf aiTier == 3
@@ -1691,8 +1694,8 @@ EndFunction
 
 String Function TierKey(String asName) Global
     { A tier's l10n key, for a notice worded when shown (2.4, WP-N). }
-    If asName == "Spouse"
-        Return "tier.spouse"
+    If asName == "Beloved"
+        Return "tier.beloved"
     ElseIf asName == "Lover"
         Return "tier.lover"
     ElseIf asName == "Confidant"
@@ -1718,8 +1721,8 @@ EndFunction
 String Function TierWord(String asName) Global
     { A tier's name as the player reads it (Tr). The English name stays the
       log's and the prompts'. }
-    If asName == "Spouse"
-        Return Tr("tier.spouse", "Spouse")
+    If asName == "Beloved"
+        Return Tr("tier.beloved", "Beloved")
     ElseIf asName == "Lover"
         Return Tr("tier.lover", "Lover")
     ElseIf asName == "Confidant"
@@ -5148,7 +5151,7 @@ EndFunction
 String Function ProposalRefusal(Actor akActor)
     { Why CanAcceptProposal said no, for the log. }
     If TierOf(akActor) < 5
-        Return "below Spouse, at " + TierName(TierOf(akActor))
+        Return "below Beloved, at " + TierName(TierOf(akActor))
     ElseIf IsMarriedToPlayer(akActor)
         Return "already married to the player"
     ElseIf OurMarriage(akActor) == MARRIAGE_ENGAGED()
@@ -6651,8 +6654,9 @@ Function SeedRomanticFlag(Actor akActor)
 EndFunction
 
 Int Function SPOUSE_MIN() Global
-    { Points at which Romantasy calls someone "Spouse", and the rung the author's
-      ladder makes a formal marriage proposal eligible at.
+    { Points at which Romantasy called someone "Spouse" - Beloved since wpm50,
+      which says depth and not a wedding - and the rung the author's ladder
+      makes a formal marriage proposal eligible at.
 
       Stranger to Confidant is free. Crossing into Lover pops the consent
       question. Lover to Spouse is free. Crossing Spouse is what earns the right

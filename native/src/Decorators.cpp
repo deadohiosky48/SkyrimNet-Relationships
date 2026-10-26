@@ -31,9 +31,11 @@ namespace SNRom::Decorators {
         std::atomic<float>        g_bypassRatio{ 1.5F };
 
         // SNRom_Bridge.TierName: the ladder the prompts and the log use.
+        // The top romantic rung is Beloved (wpm50): "Spouse" told everyone
+        // there they were married to the player, whether they were or not.
         const char* TierName(std::int32_t a_tier) {
             if (a_tier >= 5) {
-                return "Spouse";
+                return "Beloved";
             }
             switch (a_tier) {
             case 4:

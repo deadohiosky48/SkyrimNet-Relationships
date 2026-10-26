@@ -313,7 +313,7 @@
         },
         "commitment": {
           "enum": ["none", "candidate", "engaged", "married"],
-          "description": "SNRom_Bridge.CommitmentState(subject): 0 none, 1 candidate, 2 engaged, 3 married. Read from MARAS and vanilla PlayerMarriedFaction, never recorded by us. Drawn by SkyrimNetRelationships.dll's display copy of that function (native/src/Display.cpp, Commitment), from PlayerMarriedFaction and MARAS's three status lists, which Papyrus fetches once per refresh."
+          "description": "SNRom_Bridge.CommitmentState(subject): 0 none, 1 candidate, 2 engaged, 3 married. Married and engaged from the marriage record (and vanilla PlayerMarriedFaction, and MARAS while it runs marriage). Candidate (2.5, wpm50) is worked out, never recorded: someone the player may propose to now, romantic at Beloved (tier 5), not engaged, married or separated, romance open to them; MARAS's own candidate list counts only while MARAS runs marriage. Drawn by SkyrimNetRelationships.dll's display copy of that function (native/src/Display.cpp, Commitment), from PlayerMarriedFaction and MARAS's three status lists, which Papyrus fetches once per refresh."
         },
         "seeded": {
           "type": "boolean",

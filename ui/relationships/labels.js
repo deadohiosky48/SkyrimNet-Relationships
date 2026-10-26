@@ -56,7 +56,7 @@
   // own rank above Confidant, and Best Friend. Several characters may each be a
   // Best Friend at once; it names depth, not uniqueness, and nothing here or
   // anywhere may enforce a single one. A platonic bond is named from this list,
-  // so it can never read "Lover" or "Spouse".
+  // so it can never read "Lover" or "Beloved".
   var TIER_NAMES = { romantic: [], platonic: [] };
 
   // BELOW STRANGER (2.2, WP-N): one ladder, whatever the track. Index is
@@ -86,7 +86,7 @@
   var STANCE = {};
   var COMMITMENT = {};
   // The roster's Commitment column (asked for 2026-10-01: a long list of
-  // Spouse-depth bonds says nothing about who is actually married). No chip
+  // Beloved-depth bonds says nothing about who is actually married). No chip
   // for "none": an empty cell is the ordinary case, as with State.
   var COMMITMENT_CHIP = {};
   var ENROLLED_BY = {};
@@ -111,7 +111,7 @@
 
   function build() {
     fill(TIER_NAMES.romantic, [t("tier.stranger", "Stranger"), t("tier.acquaintance", "Acquaintance"), t("tier.friend", "Friend"),
-      t("tier.confidant", "Confidant"), t("tier.lover", "Lover"), t("tier.spouse", "Spouse")]);
+      t("tier.confidant", "Confidant"), t("tier.lover", "Lover"), t("tier.beloved", "Beloved")]);
     fill(TIER_NAMES.platonic, [t("tier.stranger", "Stranger"), t("tier.acquaintance", "Acquaintance"), t("tier.friend", "Friend"),
       t("tier.confidant", "Confidant"), t("tier.ally", "Ally"), t("tier.bestFriend", "Best Friend")]);
     fill(BELOW_NAMES, [t("tier.disliked", "Disliked"), t("tier.resentful", "Resentful"), t("tier.enemy", "Enemy")]);
@@ -214,7 +214,7 @@
     return b.depth.tier < 0 ? "t-below n" + (-b.depth.tier) : "t-" + b.track;
   }
 
-  // What a bond's state chip and blurb read. Only "courting" varies: at Spouse
+  // What a bond's state chip and blurb read. Only "courting" varies: at Beloved
   // depth it reads Devoted.
   function devoted(state, bond) {
     return state === "courting" && !!bond && bond.depth.tier >= DEVOTED_TIER;

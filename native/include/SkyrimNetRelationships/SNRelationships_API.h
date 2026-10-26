@@ -53,7 +53,7 @@ namespace SNREL_API {
     struct Values {
         std::uint32_t size;             // = sizeof(Values), set by the caller
         std::uint32_t formId;           // the reference's FormID
-        std::int32_t  tier;             // 0 Stranger, 1 Acquaintance, 2 Friend, 3 Confidant, 4 Lover, 5 Spouse
+        std::int32_t  tier;             // 0 Stranger, 1 Acquaintance, 2 Friend, 3 Confidant, 4 Lover, 5 Beloved (Spouse before 2.5)
                                         // (also the rank in faction SNRom_Bond, SNRom_Integration.esl 0xD63).
                                         // Never below 0: someone below Stranger reads 0 here. See standing.
         std::int32_t  points;           // the bond's points; a tier is 500. From 2.2 they can be negative,

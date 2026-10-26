@@ -458,7 +458,7 @@
   // gates the day.
   Detail.prototype.planBlock = function (p, snap) {
     var wrap = el("div", "plan");
-    wrap.appendChild(el("h4", "sub-head", p.status === "underWay" ? t("plan.today", "The wedding: today") : t("plan.title", "The wedding plan")));
+    wrap.appendChild(el("h4", "sub-head", p.status === "underWay" ? t("plan.todayHeading", "The wedding: today") : t("plan.title", "The wedding plan")));
     var hours = p.hour >= 0 ? (p.hour < 11 ? t("plan.morning", "morning") : p.hour < 14 ? t("plan.noon", "noon") :
       p.hour < 17 ? t("plan.afternoon", "afternoon") : p.hour < 21 ? t("plan.evening", "evening") : t("plan.night", "night")) : "";
     var rows = [
@@ -481,7 +481,7 @@
     });
     wrap.appendChild(dl);
     if (p.missedDay !== null && p.missedDay !== undefined) {
-      wrap.appendChild(el("p", "depth-note", t("plan.missed", "You did not come on the day you had set ({0}).", L.daysAgo(p.missedDay, snap.generatedAt))));
+      wrap.appendChild(el("p", "depth-note", t("plan.missedNote", "You did not come on the day you had set ({0}).", L.daysAgo(p.missedDay, snap.generatedAt))));
     }
     return wrap;
   };

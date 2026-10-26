@@ -1,5 +1,7 @@
 #include "Model.h"
 
+#include <cstring>
+
 #include "Family.h"
 #include "History.h"
 #include "Marriage.h"
@@ -156,6 +158,22 @@ namespace SNRom::Model {
         d.nearby = a_engine.loaded;
         d.commitment = Display::Commitment(a_formId, a_engine, a_batch);
         d.applicability = Display::Applicability(a_formId, a_engine, a_batch, stored, a_playerSex);
+        // THE MARRIAGE CANDIDATE (wpm50; the author, 2026-10-26): someone the
+        // player may propose to now - the proposal's own gate (MarriageAgree):
+        // romantic, at Beloved (tier 5), not engaged, married or separated,
+        // and romance open to them. Worked out on every refresh, never stored,
+        // so it cannot outlive any of those. MARAS's own list counts only
+        // while MARAS runs marriage; once its marriages are ours it is
+        // MARAS's bookkeeping, and it drifted from everything here.
+        if (!Marriage::MarasOwns()) {
+            if (d.commitment == 1) {
+                d.commitment = 0;
+            }
+            if (d.commitment == 0 && a_n[kTier] >= 5 && std::strcmp(Track(a_n, d), "romantic") == 0 &&
+                Marriage::StateOf(a_formId) != Marriage::State::kSeparated) {
+                d.commitment = 1;
+            }
+        }
         return d;
     }
 
