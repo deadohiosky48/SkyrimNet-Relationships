@@ -25,6 +25,9 @@
 #include "MeridianHost.h"
 #include "Model.h"
 #include "Portraits.h"
+
+#include <algorithm>
+#include <filesystem>
 #include "PrismaHost.h"
 #include "ViewHost.h"
 
@@ -737,6 +740,43 @@ namespace SNRom::Dashboard {
                     Send({ { "v", kProtocol },
                            { "kind", "portrait" },
                            { "payload", { { "formId", formId }, { "src", src } } } });
+                    Result(id, true, "");
+                } else if (kind == "thumbnails") {
+                    // THE ROSTER'S FACES (wpm45), for the rows in view: the
+                    // files are found here on the main thread, cut on a thread
+                    // of their own (WIC, Portraits::ThumbnailOf), and sent back
+                    // together as one message, src "" for nobody's.
+                    const auto payload = message.value("payload", json::object());
+                    const auto px = std::clamp<std::int64_t>(payload.value("px", std::int64_t{ 64 }), 24, 256);
+                    std::vector<std::pair<std::int64_t, std::vector<std::filesystem::path>>> wanted;
+                    if (const auto ids = payload.find("formIds"); ids != payload.end() && ids->is_array()) {
+                        for (const auto& each : *ids) {
+                            if (each.is_number_integer() && wanted.size() < 200) {
+                                const auto formId = each.get<std::int64_t>();
+                                wanted.emplace_back(formId, Portraits::Candidates(static_cast<std::uint32_t>(formId)));
+                            }
+                        }
+                    }
+                    std::thread([wanted = std::move(wanted), px]() {
+                        const auto com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+                        auto        items = json::array();
+                        std::size_t found = 0;
+                        for (const auto& [formId, candidates] : wanted) {
+                            auto src = Portraits::ThumbnailOf(candidates, static_cast<std::uint32_t>(px));
+                            found += src.empty() ? 0 : 1;
+                            items.push_back({ { "formId", formId }, { "src", std::move(src) } });
+                        }
+                        if (SUCCEEDED(com)) {
+                            CoUninitialize();
+                        }
+                        // TEST LOG (wpm45): how many faces each ask found; remove once validated.
+                        SKSE::log::info("Portraits: {} of {} roster faces at {} px", found, wanted.size(), px);
+                        SKSE::GetTaskInterface()->AddTask([items = std::move(items), px]() {
+                            Send({ { "v", kProtocol },
+                                   { "kind", "thumbnails" },
+                                   { "payload", { { "px", px }, { "items", items } } } });
+                        });
+                    }).detach();
                     Result(id, true, "");
                 } else {
                     Result(id, false, "Unknown request kind " + kind + ".");

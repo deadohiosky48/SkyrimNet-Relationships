@@ -187,8 +187,10 @@
     this.root.setAttribute("aria-label", t("detail.aria", "Details: {0}", b.subject.name));
 
     // Head
+    // THE HERO (wpm45, chosen 2026-10-26): the name and the depth at a
+    // glance on the left, SeverActions' portrait on the right, all in the
+    // head, so the face stays in view as the page scrolls.
     var head = el("div", "detail-head");
-    head.appendChild(portraitSlot(b.subject.formId));
     var h = el("div", "detail-title");
     h.appendChild(el("h2", null, b.subject.name));
     var meta = el("p", "detail-meta");
@@ -199,6 +201,7 @@
     meta.appendChild(el("code", null, L.hexId(b.subject.formId)));
     h.appendChild(meta);
     head.appendChild(h);
+    head.appendChild(portraitSlot(b.subject.formId));
     var close = el("button", "icon-btn", "×");
     close.type = "button";
     close.id = "detail-close";
@@ -211,28 +214,30 @@
     var scroll = el("div", "detail-scroll");
     this.scroller = scroll;
 
-    // Depth: the at-a-glance number, big.
-    var depth = section(t("detail.depth", "Depth"));
+    // Depth: the at-a-glance number, big, in the head under the name; the
+    // section below keeps what moved it.
+    var depth = section(t("detail.whatMoved", "What moved it"));
+    var glance = el("div", "depth-glance");
+    h.appendChild(glance);
     var big = el("div", "depth-big");
     big.appendChild(el("span", "tier " + L.tierClass(b), L.tierName(b.track, b.depth.tier, b.depth.estranged)));
     big.appendChild(el("span", "pts", t("detail.points", "{0} points", L.number(b.depth.points))));
-    depth.appendChild(big);
+    glance.appendChild(big);
     var prog = M.progress(b, snap.ladder);
     var bar = el("div", "bar");
     var fill = el("div", "fill " + L.tierClass(b) + (prog.held ? " is-held" : ""));
     fill.style.width = Math.round(prog.pct * 100) + "%";
     bar.appendChild(fill);
-    depth.appendChild(bar);
-    depth.appendChild(el("p", "depth-note", prog.note));
+    glance.appendChild(bar);
+    glance.appendChild(el("p", "depth-note", prog.note));
     if (UI.mode.developer && b.depth.banked > 0) {
-      depth.appendChild(el("p", "depth-note", t("detail.banked", "{0} more points are held back until you answer their question. A yes releases all of them.", L.number(b.depth.banked))));
+      glance.appendChild(el("p", "depth-note", t("detail.banked", "{0} more points are held back until you answer their question. A yes releases all of them.", L.number(b.depth.banked))));
     }
     // WHAT MOVED IT: the last several changes, newest first, as the roster's
     // line shows the newest (labels.js, CHANGE, for what a player sees).
     var changes = L.visibleChanges(b.history, UI.mode.developer);
     var undo = A.byOp("UndoChange");
     if (changes.length) {
-      depth.appendChild(el("h4", "sub-head", t("detail.whatMoved", "What moved it")));
       var list = el("ol", "change-list");
       changes.forEach(function (e) {
         var li = el("li", "change");

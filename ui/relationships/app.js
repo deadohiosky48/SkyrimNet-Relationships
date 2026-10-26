@@ -117,6 +117,8 @@
     // The game's developer setting rides in every snapshot (mode.js). When it
     // flips, what depends on it is rebuilt before anything is drawn with it.
     if (UI.mode.apply(s)) { buildStateFilter(); renderBadge(); }
+    // Whether SeverActions' portraits exist, for the roster's faces (wpm45).
+    roster.setFaces(s.settings && s.settings.portraits);
     // So do the scale and the text size (display.js). A change re-measures
     // the rows and draws the page through onChange, above; otherwise it is
     // drawn here.

@@ -45,6 +45,13 @@
   // A name wider than this ellipsizes rather than widen every row: a mod's
   // long-named NPC should not push the whole list across the screen.
   var NAME_MAX_REM = 16;
+  // The roster's faces (style.css, .with-faces): the circle's size in rem of
+  // text, the gap after it in rem, and the thumbnail sizes the DLL is asked
+  // for, in device pixels: the smallest at least the circle's, so a face is
+  // never drawn larger than it was cut and only a few sizes are ever made.
+  var FACE_REM = 2.6;
+  var FACE_GAP_REM = 0.6;
+  var FACE_PX = [48, 64, 96, 128, 160, 192, 256];
   // How many of the longest names, and of the longest point notes, are
   // measured: in one font, the widest is almost always among the longest,
   // and 2,000 bonds need not all be laid out to find it.
@@ -69,8 +76,50 @@
     this.frame = 0;
     this.fitKey = "";
     this.natural = 0;
+    // Faces: src by form id ("" for nobody's), the ones asked for and not yet
+    // answered, the ones waiting to be asked, and the size they are cut at.
+    this.faces = false;
+    this.faceSrc = {};
+    this.facePending = {};
+    this.faceQueue = [];
+    this.facePx = 0;
+    var self = this;
+    snrom.on("thumbnails", function (p) {
+      if (!p || p.px !== self.facePx || !p.items) return;
+      p.items.forEach(function (it) {
+        self.faceSrc[it.formId] = typeof it.src === "string" ? it.src : "";
+        delete self.facePending[it.formId];
+      });
+      self.schedule();
+    });
     this.build();
   }
+
+  // Whether rows show faces: the snapshot's settings.portraits. A change
+  // refits the columns, the name column holding the circle too.
+  Roster.prototype.setFaces = function (on) {
+    on = !!on;
+    if (on === this.faces) return;
+    this.faces = on;
+    this.fitKey = "";
+    if (on) this.root.classList.add("with-faces"); else this.root.classList.remove("with-faces");
+  };
+
+  Roster.prototype.wantFace = function (formId) {
+    var self = this;
+    this.facePending[formId] = true;
+    this.faceQueue.push(formId);
+    if (this.faceTimer) return;
+    this.faceTimer = setTimeout(function () {
+      self.faceTimer = 0;
+      var ids = self.faceQueue;
+      var px = self.facePx;
+      self.faceQueue = [];
+      snrom.request("thumbnails", { formIds: ids, px: px }).then(function (r) {
+        if (!r.ok) ids.forEach(function (id) { delete self.facePending[id]; });
+      });
+    }, 30);
+  };
 
   Roster.prototype.build = function () {
     var self = this;
@@ -170,7 +219,7 @@
   Roster.prototype.fit = function (bonds, ladder) {
     var D = UI.display;
     var c = candidates(bonds, ladder);
-    var key = [D.rootPx(), D.text(), UI.mode.developer].join("|") + "\n" +
+    var key = [D.rootPx(), D.text(), UI.mode.developer, this.faces].join("|") + "\n" +
       Object.keys(c).map(function (k) { return c[k].map(function (p) { return p[1]; }).join("\t"); }).join("\n");
     if (key === this.fitKey) return this.natural;
     this.fitKey = key;
@@ -202,7 +251,8 @@
     var w = function (g) { return g ? g.getBoundingClientRect().width : 0; };
     var px = D.rootPx();
     var widths = {
-      name: Math.min(w(groups.name), D.textPx(NAME_MAX_REM)),
+      name: Math.min(w(groups.name), D.textPx(NAME_MAX_REM)) +
+        (this.faces ? D.textPx(FACE_REM) + FACE_GAP_REM * D.rootPx() : 0),
       depth: w(groups.tier) + DEPTH_GAP_REM * px + w(groups.pts),
       track: w(groups.track), state: w(groups.state), com: w(groups.com), int: w(groups.int),
       ard: w(groups.ard), exc: w(groups.exc), ori: w(groups.ori)
@@ -227,7 +277,13 @@
     var name = el("div", "c-name");
     var nm = el("span", "name");
     var sub = el("span", "name-sub");
-    name.appendChild(nm); name.appendChild(sub);
+    var face = el("span", "face");
+    var faceImg = el("img");
+    faceImg.alt = "";
+    face.appendChild(faceImg);
+    var text = el("span", "name-text");
+    text.appendChild(nm); text.appendChild(sub);
+    name.appendChild(face); name.appendChild(text);
 
     var depth = el("div", "c-depth");
     var top = el("div", "depth-top");
@@ -248,7 +304,7 @@
     r.appendChild(name);
     r.appendChild(depth);
     var parts = {
-      nm: nm, sub: sub, tier: tier, pts: pts, fill: fill,
+      nm: nm, sub: sub, faceImg: faceImg, tier: tier, pts: pts, fill: fill,
       track: chipCell("c-track"), state: chipCell("c-state"), commitment: chipCell("c-com"),
       intimacy: chipCell("c-int"), ardor: chipCell("c-ard"),
       exclusivity: chipCell("c-exc"), orientation: chipCell("c-ori")
@@ -306,6 +362,14 @@
   };
 
   Roster.prototype.render = function () {
+    if (this.faces) {
+      // The size to cut at follows the scale and the text size: a new one
+      // starts the faces again (the DLL keeps what it cut, so it is quick).
+      var want = UI.display.textPx(FACE_REM) * (window.devicePixelRatio || 1);
+      var px = FACE_PX[FACE_PX.length - 1];
+      for (var f = 0; f < FACE_PX.length; f++) if (FACE_PX[f] >= want) { px = FACE_PX[f]; break; }
+      if (px !== this.facePx) { this.facePx = px; this.faceSrc = {}; this.facePending = {}; }
+    }
     this.spacer.style.height = (this.rows.length * this.rowH) + "px";
     var h = this.viewport.clientHeight || 600;
     var first = Math.max(0, Math.floor(this.viewport.scrollTop / this.rowH) - OVERSCAN);
@@ -339,6 +403,18 @@
     row.setAttribute("aria-selected", isOpen ? "true" : "false");
 
     p.nm.textContent = b.subject.name;
+    if (this.faces) {
+      var id = b.subject.formId;
+      var src = this.faceSrc[id];
+      if (src === undefined && !this.facePending[id]) this.wantFace(id);
+      if (src) {
+        if (p.faceImg.getAttribute("src") !== src) p.faceImg.src = src;
+        p.faceImg.hidden = false;
+      } else {
+        p.faceImg.hidden = true;
+        p.faceImg.removeAttribute("src");
+      }
+    }
     p.sub.textContent = b.following ? UI.t("roster.following", "Following") : (b.enrollment.by === "player" ? UI.t("roster.enrolledByYou", "Enrolled by you") : "");
     p.sub.className = "name-sub" + (b.following ? " tag-follow" : "");
 

@@ -5,6 +5,7 @@
 #include "Marriage.h"
 #include "WeddingPlan.h"
 #include "L10n.h"
+#include "Portraits.h"
 
 #include <algorithm>
 #include <format>
@@ -592,7 +593,10 @@ namespace SNRom::Model {
                              { "scale", a_overlay.scale == 0 ? json("auto") : json(a_overlay.scale) },
                              { "textSize", a_overlay.textSize == 2 ? "larger" :
                                            a_overlay.textSize == 1 ? "large" :
-                                                                     "normal" } };
+                                                                     "normal" },
+                             // SeverActions' portraits exist (wpm45): the
+                             // roster keeps room for a face on each row.
+                             { "portraits", Portraits::Available() } };
         // settings.closeKey: the modifier by kind, not side - a page's key
         // event says whether Shift is held, not which.
         if (a_overlay.closeKey) {

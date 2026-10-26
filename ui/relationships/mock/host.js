@@ -64,7 +64,14 @@
       // Round-trip through text, exactly as a native host would deliver it.
       receive(JSON.stringify(m));
     }
-    function pushSnapshot() { if (state) push("snapshot", JSON.parse(JSON.stringify(state))); }
+    function pushSnapshot() {
+      if (!state) return;
+      var s = JSON.parse(JSON.stringify(state));
+      // SeverActions' portraits, as a player with it installed has them;
+      // ?faces=0 for a player without.
+      if (s.settings) s.settings.portraits = params.faces !== "0";
+      push("snapshot", s);
+    }
     function answer(id, ok, message) { push("result", { ok: ok, message: message }, { re: id }); }
     function notice(text, level) { push("notice", { text: text, level: level || "info" }); }
 
@@ -298,6 +305,14 @@
             });
             var src = index >= 0 && index % 2 === 0 ? MOCK_PORTRAIT : "";
             push("portrait", { formId: envelope.payload.formId, src: src });
+            answer(envelope.id, true, "");
+          } else if (envelope.kind === "thumbnails") {
+            // The roster's faces: the same stand-in, for the same bonds.
+            var items = (envelope.payload.formIds || []).map(function (id) {
+              var at = (state && state.bonds || []).findIndex(function (b) { return b.subject.formId === id; });
+              return { formId: id, src: at >= 0 && at % 2 === 0 ? MOCK_PORTRAIT : "" };
+            });
+            push("thumbnails", { px: envelope.payload.px, items: items });
             answer(envelope.id, true, "");
           } else if (envelope.kind === "answer") {
             answer(envelope.id, true, "");

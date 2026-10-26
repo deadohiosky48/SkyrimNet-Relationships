@@ -148,6 +148,10 @@
           ],
           "description": "The dashboard hotkey, for the page to close on, from the SkyrimNet settings dashboardHotkey and dashboardHotkeyModifier: key a Windows virtual-key code (a key event's keyCode), modifier which kind must be held, either side. Optional: present only under a host that mutes the game's keyboard while the dashboard has input (Magelight UI), where the DLL never hears the second press; null or absent elsewhere, where the DLL closes it and the page must not as well. New in 2.1 (additive)."
         },
+        "portraits": {
+          "type": "boolean",
+          "description": "2.5 (wpm45): SeverActions' portrait folder exists and holds a cutout (native/src/Portraits.h), so the roster keeps room for a face on each row and asks for the faces in view (request kind thumbnails). Absent from an older DLL: no faces."
+        },
         "textSize": {
           "enum": ["normal", "large", "larger"],
           "description": "How big the text is drawn on top of the scale, from the SkyrimNet select dashboardTextSize (Normal, Large, Larger), delivered as scale is. It sizes the text and the boxes that hold it, not the spacing between them (display.js)."

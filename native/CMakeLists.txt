@@ -128,6 +128,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     CommonLibSSE::CommonLibSSE
     nlohmann_json::nlohmann_json
     spdlog::spdlog
+    # Windows' imaging (WIC), for the roster's portrait thumbnails (Portraits.cpp).
+    windowscodecs
 )
 
 # Kinship also defines UNICODE and _UNICODE, but only because
