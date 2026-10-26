@@ -2,8 +2,13 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include <nlohmann/json.hpp>
+
+namespace RE {
+    class Actor;
+}
 
 // A PERSON'S FAMILY, for their detail (2.5, Build B, M8b; the author,
 // 2026-10-17). Two sources, never parsed from anyone's private files:
@@ -46,6 +51,14 @@ namespace SNRom::Family {
     // for someone who is not the player's descendant. Spouses are not here:
     // the page has them from the marriage record. Main thread.
     nlohmann::json KinOf(std::int32_t a_formId);
+
+    // A PERSON'S RELATIVES BY RELATION (wpm52), for guests named as family:
+    // "mother", "father", "parents", "brother(s)", "sister(s)", "siblings",
+    // "son(s)", "daughter(s)", "children" (also "kids"). From the game's
+    // parent and child records (siblings are their parents' other children),
+    // and for the player their children from Kinship. The living only;
+    // empty for a relation it does not know. Main thread.
+    std::vector<RE::Actor*> Relatives(RE::Actor* a_of, const std::string& a_relation);
 
     // "female", "male", or "" when a_formId is no actor. Main thread.
     std::string SexOf(std::int32_t a_formId);

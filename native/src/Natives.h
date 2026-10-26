@@ -35,7 +35,9 @@ namespace SNRom::Natives {
     //  29  PlanSetDay reads the day as said (a date, a weekday, how far off);
     //      PlanSetRings takes each of the couple's style and metal;
     //      PlanSettleGuests (2.5, wpm51)
-    inline constexpr std::int32_t kVersion = 29;
+    //  30  GuestsNamed: guests as they are said - names, relations, titles
+    //      (2.5, wpm52)
+    inline constexpr std::int32_t kVersion = 30;
 
     // Registers the natives declared in src/scripts/SNRom_Native.psc.
     void Register(const SKSE::PapyrusInterface* a_papyrus);

@@ -405,7 +405,15 @@ Actor Function OfficiantNamed(String asName) Global Native
 {A priest, priestess or jarl by name, wherever they are; None when none.}
 
 Actor Function PersonNamed(String asName) Global Native
-{Someone by name: anyone loaded, then anyone on the roster. None when no one.}
+{Someone living by name, anyone in Skyrim (wpm52): the whole name, then the
+ first name, then part of one; between equals, someone loaded, then someone
+ on the roster. None when no one.}
+
+Actor[] Function GuestsNamed(Actor akSpeaker, String asList) Global Native
+{VERSION 30. Guests as they are said, by commas or "and": names ("Eorlund"),
+ relations ("Olfina's mother", "my brothers", "her parents"; "my" is
+ akSpeaker's, "your" the player's) and names behind a title ("Uncle Vignar").
+ The living only, no one twice; each one not found is logged by the DLL.}
 
 Actor Function BetrothedNamed(String asName) Global Native
 {The one engaged to the player named asName; else the only one engaged, or the

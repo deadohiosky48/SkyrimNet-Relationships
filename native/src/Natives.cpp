@@ -473,6 +473,10 @@ namespace SNRom::Natives {
         RE::Actor* PersonNamed(RE::StaticFunctionTag*, std::string a_name) {
             return WeddingPlan::PersonNamed(a_name);
         }
+        // v30: guests as they are said (WeddingPlan::GuestsNamed).
+        std::vector<RE::Actor*> GuestsNamed(RE::StaticFunctionTag*, RE::Actor* a_speaker, std::string a_list) {
+            return WeddingPlan::GuestsNamed(a_speaker, a_list);
+        }
         // The one engaged to the player named a_name; with no name, or no
         // match, the only one engaged, or the nearest of several loaded.
         RE::Actor* BetrothedNamed(RE::StaticFunctionTag*, std::string a_name) {
@@ -982,6 +986,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("SetMarasOwns", kScript, SetMarasOwns, true);
             a_vm->RegisterFunction("IsWeddingPlanner", kScript, IsWeddingPlanner, true);
             a_vm->RegisterFunction("PersonNamed", kScript, PersonNamed);
+            a_vm->RegisterFunction("GuestsNamed", kScript, GuestsNamed);
             a_vm->RegisterFunction("OfficiantNamed", kScript, OfficiantNamed);
             a_vm->RegisterFunction("BetrothedNamed", kScript, BetrothedNamed);
             a_vm->RegisterFunction("PlanExists", kScript, PlanExists, true);

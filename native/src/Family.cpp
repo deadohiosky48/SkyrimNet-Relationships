@@ -296,6 +296,100 @@ namespace SNRom::Family {
         return { { "generation", it->second.generation }, { "adopted", it->second.adopted } };
     }
 
+    std::vector<RE::Actor*> Relatives(RE::Actor* a_of, const std::string& a_relation) {
+        std::vector<RE::Actor*> out;
+        auto*                   base = a_of ? a_of->GetActorBase() : nullptr;
+        if (!base) {
+            return out;
+        }
+        // The relation, singular, and the sex it asks for: 1 female, 0 male,
+        // -1 either.
+        std::string rel = a_relation;
+        if (rel.ends_with("ren")) {
+            rel.resize(rel.size() - 3);   // children
+        } else if (rel.ends_with("s")) {
+            rel.pop_back();               // brothers, parents, kids
+        }
+        int         sex = -1;
+        std::string kind;
+        if (rel == "mother" || rel == "mom" || rel == "mum" || rel == "ma") {
+            kind = "parent", sex = 1;
+        } else if (rel == "father" || rel == "dad" || rel == "pa" || rel == "da") {
+            kind = "parent", sex = 0;
+        } else if (rel == "parent") {
+            kind = "parent";
+        } else if (rel == "brother") {
+            kind = "sibling", sex = 0;
+        } else if (rel == "sister") {
+            kind = "sibling", sex = 1;
+        } else if (rel == "sibling") {
+            kind = "sibling";
+        } else if (rel == "son") {
+            kind = "child", sex = 0;
+        } else if (rel == "daughter") {
+            kind = "child", sex = 1;
+        } else if (rel == "child" || rel == "kid") {
+            kind = "child";
+        } else {
+            return out;
+        }
+        const auto self = base->GetFormID();
+        std::vector<RE::FormID> npcs;
+        const auto add = [&](RE::FormID a_npc) {
+            if (a_npc != self && std::ranges::find(npcs, a_npc) == npcs.end()) {
+                npcs.push_back(a_npc);
+            }
+        };
+        const auto parents = g_parentsOf.find(self);
+        if (kind == "parent" && parents != g_parentsOf.end()) {
+            for (const auto p : parents->second) {
+                add(p);
+            }
+        } else if (kind == "sibling" && parents != g_parentsOf.end()) {
+            for (const auto p : parents->second) {
+                if (const auto kids = g_childrenOf.find(p); kids != g_childrenOf.end()) {
+                    for (const auto k : kids->second) {
+                        add(k);
+                    }
+                }
+            }
+        } else if (kind == "child") {
+            if (const auto kids = g_childrenOf.find(self); kids != g_childrenOf.end()) {
+                for (const auto k : kids->second) {
+                    add(k);
+                }
+            }
+        }
+        for (const auto npcId : npcs) {
+            if (sex >= 0 && Female(npcId) != (sex == 1)) {
+                continue;
+            }
+            auto* npc = RE::TESForm::LookupByID<RE::TESNPC>(npcId);
+            auto* actor = npc ? npc->GetUniqueActor() : nullptr;
+            if (actor && !actor->IsDead()) {
+                out.push_back(actor);
+            }
+        }
+        // The player's own children: Kinship's, by reference.
+        if (kind == "child" && a_of->IsPlayerRef()) {
+            RefreshKin();
+            for (const auto& [ref, kin] : g_kin) {
+                auto* child = kin.generation == 1 ? RE::TESForm::LookupByID<RE::Actor>(ref) : nullptr;
+                auto* childBase = child ? child->GetActorBase() : nullptr;
+                if (!child || child->IsDead() || !childBase) {
+                    continue;
+                }
+                if (sex >= 0 && (childBase->GetSex() == RE::SEX::kFemale) != (sex == 1)) {
+                    continue;
+                }
+                if (std::ranges::find(out, child) == out.end()) {
+                    out.push_back(child);
+                }
+            }
+        }
+        return out;
+    }
+
     std::string SexOf(std::int32_t a_formId) {
         auto* base = BaseOf(a_formId);
         if (!base) {

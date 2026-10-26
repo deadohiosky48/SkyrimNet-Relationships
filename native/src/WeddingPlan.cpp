@@ -3,6 +3,7 @@
 #include "PCH.h"
 
 #include "Ceremony.h"
+#include "Family.h"
 #include "Marriage.h"
 #include "Model.h"
 #include "Officiant.h"
@@ -10,12 +11,13 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
-#include <format>
-#include <optional>
 #include <cctype>
 #include <cmath>
+#include <cstring>
+#include <format>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <thread>
 
 namespace SNRom::WeddingPlan {
@@ -743,37 +745,173 @@ namespace SNRom::WeddingPlan {
         if (wanted.empty()) {
             return nullptr;
         }
-        RE::Actor* partial = nullptr;
-        const auto consider = [&](RE::Actor* a_actor) -> bool {
+        // How well a name matches: 3 the whole name, 2 the first name or the
+        // name's first words ("eorlund" of "eorlund gray-mane"), 1 the name
+        // begins with or holds what was said; 0 not at all.
+        const auto quality = [&](const std::string& a_lower) {
+            if (a_lower == wanted) {
+                return 3;
+            }
+            if (a_lower.starts_with(wanted + " ") || a_lower.starts_with(wanted + "-")) {
+                return 2;
+            }
+            if (wanted.size() >= 3 && (a_lower.starts_with(wanted) || a_lower.find(wanted) != std::string::npos)) {
+                return 1;
+            }
+            return 0;
+        };
+        RE::Actor* best = nullptr;
+        int        bestQuality = 0;
+        const auto consider = [&](RE::Actor* a_actor) {
             if (!a_actor || a_actor->IsPlayerRef() || a_actor->IsDead()) {
-                return false;
+                return;
             }
             const char* name = a_actor->GetDisplayFullName();
             if (!name || !*name) {
-                return false;
+                return;
             }
-            const auto lower = Lower(name);
-            if (lower == wanted) {
-                return true;
+            // Strictly better only: the first found of equals keeps it, and
+            // the scopes are asked nearest first.
+            if (const auto q = quality(Lower(name)); q > bestQuality) {
+                best = a_actor;
+                bestQuality = q;
             }
-            if (!partial && lower.starts_with(wanted)) {
-                partial = a_actor;
-            }
-            return false;
         };
         if (auto* lists = RE::ProcessLists::GetSingleton()) {
             for (auto& handle : lists->highActorHandles) {
-                if (auto actor = handle.get(); actor && consider(actor.get())) {
-                    return actor.get();
+                if (auto actor = handle.get()) {
+                    consider(actor.get());
                 }
             }
         }
-        for (const auto id : Model::Get().FormIds()) {
-            if (auto* actor = RE::TESForm::LookupByID<RE::Actor>(static_cast<RE::FormID>(id)); consider(actor)) {
-                return actor;
+        if (bestQuality < 3) {
+            for (const auto id : Model::Get().FormIds()) {
+                consider(RE::TESForm::LookupByID<RE::Actor>(static_cast<RE::FormID>(id)));
             }
         }
-        return partial;
+        if (bestQuality < 3) {
+            if (auto* data = RE::TESDataHandler::GetSingleton()) {
+                for (auto* npc : data->GetFormArray<RE::TESNPC>()) {
+                    if (npc && npc->IsUnique()) {
+                        consider(npc->GetUniqueActor());
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    std::vector<RE::Actor*> GuestsNamed(RE::Actor* a_speaker, const std::string& a_list) {
+        std::vector<RE::Actor*> out;
+        auto*                   player = RE::PlayerCharacter::GetSingleton();
+        const auto              keep = [&](RE::Actor* a_actor) {
+            if (a_actor && a_actor != a_speaker && !a_actor->IsPlayerRef() &&
+                std::ranges::find(out, a_actor) == out.end()) {
+                out.push_back(a_actor);
+            }
+        };
+        // The list's items: split on commas, semicolons and the word "and".
+        std::vector<std::string> items;
+        {
+            std::string text = a_list;
+            for (const auto* sep : { " and ", " & " }) {
+                for (auto at = Lower(text).find(sep); at != std::string::npos; at = Lower(text).find(sep)) {
+                    text.replace(at, std::strlen(sep), ",");
+                }
+            }
+            std::string item;
+            for (const char c : text) {
+                if (c == ',' || c == ';') {
+                    items.push_back(Trim(item));
+                    item.clear();
+                } else {
+                    item += c;
+                }
+            }
+            items.push_back(Trim(item));
+        }
+        static constexpr std::array<const char*, 6> kMine{ "my ", "her ", "his ", "their ", "our ", "your " };
+        static constexpr std::array<const char*, 22> kTitles{
+            "the ", "my ", "dear ", "old ", "little ", "uncle ", "aunt ", "auntie ", "cousin ", "grandma ",
+            "grandpa ", "granny ", "grandmother ", "grandfather ", "jarl ", "thane ", "lady ", "lord ", "sir ",
+            "steward ", "housecarl ", "young "
+        };
+        for (const auto& item : items) {
+            if (item.empty()) {
+                continue;
+            }
+            const auto lower = Lower(item);
+            // 1. A name, whole or the first name.
+            if (auto* named = PersonNamed(item)) {
+                const auto q = Lower(named->GetDisplayFullName());
+                if (q == lower || q.starts_with(lower + " ") || q.starts_with(lower + "-")) {
+                    SKSE::log::info("Guests: '{}' is {}", item, named->GetDisplayFullName());
+                    keep(named);
+                    continue;
+                }
+            }
+            // 2. A relation: "<someone>'s <relation>", or "my <relation>".
+            RE::Actor*  owner = nullptr;
+            std::string relation;
+            bool        relational = false;
+            if (const auto at = lower.find("'s "); at != std::string::npos) {
+                const auto who = Trim(item.substr(0, at));
+                relation = Trim(lower.substr(at + 3));
+                relational = true;
+                const auto whoLower = Lower(who);
+                if (player && whoLower == Lower(player->GetDisplayFullName())) {
+                    owner = player;
+                } else if (a_speaker && whoLower == Lower(a_speaker->GetDisplayFullName())) {
+                    owner = a_speaker;
+                } else {
+                    owner = PersonNamed(who);
+                }
+            } else {
+                for (const auto* mine : kMine) {
+                    if (lower.starts_with(mine)) {
+                        relation = Trim(lower.substr(std::strlen(mine)));
+                        owner = std::string_view(mine) == "your " ? static_cast<RE::Actor*>(player) : a_speaker;
+                        relational = true;
+                        break;
+                    }
+                }
+            }
+            if (relational && owner) {
+                const auto kin = Family::Relatives(owner, relation);
+                if (!kin.empty()) {
+                    std::string names;
+                    for (auto* k : kin) {
+                        names += (names.empty() ? "" : ", ") + std::string(k->GetDisplayFullName());
+                        keep(k);
+                    }
+                    SKSE::log::info("Guests: '{}' is {} ({}'s {})", item, names, owner->GetDisplayFullName(),
+                                    relation);
+                    continue;
+                }
+            }
+            // 3. A name behind a title or a family word: "Uncle Vignar".
+            std::string bare = lower;
+            for (bool again = true; again;) {
+                again = false;
+                for (const auto* title : kTitles) {
+                    if (bare.starts_with(title)) {
+                        bare.erase(0, std::strlen(title));
+                        again = true;
+                    }
+                }
+            }
+            if (auto* named = bare != lower || !relational ? PersonNamed(bare) : nullptr) {
+                SKSE::log::info("Guests: '{}' is {}", item, named->GetDisplayFullName());
+                keep(named);
+                continue;
+            }
+            SKSE::log::warn("Guests: no one living could be found for '{}'{}", item,
+                            relational ? (owner ? std::format(" ({} has no such relative in the game's records)",
+                                                              owner->GetDisplayFullName())
+                                                : std::string(" (whose relative is not known)"))
+                                       : std::string{});
+        }
+        return out;
     }
 
     std::int32_t HourOf(const std::string& a_words) {

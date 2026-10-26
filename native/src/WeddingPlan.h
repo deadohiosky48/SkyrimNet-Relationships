@@ -150,9 +150,20 @@ namespace SNRom::WeddingPlan {
     // The snapshot's plan (snapshot.schema.json, marriage.plan); null for none.
     nlohmann::json ForSnapshot(std::int32_t a_betrothed);
 
-    // Someone by name: anyone loaded, then anyone on the roster. Main thread
-    // or a VM thread; reads the engine only.
+    // Someone by name, living (wpm52: anyone in Skyrim, not only those
+    // loaded or on the roster - Eorlund Gray-Mane, invited from Whiterun's
+    // market, was neither). The best match wins: the whole name, then the
+    // first name ("Eorlund"), then part of one; between equals, someone
+    // loaded, then someone on the roster, then anyone. Main thread or a VM
+    // thread; reads the engine only.
     RE::Actor* PersonNamed(const std::string& a_name);
+
+    // GUESTS AS THEY ARE SAID (wpm52): a list, by commas or "and", of names
+    // ("Eorlund"), relations ("Olfina's mother", "my brothers", "her
+    // parents"), and names behind a title ("Uncle Vignar"). a_speaker is who
+    // said it ("my"); the player is "your". Each one read is logged, and
+    // each that could not be. The living only, no one twice.
+    std::vector<RE::Actor*> GuestsNamed(RE::Actor* a_speaker, const std::string& a_list);
 
     // A time of day in words ("morning", "noon", "evening"...) or an hour as
     // digits, to an hour; -1 when it means nothing.

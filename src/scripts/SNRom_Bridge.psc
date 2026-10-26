@@ -5985,23 +5985,28 @@ Function PlanWeddingGuests(Actor akSpeaker, String asFor, String asInvite, Strin
         EndIf
         Return
     EndIf
-    String[] invite = StringUtil.Split(asInvite, ",")
+    ; GUESTS AS THEY ARE SAID (wpm52): names, relations ("Olfina's mother",
+    ; "my brothers") and names behind a title ("Uncle Vignar"), read by the DLL,
+    ; which logs each one it could not place. Olfina's own list found one
+    ; guest of five by name alone.
+    If _dashNatives < 30
+        Return
+    EndIf
+    Actor[] invite = SNRom_Native.GuestsNamed(akSpeaker, asInvite)
     Int i = 0
     While i < invite.Length
-        Actor guest = SNRom_Native.PersonNamed(invite[i])
-        If guest != None && SNRom_Native.PlanGuest(betrothed, guest, True)
+        Actor guest = invite[i]
+        If guest != None && guest != betrothed && SNRom_Native.PlanGuest(betrothed, guest, True)
             SkyrimNetApi.RegisterPersistentEvent(player.GetDisplayName() + " and " + betrothed.GetDisplayName() + \
                 " invited " + guest.GetDisplayName() + " to their wedding.", guest, player)
             PlanNoted(betrothed, guest.GetDisplayName() + " invited.")
-        ElseIf guest == None && SNRom_Decorators.Trim(invite[i]) != ""
-            Diag(LOG_INFO(), "Wedding plan: no one called '" + invite[i] + "' could be found to invite.")
         EndIf
         i += 1
     EndWhile
-    String[] uninvite = StringUtil.Split(asUninvite, ",")
+    Actor[] uninvite = SNRom_Native.GuestsNamed(akSpeaker, asUninvite)
     i = 0
     While i < uninvite.Length
-        Actor gone = SNRom_Native.PersonNamed(uninvite[i])
+        Actor gone = uninvite[i]
         If gone != None && SNRom_Native.PlanGuest(betrothed, gone, False)
             PlanNoted(betrothed, gone.GetDisplayName() + " no longer invited.")
         EndIf
