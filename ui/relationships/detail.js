@@ -75,6 +75,39 @@
     return stage >= 0 && stage < STAGES.length ? STAGES[stage] : "";
   }
 
+  // SEVERACTIONS' PORTRAITS (wpm44): the face SeverActions keeps for each
+  // companion, asked for once per person a session and kept here, since the
+  // panel is rebuilt after every action. A string is the picture, "" none.
+  var portraits = {};
+  snrom.on("portrait", function (p) {
+    if (!p || typeof p.formId !== "number") return;
+    portraits[p.formId] = typeof p.src === "string" ? p.src : "";
+    var slot = document.querySelector(".detail-portrait[data-form='" + p.formId + "']");
+    if (slot) fillPortrait(slot, portraits[p.formId]);
+  });
+  function fillPortrait(slot, src) {
+    slot.innerHTML = "";
+    if (!src) { slot.hidden = true; return; }
+    var img = document.createElement("img");
+    img.src = src;
+    img.alt = "";
+    slot.appendChild(img);
+    slot.hidden = false;
+  }
+  function portraitSlot(formId) {
+    var slot = el("div", "detail-portrait");
+    slot.setAttribute("data-form", String(formId));
+    slot.hidden = true;
+    if (formId in portraits) fillPortrait(slot, portraits[formId]);
+    else {
+      portraits[formId] = "";
+      snrom.request("portrait", { formId: formId }).then(function (r) {
+        if (!r.ok) delete portraits[formId];
+      });
+    }
+    return slot;
+  }
+
   function chip(cls, text, title) {
     var c = el("span", "chip " + cls, text);
     if (title) c.title = title;
@@ -155,7 +188,8 @@
 
     // Head
     var head = el("div", "detail-head");
-    var h = el("div");
+    head.appendChild(portraitSlot(b.subject.formId));
+    var h = el("div", "detail-title");
     h.appendChild(el("h2", null, b.subject.name));
     var meta = el("p", "detail-meta");
     var bits = [];

@@ -24,4 +24,8 @@ namespace SNRom::SkyrimNetLink {
     // missing, older than API 10, or its database is not ready. Thread-safe:
     // every SkyrimNet query it makes is documented thread-safe.
     std::string KnownProof(std::uint32_t a_formId);
+
+    // SkyrimNet's id for the loaded save (API v7), "" without one: other mods
+    // key per-save files by it (SeverActions' portraits, Portraits.h).
+    std::string SaveId();
 }

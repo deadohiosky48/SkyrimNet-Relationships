@@ -98,6 +98,7 @@ set(SOURCES
     src/L10n.cpp
     src/Natives.cpp
     src/Notices.cpp
+    src/Portraits.cpp
     src/PrismaHost.cpp
     src/Settings.cpp
     src/SkyrimNetLink.cpp

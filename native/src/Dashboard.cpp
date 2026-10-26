@@ -24,6 +24,7 @@
 #include "MagelightHost.h"
 #include "MeridianHost.h"
 #include "Model.h"
+#include "Portraits.h"
 #include "PrismaHost.h"
 #include "ViewHost.h"
 
@@ -724,6 +725,19 @@ namespace SNRom::Dashboard {
                     DispatchAction(id, message.value("payload", json::object()));
                 } else if (kind == "answer") {
                     HandleAnswer(id, message.value("payload", json::object()));
+                } else if (kind == "portrait") {
+                    // SeverActions' portrait of one person (Portraits.h), as
+                    // its own message: a result carries only ok and a message.
+                    // "src" is "" when there is none.
+                    const auto payload = message.value("payload", json::object());
+                    const auto formId = payload.value("formId", std::int64_t{ 0 });
+                    const auto src = Portraits::DataUrlOf(static_cast<std::uint32_t>(formId));
+                    SKSE::log::info("Portrait for {:08X}: {}", static_cast<std::uint32_t>(formId),
+                                    src.empty() ? "none" : std::format("{} KB", src.size() / 1024));
+                    Send({ { "v", kProtocol },
+                           { "kind", "portrait" },
+                           { "payload", { { "formId", formId }, { "src", src } } } });
+                    Result(id, true, "");
                 } else {
                     Result(id, false, "Unknown request kind " + kind + ".");
                 }

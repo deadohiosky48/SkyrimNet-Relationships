@@ -23,6 +23,15 @@
     var parseQuery = bridge.parseQuery;
 
     var state = null;
+    // The mock's stand-in portrait: a drawn head and shoulders, transparent
+    // like SeverActions' cutouts, so the panel can be laid out without one.
+    var MOCK_PORTRAIT = "data:image/svg+xml," + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 480">' +
+      '<path d="M40 480c10-110 70-150 152-150s142 40 152 150z" fill="#6b5a48"/>' +
+      '<rect x="160" y="250" width="64" height="90" rx="20" fill="#d9b59a"/>' +
+      '<ellipse cx="192" cy="190" rx="88" ry="108" fill="#e3c1a5"/>' +
+      '<path d="M100 200c-10-120 70-150 92-150s110 20 92 150c-10-60-40-90-92-90s-82 30-92 90z" fill="#4a3226"/>' +
+      '</svg>');
     var loading = null;
     var index = null;
     var current = null;
@@ -281,6 +290,15 @@
           } else if (envelope.kind === "action") {
             var r = act(envelope.payload);
             answer(envelope.id, r[0], r[1]);
+          } else if (envelope.kind === "portrait") {
+            // A stand-in face for every other bond and none for the rest, as
+            // a player with only some companions shot would see it.
+            var index = (state && state.bonds || []).findIndex(function (b) {
+              return b.subject.formId === envelope.payload.formId;
+            });
+            var src = index >= 0 && index % 2 === 0 ? MOCK_PORTRAIT : "";
+            push("portrait", { formId: envelope.payload.formId, src: src });
+            answer(envelope.id, true, "");
           } else if (envelope.kind === "answer") {
             answer(envelope.id, true, "");
             push("askEnd", {});

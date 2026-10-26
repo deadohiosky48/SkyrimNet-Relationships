@@ -18,6 +18,7 @@ namespace SNRom::SkyrimNetLink {
         using ReadyFn = bool (*)();
         using RelatedFn = std::string (*)(std::uint32_t, int, double, double);   // v3
         using QueryMemoriesFn = std::string (*)(std::uint32_t, const char*);     // v10
+        using SaveIdFn = std::string (*)();                                       // v7
 
         constexpr std::uint32_t kPlayer = 0x14;
         constexpr double kDay = 86400.0;  // SkyrimNet's windows and times are game seconds
@@ -27,6 +28,7 @@ namespace SNRom::SkyrimNetLink {
         ReadyFn g_ready = nullptr;
         RelatedFn g_related = nullptr;
         QueryMemoriesFn g_queryMemories = nullptr;
+        SaveIdFn g_saveId = nullptr;
         std::once_flag g_firstMemoryLogged;
 
         void Bind() {
@@ -40,6 +42,9 @@ namespace SNRom::SkyrimNetLink {
             if (g_api >= 3) {
                 g_ready = reinterpret_cast<ReadyFn>(GetProcAddress(mod, "PublicIsMemorySystemReady"));
                 g_related = reinterpret_cast<RelatedFn>(GetProcAddress(mod, "PublicGetRelatedActors"));
+            }
+            if (g_api >= 7) {
+                g_saveId = reinterpret_cast<SaveIdFn>(GetProcAddress(mod, "PublicGetSaveUniqueID"));
             }
             if (g_api >= 10) {
                 g_queryMemories = reinterpret_cast<QueryMemoriesFn>(GetProcAddress(mod, "PublicQueryMemoriesForActor"));
@@ -126,6 +131,16 @@ namespace SNRom::SkyrimNetLink {
                 SKSE::log::info("Time known: an oldest-memory row looks like {}", shown.dump());
             });
             return MemoryTime(rows[0]);
+        }
+    }
+
+    std::string SaveId() {
+        std::call_once(g_bind, Bind);
+        try {
+            return g_saveId ? g_saveId() : std::string{};
+        } catch (const std::exception& e) {
+            SKSE::log::error("SkyrimNet's save id could not be read: {}", e.what());
+            return {};
         }
     }
 
