@@ -484,7 +484,10 @@ Function RegisterEvents()
     ReleaseWeddingHold()
     ; WHO RUNS MARRIAGE: MARAS until its marriages are imported, then ours,
     ; with MARAS silenced while it remains installed.
-    If _dashNatives >= 28
+    ; The natives' version is asked directly: _dashNatives is set later in the
+    ; bootstrap (ArmDashboard), so a check on it here never passed, and the
+    ; DLL went on believing MARAS ran marriage after the import (wpm35).
+    If SNRom_Native.Version() >= 28
         SNRom_Native.SetMarasOwns(MarriageStandsAside())
     EndIf
     If MarriageStandsAside()
