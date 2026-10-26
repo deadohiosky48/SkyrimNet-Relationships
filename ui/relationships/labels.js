@@ -307,6 +307,38 @@
     return t("time.inDays", "in {0} days", d);
   }
 
+  // FAMILY (wpm47; the author, 2026-10-26): what this person is to the
+  // player - "Your wife", "Your adopted son", "Your granddaughter" - or ""
+  // for anyone else. A spouse from Relationships' marriage record (married
+  // or separated), or the commitment while MARAS runs marriage; a
+  // descendant from b.kin (Family.h). Worded by their sex.
+  function kinWord(b) {
+    var sex = b.subject.sex;
+    var f = sex === "female", m = sex === "male";
+    var rec = b.marriage;
+    var separated = !!rec && rec.state === "separated";
+    if ((rec && (rec.state === "married" || separated)) || b.commitment === "married") {
+      var w = f ? t("kin.wife", "Your wife") : m ? t("kin.husband", "Your husband") : t("kin.spouse", "Your spouse");
+      return separated ? t("kin.separated", "{0}, separated", w) : w;
+    }
+    var k = b.kin;
+    if (!k || !k.generation) return "";
+    if (k.generation === 1) {
+      if (k.adopted) {
+        return f ? t("kin.adoptedDaughter", "Your adopted daughter") : m ? t("kin.adoptedSon", "Your adopted son") :
+          t("kin.adoptedChild", "Your adopted child");
+      }
+      return f ? t("kin.daughter", "Your daughter") : m ? t("kin.son", "Your son") : t("kin.child", "Your child");
+    }
+    // Grandchildren, then one "great-" a generation further down.
+    var greats = "";
+    for (var i = 2; i < k.generation; i++) greats += t("kin.great", "great-");
+    return f ? t("kin.granddaughter", "Your {0}granddaughter", greats) :
+      m ? t("kin.grandson", "Your {0}grandson", greats) : t("kin.grandchild", "Your {0}grandchild", greats);
+  }
+
+  function isFamily(b) { return kinWord(b) !== ""; }
+
   function daysAgo(then, now) {
     var d = Math.floor(now - then);
     if (d <= 0) return t("time.today", "today");
@@ -343,6 +375,8 @@
     number: number,
     gameDay: gameDay,
     daysAgo: daysAgo,
+    kinWord: kinWord,
+    isFamily: isFamily,
     daysAhead: daysAhead,
     CHANGE: CHANGE,
     changeKind: changeKind,

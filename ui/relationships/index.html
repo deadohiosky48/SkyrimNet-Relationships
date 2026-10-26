@@ -32,6 +32,15 @@
       <span class="field-label" data-t="filter.find">Find</span>
       <input type="text" id="f-text" placeholder="Name" data-t-placeholder="filter.find.placeholder" autocomplete="off" spellcheck="false">
     </label>
+    <!-- FAMILY (wpm47): spouses and the player's descendants, or everyone
+         else. Either button or neither; pressing the other one swaps. -->
+    <div class="field" role="group" aria-labelledby="f-family-label">
+      <span class="field-label" id="f-family-label" data-t="filter.show">Show</span>
+      <div class="seg">
+        <button type="button" class="seg-btn" id="f-family" aria-pressed="false" data-t="filter.family">Family</button>
+        <button type="button" class="seg-btn" id="f-nonfamily" aria-pressed="false" data-t="filter.notFamily">Not family</button>
+      </div>
+    </div>
     <label class="field">
       <span class="field-label" data-t="filter.following">Following</span>
       <select id="f-following">

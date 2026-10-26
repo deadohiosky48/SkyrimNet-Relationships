@@ -433,6 +433,21 @@
             }
           ]
         },
+        "kin": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["generation", "adopted"],
+              "properties": {
+                "generation": { "type": "integer", "minimum": 1, "maximum": 8, "description": "1 the player's child, 2 grandchild, 3 great-grandchild, and on." },
+                "adopted": { "type": "boolean", "description": "Taken in rather than born to the player (Kinship's record). Only a child is ever adopted here." }
+              }
+            },
+            { "type": "null" }
+          ],
+          "description": "2.5 (wpm47; native/src/Family.h, RefreshKin): the player's descendant, or null. Children from SkyrimNet Kinship by reference (1.10.0-dev4), further generations from the game's parent and child records. Spouses are not here: the marriage record has them. Optional: absent from an older DLL."
+        },
         "family": {
           "type": "object",
           "additionalProperties": false,

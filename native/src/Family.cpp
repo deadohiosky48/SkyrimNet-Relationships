@@ -81,6 +81,30 @@ namespace SNRom::Family {
             auto* npc = RE::TESForm::LookupByID<RE::TESNPC>(a_npc);
             return npc && npc->GetSex() == RE::SEX::kFemale;
         }
+
+        // The player's descendants by reference form id (RefreshKin).
+        struct Kin {
+            int  generation = 0;
+            bool adopted = false;
+        };
+        std::map<std::uint32_t, Kin> g_kin;
+        std::size_t                  g_kinLogged = static_cast<std::size_t>(-1);
+
+        // Every child Kinship records, parsed; empty without Kinship 1.10.
+        nlohmann::json AllKinshipChildren() {
+            Kinship();
+            if (!g_kinship2) {
+                return nlohmann::json::array();
+            }
+            const auto  need = g_kinship2->AllChildren(nullptr, 0);
+            std::string text(need, '\0');
+            if (need == 0 || g_kinship2->AllChildren(text.data(), need) != need) {
+                return nlohmann::json::array();
+            }
+            text.resize(need - 1);
+            auto kids = nlohmann::json::parse(text, nullptr, false);
+            return kids.is_array() ? kids : nlohmann::json::array();
+        }
     }
 
     void Index() {
@@ -205,6 +229,71 @@ namespace SNRom::Family {
                             { "stage", k.value("stage", -1) } });
         }
         return out;
+    }
+
+    void RefreshKin() {
+        g_kin.clear();
+        std::size_t byReference = 0;
+        std::size_t recordsOnly = 0;
+        for (const auto& k : AllKinshipChildren()) {
+            if (!k.is_object()) {
+                continue;
+            }
+            const auto ref = static_cast<std::uint32_t>(k.value("refId", std::uint64_t{ 0 }));
+            if (ref == 0) {
+                ++recordsOnly;
+                continue;
+            }
+            g_kin[ref] = { 1, k.value("adopted", false) };
+            ++byReference;
+        }
+        // Grandchildren and on: the game's own records, a generation at a
+        // time, from each descendant's base. Kinship records only the
+        // player's own children.
+        std::vector<std::uint32_t> frontier;
+        for (const auto& [ref, kin] : g_kin) {
+            frontier.push_back(ref);
+        }
+        std::size_t further = 0;
+        for (int generation = 2; generation <= 8 && !frontier.empty(); ++generation) {
+            std::vector<std::uint32_t> next;
+            for (const auto ref : frontier) {
+                auto* actor = RE::TESForm::LookupByID<RE::Actor>(ref);
+                auto* base = actor ? actor->GetActorBase() : nullptr;
+                const auto it = base ? g_childrenOf.find(base->GetFormID()) : g_childrenOf.end();
+                if (it == g_childrenOf.end()) {
+                    continue;
+                }
+                for (const auto npcId : it->second) {
+                    auto* npc = RE::TESForm::LookupByID<RE::TESNPC>(npcId);
+                    auto* child = npc ? npc->GetUniqueActor() : nullptr;
+                    const auto id = child ? child->GetFormID() : 0;
+                    if (id == 0 || id == 0x14 || g_kin.contains(id)) {
+                        continue;
+                    }
+                    g_kin[id] = { generation, false };
+                    next.push_back(id);
+                    ++further;
+                }
+            }
+            frontier = std::move(next);
+        }
+        // TEST LOG (wpm47): what the family is made of, when it changes;
+        // remove once validated.
+        if (g_kin.size() != g_kinLogged) {
+            g_kinLogged = g_kin.size();
+            SKSE::log::info("Family: {} of the player's children by reference from Kinship ({} records only, "
+                            "not counted), {} further descendants from the plugins' records",
+                            byReference, recordsOnly, further);
+        }
+    }
+
+    nlohmann::json KinOf(std::int32_t a_formId) {
+        const auto it = g_kin.find(static_cast<std::uint32_t>(a_formId));
+        if (it == g_kin.end()) {
+            return nullptr;
+        }
+        return { { "generation", it->second.generation }, { "adopted", it->second.adopted } };
     }
 
     std::string SexOf(std::int32_t a_formId) {

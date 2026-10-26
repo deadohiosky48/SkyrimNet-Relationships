@@ -183,6 +183,18 @@
   // change width as bonds come and go or the filters change; the name and the
   // points are what the roster holds. Every state is measured, player mode or
   // not, so the developer view does not move the columns either.
+  // The line under a name: what they are to the player (wpm47), then
+  // following or who enrolled them, as [text, following].
+  function subLine(b) {
+    var kin = L.kinWord(b);
+    var tag = b.following ? UI.t("roster.following", "Following") :
+      (b.enrollment.by === "player" ? UI.t("roster.enrolledByYou", "Enrolled by you") : "");
+    return [kin, tag];
+  }
+  function subText(b) {
+    return subLine(b).filter(function (x) { return x; }).join(" \u00b7 ");
+  }
+
   function candidates(bonds, ladder) {
     var chips = function (cls, words) { return words.map(function (w) { return [cls, w]; }); };
     var tiers = L.TIER_NAMES.romantic.concat(L.TIER_NAMES.platonic, L.BELOW_NAMES, [L.ESTRANGED.word]);
@@ -197,7 +209,7 @@
       return L.number(b.depth.points) + " \u00b7 " + M.progress(b, ladder).note;
     })) : [];
     return {
-      name: chips("name", names).concat(chips("name-sub", [UI.t("roster.following", "Following"), UI.t("roster.enrolledByYou", "Enrolled by you")])),
+      name: chips("name", names).concat(chips("name-sub", longest(bonds.map(subText)))),
       tier: chips("tier", tiers),
       pts: chips("pts", pts),
       track: chips("chip", [L.TRACKS.platonic.label, L.TRACKS.romantic.label]),
@@ -415,8 +427,18 @@
         p.faceImg.removeAttribute("src");
       }
     }
-    p.sub.textContent = b.following ? UI.t("roster.following", "Following") : (b.enrollment.by === "player" ? UI.t("roster.enrolledByYou", "Enrolled by you") : "");
-    p.sub.className = "name-sub" + (b.following ? " tag-follow" : "");
+    // What they are to the player, then Following in gold, or who enrolled
+    // them.
+    var line = subLine(b);
+    p.sub.textContent = "";
+    p.sub.className = "name-sub";
+    if (line[0]) p.sub.appendChild(document.createTextNode(line[0] + (line[1] ? " \u00b7 " : "")));
+    if (line[1]) {
+      var tag = document.createElement("span");
+      if (b.following) tag.className = "tag-follow";
+      tag.textContent = line[1];
+      p.sub.appendChild(tag);
+    }
 
     var prog = M.progress(b, this.ladder);
     p.tier.textContent = L.tierName(b.track, b.depth.tier, b.depth.estranged);

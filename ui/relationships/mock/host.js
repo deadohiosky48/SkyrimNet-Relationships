@@ -70,6 +70,17 @@
       // SeverActions' portraits, as a player with it installed has them;
       // ?faces=0 for a player without.
       if (s.settings) s.settings.portraits = params.faces !== "0";
+      // The player's family (wpm47), which the mock saves predate: the two
+      // kin are a daughter and an adopted son, the first minor a
+      // granddaughter.
+      var kin = s.bonds.filter(function (b) { return b.foreclosure === "kin"; });
+      var minor = s.bonds.filter(function (b) { return b.foreclosure === "minor"; });
+      var family = [[kin[0], 1, false, "female"], [kin[1], 1, true, "male"], [minor[0], 2, false, "female"]];
+      family.forEach(function (f) {
+        if (!f[0] || f[0].kin) return;
+        f[0].kin = { generation: f[1], adopted: f[2] };
+        f[0].subject.sex = f[3];
+      });
       push("snapshot", s);
     }
     function answer(id, ok, message) { push("result", { ok: ok, message: message }, { re: id }); }

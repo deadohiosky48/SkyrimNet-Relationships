@@ -35,6 +35,18 @@ namespace SNRom::Family {
     // otherParent, adopted, stage }]. Empty without Kinship 1.10.
     nlohmann::json PlayerChildren();
 
+    // THE PLAYER'S DESCENDANTS (wpm47), for the roster's family filter and
+    // its "Your daughter" lines. Their children from Kinship, by reference
+    // (Kinship 1.10.0-dev4's refId); each further generation from the game's
+    // parent and child records, down from each descendant's base. Read again
+    // by RefreshKin, once per snapshot, before KinOf is asked. Main thread.
+    void RefreshKin();
+
+    // { "generation": 1 child, 2 grandchild, ..., "adopted": bool }, or null
+    // for someone who is not the player's descendant. Spouses are not here:
+    // the page has them from the marriage record. Main thread.
+    nlohmann::json KinOf(std::int32_t a_formId);
+
     // "female", "male", or "" when a_formId is no actor. Main thread.
     std::string SexOf(std::int32_t a_formId);
 }

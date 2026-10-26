@@ -68,6 +68,9 @@
   }
 
   function matches(b, f) {
+    // Family (wpm47): spouses and the player's descendants, or everyone else.
+    if (f.family === "family" && !L.isFamily(b)) return false;
+    if (f.family === "other" && L.isFamily(b)) return false;
     if (f.following === "yes" && !b.following) return false;
     if (f.following === "no" && b.following) return false;
     if (f.track !== "all" && b.track !== f.track) return false;
@@ -98,6 +101,7 @@
 
   function view(bonds, f, sort) {
     var norm = {
+      family: f.family || "all",
       following: f.following || "all",
       track: f.track || "all",
       state: f.state || "all",

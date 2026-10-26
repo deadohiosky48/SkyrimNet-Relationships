@@ -19,7 +19,7 @@
   var openKey = null;
   var busy = {};
   var dialogReturn = null;
-  var filters = { text: "", following: "all", track: "all", state: "all", commitment: "all", standing: "all" };
+  var filters = { text: "", family: "all", following: "all", track: "all", state: "all", commitment: "all", standing: "all" };
   var sort = "depth-desc";
 
   var roster = new UI.Roster($("roster"), { onOpen: openBond });
@@ -334,7 +334,19 @@
     sort = $("f-sort").value;
     if (snap) renderRoster();
   }
+  // THE FAMILY PAIR (wpm47): Family, Not family, or neither. Pressing the
+  // pressed one lets it go; pressing the other swaps.
+  function setFamily(which) {
+    filters.family = filters.family === which ? "all" : which;
+    $("f-family").setAttribute("aria-pressed", filters.family === "family" ? "true" : "false");
+    $("f-nonfamily").setAttribute("aria-pressed", filters.family === "other" ? "true" : "false");
+    if (snap) renderRoster();
+  }
+  $("f-family").addEventListener("click", function () { setFamily("family"); });
+  $("f-nonfamily").addEventListener("click", function () { setFamily("other"); });
+
   function clearFilters() {
+    if (filters.family !== "all") setFamily(filters.family);
     $("f-text").value = ""; $("f-following").value = "all"; $("f-track").value = "all"; $("f-state").value = "all";
     $("f-commitment").value = "all"; $("f-standing").value = "all";
     readFilters();

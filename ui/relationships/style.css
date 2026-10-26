@@ -173,6 +173,17 @@ button, input, select { font: inherit; color: inherit; }
   background: var(--surface);
 }
 .field select { padding-right: 0.3rem; }
+/* The family pair (wpm47): two halves of one control, the pressed one gold. */
+.seg { display: flex; }
+.seg-btn {
+  height: calc(2rem * var(--t)); padding: 0 0.7rem;
+  border: 1px solid var(--line); background: var(--surface); color: var(--text);
+  font: inherit; cursor: pointer; white-space: nowrap;
+}
+.seg-btn:first-child { border-radius: 5px 0 0 5px; }
+.seg-btn:last-child { border-radius: 0 5px 5px 0; border-left: none; }
+.seg-btn:hover { border-color: var(--accent); }
+.seg-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
 .field input::placeholder { color: var(--faint); }
 .toolbar-count { margin: 0 0 0.35rem auto; color: var(--muted); font-size: calc(0.9rem * var(--t)); white-space: nowrap; }
 

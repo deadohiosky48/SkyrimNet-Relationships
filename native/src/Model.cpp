@@ -246,6 +246,8 @@ namespace SNRom::Model {
         bond["marriage"] = MarriageCard(a_formId);
         // 2.5, M8b: parents and children, from the plugins and Kinship.
         bond["family"] = Family::Of(a_formId);
+        // wpm47: the player's descendant (Family::RefreshKin), or null.
+        bond["kin"] = Family::KinOf(a_formId);
         return bond;
     }
 
@@ -622,6 +624,7 @@ namespace SNRom::Model {
             snap["crosshairTarget"] = nullptr;
         }
         json bonds = json::array();
+        Family::RefreshKin();
         for (const auto& [formId, row] : m_rows) {
             // A row with text and no numbers came from a writer before any
             // refresh this load: nothing to draw it with yet.

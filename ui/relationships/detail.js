@@ -195,6 +195,8 @@
     h.appendChild(el("h2", null, b.subject.name));
     var meta = el("p", "detail-meta");
     var bits = [];
+    var kin = L.kinWord(b);
+    if (kin) bits.push(kin);
     if (b.following) bits.push(t("detail.following", "Following you"));
     bits.push(b.nearby ? t("detail.near", "Near you") : t("detail.elsewhere", "Elsewhere"));
     meta.appendChild(document.createTextNode(bits.join(" · ") + " · "));
