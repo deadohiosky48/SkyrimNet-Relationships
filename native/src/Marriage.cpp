@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <map>
+#include <chrono>
 #include <mutex>
 #include <thread>
 
@@ -585,8 +586,14 @@ namespace SNRom::Marriage {
         }
         // Names on the main thread (the message handler); SkyrimNet off it.
         for (auto& w : wanted) {
-            const auto* form = RE::TESForm::LookupByID(w.formId);
-            const char* name = form ? form->GetName() : nullptr;
+            // The reference's own name: a TESForm's GetName is the base
+            // record's full name, and a placed actor's base may have none here.
+            auto* actor = RE::TESForm::LookupByID<RE::Actor>(w.formId);
+            const char* name = actor ? actor->GetDisplayFullName() : nullptr;
+            if (!name || !*name) {
+                const auto* base = actor ? actor->GetActorBase() : nullptr;
+                name = base ? base->GetName() : nullptr;
+            }
             w.name = name ? name : "";
         }
         const auto* player = RE::PlayerCharacter::GetSingleton();
@@ -598,9 +605,17 @@ namespace SNRom::Marriage {
                 SKSE::log::info("Wedding days: SkyrimNet could not be asked; imported weddings stay undated");
                 return;
             }
+            // Ready can be said while the save's history is still being
+            // read in (measured 2026-10-26: asked one second after the load).
+            std::this_thread::sleep_for(std::chrono::seconds{ 20 });
             std::size_t found = 0;
             for (const auto& w : wanted) {
-                const auto day = static_cast<float>(SkyrimNetLink::MarasWeddingDay(w.formId, w.name, me));
+                const auto answer = SkyrimNetLink::MarasWeddingDay(w.formId, w.name, me);
+                if (answer < 0.0) {
+                    SKSE::log::info("Wedding days: SkyrimNet stopped answering; the rest stay undated");
+                    return;
+                }
+                const auto day = static_cast<float>(answer);
                 // Never later than the import itself: that is not their wedding.
                 if (day <= 0.0f || day > w.since) {
                     continue;

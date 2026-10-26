@@ -163,6 +163,7 @@ namespace SNRom::SkyrimNetLink {
         const auto spouse = lower(a_spouse);
         const auto player = lower(a_player);
         if (spouse.empty() || player.empty()) {
+            SKSE::log::warn("Wedding days: no name for {:08X} or the player; not searched", a_formId);
             return 0.0;
         }
         try {
@@ -170,8 +171,11 @@ namespace SNRom::SkyrimNetLink {
             // originating actor: "Time passed... <player> and <spouse> got
             // married!" Nothing looser is taken for a wedding day: a line of
             // dialogue about a marriage is not the day of one.
-            const auto rows = json::parse(g_recentEvents(a_formId, 5000, "direct_narration"), nullptr, false);
+            const auto raw = g_recentEvents(a_formId, 5000, "direct_narration");
+            const auto rows = json::parse(raw, nullptr, false);
             if (!rows.is_array()) {
+                SKSE::log::warn("Wedding days: SkyrimNet's events for {} were not a list: {}", a_spouse,
+                                raw.substr(0, 200));
                 return 0.0;
             }
             double found = 0.0;
