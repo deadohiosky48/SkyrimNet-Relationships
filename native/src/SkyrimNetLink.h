@@ -24,14 +24,4 @@ namespace SNRom::SkyrimNetLink {
     // missing, older than API 10, or its database is not ready. Thread-safe:
     // every SkyrimNet query it makes is documented thread-safe.
     std::string KnownProof(std::uint32_t a_formId);
-
-    // True once SkyrimNet's database is ready to be asked, waiting up to
-    // a_seconds for it; false without SkyrimNet. Blocks: never the main thread.
-    bool WaitReady(int a_seconds);
-
-    // The game day (days passed) MARAS married the player and this spouse, as
-    // MARAS said it in SkyrimNet's events: "Time passed... <player> and
-    // <spouse> got married!" 0 when no such line is found, -1 when SkyrimNet
-    // cannot be asked. Thread-safe, and touches no game objects.
-    double MarasWeddingDay(std::uint32_t a_formId, const std::string& a_spouse, const std::string& a_player);
 }

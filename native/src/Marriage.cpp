@@ -7,13 +7,10 @@
 #include <atomic>
 
 #include "Rings.h"
-#include "SkyrimNetLink.h"
 
 #include <algorithm>
 #include <map>
-#include <chrono>
 #include <mutex>
-#include <thread>
 
 namespace SNRom::Marriage {
 
@@ -52,13 +49,6 @@ namespace SNRom::Marriage {
         bool                               g_exception = false;
         std::int32_t                       g_spouses = 0;
         float                              g_cooldownDays = 3.0f;
-        // Which load the records are from: a search for imported wedding days
-        // answers only the load that started it.
-        std::atomic<std::uint32_t>         g_loadGeneration{ 0 };
-
-        bool Imported(const Record& a_record) {
-            return a_record.why.starts_with("imported from MARAS");
-        }
 
         float GameDay() {
             const auto* calendar = RE::Calendar::GetSingleton();
@@ -516,8 +506,8 @@ namespace SNRom::Marriage {
             }
             // Records the MARAS import made before 2.5 wpm41 carry the day of
             // the import as their wedding day: unknown, as it always was. Only
-            // that day: one found since in SkyrimNet's events is the wedding's.
-            if (Imported(r) && r.weddingDay > 0.0f && r.weddingDay == r.since) {
+            // that day, so a wedding day given since survives the next load.
+            if (r.why.starts_with("imported from MARAS") && r.weddingDay > 0.0f && r.weddingDay == r.since) {
                 r.weddingDay = 0.0f;
                 ++repaired;
             }
@@ -565,79 +555,7 @@ namespace SNRom::Marriage {
         }
     }
 
-    void FindImportedWeddingDaysSoon() {
-        struct Wanted {
-            std::uint32_t formId;
-            std::string   name;
-            float         since;
-        };
-        std::vector<Wanted> wanted;
-        {
-            const std::scoped_lock lock{ g_lock };
-            for (const auto& [formId, r] : g_records) {
-                if (Imported(r) && r.weddingDay == 0.0f &&
-                    (r.state == State::kMarried || r.state == State::kSeparated)) {
-                    wanted.push_back({ formId, {}, r.since });
-                }
-            }
-        }
-        if (wanted.empty()) {
-            return;
-        }
-        // Names on the main thread (the message handler); SkyrimNet off it.
-        for (auto& w : wanted) {
-            // The reference's own name: a TESForm's GetName is the base
-            // record's full name, and a placed actor's base may have none here.
-            auto* actor = RE::TESForm::LookupByID<RE::Actor>(w.formId);
-            const char* name = actor ? actor->GetDisplayFullName() : nullptr;
-            if (!name || !*name) {
-                const auto* base = actor ? actor->GetActorBase() : nullptr;
-                name = base ? base->GetName() : nullptr;
-            }
-            w.name = name ? name : "";
-        }
-        const auto* player = RE::PlayerCharacter::GetSingleton();
-        const char* you = player ? player->GetName() : nullptr;
-        std::string me = you ? you : "";
-        const auto generation = g_loadGeneration.load();
-        std::thread([wanted = std::move(wanted), me = std::move(me), generation]() {
-            if (!SkyrimNetLink::WaitReady(120)) {
-                SKSE::log::info("Wedding days: SkyrimNet could not be asked; imported weddings stay undated");
-                return;
-            }
-            // Ready can be said while the save's history is still being
-            // read in (measured 2026-10-26: asked one second after the load).
-            std::this_thread::sleep_for(std::chrono::seconds{ 20 });
-            std::size_t found = 0;
-            for (const auto& w : wanted) {
-                const auto answer = SkyrimNetLink::MarasWeddingDay(w.formId, w.name, me);
-                if (answer < 0.0) {
-                    SKSE::log::info("Wedding days: SkyrimNet stopped answering; the rest stay undated");
-                    return;
-                }
-                const auto day = static_cast<float>(answer);
-                // Never later than the import itself: that is not their wedding.
-                if (day <= 0.0f || day > w.since) {
-                    continue;
-                }
-                const std::scoped_lock lock{ g_lock };
-                if (g_loadGeneration.load() != generation) {
-                    return;
-                }
-                const auto it = g_records.find(w.formId);
-                if (it != g_records.end() && Imported(it->second) && it->second.weddingDay == 0.0f) {
-                    it->second.weddingDay = day;
-                    ++found;
-                }
-            }
-            SKSE::log::info("Wedding days: {} of {} imported weddings found in SkyrimNet's events; the rest "
-                            "stay undated",
-                            found, wanted.size());
-        }).detach();
-    }
-
     void Revert() {
-        ++g_loadGeneration;
         const std::scoped_lock lock{ g_lock };
         g_records.clear();
         g_declined.clear();

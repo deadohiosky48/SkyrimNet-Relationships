@@ -116,14 +116,6 @@ namespace SNRom::Marriage {
     // record who can be found; ranks are kept in the save as well.
     void SyncFactionsSoon();
 
-    // THE REAL DAY OF AN IMPORTED WEDDING (2.5, wpm42). The MARAS import
-    // knows only that they are married, not since when. After a load, each
-    // imported marriage still undated is looked for in SkyrimNet's events,
-    // where MARAS said the wedding as it happened; found, that is its wedding
-    // day (and anniversary), and otherwise it stays unknown. Main thread; the
-    // search runs on a thread of its own.
-    void FindImportedWeddingDaysSoon();
-
     // The co-save (Cosave.cpp dispatches to these).
     inline constexpr std::uint32_t kRecordType = 'MARR';
     void Save(SKSE::SerializationInterface* a_intfc);

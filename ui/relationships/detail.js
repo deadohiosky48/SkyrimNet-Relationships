@@ -289,7 +289,7 @@
       var mState = MARRIAGE[m.state] || m.state;
       // An imported record's "since" is the day of the import, not when it
       // happened: said as brought over from MARAS instead, with the wedding's
-      // own day when SkyrimNet's events had it (wpm42).
+      // own day when one is known.
       if (m.imported && m.weddingDay !== null) mState += " (" + t("marriage.importedOn",
         "{0}, brought over from MARAS", L.daysAgo(m.weddingDay, snap.generatedAt)) + ")";
       else if (m.imported) mState += " (" + t("marriage.imported", "brought over from MARAS") + ")";
