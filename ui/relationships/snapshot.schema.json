@@ -50,11 +50,11 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "child", "born", "otherParent", "adopted", "stage"],
+            "required": ["name", "child", "born", "bornKnown", "otherParent", "adopted", "stage"],
             "properties": {
               "name": { "type": "string" },
               "child": { "enum": ["son", "daughter", ""] },
-              "born": { "type": "number", "description": "The game day they were born; 0 when unrecorded." },
+              "born": { "type": "number", "description": "The game day they were born; 0 when unrecorded." }, "bornKnown": { "type": "boolean", "description": "born is their birth, not the day Kinship recorded a child already in the world (by hand, in a sweep, or adopted)." },
               "otherParent": { "type": "string" },
               "adopted": { "type": "boolean" },
               "stage": { "type": "integer", "minimum": -1, "maximum": 5 }

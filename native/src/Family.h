@@ -31,6 +31,7 @@ namespace SNRom::Family {
 
     // Every child of the player's that Kinship records (API v2), for the
     // calendar's birthdays: [{ name, child, born (game days; 0 unknown),
+    // bornKnown (born is the birth, not the day an existing child was recorded),
     // otherParent, adopted, stage }]. Empty without Kinship 1.10.
     nlohmann::json PlayerChildren();
 

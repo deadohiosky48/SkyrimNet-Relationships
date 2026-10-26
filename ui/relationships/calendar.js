@@ -93,7 +93,10 @@
     // The player's children (Kinship): each birthday, every year after the
     // year they were born.
     ((snap.calendar && snap.calendar.children) || []).forEach(function (c) {
-      if (!c.born) return;
+      // Only a real birth day: a child taken into Kinship's record by hand,
+      // in a sweep or by adoption has the day it was recorded, and 23 of the
+      // author's would all have shared one (2026-10-25).
+      if (!c.born || !c.bornKnown) return;
       var b = dateOfGameDay(now, c.born);
       if (b.month !== month || year < b.year) return;
       var age = year - b.year;

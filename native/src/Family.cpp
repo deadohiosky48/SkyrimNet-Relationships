@@ -199,6 +199,7 @@ namespace SNRom::Family {
             out.push_back({ { "name", k.value("name", "") },
                             { "child", k.value("child", "") },
                             { "born", k.value("born", 0.0) },
+                            { "bornKnown", k.value("bornKnown", false) },
                             { "otherParent", other },
                             { "adopted", k.value("adopted", false) },
                             { "stage", k.value("stage", -1) } });
