@@ -76,6 +76,10 @@ html, body {
 button, input, select { font: inherit; color: inherit; }
 
 :focus { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* The ring is for the keyboard (asked 2026-10-26: a clicked button kept it
+   until focus moved). A host without :focus-visible drops this rule whole
+   and keeps the ring on every focus, as before. */
+:focus:not(:focus-visible) { outline: none; }
 
 .panel {
   position: absolute;
