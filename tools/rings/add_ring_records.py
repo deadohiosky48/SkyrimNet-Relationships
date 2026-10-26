@@ -128,7 +128,10 @@ FACTIONS = [
 # <p>, since a paragraph that ran onto the next page took the title's
 # centring there; a [pagebreak] wherever one would otherwise split; and lists
 # of short lines under centred headings, since a list item that wrapped could
-# not be told from the next.
+# not be told from the next. AND THE BOOK MENU CENTRES THE FIRST PARAGRAPH OF
+# EVERY PAGE, whatever its <p> says (seen in play, wpm48): a page that opens
+# with body text opens with an empty line inside its <p align="left">, which
+# takes the centring, as other mods' books do.
 VANILLA_BOOK = 0x0001ACF2   # Book3ValuableTheDowry
 BOOKS = [
     (0xD88, 'SNRom_WeddingPlannerBook', "A Wedding Planner's Book", 25),
@@ -138,7 +141,8 @@ BOOK_TEXT = """<p align="center"><font size='40'>A Wedding Planner's Book</font>
 
 <p align="left">Everything a wedding can hold is set down here, with the choices for each.</p>
 [pagebreak]
-<p align="left">Read it at your leisure, then tell your planner, or the one you are to marry, what you want.</p>
+<p align="left">
+Read it at your leisure, then tell your planner, or the one you are to marry, what you want.</p>
 
 <p align="left">Nothing is settled until you say it, and anything can be changed the same way.</p>
 [pagebreak]
@@ -148,7 +152,8 @@ BOOK_TEXT = """<p align="center"><font size='40'>A Wedding Planner's Book</font>
 
 <p align="left">If the day will not do after all, say so before it comes, and another is set. There is no shame in that.</p>
 [pagebreak]
-<p align="left">A wedding missed without a word is another matter.</p>
+<p align="left">
+A wedding missed without a word is another matter.</p>
 
 <p align="left">On the day, those who are coming make their way to the place a few hours ahead. Be there in good time; you will be waited for, but not forever.</p>
 [pagebreak]
@@ -208,7 +213,8 @@ Runil, in Falkreath</p>
 
 <p align="left">Or the jarl of any hold. Name the hold; whoever holds its hall on the day is the one who comes.</p>
 [pagebreak]
-<p align="left">The Jarl of Whiterun
+<p align="left">
+The Jarl of Whiterun
 The Jarl of Solitude
 The Jarl of Windhelm
 The Jarl of Riften
