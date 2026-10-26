@@ -121,7 +121,14 @@ FACTIONS = [
 # its text ours. The officiants are listed by hand (Skyrim.esm's names live in
 # its string tables, not the plugin); the DLL logs any name here that is not an
 # officiant it knows (Officiant.cpp, kBookOfficiants), and the planner accepts
-# any priest, priestess or jarl by name besides.
+# any priest, priestess or jarl by name besides. THE JARLS BY HOLD (wpm48; the
+# author, 2026-10-26): who rules a hold depends on the civil war, so the book
+# names the hold, and the DLL finds whoever rules it (Officiant.cpp, kHolds).
+# LAYOUT (the author's read in play, 2026-10-26): every paragraph in its own
+# <p>, since a paragraph that ran onto the next page took the title's
+# centring there; a [pagebreak] wherever one would otherwise split; and lists
+# of short lines under centred headings, since a list item that wrapped could
+# not be told from the next.
 VANILLA_BOOK = 0x0001ACF2   # Book3ValuableTheDowry
 BOOKS = [
     (0xD88, 'SNRom_WeddingPlannerBook', "A Wedding Planner's Book", 25),
@@ -129,89 +136,118 @@ BOOKS = [
 BOOK_TEXT = """<p align="center"><font size='40'>A Wedding Planner's Book</font></p>
 <p align="center">Kept by the planners of the temples of Skyrim</p>
 
-Everything a wedding can hold is set down here, with the choices for each. Read it at your leisure, then tell your planner, or the one you are to marry, what you want. Nothing is settled until you say it, and anything can be changed the same way.
+<p align="left">Everything a wedding can hold is set down here, with the choices for each.</p>
+[pagebreak]
+<p align="left">Read it at your leisure, then tell your planner, or the one you are to marry, what you want.</p>
 
+<p align="left">Nothing is settled until you say it, and anything can be changed the same way.</p>
 [pagebreak]
 <p align="center"><font size='30'>The Day</font></p>
 
-Choose a day, and a time: morning, noon, afternoon, evening or night. Your planner will see that everyone knows it.
+<p align="left">Choose a day, and a time: morning, noon, afternoon, evening or night. Your planner will see that everyone knows it.</p>
 
-If the day will not do after all, say so before it comes, and another is set. There is no shame in moving a wedding. A wedding missed without a word is another matter.
+<p align="left">If the day will not do after all, say so before it comes, and another is set. There is no shame in that.</p>
+[pagebreak]
+<p align="left">A wedding missed without a word is another matter.</p>
 
-On the day, those who are coming make their way to the place a few hours ahead. Be there in good time; you will be waited for, but not forever.
-
+<p align="left">On the day, those who are coming make their way to the place a few hours ahead. Be there in good time; you will be waited for, but not forever.</p>
 [pagebreak]
 <p align="center"><font size='30'>The Place</font></p>
 
-Any place one can walk to, and that means something to you both. Among those often chosen:
+<p align="left">Any place you can both walk to, and that means something to you. Among those often chosen, city by city:</p>
 
-The Temple of Mara, Riften
-The Temple of the Divines, Solitude
-The Temple of Kynareth, Whiterun
-The Temple of Dibella, Markarth
-The Temple of Talos, Windhelm
-
-Dragonsreach, Whiterun
-The Blue Palace, Solitude
-The Palace of the Kings, Windhelm
-Mistveil Keep, Riften
-Understone Keep, Markarth
-
+<p align="center">Riften</p>
+<p align="left">The Temple of Mara
+Mistveil Keep</p>
+[pagebreak]
+<p align="center">Solitude</p>
+<p align="left">The Temple of the Divines
+The Blue Palace</p>
+<p align="center">Whiterun</p>
+<p align="left">The Temple of Kynareth
+Dragonsreach</p>
+<p align="center">Markarth</p>
+<p align="left">The Temple of Dibella
+Understone Keep</p>
+<p align="center">Windhelm</p>
+<p align="left">The Temple of Talos
+The Palace of the Kings</p>
 [pagebreak]
 <p align="center"><font size='30'>Who Marries You</font></p>
 
-Any priest, priestess or jarl of Skyrim. Your planner sends word, and they come on the day.
+<p align="left">Any priest or priestess of Skyrim. Your planner sends word, and they come on the day.</p>
 
-Of Mara, in Riften: Maramal, Dinya Balu
-Of the Divines, in Solitude: Rorlund, Silana Petreia, Freir
-Of Kynareth, in Whiterun: Danica Pure-Spring
-Of Dibella, in Markarth: Hamal, Senna
-Of Talos, in Windhelm: Jora, Lortheim
-Of Arkay: Andurs in Whiterun, Styrr in Solitude, Brother Verulus in Markarth, Helgird in Windhelm, Runil in Falkreath
-
+<p align="center">Of Mara, in Riften</p>
+<p align="left">Maramal
+Dinya Balu</p>
 [pagebreak]
-<p align="center"><font size='30'>Who Marries You (the Jarls)</font></p>
+<p align="center">Of the Divines, in Solitude</p>
+<p align="left">Rorlund
+Silana Petreia
+Freir</p>
 
-Balgruuf the Greater or Vignar Gray-Mane, Whiterun
-Elisif the Fair, Solitude
-Ulfric Stormcloak or Brunwulf Free-Winter, Windhelm
-Laila Law-Giver or Maven Black-Briar, Riften
-Igmund or Thongvor Silver-Blood, Markarth
-Siddgeir or Dengeir of Stuhn, Falkreath
-Idgrod Ravencrone or Sorli the Builder, Morthal
-Skald the Elder or Brina Merilis, Dawnstar
-Korir or Kraldar, Winterhold
+<p align="center">Of Kynareth, in Whiterun</p>
+<p align="left">Danica Pure-Spring</p>
 
-Whoever holds the hall when you marry.
+<p align="center">Of Dibella, in Markarth</p>
+<p align="left">Hamal
+Senna</p>
+[pagebreak]
+<p align="center">Of Talos, in Windhelm</p>
+<p align="left">Jora
+Lortheim</p>
 
+<p align="center">Of Arkay</p>
+<p align="left">Andurs, in Whiterun
+Styrr, in Solitude
+Brother Verulus, in Markarth
+Helgird, in Windhelm
+Runil, in Falkreath</p>
+[pagebreak]
+<p align="center"><font size='30'>The Jarls</font></p>
+
+<p align="left">Or the jarl of any hold. Name the hold; whoever holds its hall on the day is the one who comes.</p>
+[pagebreak]
+<p align="left">The Jarl of Whiterun
+The Jarl of Solitude
+The Jarl of Windhelm
+The Jarl of Riften
+The Jarl of Markarth
+The Jarl of Falkreath
+The Jarl of Morthal
+The Jarl of Dawnstar
+The Jarl of Winterhold</p>
 [pagebreak]
 <p align="center"><font size='30'>The Guests</font></p>
 
-Anyone you know: friends, family, companions of the road. Name them, and each is told. Each decides for themselves whether to come; those who do will keep their places until you are wed.
+<p align="left">Anyone you know: friends, family, companions of the road. Name them, and each is told.</p>
 
+<p align="left">Each decides for themselves whether to come; those who do will keep their places until you are wed.</p>
+[pagebreak]
 <p align="center"><font size='30'>The Ceremony</font></p>
 
-At its heart, always: your vows, then each of you asked, "Do you take...?", then the pronouncement. Beyond that, by your choice:
-
-An address to everyone gathered
+<p align="left">At its heart, always: your vows, then each of you asked, "Do you take...?", then the pronouncement.</p>
+<p align="left">Beyond that, by your choice:</p>
+<p align="left">An address to all gathered
 A reading, or a blessing
 The rings exchanged
-The kiss
+The kiss</p>
 
-All four are yours unless you say otherwise.
-
+<p align="left">All four, unless you say otherwise.</p>
 [pagebreak]
 <p align="center"><font size='30'>The Rings</font></p>
 
-For the one you marry: a wedding ring, the engagement ring and its band together, in gold, silver or ebony.
+<p align="left">For the one you marry: a wedding ring, the engagement ring and its band together, in gold, silver or ebony.</p>
 
-For you: a band, in gold, silver or ebony, wide and plain, or braided.
+<p align="left">For you: a band, in gold, silver or ebony, wide and plain, or braided.</p>
 
-They are made for the wedding, and put on during it.
-
+<p align="left">They are made for the wedding, and put on during it.</p>
+[pagebreak]
 <p align="center"><font size='30'>What You Wear</font></p>
 
-Ask the one you marry to choose what they will wear; they will keep it for the day. What you wear is yours to choose; do not leave it to the morning.
+<p align="left">Ask the one you marry to choose what they will wear; they will keep it for the day.</p>
+
+<p align="left">What you wear is yours to choose; do not leave it to the morning.</p>
 """
 
 

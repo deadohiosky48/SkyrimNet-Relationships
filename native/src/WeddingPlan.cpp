@@ -5,6 +5,7 @@
 #include "Ceremony.h"
 #include "Marriage.h"
 #include "Model.h"
+#include "Officiant.h"
 
 #include <algorithm>
 #include <atomic>
@@ -173,6 +174,11 @@ namespace SNRom::WeddingPlan {
                             due.push_back({ id, "SNRom_WeddingLapsed", "" });
                         } else if (ready && now >= when - kSendAhead) {
                             plan.status = Status::kUnderWay;
+                            // A jarl chosen weeks ago may hold the hall no
+                            // longer: whoever does comes instead (wpm48).
+                            if (auto* officiant = Officiant::InPlaceOf(plan.officiant)) {
+                                plan.officiant = officiant->GetFormID();
+                            }
                             SKSE::log::info("Wedding plan: {:08X}'s wedding day has begun; everyone to {}", id,
                                             plan.place);
                             due.push_back({ id, "SNRom_WeddingDay", plan.place });

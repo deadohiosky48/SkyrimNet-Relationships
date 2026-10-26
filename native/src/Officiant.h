@@ -39,8 +39,15 @@ namespace SNRom::Officiant {
     // A priest, priestess or jarl by name, wherever they are (their unique
     // actor), for a planner choosing who will marry a couple (the author,
     // 2026-10-25: any of them, assumed willing, travels to the wedding).
-    // None when no officiant has that name, or they are dead.
+    // None when no officiant has that name, or they are dead. A leading
+    // "Jarl" is not part of a name, and "the Jarl of <hold>" (by city or
+    // hold, wpm48) is whoever rules that hold now.
     RE::Actor* Named(const std::string& a_name);
+
+    // The officiant to send on the wedding day in place of a_officiant: the
+    // same one, unless they were a hold's jarl who has since died or been
+    // exiled, when it is whoever rules the hold now. Main thread.
+    RE::Actor* InPlaceOf(std::uint32_t a_officiant);
 
     // Everyone engaged to the player who is here: loaded, alive, and within
     // a_range units of the player. Eloping needs both of them present.

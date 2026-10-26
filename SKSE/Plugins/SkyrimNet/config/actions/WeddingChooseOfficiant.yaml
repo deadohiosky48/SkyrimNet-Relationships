@@ -10,7 +10,7 @@
 customCategory: wedding
 name: WeddingChooseOfficiant
 description: |
-  Who will marry {{ player.name }} and the one they are engaged to is chosen: any priest, priestess or jarl in Skyrim. As the planner hired for it, you send word and arrange it, and they will come to the wedding on the day.
+  Who will marry {{ player.name }} and the one they are engaged to is chosen: any priest or priestess in Skyrim, or the jarl of any hold. A jarl is chosen by their hold, and whoever holds it on the day comes. As the planner hired for it, you send word and arrange it, and they will come to the wedding on the day.
 
   USE when they have chosen, in this conversation.
 
@@ -29,7 +29,7 @@ parameterMapping:
     default: ""
   - type: dynamic
     name: asOfficiant
-    description: "the name of the priest, priestess or jarl chosen, e.g. 'Maramal' or 'Jarl Elisif the Fair'"
+    description: "the name of the priest or priestess chosen, e.g. 'Maramal'; for a jarl, the hold, e.g. 'the Jarl of Whiterun'"
 
 eligibilityRules:
   - conditions:

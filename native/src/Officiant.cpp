@@ -7,6 +7,8 @@
 #include "Marriage.h"
 
 #include <cctype>
+#include <cstring>
+#include <array>
 
 namespace SNRom::Officiant {
 
@@ -35,6 +37,109 @@ namespace SNRom::Officiant {
             static auto* f = Faction(0xD87, OurPlugin());
             return f;
         }
+        // Who governs (verified against Skyrim.esm's FACT records, wpm48):
+        // GovRuling and GovExiled. In the plugin a hold's jarl has GovRuling
+        // at rank 0 and the jarl the civil war would put in their place rank
+        // -1; the war's scripts move the ranks as it goes. Rank -1 reads as
+        // not a member, so IsInFaction is "rules now". A jarl's court can be
+        // in GovRuling too (Hrongar is), so it is only ever asked of a hold's
+        // own jarls (kHolds).
+        RE::TESFaction* GovRuling() {
+            static auto* f = Faction(0x0003662A, "Skyrim.esm");
+            return f;
+        }
+        RE::TESFaction* GovExiled() {
+            static auto* f = Faction(0x00036629, "Skyrim.esm");
+            return f;
+        }
+
+        // THE JARLS BY HOLD (wpm48; the author, 2026-10-26: name the hold,
+        // "and it will be whomever occupies that position on the day of the
+        // wedding"). The words a player may use for each hold, and the jarls
+        // it can have, its own first. Solitude's carry no GovRuling in the
+        // plugin; Elisif is its jarl unless the war marks another.
+        struct Hold {
+            const char*                 name;
+            std::array<const char*, 3>  words;
+            std::array<const char*, 3>  jarls;
+        };
+        constexpr Hold kHolds[] = {
+            { "Whiterun", { "whiterun" }, { "Balgruuf the Greater", "Vignar Gray-Mane" } },
+            { "Solitude", { "solitude", "haafingar" }, { "Elisif the Fair", "Erikur", "Bryling" } },
+            { "Windhelm", { "windhelm", "eastmarch" }, { "Ulfric Stormcloak", "Brunwulf Free-Winter" } },
+            { "Riften", { "riften", "rift" }, { "Laila Law-Giver", "Maven Black-Briar" } },
+            { "Markarth", { "markarth", "reach" }, { "Igmund", "Thongvor Silver-Blood" } },
+            { "Falkreath", { "falkreath" }, { "Siddgeir", "Dengeir of Stuhn" } },
+            { "Morthal", { "morthal", "hjaalmarch" }, { "Idgrod Ravencrone", "Sorli the Builder" } },
+            { "Dawnstar", { "dawnstar", "pale" }, { "Skald", "Brina Merilis" } },
+            { "Winterhold", { "winterhold" }, { "Korir", "Kraldar" } },
+        };
+        // Their records, by kHolds index, found at kDataLoaded (MarkAll).
+        std::vector<std::vector<RE::TESNPC*>> g_holdJarls;
+
+        // Lowercased, trimmed, a leading "the " and "jarl " taken off.
+        std::string Plain(std::string_view a_text) {
+            std::string out;
+            for (const char c : a_text) {
+                if (!std::isspace(static_cast<unsigned char>(c)) || !out.empty()) {
+                    out += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                }
+            }
+            while (!out.empty() && std::isspace(static_cast<unsigned char>(out.back()))) {
+                out.pop_back();
+            }
+            for (const auto* prefix : { "the ", "jarl " }) {
+                if (out.starts_with(prefix)) {
+                    out.erase(0, std::strlen(prefix));
+                }
+            }
+            return out;
+        }
+
+        // Who rules a hold now, of its own jarls: the one the war marks as
+        // ruling, else its own jarl, else whoever of them still lives.
+        RE::Actor* Ruler(std::size_t a_hold, const char*& a_how) {
+            RE::Actor* own = nullptr;
+            RE::Actor* living = nullptr;
+            if (a_hold >= g_holdJarls.size()) {
+                return nullptr;
+            }
+            for (auto* npc : g_holdJarls[a_hold]) {
+                auto* actor = npc ? npc->GetUniqueActor() : nullptr;
+                if (!actor || actor->IsDead()) {
+                    continue;
+                }
+                const bool exiled = GovExiled() && actor->IsInFaction(GovExiled());
+                if (!exiled && GovRuling() && actor->IsInFaction(GovRuling())) {
+                    a_how = "marked ruling";
+                    return actor;
+                }
+                if (!exiled && !own) {
+                    own = actor;
+                }
+                if (!living) {
+                    living = actor;
+                }
+            }
+            a_how = own ? "the hold's own, none marked ruling" : "the only one living";
+            return own ? own : living;
+        }
+
+        // "the Jarl of Whiterun", "jarl of the Reach", "Eastmarch's jarl":
+        // the hold, or -1. Asked only when "jarl" is said.
+        int HoldIn(const std::string& a_lower) {
+            if (a_lower.find("jarl") == std::string::npos) {
+                return -1;
+            }
+            for (std::size_t i = 0; i < std::size(kHolds); ++i) {
+                for (const auto* word : kHolds[i].words) {
+                    if (word && a_lower.find(word) != std::string::npos) {
+                        return static_cast<int>(i);
+                    }
+                }
+            }
+            return -1;
+        }
 
         // Every officiant's record, found at kDataLoaded from the plugins.
         std::vector<RE::TESNPC*> g_officiants;
@@ -53,10 +158,7 @@ namespace SNRom::Officiant {
         // name the book gets wrong is in the log, not discovered in play.
         constexpr const char* kBookOfficiants[] = {
             "Maramal", "Dinya Balu", "Rorlund", "Silana Petreia", "Freir", "Danica Pure-Spring", "Hamal", "Senna",
-            "Jora", "Lortheim", "Andurs", "Styrr", "Brother Verulus", "Helgird", "Runil", "Balgruuf the Greater",
-            "Vignar Gray-Mane", "Elisif the Fair", "Ulfric Stormcloak", "Brunwulf Free-Winter", "Laila Law-Giver",
-            "Maven Black-Briar", "Igmund", "Thongvor Silver-Blood", "Siddgeir", "Dengeir of Stuhn",
-            "Idgrod Ravencrone", "Sorli the Builder", "Skald", "Brina Merilis", "Korir", "Kraldar"
+            "Jora", "Lortheim", "Andurs", "Styrr", "Brother Verulus", "Helgird", "Runil"
         };
 
         void Mark(RE::TESNPC* a_npc, RE::TESFaction* a_ours);
@@ -138,6 +240,37 @@ namespace SNRom::Officiant {
         if (!missing.empty()) {
             SKSE::log::warn("Officiants: the planner's book names some no NPC here has: {}", missing);
         }
+
+        // The jarls by hold (kHolds), as the book now names them.
+        g_holdJarls.assign(std::size(kHolds), {});
+        std::string noJarl;
+        for (std::size_t i = 0; i < std::size(kHolds); ++i) {
+            for (const auto* name : kHolds[i].jarls) {
+                if (!name) {
+                    continue;
+                }
+                RE::TESNPC* found = nullptr;
+                for (auto* npc : data->GetFormArray<RE::TESNPC>()) {
+                    const char* full = npc && npc->IsUnique() ? npc->GetFullName() : nullptr;
+                    if (full && Plain(full) == Plain(name)) {
+                        found = npc;
+                        break;
+                    }
+                }
+                if (found) {
+                    g_holdJarls[i].push_back(found);
+                    if (std::find(g_officiants.begin(), g_officiants.end(), found) == g_officiants.end()) {
+                        g_officiants.push_back(found);
+                        Mark(found, ours);
+                    }
+                } else {
+                    noJarl += (noJarl.empty() ? "" : ", ") + std::string(name);
+                }
+            }
+        }
+        if (!noJarl.empty()) {
+            SKSE::log::warn("Officiants: no NPC here is the jarl {}", noJarl);
+        }
     }
 
     void Remark() {
@@ -164,17 +297,36 @@ namespace SNRom::Officiant {
     }
 
     RE::Actor* Named(const std::string& a_name) {
-        std::string wanted;
-        for (const char c : a_name) {
-            if (!std::isspace(static_cast<unsigned char>(c)) || !wanted.empty()) {
-                wanted += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-            }
-        }
-        while (!wanted.empty() && std::isspace(static_cast<unsigned char>(wanted.back()))) {
-            wanted.pop_back();
-        }
+        // "Jarl Elisif the Fair" asks for Elisif the Fair: the title is not
+        // part of her record's name.
+        const std::string wanted = Plain(a_name);
         if (wanted.empty()) {
             return nullptr;
+        }
+        // A name exactly first, so "Jarl Siddgeir of Falkreath" is Siddgeir;
+        // then a hold ("the Jarl of Whiterun"), whoever rules it now; then
+        // part of a name.
+        for (auto* npc : g_officiants) {
+            const char* name = npc ? npc->GetFullName() : nullptr;
+            auto*       actor = name && *name ? npc->GetUniqueActor() : nullptr;
+            if (actor && !actor->IsDead() && Plain(name) == wanted) {
+                return actor;
+            }
+        }
+        std::string said;
+        for (const char c : a_name) {
+            said += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        }
+        if (const auto hold = HoldIn(said); hold >= 0) {
+            const char* how = "";
+            auto*       ruler = Ruler(static_cast<std::size_t>(hold), how);
+            // TEST LOG (wpm48): who a hold's jarl turned out to be, and why;
+            // remove once validated.
+            SKSE::log::info("Officiants: '{}' is the Jarl of {}: {} ({})", a_name, kHolds[hold].name,
+                            ruler ? ruler->GetDisplayFullName() : "nobody living", how);
+            if (ruler) {
+                return ruler;
+            }
         }
         RE::Actor* partial = nullptr;
         for (auto* npc : g_officiants) {
@@ -201,6 +353,31 @@ namespace SNRom::Officiant {
             }
         }
         return partial;
+    }
+
+    RE::Actor* InPlaceOf(std::uint32_t a_officiant) {
+        auto* actor = a_officiant ? RE::TESForm::LookupByID<RE::Actor>(a_officiant) : nullptr;
+        auto* base = actor ? actor->GetActorBase() : nullptr;
+        if (!base) {
+            return actor;
+        }
+        for (std::size_t i = 0; i < g_holdJarls.size(); ++i) {
+            const auto& jarls = g_holdJarls[i];
+            if (std::find(jarls.begin(), jarls.end(), base) == jarls.end()) {
+                continue;
+            }
+            const bool gone = actor->IsDead() || (GovExiled() && actor->IsInFaction(GovExiled()));
+            if (!gone) {
+                return actor;
+            }
+            const char* how = "";
+            auto*       ruler = Ruler(i, how);
+            SKSE::log::info("Officiants: {} no longer holds {}; {} comes in their place ({})",
+                            actor->GetDisplayFullName(), kHolds[i].name,
+                            ruler ? ruler->GetDisplayFullName() : "nobody", how);
+            return ruler ? ruler : actor;
+        }
+        return actor;
     }
 
     bool IsPlanner(RE::Actor* a_actor) {
