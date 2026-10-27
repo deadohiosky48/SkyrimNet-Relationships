@@ -61,7 +61,11 @@ Now: both {{ player.name }} and {{ them }} have said yes. Pronounce them married
 
 ## Who Has Come Before You
 
-{{ player.name }} is here with {% for name in off.betrothed %}{{ name }}{% if not loop.is_last %} and {% endif %}{% endfor %}, to whom they are engaged. As one who can marry people, you could marry them here and now, if they ask you and you are willing: a few words fitting the moment, then you ask each of them in turn whether they take the other, and when both have said yes, you pronounce them married. Whether you would is yours to judge, as yourself. Or, if they would rather a wedding on a day of their own choosing, you may agree to marry them then, at the place they choose.
+{# NO LOOP VARIABLE CALLED "name" (seen in play, wpm56): inja leaves a loop's
+   variable behind, emptied, after the loop; "name" left so broke SkyrimNet's
+   render of the whole profile (SEH, read at 0x18) - the officiant saw only
+   her summary. join() needs no variable. #}
+{{ player.name }} is here with {{ join(off.betrothed, " and ") }}, to whom they are engaged. As one who can marry people, you could marry them here and now, if they ask you and you are willing: a few words fitting the moment, then you ask each of them in turn whether they take the other, and when both have said yes, you pronounce them married. Whether you would is yours to judge, as yourself. Or, if they would rather a wedding on a day of their own choosing, you may agree to marry them then, at the place they choose.
 {% if default(off.mayMarry, 1) == 0 %}
 But {{ player.name }} is already married, and Mara has granted them no exception. You know it, and you will not marry them to another. Say so in your own way.
 {% elif default(off.exception, 0) == 1 and default(off.spouses, 0) > 0 %}
