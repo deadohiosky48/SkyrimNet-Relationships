@@ -497,7 +497,25 @@ button, input, select { font: inherit; color: inherit; }
 
 /* THE WEDDING PLAN (M4p): an open required item stands out. */
 .plan { margin-top: 0.6rem; }
-.plan-list .kv.is-open dt, .plan-list .kv.is-open dd { color: var(--s-interested); }
+/* The day and the place, as the plan's heading. */
+.plan-when { padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-left: 3px solid var(--romantic); border-radius: 6px; background: var(--surface); }
+.plan-date { font-family: var(--serif); font-size: calc(1.12rem * var(--t)); color: var(--text); }
+.plan-where { margin-top: 0.15rem; color: var(--muted); font-size: calc(0.9rem * var(--t)); }
+.plan-where span + span::before { content: "\00B7"; margin: 0 0.45em; color: var(--faint); }
+.plan-flag { margin-left: 0.5em; color: var(--s-interested); font-family: var(--sans); font-size: calc(0.82rem * var(--t)); }
+.plan-status { margin: 0.45rem 0 0.2rem; color: var(--muted); font-size: calc(0.88rem * var(--t)); }
+.plan-status.is-ready { color: var(--s-platonic); }
+.plan .is-open, .plan-list .kv.is-open dd { color: var(--s-interested); }
+.plan-list { margin-top: 0.35rem; }
+.plan-list .kv dt { flex-basis: calc(6.5rem * var(--t)); }
+/* The ceremony's parts, in order; a part left out is struck through. */
+.plan-parts { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.plan-part { padding: 0.05rem 0.5rem; border: 1px solid var(--line); border-radius: 999px; font-size: calc(0.84rem * var(--t)); color: var(--text); }
+.plan-part.is-out { color: var(--faint); border-style: dashed; text-decoration: line-through; }
+.plan-rings { display: flex; flex-direction: column; gap: 0.1rem; }
+.plan-ring-who { display: inline-block; min-width: calc(4.5rem * var(--t)); color: var(--muted); }
+.plan-not { color: var(--faint); font-style: italic; }
+.plan-guests { color: var(--muted); font-size: calc(0.86rem * var(--t)); line-height: 1.45; }
 
 /* FAMILY (M8b). */
 .family-list { list-style: none; margin: 0.3rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }

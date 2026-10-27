@@ -340,7 +340,7 @@
       if (m.ringFromPlayer) kv(mdl, t("detail.ringFromYou", "Your ring to them"), m.ringFromPlayer);
       if (m.ringToPlayer) kv(mdl, t("detail.ringToYou", "Their ring to you"), m.ringToPlayer);
       ms.appendChild(mdl);
-      if (m.plan) ms.appendChild(this.planBlock(m.plan, snap));
+      if (m.plan) ms.appendChild(this.planBlock(m.plan, b, snap));
       scroll.appendChild(ms);
     }
 
@@ -453,41 +453,92 @@
     }
   };
 
-  // THE WEDDING PLAN (2.5, Build B, M4p): a checklist, open items first.
-  // Required: the day, the place, an officiant who agreed. The rest never
-  // gates the day.
-  Detail.prototype.planBlock = function (p, snap) {
+  // THE WEDDING PLAN (2.5, Build B, M4p). The author, 2026-10-27: too much
+  // in too small a space as one long list. Now the day and the place first,
+  // as a heading; then one line on what is left (required before the day:
+  // day, hour, place, an officiant who agreed; the rest never gates it);
+  // then the ceremony, the rings, the clothes and the guests, grouped.
+  Detail.prototype.planBlock = function (p, b, snap) {
+    var C = UI.calendar;
+    var who = b.subject.name.split(" ")[0];
+    var today = p.status === "underWay";
     var wrap = el("div", "plan");
-    wrap.appendChild(el("h4", "sub-head", p.status === "underWay" ? t("plan.todayHeading", "The wedding: today") : t("plan.title", "The wedding plan")));
-    var hours = p.hour >= 0 ? (p.hour < 11 ? t("plan.morning", "morning") : p.hour < 14 ? t("plan.noon", "noon") :
-      p.hour < 17 ? t("plan.afternoon", "afternoon") : p.hour < 21 ? t("plan.evening", "evening") : t("plan.night", "night")) : "";
+    wrap.appendChild(el("h4", "sub-head", today ? t("plan.todayHeading", "The wedding: today") : t("plan.title", "The wedding plan")));
+
+    // WHEN AND WHERE: the date in the calendar's words where the snapshot
+    // has a calendar, how far off it is, and the place.
+    var when = el("div", "plan-when");
+    var date = el("div", "plan-date");
+    if (p.day === null) {
+      date.textContent = t("plan.noDay", "No day chosen yet");
+      date.className += " is-open";
+    } else {
+      var words = C.dateWords(snap, p.day) || L.daysAhead(p.day, snap.generatedAt);
+      date.textContent = p.hour >= 0 ? t("plan.dateAt", "{0}, {1}", words, C.hourWords(p.hour)) : words;
+      if (p.hour < 0) date.appendChild(el("span", "plan-flag", t("plan.hourNotSet", "hour not set")));
+    }
+    when.appendChild(date);
+    var where = el("div", "plan-where");
+    if (p.day !== null && C.dateWords(snap, p.day)) where.appendChild(el("span", null, L.daysAhead(p.day, snap.generatedAt)));
+    where.appendChild(p.place ? el("span", null, p.place) : el("span", "is-open", t("plan.noPlace", "no place chosen yet")));
+    when.appendChild(where);
+    wrap.appendChild(when);
+
+    // WHAT IS LEFT, in one line: what the day needs before what is only not
+    // yet talked through.
+    var NEEDS = { day: t("plan.need.day", "the day"), hour: t("plan.need.hour", "the hour"), place: t("plan.need.place", "the place"),
+      officiant: t("plan.need.officiant", "someone to marry you") };
+    var TALK = { guests: t("plan.talk.guests", "the guests"), ceremony: t("plan.talk.ceremony", "the ceremony"),
+      theirRing: t("plan.talk.theirRing", "{0}'s ring", who), yourRing: t("plan.talk.yourRing", "your ring"),
+      outfit: t("plan.talk.outfit", "what {0} will wear", who) };
+    var open = (p.open || []).map(function (o) { return NEEDS[o] || o; });
+    var talk = (p.unsettled || []).map(function (o) { return TALK[o] || o; });
+    if (open.length) wrap.appendChild(el("p", "plan-status is-open", t("plan.stillNeeded", "Needed before the day: {0}.", names(open))));
+    else if (talk.length) wrap.appendChild(el("p", "plan-status", t("plan.stillToTalk", "Still to talk through: {0}.", names(talk))));
+    else if (!today) wrap.appendChild(el("p", "plan-status is-ready", t("plan.allSettled", "Everything is settled.")));
+
+    var dl = el("dl", "plan-list");
+    // Who marries them, and who plans it: one line when they are the same.
+    if (!p.officiant) kv(dl, t("plan.officiant", "Marrying you"), t("plan.notAgreed", "no one has agreed yet")).className += " is-open";
+    else if (p.planner === p.officiant) kv(dl, t("plan.officiant", "Marrying you"), t("plan.alsoPlanning", "{0}, who is also planning it", p.officiant));
+    else kv(dl, t("plan.officiant", "Marrying you"), p.officiant);
+    if (p.planner && p.planner !== p.officiant) kv(dl, t("plan.planner", "Planner"), p.planner);
+
+    // The ceremony, in its order: each part a chip, a part left out struck
+    // through rather than missing, so "no kiss" reads as chosen.
+    var parts = el("span", "plan-parts");
+    [[t("plan.address", "address"), p.parts.address], [t("plan.reading", "reading"), p.parts.reading],
+     [t("plan.vows", "vows"), true], [t("plan.rings", "rings"), p.parts.rings], [t("plan.kiss", "kiss"), p.parts.kiss]]
+      .forEach(function (pt) {
+        var c = el("span", "plan-part" + (pt[1] ? "" : " is-out"), pt[0]);
+        if (!pt[1]) c.title = t("plan.leftOut", "left out");
+        parts.appendChild(c);
+      });
+    kv(dl, t("plan.ceremony", "Ceremony"), parts);
+
     // Each of the couple's ring (wpm51): style and metal, the same choices
-    // for both.
+    // for both. Theirs and yours, one line each.
     function ringWords(r) {
-      if (!r || (r.style < 0 && !r.metal)) return t("plan.ringsNot", "not chosen");
+      if (!r || (r.style < 0 && !r.metal)) return null;
       var style = r.style === 1 ? t("plan.ringWide", "wide band") : r.style === 0 ? t("plan.ringSlim", "slim set") : "";
       return [style, r.metal].filter(function (x) { return x; }).join(", ");
     }
-    var rows = [
-      { open: p.day === null || p.hour < 0, k: t("plan.day", "Day"), v: p.day === null ? t("plan.notSet", "not set") :
-        L.daysAhead(p.day, snap.generatedAt) + (hours ? ", " + hours : ", " + t("plan.hourNotSet", "hour not set")) },
-      { open: !p.place, k: t("plan.place", "Place"), v: p.place || t("plan.notSet", "not set") },
-      { open: !p.officiant, k: t("plan.officiant", "Marrying you"), v: p.officiant || t("plan.notAgreed", "no one has agreed yet") },
-      { k: t("plan.guests", "Guests"), v: p.guests.length ? names(p.guests) : t("plan.noGuests", "none invited") },
-      { k: t("plan.ceremony", "Ceremony"), v: [p.parts.address ? t("plan.address", "address") : null, p.parts.reading ? t("plan.reading", "reading") : null,
-          t("plan.vows", "vows"), p.parts.rings ? t("plan.rings", "rings") : null, p.parts.kiss ? t("plan.kiss", "kiss") : null]
-          .filter(function (x) { return x; }).join(", ") },
-      { k: t("plan.theirRing", "Their ring"), v: ringWords(p.theirRing) },
-      { k: t("plan.yourRing", "Your ring"), v: ringWords(p.yourRing) },
-      { k: t("plan.clothes", "Their clothes"), v: p.outfit ? t("plan.clothesChosen", "chosen") : t("plan.clothesNot", "not chosen yet") }
-    ];
-    if (p.planner) rows.push({ k: t("plan.planner", "Planner"), v: p.planner });
-    rows.sort(function (a, c) { return (c.open ? 1 : 0) - (a.open ? 1 : 0); });
-    var dl = el("dl", "plan-list");
-    rows.forEach(function (r) {
-      var row = kv(dl, r.k, r.v);
-      if (r.open) row.className += " is-open";
+    var rings = el("span", "plan-rings");
+    [[who, p.theirRing], [t("plan.you", "You"), p.yourRing]].forEach(function (r) {
+      var line = el("span", "plan-ring");
+      line.appendChild(el("span", "plan-ring-who", r[0]));
+      var w = ringWords(r[1]);
+      line.appendChild(el("span", w ? null : "plan-not", w || t("plan.ringsNot", "not chosen yet")));
+      rings.appendChild(line);
     });
+    kv(dl, t("plan.ringsRow", "Rings"), rings);
+
+    kv(dl, t("plan.clothes", "Clothes"), p.outfit ? t("plan.clothesChosen", "{0} has chosen", who) :
+      el("span", "plan-not", t("plan.clothesNot", "{0} has not chosen yet", who)));
+
+    // The guests last, as the longest: a count, then the names, smaller.
+    var guests = p.guests.length ? el("span", "plan-guests", names(p.guests)) : el("span", "plan-not", t("plan.noGuests", "none invited"));
+    kv(dl, p.guests.length ? t("plan.guestsCount", "Guests ({0})", p.guests.length) : t("plan.guests", "Guests"), guests);
     wrap.appendChild(dl);
     if (p.missedDay !== null && p.missedDay !== undefined) {
       wrap.appendChild(el("p", "depth-note", t("plan.missedNote", "You did not come on the day you had set ({0}).", L.daysAgo(p.missedDay, snap.generatedAt))));

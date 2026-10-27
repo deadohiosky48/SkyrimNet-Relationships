@@ -1,6 +1,7 @@
 {
   "schemaVersion": 4,
   "generatedAt": 214.37,
+  "calendar": { "gameDay": 214.37, "year": 201, "month": 6, "day": 28, "weekday": 5, "hour": 8.9 },
   "roster": {
     "status": "current",
     "message": null
@@ -5344,7 +5345,23 @@
         "officiant": "",
         "why": "agreed to marry: yes",
         "ringFromPlayer": "Gold Diamond Ring",
-        "ringToPlayer": "Silver Ruby Ring"
+        "ringToPlayer": "Silver Ruby Ring",
+        "plan": {
+          "planner": "Danica Pure-Spring",
+          "day": 221,
+          "hour": 12,
+          "place": "",
+          "officiant": "Danica Pure-Spring",
+          "guests": ["Hulda", "Jarl Elisif the Fair", "Fenja Secret-Fire", "Kayla", "Camilla Valerius", "Fastred", "Vignar Gray-Mane", "Fralia Gray-Mane", "Eorlund Gray-Mane", "Avulstein Gray-Mane"],
+          "parts": { "address": true, "reading": true, "rings": true, "kiss": false },
+          "theirRing": { "style": 0, "metal": "ebony" },
+          "yourRing": { "style": -1, "metal": "" },
+          "outfit": false,
+          "status": "planning",
+          "open": ["place"],
+          "unsettled": ["yourRing", "outfit"],
+          "missedDay": null
+        }
       }
     },
     {

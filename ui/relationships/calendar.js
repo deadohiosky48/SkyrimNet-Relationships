@@ -219,5 +219,14 @@
     return root;
   }
 
-  UI.calendar = { build: build, dateOfGameDay: dateOfGameDay, today: today };
+  // A game day in words, as the calendar says it: "Loredas, 4 Sun's Height".
+  // Null without a calendar in the snapshot.
+  function dateWords(snap, gameDay) {
+    var now = today(snap);
+    if (!now) return null;
+    var d = dateOfGameDay(now, gameDay);
+    return weekdayNames()[weekdayOf(now, d.year, d.month, d.day)] + ", " + d.day + " " + monthNames()[d.month];
+  }
+
+  UI.calendar = { build: build, dateOfGameDay: dateOfGameDay, today: today, dateWords: dateWords, hourWords: hourWords };
 })(window.SNRomUI = window.SNRomUI || {});
