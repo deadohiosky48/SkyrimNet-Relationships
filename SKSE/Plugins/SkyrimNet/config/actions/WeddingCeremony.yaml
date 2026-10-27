@@ -10,9 +10,9 @@
 customCategory: wedding
 name: WeddingCeremony
 description: |
-  As the wedding planner, you settle with {{ player.name }} what the ceremony will have beyond its heart (the vows and each "do you take"): your address to everyone gathered, a reading or blessing, the rings exchanged, the kiss.
+  As the wedding planner, you settle with {{ player.name }} what the ceremony will have beyond its heart (the vows, always the couple's own words, and each "do you take"): the officiant's address to everyone gathered, a reading or blessing, the rings exchanged, the kiss.
 
-  USE when they have chosen, in this conversation.
+  USE when they have chosen, in this conversation - including "all of it", "the usual" or "whatever you think best" (all yes), or leaving out only one or two (the rest yes).
 
 questEditorId: SNRom_Quest
 scriptName: SNRom_Bridge
