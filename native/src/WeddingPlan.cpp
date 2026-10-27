@@ -186,6 +186,25 @@ namespace SNRom::WeddingPlan {
             return out;
         }
 
+        // How many single-letter edits turn one word into the other (a
+        // misspelled name among a person's few relatives: "Eordlund").
+        std::size_t Edits(const std::string& a_a, const std::string& a_b) {
+            std::vector<std::size_t> row(a_b.size() + 1);
+            for (std::size_t j = 0; j <= a_b.size(); ++j) {
+                row[j] = j;
+            }
+            for (std::size_t i = 1; i <= a_a.size(); ++i) {
+                auto diagonal = row[0];
+                row[0] = i;
+                for (std::size_t j = 1; j <= a_b.size(); ++j) {
+                    const auto above = row[j];
+                    row[j] = std::min({ row[j] + 1, row[j - 1] + 1, diagonal + (a_a[i - 1] == a_b[j - 1] ? 0 : 1) });
+                    diagonal = above;
+                }
+            }
+            return row[a_b.size()];
+        }
+
         // "4", "4th", "four", "fourth": the number; -1 otherwise.
         std::int32_t NumberIn(const std::string& a_word) {
             static constexpr std::array<const char*, 11> kCardinal{ "zero", "one", "two",   "three", "four", "five",
@@ -831,10 +850,11 @@ namespace SNRom::WeddingPlan {
             items.push_back(Trim(item));
         }
         static constexpr std::array<const char*, 6> kMine{ "my ", "her ", "his ", "their ", "our ", "your " };
-        static constexpr std::array<const char*, 22> kTitles{
+        static constexpr std::array<const char*, 36> kTitles{
             "the ", "my ", "dear ", "old ", "little ", "uncle ", "aunt ", "auntie ", "cousin ", "grandma ",
             "grandpa ", "granny ", "grandmother ", "grandfather ", "jarl ", "thane ", "lady ", "lord ", "sir ",
-            "steward ", "housecarl ", "young "
+            "steward ", "housecarl ", "young ", "mother ", "father ", "mom ", "dad ", "brother ", "sister ",
+            "son ", "daughter ", "wife ", "husband ", "friend ", "her ", "his ", "our "
         };
         for (const auto& item : items) {
             if (item.empty()) {
@@ -877,7 +897,30 @@ namespace SNRom::WeddingPlan {
                 }
             }
             if (relational && owner) {
-                const auto kin = Family::Relatives(owner, relation);
+                auto kin = Family::Relatives(owner, relation);
+                // A RELATION AND A NAME (seen in play, wpm53: "my mother
+                // Fralia", "my father Eordlund"): the relation is the first
+                // word, and the name picks among those relatives - by its
+                // start, or within two letters' spelling. Where the relation
+                // has one person, they are the one, misspelled or not.
+                if (kin.empty()) {
+                    if (const auto space = relation.find(' '); space != std::string::npos) {
+                        const auto name = Trim(relation.substr(space + 1));
+                        relation = relation.substr(0, space);
+                        kin = Family::Relatives(owner, relation);
+                        if (kin.size() > 1 && !name.empty()) {
+                            std::vector<RE::Actor*> named;
+                            for (auto* k : kin) {
+                                const auto full = Lower(k->GetDisplayFullName());
+                                const auto first = full.substr(0, full.find_first_of(" -"));
+                                if (full.starts_with(name) || Edits(first, name) <= 2) {
+                                    named.push_back(k);
+                                }
+                            }
+                            kin = std::move(named);
+                        }
+                    }
+                }
                 if (!kin.empty()) {
                     std::string names;
                     for (auto* k : kin) {
