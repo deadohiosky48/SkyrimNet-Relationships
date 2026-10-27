@@ -214,7 +214,7 @@ namespace SNRom::Portraits {
             return false;
         }
         for (const auto& entry : std::filesystem::directory_iterator(folder, ec)) {
-            if (entry.path().extension() == ".png") {
+            if (entry.path().extension() == ".png" || entry.path().extension() == ".jpg") {
                 return true;
             }
         }
@@ -227,7 +227,13 @@ namespace SNRom::Portraits {
         if (folder.empty()) {
             return out;
         }
+        // A PICKED PORTRAIT FIRST (SeverActions 4.6.0: anyone can be given a
+        // picture, which then shows wherever they appear): SetFromFile keeps
+        // it as a JPEG beside the automatic cutout, under the same key. The
+        // naming is read from its DLL, not documented; the log names each
+        // file tried, so a miss shows what it looked for.
         for (const auto& key : Keys(a_formId)) {
+            out.push_back(folder / (key + ".jpg"));
             out.push_back(folder / (key + ".cut.png"));
         }
         return out;
@@ -243,7 +249,8 @@ namespace SNRom::Portraits {
             if (in.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()))) {
                 // TEST LOG (wpm45): which naming rule matched; remove once validated.
                 SKSE::log::info("Portraits: {:08X} is {}", a_formId, file.filename().string());
-                return "data:image/png;base64," + Base64(bytes.data(), bytes.size());
+                const char* type = file.extension() == ".jpg" ? "image/jpeg" : "image/png";
+                return std::format("data:{};base64,", type) + Base64(bytes.data(), bytes.size());
             }
             SKSE::log::warn("Portraits: {} exists but could not be read", file.filename().string());
         }

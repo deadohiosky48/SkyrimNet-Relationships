@@ -17,7 +17,9 @@
 //     override's name), so each of them is tried, last first;
 //   - an actor made at runtime (FF): "runtime_<save id>_<form id>.cut.png";
 //   - the player: "player_<save id>.cut.png",
-// the save id being SkyrimNet's (PublicGetSaveUniqueID). Only ever read: never
+// the save id being SkyrimNet's (PublicGetSaveUniqueID). A portrait the player
+// picked (SeverActions 4.6.0, for anyone) is "<key>.jpg" beside the cutout,
+// and wins over it. Only ever read: never
 // written, moved or deleted. Without SeverActions, or before it has shot
 // someone, there is simply no portrait.
 namespace SNRom::Portraits {
