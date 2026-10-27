@@ -829,6 +829,19 @@ namespace SNRom::WeddingPlan {
                 out.push_back(a_actor);
             }
         };
+        // ONLY A NAME SOMEONE SAID (seen in play, wpm58): the planner's
+        // action, seeing her own line but not Olfina's "Put Thorald on the
+        // list", invited Brenuin from the actors nearby. A person named
+        // outright must have been named aloud lately (Ceremony::Said); a
+        // relation ("my brothers") is the game's own record and stands.
+        const auto spoken = [&](const std::string& a_item, RE::Actor* a_actor) {
+            if (Ceremony::Said(a_actor->GetDisplayFullName())) {
+                return true;
+            }
+            SKSE::log::warn("Guests: '{}' would be {}, but no one has said that name lately; not invited", a_item,
+                            a_actor->GetDisplayFullName());
+            return false;
+        };
         // The list's items: split on commas, semicolons and the word "and".
         std::vector<std::string> items;
         {
@@ -865,8 +878,10 @@ namespace SNRom::WeddingPlan {
             if (auto* named = PersonNamed(item)) {
                 const auto q = Lower(named->GetDisplayFullName());
                 if (q == lower || q.starts_with(lower + " ") || q.starts_with(lower + "-")) {
-                    SKSE::log::info("Guests: '{}' is {}", item, named->GetDisplayFullName());
-                    keep(named);
+                    if (spoken(item, named)) {
+                        SKSE::log::info("Guests: '{}' is {}", item, named->GetDisplayFullName());
+                        keep(named);
+                    }
                     continue;
                 }
             }
@@ -958,8 +973,10 @@ namespace SNRom::WeddingPlan {
                 }
             }
             if (auto* named = bare != lower || !relational ? PersonNamed(bare) : nullptr) {
-                SKSE::log::info("Guests: '{}' is {}", item, named->GetDisplayFullName());
-                keep(named);
+                if (spoken(item, named)) {
+                    SKSE::log::info("Guests: '{}' is {}", item, named->GetDisplayFullName());
+                    keep(named);
+                }
                 continue;
             }
             SKSE::log::warn("Guests: no one living could be found for '{}'{}", item,

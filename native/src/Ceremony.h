@@ -85,4 +85,12 @@ namespace SNRom::Ceremony {
     // way: 1 the officiant, 2 the betrothed, 0 none.
     std::int32_t RoleOf(RE::Actor* a_actor);
     std::int32_t RoleOf(std::int32_t a_formId);
+
+    // WAS IT SAID (seen in play, wpm58): the planner's action, seeing only her
+    // own line ("He is written into the roll"), invited Brenuin, a beggar
+    // standing nearby, for the brother Olfina had named a line before. True
+    // when a_name (whole, its first word, or a word within a letter or two of
+    // it) was in a line someone spoke lately - and always true when
+    // SkyrimNet's dialogue is not heard, so nothing is refused for want of it.
+    bool Said(const std::string& a_name);
 }

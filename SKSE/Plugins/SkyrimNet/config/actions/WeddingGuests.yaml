@@ -12,7 +12,7 @@ name: WeddingGuests
 description: |
   Who is invited to the wedding, or no longer: as the one {{ player.name }} is marrying, or the planner hired for it.
 
-  USE when names are agreed in this conversation. Each one invited is told, and decides as themselves whether to come.
+  USE when names are agreed in this conversation. Each one invited is told, and decides as themselves whether to come. Invite only someone named in the exchange, by name or by whose relation they are ('Olfina's brother'); never someone only because they are nearby.
 
 questEditorId: SNRom_Quest
 scriptName: SNRom_Bridge
@@ -29,7 +29,7 @@ parameterMapping:
     default: ""
   - type: dynamic
     name: asInvite
-    description: "those invited now, separated by commas: their names as you know them ('Eorlund Gray-Mane'), or by relation ('my mother', 'my brothers'); 'none' when they want no guests at all; empty when no one new was invited"
+    description: "those invited now, separated by commas: their names as they were said ('Eorlund Gray-Mane'), or by relation ('my mother', 'my brothers'); 'none' when they want no guests at all; empty when no one new was invited or no one was named"
     optional: true
     default: ""
   - type: dynamic

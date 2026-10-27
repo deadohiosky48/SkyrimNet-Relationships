@@ -8,6 +8,7 @@
 #include "WeddingPlan.h"
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <map>
 #include <deque>
@@ -595,6 +596,59 @@ namespace SNRom::Ceremony {
             }
         }
 
+        // WHAT WAS SAID LATELY, by anyone, for Said(): the last kRecentLines
+        // lines of the last kRecentFor, lowercased. Any thread, under
+        // g_recentLock.
+        constexpr std::size_t kRecentLines = 40;
+        constexpr auto        kRecentFor = std::chrono::minutes(10);
+        struct Spoken {
+            std::chrono::steady_clock::time_point at;
+            std::string                           line;
+        };
+        std::mutex         g_recentLock;
+        std::deque<Spoken> g_recent;
+
+        std::string Lowered(std::string a_text) {
+            std::ranges::transform(a_text, a_text.begin(),
+                                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            return a_text;
+        }
+
+        // The words of a line: letters and apostrophes, lowercased.
+        std::vector<std::string> WordsOf(const std::string& a_line) {
+            std::vector<std::string> out;
+            std::string              word;
+            for (const char c : a_line) {
+                if (std::isalpha(static_cast<unsigned char>(c)) || c == '\'' || (c & 0x80)) {
+                    word += c;
+                } else if (!word.empty()) {
+                    out.push_back(word);
+                    word.clear();
+                }
+            }
+            if (!word.empty()) {
+                out.push_back(word);
+            }
+            return out;
+        }
+
+        std::size_t Edits(const std::string& a_a, const std::string& a_b) {
+            std::vector<std::size_t> row(a_b.size() + 1);
+            for (std::size_t j = 0; j <= a_b.size(); ++j) {
+                row[j] = j;
+            }
+            for (std::size_t i = 1; i <= a_a.size(); ++i) {
+                auto diagonal = row[0];
+                row[0] = i;
+                for (std::size_t j = 1; j <= a_b.size(); ++j) {
+                    const auto above = row[j];
+                    row[j] = (std::min)({ row[j] + 1, row[j - 1] + 1, diagonal + (a_a[i - 1] == a_b[j - 1] ? 0 : 1) });
+                    diagonal = above;
+                }
+            }
+            return row[a_b.size()];
+        }
+
         void OnDialogueEvent(const char* a_json) {
             if (!a_json) {
                 return;
@@ -611,6 +665,13 @@ namespace SNRom::Ceremony {
                 const auto data = it->is_string() ? json::parse(it->get<std::string>(), nullptr, false) : *it;
                 if (data.is_object()) {
                     line = data.value("dialogue", data.value("text", std::string{}));
+                }
+            }
+            if (!line.empty()) {
+                const std::scoped_lock lock{ g_recentLock };
+                g_recent.push_back({ std::chrono::steady_clock::now(), Lowered(line) });
+                while (g_recent.size() > kRecentLines) {
+                    g_recent.pop_front();
                 }
             }
             SKSE::GetTaskInterface()->AddTask([speaker, target, line]() { Heard(speaker, target, line); });
@@ -848,5 +909,40 @@ namespace SNRom::Ceremony {
         }
         const auto id = static_cast<RE::FormID>(a_formId);
         return id == g_officiant ? 1 : id == g_betrothed ? 2 : 0;
+    }
+
+    bool Said(const std::string& a_name) {
+        if (!g_hearing) {
+            return true;
+        }
+        // The name a person is called by: past a title ("Jarl Elisif the
+        // Fair" is Elisif), its first word.
+        static constexpr std::array<const char*, 8> kTitles{ "jarl", "thane", "lady", "lord", "sir", "steward",
+                                                             "housecarl", "the" };
+        std::string called;
+        for (const auto& word : WordsOf(Lowered(a_name))) {
+            if (std::ranges::find_if(kTitles, [&](const char* t) { return word == t; }) == kTitles.end()) {
+                called = word;
+                break;
+            }
+        }
+        if (called.empty()) {
+            return true;
+        }
+        // Within a letter or two, for a name typed or heard amiss ("Eordlund").
+        const std::size_t slack = called.size() >= 6 ? 2 : called.size() >= 4 ? 1 : 0;
+        const auto        since = std::chrono::steady_clock::now() - kRecentFor;
+        const std::scoped_lock lock{ g_recentLock };
+        for (const auto& spoken : g_recent) {
+            if (spoken.at < since) {
+                continue;
+            }
+            for (const auto& word : WordsOf(spoken.line)) {
+                if (word == called || (slack && Edits(word, called) <= slack)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
