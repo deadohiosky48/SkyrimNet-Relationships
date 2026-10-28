@@ -480,7 +480,7 @@
     when.appendChild(date);
     var where = el("div", "plan-where");
     if (p.day !== null && C.dateWords(snap, p.day)) where.appendChild(el("span", null, L.daysAhead(p.day, snap.generatedAt)));
-    where.appendChild(p.place ? el("span", null, p.place) : el("span", "is-open", t("plan.noPlace", "no place chosen yet")));
+    where.appendChild(p.place ? el("span", null, p.near ? t("plan.placeBy", "{0}, by {1}", p.place, p.near) : p.place) : el("span", "is-open", t("plan.noPlace", "no place chosen yet")));
     when.appendChild(where);
     wrap.appendChild(when);
 
@@ -488,7 +488,7 @@
     // yet talked through.
     var NEEDS = { day: t("plan.need.day", "the day"), hour: t("plan.need.hour", "the hour"), place: t("plan.need.place", "the place"),
       officiant: t("plan.need.officiant", "someone to marry you") };
-    var TALK = { guests: t("plan.talk.guests", "the guests"), ceremony: t("plan.talk.ceremony", "the ceremony"),
+    var TALK = { near: t("plan.talk.near", "what the place is by"), guests: t("plan.talk.guests", "the guests"), ceremony: t("plan.talk.ceremony", "the ceremony"),
       theirRing: t("plan.talk.theirRing", "{0}'s ring", who), yourRing: t("plan.talk.yourRing", "your ring"),
       outfit: t("plan.talk.outfit", "what {0} will wear", who) };
     var open = (p.open || []).map(function (o) { return NEEDS[o] || o; });

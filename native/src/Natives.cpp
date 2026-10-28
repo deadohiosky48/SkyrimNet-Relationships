@@ -525,9 +525,31 @@ namespace SNRom::Natives {
             const auto id = FormIdOfActor(a_betrothed);
             return id && WeddingPlan::SetDayFromWords(id, a_day, a_timeOfDay);
         }
-        bool PlanSetPlace(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::string a_place) {
+        // v31: and what the place is by (a_near), for a place no one can find
+        // by its own name.
+        bool PlanSetPlace(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::string a_place, std::string a_near) {
             const auto id = FormIdOfActor(a_betrothed);
-            return id && WeddingPlan::SetPlace(id, std::move(a_place));
+            return id && WeddingPlan::SetPlace(id, std::move(a_place), std::move(a_near));
+        }
+        bool PlanSetFindable(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::string a_travelTo) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && WeddingPlan::SetFindable(id, std::move(a_travelTo));
+        }
+        std::string PlanNear(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto plan = WeddingPlan::Get(FormIdOfActor(a_betrothed));
+            return plan ? plan->nearTo : "";
+        }
+        // -1 not yet looked for, 0 not found, 1 found as PlanTravelTo.
+        std::int32_t PlanFindable(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto plan = WeddingPlan::Get(FormIdOfActor(a_betrothed));
+            return plan ? plan->findable : -1;
+        }
+        std::string PlanTravelTo(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto plan = WeddingPlan::Get(FormIdOfActor(a_betrothed));
+            return plan ? plan->travelTo : "";
+        }
+        bool BringToWedding(RE::StaticFunctionTag*, RE::Actor* a_who, RE::Actor* a_near) {
+            return WeddingPlan::BringBeside(a_who, a_near);
         }
         bool PlanSetOfficiant(RE::StaticFunctionTag*, RE::Actor* a_betrothed, RE::Actor* a_officiant) {
             const auto id = FormIdOfActor(a_betrothed);
@@ -1006,6 +1028,11 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("PlanPlanner", kScript, PlanPlanner, true);
             a_vm->RegisterFunction("PlanGuests", kScript, PlanGuests, true);
             a_vm->RegisterFunction("PlanPlace", kScript, PlanPlace, true);
+            a_vm->RegisterFunction("PlanSetFindable", kScript, PlanSetFindable, true);
+            a_vm->RegisterFunction("PlanNear", kScript, PlanNear, true);
+            a_vm->RegisterFunction("PlanFindable", kScript, PlanFindable, true);
+            a_vm->RegisterFunction("PlanTravelTo", kScript, PlanTravelTo, true);
+            a_vm->RegisterFunction("BringToWedding", kScript, BringToWedding);
             a_vm->RegisterFunction("PlanOutfit", kScript, PlanOutfit, true);
             a_vm->RegisterFunction("PlanParts", kScript, PlanParts, true);
             a_vm->RegisterFunction("PlanRing", kScript, PlanRing, true);
@@ -1041,7 +1068,8 @@ namespace SNRom::Natives {
                             "RingMetalOf, RingAllOurs, ClearProposalDeclined, ProposalDaysSinceDeclined, NoteProposalDeclinedAt, RemoveChange, AskOpenEx, AskPeek, AskCancel, CeremonyBeginPlanned, CeremonyPlanned, SetMarasOwns, IsWeddingPlanner, PersonNamed, OfficiantNamed, "
                             "BetrothedNamed, PlanExists, PlanHire, PlanSetDay, PlanSetPlace, PlanSetOfficiant, PlanGuest, "
                             "PlanSetParts, PlanSetRings, PlanSetOutfit, PlanPostpone, PlanClear, PlanOpen, PlanOfficiant, PlanPlanner, "
-                            "PlanGuests, PlanPlace, PlanOutfit, PlanParts, PlanRing, RingWeddingOfMetal",
+                            "PlanGuests, PlanPlace, PlanOutfit, PlanParts, PlanRing, RingWeddingOfMetal, "
+                            "PlanSetFindable, PlanNear, PlanFindable, PlanTravelTo, BringToWedding",
                             kScript, kVersion);
             return true;
         });

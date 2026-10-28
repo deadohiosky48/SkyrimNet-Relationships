@@ -12,7 +12,7 @@ name: WeddingSetPlace
 description: |
   Where the wedding will be is agreed, or changed: as the one {{ player.name }} is marrying, as the planner hired for it, or as the one who will marry them.
 
-  USE when a place is settled in this conversation. Name it as a real place one could walk to: a temple, a hall, an inn, a spot that means something to them.
+  USE when a place is settled in this conversation, or what it is by is said. Name it as a real place one could walk to: a temple, a hall, an inn, a spot that means something to them. A spot that is not a building or a town (beneath an old tree, a lakeshore, a hilltop) needs what it is by, so the guests can find it.
 
 questEditorId: SNRom_Quest
 scriptName: SNRom_Bridge
@@ -29,7 +29,16 @@ parameterMapping:
     default: ""
   - type: dynamic
     name: asPlace
-    description: "the place's proper name, e.g. 'Temple of Mara, Riften' or 'Dragonsreach'; add the town when names repeat"
+    description: "the place's proper name, e.g. 'Temple of Mara, Riften' or 'Dragonsreach'; add the town when names repeat; empty when only what it is by was said"
+    optional: true
+    default: ""
+  # A PLACE PEOPLE CAN FIND (seen in play, wpm59): "Under the Gildergreen"
+  # was no place SeverActions knew, and everyone sent to it went nowhere.
+  - type: dynamic
+    name: asNear
+    description: "for a spot that is not a building or a town, the temple, hall, inn or town it is by, e.g. 'Riverwood' or 'Temple of Kynareth'; empty otherwise"
+    optional: true
+    default: ""
 
 eligibilityRules:
   - conditions:

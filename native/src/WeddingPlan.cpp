@@ -26,21 +26,30 @@ namespace SNRom::WeddingPlan {
 
         using json = nlohmann::json;
 
-        // 2 (wpm51): the rings per person, and what is settled.
-        constexpr std::uint32_t kRecordVersion = 2;
+        // 2 (wpm51): the rings per person, and what is settled. 3 (wpm60):
+        // what the place is by, and where people are sent.
+        constexpr std::uint32_t kRecordVersion = 3;
         constexpr std::size_t   kMaxPlace = 120;
         constexpr std::size_t   kMaxGuests = 40;
 
         // THE DAY, in game days (Plan.day + hour / 24 is when). Everyone is
-        // sent to the place this long before; the wedding may begin from an
-        // hour before; and the day is missed once this long has passed with
-        // no wedding (M4w).
+        // sent to the place this long before; and the day is missed once
+        // this long has passed with no wedding (M4w). It begins AT THE HOUR
+        // (seen in play, wpm59): allowed from an hour before, Danica began a
+        // noon wedding the moment the player arrived at eleven, with no one
+        // else come yet.
         constexpr float kSendAhead = 4.0f / 24.0f;
-        constexpr float kBeginFrom = 1.0f / 24.0f;
         constexpr float kMissedAfter = 6.0f / 24.0f;
 
-        // Present for the wedding: the player within this of both of them.
+        // Present for the wedding: the officiant within kHere of the player,
+        // and the betrothed BESIDE them (seen in play, wpm59): Olfina, near
+        // enough at 2000 to begin it, was not where the player stood, walked
+        // on about her day, and the wedding ended as if she had left.
         constexpr float kHere = 2000.0f;
+        constexpr float kBeside = 800.0f;
+
+        // How far from the wedding a door may be to bring someone through.
+        constexpr float kBringFrom = 4000.0f;
 
         std::mutex                         g_lock;
         std::map<std::uint32_t, Plan>      g_plans;  // betrothed -> plan
@@ -256,10 +265,10 @@ namespace SNRom::WeddingPlan {
             });
         }
 
-        bool Present(RE::PlayerCharacter* a_player, std::uint32_t a_id) {
+        bool Present(RE::PlayerCharacter* a_player, std::uint32_t a_id, float a_within) {
             auto* actor = a_id ? RE::TESForm::LookupByID<RE::Actor>(a_id) : nullptr;
             return actor && !actor->IsDead() && actor->Is3DLoaded() &&
-                   actor->GetPosition().GetDistance(a_player->GetPosition()) <= kHere;
+                   actor->GetPosition().GetDistance(a_player->GetPosition()) <= a_within;
         }
 
         // Main thread, every few seconds while a game is loaded.
@@ -328,7 +337,7 @@ namespace SNRom::WeddingPlan {
                         due.push_back({ id, "SNRom_WeddingMissed", "" });
                         continue;
                     }
-                    if (now >= when - kBeginFrom && Present(player, id) && Present(player, plan.officiant) &&
+                    if (now >= when && Present(player, id, kBeside) && Present(player, plan.officiant, kHere) &&
                         std::chrono::steady_clock::now() - g_beginSentAt > std::chrono::seconds{ 30 }) {
                         g_beginSentAt = std::chrono::steady_clock::now();
                         due.push_back({ id, "SNRom_WeddingBegin", "" });
@@ -508,20 +517,100 @@ namespace SNRom::WeddingPlan {
         return SetDay(a_betrothed, days ? *days : -1, hour);
     }
 
-    bool SetPlace(std::int32_t a_betrothed, std::string a_place) {
+    bool SetPlace(std::int32_t a_betrothed, std::string a_place, std::string a_near) {
         a_place = Trim(std::move(a_place));
-        if (a_place.empty()) {
-            return false;
-        }
-        if (a_place.size() > kMaxPlace) {
-            a_place.resize(kMaxPlace);
-        }
+        a_near = Trim(std::move(a_near));
+        a_place.resize(std::min(a_place.size(), kMaxPlace));
+        a_near.resize(std::min(a_near.size(), kMaxPlace));
         const std::scoped_lock lock{ g_lock };
         auto&                  plan = Make(a_betrothed);
-        if (plan.place == a_place) {
+        const bool             newPlace = !a_place.empty() && plan.place != a_place;
+        if (!newPlace && (a_near.empty() || plan.nearTo == a_near)) {
             return false;
         }
-        plan.place = std::move(a_place);
+        if (newPlace) {
+            plan.place = std::move(a_place);
+            plan.nearTo = std::move(a_near);
+        } else {
+            plan.nearTo = std::move(a_near);
+        }
+        plan.travelTo.clear();
+        plan.findable = -1;
+        return true;
+    }
+
+    bool SetFindable(std::int32_t a_betrothed, std::string a_travelTo) {
+        const std::scoped_lock lock{ g_lock };
+        const auto             it = g_plans.find(static_cast<std::uint32_t>(a_betrothed));
+        if (it == g_plans.end()) {
+            return false;
+        }
+        auto& plan = it->second;
+        plan.findable = a_travelTo.empty() ? 0 : 1;
+        plan.travelTo = std::move(a_travelTo);
+        if (plan.findable) {
+            SKSE::log::info("Wedding plan: {:08X}: '{}'{} can be found; people are sent to '{}'",
+                            static_cast<std::uint32_t>(a_betrothed), plan.place,
+                            plan.nearTo.empty() ? "" : " (by '" + plan.nearTo + "')", plan.travelTo);
+        } else {
+            SKSE::log::warn("Wedding plan: {:08X}: neither '{}' nor '{}' is a place anyone can find; no one can be "
+                            "sent, and they will be brought when it begins",
+                            static_cast<std::uint32_t>(a_betrothed), plan.place, plan.nearTo);
+        }
+        return true;
+    }
+
+    bool BringBeside(RE::Actor* a_who, RE::TESObjectREFR* a_near) {
+        if (!a_who || !a_near || a_who->IsDead()) {
+            return false;
+        }
+        // The other side of a load door holds where one comes out on this
+        // side: its ExtraTeleport. The nearest such door wins.
+        auto*            tes = RE::TES::GetSingleton();
+        RE::ObjectRefHandle door;
+        RE::NiPoint3     spot;
+        RE::NiPoint3     facing;
+        float            best = kBringFrom;
+        const auto       origin = a_near->GetPosition();
+        const auto       look = [&](RE::TESObjectREFR* a_ref) {
+            auto* base = a_ref ? a_ref->GetBaseObject() : nullptr;
+            auto* here = base && base->Is(RE::FormType::Door) ? a_ref->extraList.GetByType<RE::ExtraTeleport>() : nullptr;
+            auto  other = here && here->teleportData ? here->teleportData->linkedDoor.get() : nullptr;
+            auto* back = other ? other->extraList.GetByType<RE::ExtraTeleport>() : nullptr;
+            if (back && back->teleportData) {
+                const float distance = back->teleportData->position.GetDistance(origin);
+                if (distance < best) {
+                    best = distance;
+                    door = a_ref->CreateRefHandle();
+                    spot = back->teleportData->position;
+                    facing = back->teleportData->rotation;
+                }
+            }
+            return RE::BSContainer::ForEachResult::kContinue;
+        };
+        if (auto* cell = a_near->GetParentCell(); cell && cell->IsInteriorCell()) {
+            cell->ForEachReference([&](RE::TESObjectREFR* a_ref) { return look(a_ref); });
+        } else if (tes) {
+            tes->ForEachReferenceInRange(a_near, kBringFrom, look);
+        }
+        if (!door) {
+            SKSE::log::warn("Wedding: no door within {:.0f} of the wedding; {} is not brought", kBringFrom,
+                            a_who->GetDisplayFullName());
+            return false;
+        }
+        SKSE::log::info("Wedding: {} brought to the door {:.0f} from the wedding", a_who->GetDisplayFullName(), best);
+        SKSE::GetTaskInterface()->AddTask([who = a_who->CreateRefHandle(), door, spot, facing]() {
+            auto actor = who.get();
+            auto at = door.get();
+            if (actor && at) {
+                // TESObjectREFR::MoveTo_Impl, private in CommonLib: MoveTo to a
+                // reference's cell at a position of our own.
+                using func_t = void(RE::TESObjectREFR*, const RE::ObjectRefHandle&, RE::TESObjectCELL*,
+                                    RE::TESWorldSpace*, const RE::NiPoint3&, const RE::NiPoint3&);
+                static REL::Relocation<func_t> moveTo{ RELOCATION_ID(56227, 56626) };
+                moveTo(actor.get(), door, at->GetParentCell(), at->GetWorldspace(), spot, facing);
+            }
+        });
         return true;
     }
 
@@ -652,6 +741,9 @@ namespace SNRom::WeddingPlan {
     std::vector<std::string> Unsettled(const Plan& a_plan) {
         std::vector<std::string> out;
         const bool planner = a_plan.planner != 0;
+        if (a_plan.findable == 0 && a_plan.nearTo.empty()) {
+            out.emplace_back("near");
+        }
         if (!(a_plan.settled & kGuestsSettled)) {
             out.emplace_back("guests");
         }
@@ -691,6 +783,7 @@ namespace SNRom::WeddingPlan {
                  { "day", DayWords(*plan) },
                  { "date", in >= 0 ? DateWords(in) : std::string{} },
                  { "place", plan->place },
+                 { "near", plan->nearTo },
                  { "officiant", NameOf(plan->officiant) },
                  { "guests", guests },
                  { "planner", NameOf(plan->planner) },
@@ -744,6 +837,7 @@ namespace SNRom::WeddingPlan {
                  { "day", plan->day >= 0.0f ? json(plan->day) : json(nullptr) },
                  { "hour", plan->hour },
                  { "place", plan->place },
+                 { "near", plan->nearTo },
                  { "officiant", NameOf(plan->officiant) },
                  { "guests", guests },
                  { "parts", { { "address", (plan->parts & kAddress) != 0 },
@@ -1059,13 +1153,16 @@ namespace SNRom::WeddingPlan {
             a_intfc->WriteRecordData(static_cast<std::int32_t>(p.status));
             a_intfc->WriteRecordData(p.missedDay);
             a_intfc->WriteRecordData(p.lapsedDay);
+            WriteString(a_intfc, p.nearTo);
+            WriteString(a_intfc, p.travelTo);
+            a_intfc->WriteRecordData(p.findable);
         }
     }
 
     void Load(SKSE::SerializationInterface* a_intfc, std::uint32_t a_version) {
         const std::scoped_lock lock{ g_lock };
         g_plans.clear();
-        if (a_version != 1 && a_version != kRecordVersion) {
+        if (a_version < 1 || a_version > kRecordVersion) {
             SKSE::log::warn("Wedding plan: co-save record version {} is not one this DLL reads; skipped", a_version);
             return;
         }
@@ -1129,6 +1226,12 @@ namespace SNRom::WeddingPlan {
             if (a_intfc->ReadRecordData(outfit) != sizeof(outfit) || a_intfc->ReadRecordData(status) != sizeof(status) ||
                 a_intfc->ReadRecordData(p.missedDay) != sizeof(p.missedDay) ||
                 a_intfc->ReadRecordData(p.lapsedDay) != sizeof(p.lapsedDay)) {
+                return damaged();
+            }
+            // Before v3 the place was never looked for: findable stays -1,
+            // and it is looked for on the day.
+            if (a_version >= 3 && (!ReadString(a_intfc, p.nearTo) || !ReadString(a_intfc, p.travelTo) ||
+                                   a_intfc->ReadRecordData(p.findable) != sizeof(p.findable))) {
                 return damaged();
             }
             p.outfit = outfit != 0;

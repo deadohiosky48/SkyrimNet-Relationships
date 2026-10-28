@@ -406,12 +406,13 @@
                     {
                       "type": "object",
                       "additionalProperties": false,
-                      "required": ["planner", "day", "hour", "place", "officiant", "guests", "parts", "theirRing", "yourRing", "outfit", "status", "open", "unsettled", "missedDay"],
+                      "required": ["planner", "day", "hour", "place", "near", "officiant", "guests", "parts", "theirRing", "yourRing", "outfit", "status", "open", "unsettled", "missedDay"],
                       "properties": {
                         "planner": { "type": "string", "description": "The planner hired, by name; empty for none." },
                         "day": { "type": ["number", "null"], "description": "The game day (whole) of the wedding; null until set." },
                         "hour": { "type": "integer", "minimum": -1, "maximum": 23 },
                         "place": { "type": "string" },
+                        "near": { "type": "string", "description": "2.5 (wpm60): what the place is by, for a spot no one could find by its own name; empty when not said." },
                         "officiant": { "type": "string", "description": "Who agreed to marry them, by name; empty until one has." },
                         "guests": { "type": "array", "items": { "type": "string" } },
                         "parts": {
@@ -423,7 +424,7 @@
                         "outfit": { "type": "boolean", "description": "The betrothed has saved what they will wear." },
                         "status": { "enum": ["planning", "underWay"] },
                         "open": { "type": "array", "items": { "enum": ["place", "officiant", "day", "hour"] }, "description": "What the day still needs, in the order a planner asks it (wpm51: the hour on its own)." },
-                        "unsettled": { "type": "array", "items": { "enum": ["guests", "ceremony", "theirRing", "yourRing", "outfit"] }, "description": "2.5 (wpm51): the optional parts not yet talked through, which a planner asks about one at a time; a no settles one." },
+                        "unsettled": { "type": "array", "items": { "enum": ["near", "guests", "ceremony", "theirRing", "yourRing", "outfit"] }, "description": "2.5 (wpm51): the optional parts not yet talked through, which a planner asks about one at a time; a no settles one." },
                         "missedDay": { "type": ["number", "null"], "description": "The last wedding day the player did not come to." }
                       }
                     }

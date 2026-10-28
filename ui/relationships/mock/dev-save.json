@@ -5351,6 +5351,7 @@
           "day": 221,
           "hour": 12,
           "place": "",
+          "near": "",
           "officiant": "Danica Pure-Spring",
           "guests": ["Hulda", "Jarl Elisif the Fair", "Fenja Secret-Fire", "Kayla", "Camilla Valerius", "Fastred", "Vignar Gray-Mane", "Fralia Gray-Mane", "Eorlund Gray-Mane", "Avulstein Gray-Mane"],
           "parts": { "address": true, "reading": true, "rings": true, "kiss": false },

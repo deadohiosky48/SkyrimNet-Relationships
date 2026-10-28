@@ -430,7 +430,26 @@ Bool Function PlanSetDay(Actor akBetrothed, String asDay, String asTimeOfDay) Gl
  leave it as it is; what cannot be read changes nothing (logged). False when
  nothing was set.}
 
-Bool Function PlanSetPlace(Actor akBetrothed, String asPlace) Global Native
+Bool Function PlanSetPlace(Actor akBetrothed, String asPlace, String asNear) Global Native
+{VERSION 31. The place as said, and what it is by ("Temple of Kynareth"), for a
+ place no one can find by its own name. An empty asPlace keeps the place and
+ sets only what it is by; a new place clears what it was by unless asNear says
+ it. Either way the place is to be looked for again (PlanSetFindable).}
+
+Bool Function PlanSetFindable(Actor akBetrothed, String asTravelTo) Global Native
+{VERSION 31. The name people are sent to on the day: the place or what it is
+ by, whichever SeverActions could find; "" when it found neither (logged).}
+
+String Function PlanNear(Actor akBetrothed) Global Native
+Int Function PlanFindable(Actor akBetrothed) Global Native
+{VERSION 31. -1 not yet looked for, 0 neither found, 1 found (PlanTravelTo).}
+
+String Function PlanTravelTo(Actor akBetrothed) Global Native
+
+Bool Function BringToWedding(Actor akWho, Actor akNear) Global Native
+{VERSION 31. Someone not there when the wedding begins, moved to this side of
+ the load door nearest akNear, where they would come out had they walked from
+ elsewhere. False when no door is within 4000 units; they are not moved.}
 Bool Function PlanSetOfficiant(Actor akBetrothed, Actor akOfficiant) Global Native
 Bool Function PlanGuest(Actor akBetrothed, Actor akGuest, Bool abAdd) Global Native
 Bool Function PlanSetParts(Actor akBetrothed, Int aiParts) Global Native

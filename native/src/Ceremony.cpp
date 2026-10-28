@@ -296,8 +296,10 @@ namespace SNRom::Ceremony {
                 return (g_parts & WeddingPlan::kRings) ? you + " and " + them + " have exchanged rings."
                                                        : you + " and " + them + " have both said yes.";
             // A planned wedding's (M4p). Facts, as every cue is.
+            // NOT "everyone has gathered" (seen in play, wpm59): said with no
+            // one else there, and a fact everyone reads back.
             case Cue::kAddress:
-                return "Everyone has gathered for the wedding of " + you + " and " + them + ".";
+                return "The hour has come for the wedding of " + you + " and " + them + ".";
             case Cue::kReading:
                 return off + " has welcomed everyone to the wedding of " + you + " and " + them + ".";
             case Cue::kRings:

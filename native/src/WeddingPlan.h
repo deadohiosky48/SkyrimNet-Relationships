@@ -12,6 +12,7 @@ namespace SKSE {
 }
 namespace RE {
     class Actor;
+    class TESObjectREFR;
 }
 
 // THE WEDDING PLAN (2.5, Build B, M4p; spec 5.3a; the author, 2026-10-17 and
@@ -35,7 +36,7 @@ namespace RE {
 // betrothed and the guests are sent to the place and the betrothed changes
 // into their wedding clothes (SNRom_WeddingDay, which Papyrus carries out
 // through SeverActions or IntelEngine); when the player is there with the two
-// of them, the wedding begins (SNRom_WeddingBegin); a day that passes with the
+// of them at the hour, the wedding begins (SNRom_WeddingBegin); a day that passes with the
 // player absent is missed (SNRom_WeddingMissed).
 //
 // IN THE CO-SAVE, so an older save rolls the plan back with everything else.
@@ -85,6 +86,14 @@ namespace SNRom::WeddingPlan {
         float                      day = -1.0f;    // the game day (whole), -1 unset
         std::int32_t               hour = -1;      // 0..23, -1 unset
         std::string                place;          // as agreed, a proper name
+        // A PLACE PEOPLE CAN FIND (seen in play, wpm59): "Under the
+        // Gildergreen" was no place SeverActions knew, and all fourteen sent
+        // to it went nowhere. nearTo is what the place is by, as said ("Temple
+        // of Kynareth"); travelTo whichever of the two Papyrus found, and
+        // findable -1 not yet looked for, 0 neither found, 1 travelTo found.
+        std::string                nearTo;
+        std::string                travelTo;
+        std::int32_t               findable = -1;
         std::uint32_t              officiant = 0;  // who agreed to marry them
         std::vector<std::uint32_t> guests;
         std::uint32_t              parts = 0;      // Part bits
@@ -118,7 +127,16 @@ namespace SNRom::WeddingPlan {
     bool SetDayFromWords(std::int32_t a_betrothed, const std::string& a_day, const std::string& a_time);
     // Days from today for a day as said; nothing when it cannot be read.
     std::optional<std::int32_t> DaysFromWords(const std::string& a_words);
-    bool SetPlace(std::int32_t a_betrothed, std::string a_place);
+    // An empty a_place keeps the place (only what it is by is said); a new
+    // place clears what it was by unless a_near says it.
+    bool SetPlace(std::int32_t a_betrothed, std::string a_place, std::string a_near);
+    // What Papyrus found to send people to: "" when it found neither.
+    bool SetFindable(std::int32_t a_betrothed, std::string a_travelTo);
+    // ANYONE NOT THERE WHEN IT BEGINS (wpm60; the author, 2026-10-28) is
+    // brought to this side of the door nearest a_near, where they would come
+    // out had they walked from elsewhere. False when no door is near; then
+    // they are not moved. Main thread or a VM thread; the move is queued.
+    bool BringBeside(RE::Actor* a_who, RE::TESObjectREFR* a_near);
     bool SetOfficiant(std::int32_t a_betrothed, std::uint32_t a_officiant);
     bool AddGuest(std::int32_t a_betrothed, std::uint32_t a_guest);
     bool RemoveGuest(std::int32_t a_betrothed, std::uint32_t a_guest);
@@ -137,7 +155,8 @@ namespace SNRom::WeddingPlan {
     // The required items still open, in the order a planner asks them:
     // "place", "officiant", "day", "hour". Empty when the day can happen.
     std::vector<std::string> Open(const Plan& a_plan);
-    // The optional parts not yet settled, in order: "guests", "ceremony" (a
+    // The optional parts not yet settled, in order: "near" (a place no one
+    // could find, and nothing said of what it is by), "guests", "ceremony" (a
     // planner's), "theirRing", "yourRing" (a planner's), "outfit".
     std::vector<std::string> Unsettled(const Plan& a_plan);
 

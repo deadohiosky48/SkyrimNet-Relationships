@@ -5630,6 +5630,9 @@ Function HoldForWedding(Actor akOfficiant, Actor akBetrothed)
     _weddingHeldA = akOfficiant
     _weddingHeldB = akBetrothed
     StandToWatch(akOfficiant)
+    ; The betrothed too (seen in play, wpm59): not held, Olfina walked on
+    ; about her day, and the wedding ended as if she had left.
+    StandToWatch(akBetrothed)
     Int a = SkyrimNetApi.HoldPackages(akOfficiant, WeddingHolder())
     Int b = SkyrimNetApi.HoldPackages(akBetrothed, WeddingHolder())
     Diag(LOG_INFO(), "Ceremony: SkyrimNet's packages held for the wedding (" + a + " and " + b + " rows).")
@@ -5798,7 +5801,40 @@ Function StandToWatch(Actor akWho)
     EndWhile
 EndFunction
 
+Actor[] _weddingBrought
+
+Function BringToWatch(Actor akWho)
+    { One brought in when it began: they walk up by following the player,
+      which ends with the wedding (ReleaseWatchers). }
+    If _weddingBrought == None || _weddingBrought.Length == 0
+        _weddingBrought = new Actor[48]
+    EndIf
+    Int i = _weddingBrought.Find(None)
+    If i >= 0 && _weddingBrought.Find(akWho) < 0
+        _weddingBrought[i] = akWho
+        ; A trip still under way (or waiting somewhere else) would pull them
+        ; back: called off first, where SeverActions sent them.
+        Int cancelled = -1
+        If SkyrimNetApi.IsActionRegistered("CancelTravel")
+            cancelled = SkyrimNetApi.ExecuteAction("CancelTravel", akWho, "{\"restoreFollower\":true}")
+        EndIf
+        Int rc = SkyrimNetApi.RegisterPackageEx(akWho, "FollowPlayer", -1, False, WeddingHolder(), "At the wedding", False)
+        Diag(LOG_INFO(), "Ceremony: " + akWho.GetDisplayName() + " brought in (trip called off rc " + cancelled + \
+            ", following rc " + rc + ").")
+    EndIf
+EndFunction
+
 Function ReleaseWatchers()
+    If _weddingBrought != None
+        Int b = 0
+        While b < _weddingBrought.Length
+            If _weddingBrought[b] != None
+                SkyrimNetApi.UnregisterPackageEx(_weddingBrought[b], "FollowPlayer", WeddingHolder())
+                _weddingBrought[b] = None
+            EndIf
+            b += 1
+        EndWhile
+    EndIf
     If _weddingWatchers == None
         Return
     EndIf
@@ -5935,15 +5971,38 @@ Function PlanWeddingDay(Actor akSpeaker, String asFor, String asDay, String asTi
     EndIf
 EndFunction
 
-Function PlanWeddingPlace(Actor akSpeaker, String asFor, String asPlace)
-    { Action WeddingSetPlace. }
+Function PlanWeddingPlace(Actor akSpeaker, String asFor, String asPlace, String asNear)
+    { Action WeddingSetPlace: the place, and what it is by when it is a spot
+      rather than a building or a town; either may come alone. }
     Actor betrothed = PlanTarget(akSpeaker, asFor)
-    If betrothed == None || !MayPlan(akSpeaker, betrothed, True)
+    If betrothed == None || !MayPlan(akSpeaker, betrothed, True) || _dashNatives < 31
         Return
     EndIf
-    If SNRom_Native.PlanSetPlace(betrothed, asPlace)
-        PlanNoted(betrothed, "the place set: " + asPlace + ".")
+    If SNRom_Native.PlanSetPlace(betrothed, asPlace, asNear)
+        PlanNoted(betrothed, "the place set: '" + asPlace + "', by '" + asNear + "'.")
+        FindWeddingPlace(betrothed)
     EndIf
+EndFunction
+
+Function FindWeddingPlace(Actor akBetrothed)
+    { A PLACE PEOPLE CAN FIND (seen in play, wpm59): "Under the Gildergreen"
+      was no place SeverActions knew, and the officiant, the betrothed and
+      twelve guests sent to it all went nowhere. Looked for when it is agreed,
+      so the planner can ask what it is by, and again on the day for a plan
+      from before wpm60. Without SeverActions it is not looked for: people
+      are sent by the place's name, as before. }
+    If !SeverActionsPresent() || !SeverActionsNative.IsLocationResolverReady()
+        Return
+    EndIf
+    String place = SNRom_Native.PlanPlace(akBetrothed)
+    String near = SNRom_Native.PlanNear(akBetrothed)
+    String found = ""
+    If place != "" && SeverActionsNative.ResolveDestination(akBetrothed, place) != None
+        found = place
+    ElseIf near != "" && SeverActionsNative.ResolveDestination(akBetrothed, near) != None
+        found = near
+    EndIf
+    SNRom_Native.PlanSetFindable(akBetrothed, found)
 EndFunction
 
 Function AgreeToOfficiate(Actor akOfficiant, String asFor)
@@ -6145,14 +6204,31 @@ Event OnWeddingDay(String asEventName, String asPlace, Float afUnused, Form akSe
     If SNRom_Native.PlanOutfit(betrothed) && SkyrimNetApi.IsActionRegistered("ApplyOutfitPreset")
         SkyrimNetApi.ExecuteAction("ApplyOutfitPreset", betrothed, "{\"presetName\":\"wedding\"}")
     EndIf
-    SendToWedding(SNRom_Native.PlanOfficiant(betrothed), asPlace)
-    SendToWedding(betrothed, asPlace)
-    Actor[] guests = SNRom_Native.PlanGuests(betrothed)
-    Int i = 0
-    While i < guests.Length
-        SendToWedding(guests[i], asPlace)
-        i += 1
-    EndWhile
+    ; Where they are sent: the place, or what it is by, whichever can be
+    ; found. Found by neither, no one is sent; whoever is not there when it
+    ; begins is brought (OnWeddingBegin).
+    String dest = asPlace
+    If _dashNatives >= 31
+        If SNRom_Native.PlanFindable(betrothed) < 0
+            FindWeddingPlace(betrothed)
+        EndIf
+        Int findable = SNRom_Native.PlanFindable(betrothed)
+        If findable == 1
+            dest = SNRom_Native.PlanTravelTo(betrothed)
+        ElseIf findable == 0
+            dest = ""
+        EndIf
+    EndIf
+    If dest != ""
+        SendToWedding(SNRom_Native.PlanOfficiant(betrothed), dest)
+        SendToWedding(betrothed, dest)
+        Actor[] guests = SNRom_Native.PlanGuests(betrothed)
+        Int i = 0
+        While i < guests.Length
+            SendToWedding(guests[i], dest)
+            i += 1
+        EndWhile
+    EndIf
     SkyrimNetApi.RegisterPersistentEvent("Today is the wedding of " + player.GetDisplayName() + " and " + who + \
         ", at " + asPlace + ".", betrothed, player)
     Debug.Notification(Tr("plan.today", "Your wedding to {0} is today, at {1}.", who, asPlace))
@@ -6171,16 +6247,25 @@ Event OnWeddingBegin(String asEventName, String asUnused, Float afUnused, Form a
     EndIf
     If SNRom_Native.CeremonyBeginPlanned(officiant, betrothed, VariantName(), SNRom_Native.PlanParts(betrothed))
         HoldForWedding(officiant, betrothed)
-        ; The guests who came keep their places and watch.
+        ; The guests who came keep their places and watch. ANYONE NOT THERE
+        ; (the author, 2026-10-28) comes in through the nearest door and
+        ; joins them, following the player until it is over.
         Actor[] guests = SNRom_Native.PlanGuests(betrothed)
         Actor player = Game.GetPlayer()
+        Int came = 0
+        Int brought = 0
         Int g = 0
         While g < guests.Length
             If guests[g] != None && guests[g].Is3DLoaded() && guests[g].GetDistance(player) < 4000.0
                 StandToWatch(guests[g])
+                came += 1
+            ElseIf guests[g] != None && _dashNatives >= 31 && SNRom_Native.BringToWedding(guests[g], player)
+                BringToWatch(guests[g])
+                brought += 1
             EndIf
             g += 1
         EndWhile
+        Diag(LOG_INFO(), "Ceremony: of " + guests.Length + " guests, " + came + " came and " + brought + " were brought.")
         Diag(LOG_INFO(), "Ceremony: " + officiant.GetDisplayName() + " begins the planned wedding of the player and " + \
             betrothed.GetDisplayName() + " (parts " + SNRom_Native.PlanParts(betrothed) + ").")
     EndIf
