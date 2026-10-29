@@ -5,5 +5,5 @@
 customCategory: wedding
 actionType: category
 name: Wedding
-description: "Planning a wedding with the player: hiring a wedding planner, settling the day, the place, who will marry them, the guests and whose guests they are, where everyone will stand, the ceremony, the rings or the clothes, or putting the day off. SELECT THIS whenever any part of a wedding is being arranged or changed. Choosing this commits you to nothing: you will see the options and may decline."
+description: "Planning a wedding with the player: hiring a wedding planner, settling the day, the place, who will marry them, the guests and whose guests they are, where everyone will stand ('stand here', 'I will stand here', 'my guests gather here'), the ceremony, the rings or the clothes, or putting the day off. SELECT THIS whenever any part of a wedding is being arranged or changed. Choosing this commits you to nothing: you will see the options and may decline."
 enabled: true

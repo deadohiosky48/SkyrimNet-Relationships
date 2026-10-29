@@ -453,8 +453,8 @@ Bool Function BringToWedding(Actor akWho, Actor akNear) Global Native
 
 Bool Function PlanMark(Actor akBetrothed, Int aiRole) Global Native
 {VERSION 32. WHERE EVERYONE STANDS: a mark where the player stands, for aiRole
- 0 the officiant, 1 the couple, 2 the betrothed's guests, 3 the player's
- guests. Kept with the venue under the plan's place, so the same place named
+ 0 the officiant, 1 the player, 2 the betrothed's guests, 3 the player's
+ guests, 4 the betrothed (wpm62; unmarked, they stand by the player). Kept with the venue under the plan's place, so the same place named
  again brings its marks; the mark it replaces is deleted.}
 
 Bool Function PlanSettleLayout(Actor akBetrothed) Global Native
@@ -462,8 +462,8 @@ Bool Function PlanSettleLayout(Actor akBetrothed) Global Native
 
 Int Function PlanMarked(Actor akBetrothed) Global Native
 {VERSION 32. The roles marked for the plan's place, as bits (1 officiant,
- 2 couple, 4 the betrothed's guests, 8 the player's), and 16 when a place was
- found to gather at instead. 0: people are sent by the place's name.}
+ 2 the player, 4 the betrothed's guests, 8 the player's, 16 the betrothed),
+ and 32 when a place was found to gather at instead. 0: people are sent by the place's name.}
 
 Bool Function PlanGuestSide(Actor akBetrothed, Actor akGuest, Int aiSide) Global Native
 {VERSION 32. A guest's side: 0 the betrothed's, 1 the player's, 2 both.}

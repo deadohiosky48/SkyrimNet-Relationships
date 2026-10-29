@@ -9,7 +9,7 @@
 
 # WHERE EVERYONE STANDS (wpm61; the author, 2026-10-28): marks set by
 # conversation, at the place itself. A mark is always where the player
-# stands as they say it (only the player marks); the officiant and the couple
+# stands as they say it (only the player marks); the officiant and the betrothed
 # hold at theirs, each one's guests gather around their own. Kept with the
 # place, so the same place named for another wedding brings its marks.
 customCategory: wedding
@@ -17,7 +17,7 @@ name: WeddingMark
 description: |
   Where someone stands at the wedding is marked, right where {{ player.name }} is standing now: as the one {{ player.name }} is marrying, or the planner hired for it.
 
-  USE when {{ player.name }}, standing at the spot, says this is where the one marrying them stands, where the two of them stand, or where either one's guests gather ('Olfina's guests can gather here'). Only where {{ player.name }} stands can be marked: for 'over there', ask them to go and stand on it. Also USE when they would rather not mark anything and leave it to the planner.
+  USE whenever {{ player.name }}, at the place, says someone will stand or gather here: "I want you to stand here" (to the one who will marry them - you, if that is you), "I will stand here", "<the one they marry> will stand here", "<either one>'s guests can gather here", "my guests here". One mark each time it is said. Only where {{ player.name }} stands can be marked: for 'over there', ask them to go and stand on it. Also USE when they would rather not mark anything and leave it to the planner.
 
 questEditorId: SNRom_Quest
 scriptName: SNRom_Bridge
@@ -34,7 +34,7 @@ parameterMapping:
     default: ""
   - type: dynamic
     name: asWhat
-    description: "what is marked here: 'officiant' (where the one who marries them stands), 'couple' (where the two of them stand), 'guests' (where one side's guests gather), or 'none' when they leave it to the planner"
+    description: "who stands here: 'officiant' (the one who marries them; you, if you are marrying them), 'player' ({{ player.name }} themselves: 'I will stand here'), 'betrothed' (the one {{ player.name }} is marrying, by name: '<name> will stand here'), 'guests' (one side's guests: '<name>'s guests gather here'), or 'none' when they leave it to the planner"
   - type: dynamic
     name: asWhose
     description: "for 'guests', the name of whichever of the couple these guests come for; empty otherwise"

@@ -6254,12 +6254,12 @@ Function PlanWeddingMark(Actor akSpeaker, String asFor, String asWhat, String as
         EndIf
         Return
     EndIf
+    ; EACH OF THE COUPLE THEIR OWN (seen in play, wpm61): "I will stand here"
+    ; and "Olfina will stand here" had no mark but "the couple"; Danica marked
+    ; Olfina's as her guests'. The guests first, since "Olfina's guests" names
+    ; her too.
     Int role = -1
-    If StringUtil.Find(w, "OFFICIANT") >= 0 || StringUtil.Find(w, "PRIEST") >= 0 || StringUtil.Find(w, "ALTAR") >= 0
-        role = 0
-    ElseIf StringUtil.Find(w, "COUPLE") >= 0
-        role = 1
-    ElseIf StringUtil.Find(w, "GUEST") >= 0 || StringUtil.Find(w, "SIDE") >= 0
+    If StringUtil.Find(w, "GUEST") >= 0 || StringUtil.Find(w, "SIDE") >= 0
         Int side = SNRom_Native.PlanSideNamed(betrothed, akSpeaker, asWhose + " " + asWhat)
         If side == 0
             role = 2
@@ -6269,10 +6269,24 @@ Function PlanWeddingMark(Actor akSpeaker, String asFor, String asWhat, String as
             Diag(LOG_INFO(), "Wedding plan: guests marked, but whose was not said ('" + asWhose + "'); nothing marked.")
             Return
         EndIf
+    ElseIf StringUtil.Find(w, "OFFICIANT") >= 0 || StringUtil.Find(w, "PRIEST") >= 0 || StringUtil.Find(w, "ALTAR") >= 0
+        role = 0
+    ElseIf StringUtil.Find(w, "BETROTHED") >= 0 || StringUtil.Find(w, "BRIDE") >= 0 || StringUtil.Find(w, "GROOM") >= 0
+        role = 4
+    ElseIf StringUtil.Find(w, "PLAYER") >= 0 || StringUtil.Find(w, "COUPLE") >= 0
+        role = 1
+    Else
+        ; A name alone: whichever of the couple it is.
+        Int whose = SNRom_Native.PlanSideNamed(betrothed, akSpeaker, asWhose + " " + asWhat)
+        If whose == 0
+            role = 4
+        ElseIf whose == 1
+            role = 1
+        EndIf
     EndIf
     If role < 0
-        Diag(LOG_INFO(), "Wedding plan: '" + asWhat + "' is no mark (the officiant, the couple, or either one's " + \
-            "guests); nothing marked.")
+        Diag(LOG_INFO(), "Wedding plan: '" + asWhat + "' (" + asWhose + ") is no mark (the officiant, the player, " + \
+            "the betrothed, or either one's guests); nothing marked.")
         Return
     EndIf
     If !SNRom_Native.PlanMark(betrothed, role)
@@ -6287,7 +6301,9 @@ Function PlanWeddingMark(Actor akSpeaker, String asFor, String asWhat, String as
     If role == 0
         Debug.Notification(Tr("plan.markOfficiant", "Marked: where {0} will stand to marry you.", priest))
     ElseIf role == 1
-        Debug.Notification(Tr("plan.markCouple", "Marked: where you and {0} will stand.", betrothed.GetDisplayName()))
+        Debug.Notification(Tr("plan.markYou", "Marked: where you will stand."))
+    ElseIf role == 4
+        Debug.Notification(Tr("plan.markBetrothed", "Marked: where {0} will stand.", betrothed.GetDisplayName()))
     ElseIf role == 2
         Debug.Notification(Tr("plan.markTheirs", "Marked: where {0}'s guests will gather.", betrothed.GetDisplayName()))
     Else

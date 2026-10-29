@@ -92,13 +92,17 @@ namespace SNRom::WeddingPlan {
 
     // WHERE EVERYONE STANDS (wpm61; the author, 2026-10-28): marks the player
     // sets by standing on the spot, as they tell the planner. The officiant
-    // and the couple hold at theirs; each side gathers around its own.
+    // and the betrothed hold at theirs; each side gathers around its own.
+    // EACH OF THE COUPLE THEIR OWN (seen in play, wpm61): the player said "I
+    // will stand here", then "Olfina will stand here"; one mark for the
+    // couple had no word for either, and Olfina's became her guests'.
     enum Mark : std::int32_t {
         kMarkOfficiant = 0,
-        kMarkCouple = 1,
-        kMarkTheirs = 2,  // the betrothed's guests
-        kMarkYours = 3,   // the player's guests
-        kMarkRoles = 4,
+        kMarkYou = 1,        // where the player stands (wpm61: "the couple's")
+        kMarkTheirs = 2,     // the betrothed's guests
+        kMarkYours = 3,      // the player's guests
+        kMarkBetrothed = 4,  // where the betrothed stands; unmarked, beside the player
+        kMarkRoles = 5,
     };
 
     // A VENUE (wpm61; the author: "the option to save a particular venue and

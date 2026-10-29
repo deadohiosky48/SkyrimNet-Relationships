@@ -564,7 +564,7 @@ namespace SNRom::Natives {
         std::int32_t PlanMarked(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
             const auto id = FormIdOfActor(a_betrothed);
             const auto plan = WeddingPlan::Get(id);
-            return plan ? static_cast<std::int32_t>(WeddingPlan::Marked(id) | (plan->anchor ? 16u : 0u)) : 0;
+            return plan ? static_cast<std::int32_t>(WeddingPlan::Marked(id) | (plan->anchor ? 32u : 0u)) : 0;
         }
         bool PlanGuestSide(RE::StaticFunctionTag*, RE::Actor* a_betrothed, RE::Actor* a_guest, std::int32_t a_side) {
             const auto id = FormIdOfActor(a_betrothed);

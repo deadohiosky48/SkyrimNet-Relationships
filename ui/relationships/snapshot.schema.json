@@ -415,7 +415,7 @@
                         "near": { "type": "string", "description": "2.5 (wpm60): what the place is by, for a spot no one could find by its own name; empty when not said." },
                         "officiant": { "type": "string", "description": "Who agreed to marry them, by name; empty until one has." },
                         "guests": { "type": "array", "items": { "type": "string" } },
-                        "marked": { "type": "array", "items": { "enum": ["officiant", "couple", "theirs", "yours"] }, "description": "2.5 (wpm61): where everyone stands at the place, as the player marked it: the officiant's spot, the couple's, and where each one's guests gather." },
+                        "marked": { "type": "array", "items": { "enum": ["officiant", "you", "theirs", "yours", "betrothed"] }, "description": "2.5 (wpm61): where everyone stands at the place, as the player marked it: the officiant's spot, the player's, the betrothed's (wpm62), and where each one's guests gather." },
                         "unsided": { "type": "array", "items": { "type": "string" }, "description": "2.5 (wpm61): the guests, by name, whose side (the betrothed's or the player's) is not yet known." },
                         "parts": {
                           "type": "object", "additionalProperties": false, "required": ["address", "reading", "rings", "kiss"],

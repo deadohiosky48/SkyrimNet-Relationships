@@ -539,7 +539,7 @@
 
     // WHERE EVERYONE STANDS (wpm61), as the player marked it at the place.
     if (p.place) {
-      var MARK = { officiant: t("plan.mark.officiant", "who marries you"), couple: t("plan.mark.couple", "the two of you"),
+      var MARK = { officiant: t("plan.mark.officiant", "who marries you"), you: t("plan.mark.you", "you"), betrothed: t("plan.mark.betrothed", "{0}", who),
         theirs: t("plan.mark.theirs", "{0}'s guests", who), yours: t("plan.mark.yours", "your guests") };
       var marked = (p.marked || []).map(function (m) { return MARK[m] || m; });
       kv(dl, t("plan.marks", "Marked"), marked.length ? names(marked) : el("span", "plan-not", t("plan.noMarks", "nothing yet")));

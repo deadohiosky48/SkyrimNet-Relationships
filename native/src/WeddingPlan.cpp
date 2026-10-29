@@ -30,8 +30,9 @@ namespace SNRom::WeddingPlan {
 
         // 2 (wpm51): the rings per person, and what is settled. 3 (wpm60):
         // what the place is by, and where people are sent. 4 (wpm61): each
-        // guest's side, the place found, who has set out; and the venues.
-        constexpr std::uint32_t kRecordVersion = 4;
+        // guest's side, the place found, who has set out; and the venues. 5
+        // (wpm62): a venue's marks counted, the betrothed's added.
+        constexpr std::uint32_t kRecordVersion = 5;
         constexpr std::size_t   kMaxPlace = 120;
         constexpr std::size_t   kMaxGuests = 40;
 
@@ -79,7 +80,7 @@ namespace SNRom::WeddingPlan {
         constexpr const char* kGatherMedium = "SNRom_WeddingGatherMedium";  // 500, up to 10
         constexpr const char* kGatherLarge = "SNRom_WeddingGatherLarge";    // 800, more
 
-        constexpr std::array<const char*, kMarkRoles> kRoleWords{ "officiant", "couple", "theirs", "yours" };
+        constexpr std::array<const char*, kMarkRoles> kRoleWords{ "officiant", "you", "theirs", "yours", "betrothed" };
 
         std::mutex                         g_lock;
         std::map<std::uint32_t, Plan>      g_plans;  // betrothed -> plan
@@ -422,7 +423,8 @@ namespace SNRom::WeddingPlan {
         };
         std::vector<Goal> GoalsOf(std::uint32_t a_betrothed, const Plan& a_plan) {
             static constexpr std::array<const char*, kMarkRoles + 1> kWhere{
-                "the officiant's mark", "the couple's mark", "their guests' mark", "your guests' mark", "the place found"
+                "the officiant's mark", "the player's mark",    "their guests' mark",
+                "your guests' mark",    "the betrothed's mark", "the place found"
             };
             const auto marks = MarksOf(a_plan);
             std::array<std::uint32_t, kMarkRoles + 1> at{};
@@ -442,10 +444,12 @@ namespace SNRom::WeddingPlan {
                     out.push_back({ a_who, at[a_at], kWhere[a_at], a_package });
                 }
             };
-            add(a_plan.officiant, first({ kMarkOfficiant, kMarkCouple, kMarkRoles }), kStand);
-            add(a_betrothed, first({ kMarkCouple, kMarkOfficiant, kMarkRoles }), kStand);
-            const std::array<std::size_t, 2> sideAt{ first({ kMarkTheirs, kMarkCouple, kMarkOfficiant, kMarkRoles }),
-                                                     first({ kMarkYours, kMarkCouple, kMarkOfficiant, kMarkRoles }) };
+            add(a_plan.officiant, first({ kMarkOfficiant, kMarkYou, kMarkBetrothed, kMarkRoles }), kStand);
+            add(a_betrothed, first({ kMarkBetrothed, kMarkYou, kMarkOfficiant, kMarkRoles }), kStand);
+            const std::array<std::size_t, 2> sideAt{
+                first({ kMarkTheirs, kMarkYou, kMarkBetrothed, kMarkOfficiant, kMarkRoles }),
+                first({ kMarkYours, kMarkYou, kMarkBetrothed, kMarkOfficiant, kMarkRoles })
+            };
             std::array<std::vector<std::uint32_t>, 2> side;
             std::vector<std::uint32_t>                either;
             for (const auto guest : a_plan.guests) {
@@ -1684,6 +1688,7 @@ namespace SNRom::WeddingPlan {
         for (const auto& [key, venue] : g_venues) {
             WriteString(a_intfc, key);
             WriteString(a_intfc, venue.name);
+            a_intfc->WriteRecordData(static_cast<std::uint32_t>(venue.marks.size()));
             for (const auto mark : venue.marks) {
                 a_intfc->WriteRecordData(mark);
             }
@@ -1825,11 +1830,19 @@ namespace SNRom::WeddingPlan {
                 if (!ReadString(a_intfc, key) || !ReadString(a_intfc, venue.name)) {
                     return damaged();
                 }
-                for (auto& mark : venue.marks) {
+                // v4 kept four marks; from v5 the count comes first.
+                std::uint32_t marks = 4;
+                if (a_version >= 5 && (a_intfc->ReadRecordData(marks) != sizeof(marks) || marks > 64)) {
+                    return damaged();
+                }
+                for (std::uint32_t m = 0; m < marks; ++m) {
+                    std::uint32_t mark = 0;
                     if (a_intfc->ReadRecordData(mark) != sizeof(mark)) {
                         return damaged();
                     }
-                    mark = resolve(mark);
+                    if (m < venue.marks.size()) {
+                        venue.marks[m] = resolve(mark);
+                    }
                 }
                 g_venues[key] = std::move(venue);
             }
