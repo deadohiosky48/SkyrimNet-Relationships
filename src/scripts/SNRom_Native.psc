@@ -450,6 +450,42 @@ Bool Function BringToWedding(Actor akWho, Actor akNear) Global Native
 {VERSION 31. Someone not there when the wedding begins, moved to this side of
  the load door nearest akNear, where they would come out had they walked from
  elsewhere. False when no door is within 4000 units; they are not moved.}
+
+Bool Function PlanMark(Actor akBetrothed, Int aiRole) Global Native
+{VERSION 32. WHERE EVERYONE STANDS: a mark where the player stands, for aiRole
+ 0 the officiant, 1 the couple, 2 the betrothed's guests, 3 the player's
+ guests. Kept with the venue under the plan's place, so the same place named
+ again brings its marks; the mark it replaces is deleted.}
+
+Bool Function PlanSettleLayout(Actor akBetrothed) Global Native
+{VERSION 32. Where everyone stands is left to the planner: not asked again.}
+
+Int Function PlanMarked(Actor akBetrothed) Global Native
+{VERSION 32. The roles marked for the plan's place, as bits (1 officiant,
+ 2 couple, 4 the betrothed's guests, 8 the player's), and 16 when a place was
+ found to gather at instead. 0: people are sent by the place's name.}
+
+Bool Function PlanGuestSide(Actor akBetrothed, Actor akGuest, Int aiSide) Global Native
+{VERSION 32. A guest's side: 0 the betrothed's, 1 the player's, 2 both.}
+
+Int Function PlanSideOf(Actor akBetrothed, Actor akGuest) Global Native
+{VERSION 32. A guest's side as the plan has it; -1 not known.}
+
+Int Function PlanSideNamed(Actor akBetrothed, Actor akSpeaker, String asWords) Global Native
+{VERSION 32. A side as said: either partner's name, "yours", "mine" from the
+ betrothed, or "both"; -1 for anything else.}
+
+Int Function GuestSideOf(Actor akBetrothed, Actor akGuest) Global Native
+{VERSION 32. A side from the game's records: the betrothed's family is theirs,
+ the player's family and spouses the player's; -1 when neither.}
+
+Bool Function PlanSetAnchor(Actor akBetrothed, ObjectReference akFound) Global Native
+{VERSION 32. THE PLANNER'S BEST EFFORT: the reference found for the place, where
+ everyone gathers when nothing is marked (a load door: its other side).}
+
+Function WeddingLetGo(Actor akWho) Global Native
+{VERSION 32. One who set out for a wedding let go: their link to the mark
+ cleared. Their package is removed by the caller.}
 Bool Function PlanSetOfficiant(Actor akBetrothed, Actor akOfficiant) Global Native
 Bool Function PlanGuest(Actor akBetrothed, Actor akGuest, Bool abAdd) Global Native
 Bool Function PlanSetParts(Actor akBetrothed, Int aiParts) Global Native

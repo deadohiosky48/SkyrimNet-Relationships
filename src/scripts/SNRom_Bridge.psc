@@ -505,6 +505,9 @@ Function RegisterEvents()
     RegisterForModEvent("SNRom_WeddingBegin", "OnWeddingBegin")
     RegisterForModEvent("SNRom_WeddingMissed", "OnWeddingMissed")
     RegisterForModEvent("SNRom_WeddingLapsed", "OnWeddingLapsed")
+    ; wpm61: each one setting out for their mark, and called back.
+    RegisterForModEvent("SNRom_WeddingGo", "OnWeddingGo")
+    RegisterForModEvent("SNRom_WeddingRecall", "OnWeddingRecall")
     ; SkyrimNetRelationships.dll asks for the roster every time the dashboard
     ; opens (OnDashboardRefresh). Without the DLL it never fires, and this costs
     ; nothing.
@@ -5711,7 +5714,7 @@ Function StandAsideForMaras()
       never offered beside MARAS's own (a reload of actions from disk brings
       them back, and each refuses when it runs). The DLL marks no officiants
       or planners either (Officiant::MarkAll). }
-    String[] names = new String[19]
+    String[] names = new String[21]
     names[0] = "MarriageAgree"
     names[1] = "MarriageDecline"
     names[2] = "MarriageGiveRing"
@@ -5731,6 +5734,8 @@ Function StandAsideForMaras()
     names[16] = "WeddingPostpone"
     names[17] = "Marriage"
     names[18] = "Wedding"
+    names[19] = "WeddingMark"
+    names[20] = "WeddingSides"
     Int removed = 0
     Int i = 0
     While i < names.Length
@@ -5848,6 +5853,84 @@ Function ReleaseWatchers()
         EndIf
         i += 1
     EndWhile
+EndFunction
+
+; ---- EACH TO THEIR MARK (wpm61; WeddingPlan.h) ------------------------------
+;
+; Everyone who sets out for the wedding takes one of our packages to their
+; mark (SNRom_Integration.esl: SNRom_WeddingStand for the officiant and the
+; betrothed, SNRom_WeddingGather* for the guests), applied by SkyrimNet for
+; us. The DLL links each one to their mark and says when they leave; they are
+; let go when the wedding is over, or when the day will not come.
+Actor[] _weddingGoers
+String[] _weddingGoerPackages
+
+Event OnWeddingGo(String asEventName, String asPackage, Float afLeadHours, Form akSender)
+    { SNRom_WeddingGo: akSender sets out for their mark, taking asPackage. }
+    Actor who = akSender as Actor
+    If who == None || who.IsDead() || asPackage == ""
+        Return
+    EndIf
+    If _weddingGoers.Length == 0
+        _weddingGoers = new Actor[64]
+        _weddingGoerPackages = new String[64]
+    EndIf
+    Int i = _weddingGoers.Find(who)
+    If i >= 0 && _weddingGoerPackages[i] != asPackage
+        SkyrimNetApi.UnregisterPackageEx(who, _weddingGoerPackages[i], WeddingHolder())
+    ElseIf i < 0
+        i = _weddingGoers.Find(None)
+    EndIf
+    If i < 0
+        Diag(LOG_INFO(), "Wedding: no room to send " + who.GetDisplayName() + "; 64 are already on their way.")
+        Return
+    EndIf
+    _weddingGoers[i] = who
+    _weddingGoerPackages[i] = asPackage
+    Int rc = SkyrimNetApi.RegisterPackageEx(who, asPackage, -1, True, WeddingHolder(), "Going to the wedding", False)
+    ; TEST LOG (wpm61): rc 1 applied, 2 stored while held, 0 failed.
+    Diag(LOG_INFO(), "Wedding: " + who.GetDisplayName() + " is on their way (" + asPackage + ", " + afLeadHours + \
+        " h before the hour, rc " + rc + ").")
+EndEvent
+
+Event OnWeddingRecall(String asEventName, String asUnused, Float afUnused, Form akSender)
+    { SNRom_WeddingRecall: the day will not come after all (lapsed, missed, the
+      engagement over). }
+    ReleaseWeddingGoers()
+EndEvent
+
+Function ReleaseWeddingGoers()
+    Int n = 0
+    Int i = 0
+    While i < _weddingGoers.Length
+        If _weddingGoers[i] != None
+            ReleaseWeddingGoerAt(i)
+            n += 1
+        EndIf
+        i += 1
+    EndWhile
+    If n > 0
+        Diag(LOG_INFO(), "Wedding: the " + n + " who set out for it let go.")
+    EndIf
+EndFunction
+
+Function ReleaseWeddingGoer(Actor akWho)
+    If akWho != None && _weddingGoers.Length > 0
+        Int i = _weddingGoers.Find(akWho)
+        If i >= 0
+            ReleaseWeddingGoerAt(i)
+        EndIf
+    EndIf
+EndFunction
+
+Function ReleaseWeddingGoerAt(Int aiAt)
+    Actor who = _weddingGoers[aiAt]
+    SkyrimNetApi.UnregisterPackageEx(who, _weddingGoerPackages[aiAt], WeddingHolder())
+    If _dashNatives >= 32
+        SNRom_Native.WeddingLetGo(who)
+    EndIf
+    _weddingGoers[aiAt] = None
+    _weddingGoerPackages[aiAt] = ""
 EndFunction
 
 Actor Function PlanTarget(Actor akSpeaker, String asFor)
@@ -5997,12 +6080,25 @@ Function FindWeddingPlace(Actor akBetrothed)
     String place = SNRom_Native.PlanPlace(akBetrothed)
     String near = SNRom_Native.PlanNear(akBetrothed)
     String found = ""
-    If place != "" && SeverActionsNative.ResolveDestination(akBetrothed, place) != None
-        found = place
-    ElseIf near != "" && SeverActionsNative.ResolveDestination(akBetrothed, near) != None
-        found = near
+    ObjectReference at = None
+    If place != ""
+        at = SeverActionsNative.ResolveDestination(akBetrothed, place)
+        If at != None
+            found = place
+        EndIf
+    EndIf
+    If at == None && near != ""
+        at = SeverActionsNative.ResolveDestination(akBetrothed, near)
+        If at != None
+            found = near
+        EndIf
     EndIf
     SNRom_Native.PlanSetFindable(akBetrothed, found)
+    ; THE PLANNER'S BEST EFFORT (wpm61): with nothing marked, everyone gathers
+    ; at what was found, by our own packages, rather than sent by its name.
+    If _dashNatives >= 32
+        SNRom_Native.PlanSetAnchor(akBetrothed, at)
+    EndIf
 EndFunction
 
 Function AgreeToOfficiate(Actor akOfficiant, String asFor)
@@ -6027,13 +6123,18 @@ Function AgreeToOfficiate(Actor akOfficiant, String asFor)
     EndIf
 EndFunction
 
-Function PlanWeddingGuests(Actor akSpeaker, String asFor, String asInvite, String asUninvite)
+Function PlanWeddingGuests(Actor akSpeaker, String asFor, String asInvite, String asUninvite, String asSide = "")
     { Action WeddingGuests: names, separated by commas, invited or taken off
       the list. Each one invited is told, and decides as themselves whether to
-      come. }
+      come. WHOSE GUESTS (wpm61): asSide, whichever of the couple was named for
+      them; else the game's family records; else the planner asks. }
     Actor betrothed = PlanTarget(akSpeaker, asFor)
     If betrothed == None || !MayPlan(akSpeaker, betrothed, False)
         Return
+    EndIf
+    Int said = -1
+    If _dashNatives >= 32
+        said = SNRom_Native.PlanSideNamed(betrothed, akSpeaker, asSide)
     EndIf
     Actor player = Game.GetPlayer()
     ; NO GUESTS IS AN ANSWER (wpm51): said, the planner does not ask again.
@@ -6060,6 +6161,9 @@ Function PlanWeddingGuests(Actor akSpeaker, String asFor, String asInvite, Strin
                 " invited " + guest.GetDisplayName() + " to their wedding.", guest, player)
             PlanNoted(betrothed, guest.GetDisplayName() + " invited.")
         EndIf
+        If guest != None && guest != betrothed && _dashNatives >= 32
+            SideGuest(betrothed, guest, said)
+        EndIf
         i += 1
     EndWhile
     Actor[] uninvite = SNRom_Native.GuestsNamed(akSpeaker, asUninvite)
@@ -6068,9 +6172,127 @@ Function PlanWeddingGuests(Actor akSpeaker, String asFor, String asInvite, Strin
         Actor gone = uninvite[i]
         If gone != None && SNRom_Native.PlanGuest(betrothed, gone, False)
             PlanNoted(betrothed, gone.GetDisplayName() + " no longer invited.")
+            ReleaseWeddingGoer(gone)
         EndIf
         i += 1
     EndWhile
+EndFunction
+
+Function SideGuest(Actor akBetrothed, Actor akGuest, Int aiSaid)
+    { A guest's side: as said; else, when not yet known, from the game's
+      family records. Left unknown, the planner asks. }
+    Int side = aiSaid
+    If side < 0
+        If SNRom_Native.PlanSideOf(akBetrothed, akGuest) >= 0
+            Return
+        EndIf
+        side = SNRom_Native.GuestSideOf(akBetrothed, akGuest)
+    EndIf
+    If side >= 0 && SNRom_Native.PlanGuestSide(akBetrothed, akGuest, side)
+        PlanNoted(akBetrothed, akGuest.GetDisplayName() + " is " + SideWords(akBetrothed, side) + ".")
+    EndIf
+EndFunction
+
+String Function SideWords(Actor akBetrothed, Int aiSide)
+    If aiSide == 0
+        Return akBetrothed.GetDisplayName() + "'s guest"
+    ElseIf aiSide == 1
+        Return Game.GetPlayer().GetDisplayName() + "'s guest"
+    EndIf
+    Return "a guest of both"
+EndFunction
+
+Function PlanWeddingSides(Actor akSpeaker, String asFor, String asTheirs, String asYours, String asBoth)
+    { Action WeddingSides (wpm61; the author, 2026-10-28): whose guests those
+      invited are, named by each partner ("Olfina's guests"), as the planner
+      asks about each one whose side is not known. }
+    Actor betrothed = PlanTarget(akSpeaker, asFor)
+    If betrothed == None || !MayPlan(akSpeaker, betrothed, False) || _dashNatives < 32
+        Return
+    EndIf
+    SideGuests(akSpeaker, betrothed, asTheirs, 0)
+    SideGuests(akSpeaker, betrothed, asYours, 1)
+    SideGuests(akSpeaker, betrothed, asBoth, 2)
+EndFunction
+
+Function SideGuests(Actor akSpeaker, Actor akBetrothed, String asNames, Int aiSide)
+    If SNRom_Decorators.Trim(asNames) == ""
+        Return
+    EndIf
+    Actor[] named = SNRom_Native.GuestsNamed(akSpeaker, asNames)
+    Int i = 0
+    While i < named.Length
+        If named[i] != None
+            If SNRom_Native.PlanGuestSide(akBetrothed, named[i], aiSide)
+                PlanNoted(akBetrothed, named[i].GetDisplayName() + " is " + SideWords(akBetrothed, aiSide) + ".")
+            ElseIf SNRom_Native.PlanSideOf(akBetrothed, named[i]) < 0
+                Diag(LOG_INFO(), "Wedding plan: " + named[i].GetDisplayName() + " was given a side, but is not invited.")
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+EndFunction
+
+Function PlanWeddingMark(Actor akSpeaker, String asFor, String asWhat, String asWhose)
+    { Action WeddingMark (wpm61; the author, 2026-10-28): WHERE EVERYONE
+      STANDS, marked where the player stands as they say it - the officiant's
+      place, the couple's, or where either one's guests gather. Only the player
+      marks (the author); "none" leaves it to the planner, who then does their
+      best with the place found. Kept with the place, for another wedding
+      there. }
+    Actor betrothed = PlanTarget(akSpeaker, asFor)
+    If betrothed == None || !MayPlan(akSpeaker, betrothed, False) || _dashNatives < 32
+        Return
+    EndIf
+    String w = SNRom_Decorators.Upper(SNRom_Decorators.Trim(asWhat))
+    If w == ""
+        Return
+    EndIf
+    If w == "NONE" || w == "NO" || StringUtil.Find(w, "LEAVE") >= 0 || StringUtil.Find(w, "YOU DECIDE") >= 0
+        If SNRom_Native.PlanSettleLayout(betrothed)
+            PlanNoted(betrothed, "where everyone stands left to the planner.")
+        EndIf
+        Return
+    EndIf
+    Int role = -1
+    If StringUtil.Find(w, "OFFICIANT") >= 0 || StringUtil.Find(w, "PRIEST") >= 0 || StringUtil.Find(w, "ALTAR") >= 0
+        role = 0
+    ElseIf StringUtil.Find(w, "COUPLE") >= 0
+        role = 1
+    ElseIf StringUtil.Find(w, "GUEST") >= 0 || StringUtil.Find(w, "SIDE") >= 0
+        Int side = SNRom_Native.PlanSideNamed(betrothed, akSpeaker, asWhose + " " + asWhat)
+        If side == 0
+            role = 2
+        ElseIf side == 1
+            role = 3
+        Else
+            Diag(LOG_INFO(), "Wedding plan: guests marked, but whose was not said ('" + asWhose + "'); nothing marked.")
+            Return
+        EndIf
+    EndIf
+    If role < 0
+        Diag(LOG_INFO(), "Wedding plan: '" + asWhat + "' is no mark (the officiant, the couple, or either one's " + \
+            "guests); nothing marked.")
+        Return
+    EndIf
+    If !SNRom_Native.PlanMark(betrothed, role)
+        Return
+    EndIf
+    PlanNoted(betrothed, "a mark made where the player stands: " + asWhat + " " + asWhose + ".")
+    Actor officiant = SNRom_Native.PlanOfficiant(betrothed)
+    String priest = Tr("plan.theOfficiant", "the officiant")
+    If officiant != None
+        priest = officiant.GetDisplayName()
+    EndIf
+    If role == 0
+        Debug.Notification(Tr("plan.markOfficiant", "Marked: where {0} will stand to marry you.", priest))
+    ElseIf role == 1
+        Debug.Notification(Tr("plan.markCouple", "Marked: where you and {0} will stand.", betrothed.GetDisplayName()))
+    ElseIf role == 2
+        Debug.Notification(Tr("plan.markTheirs", "Marked: where {0}'s guests will gather.", betrothed.GetDisplayName()))
+    Else
+        Debug.Notification(Tr("plan.markYours", "Marked: where your guests will gather."))
+    EndIf
 EndFunction
 
 Function PlanWeddingCeremony(Actor akPlanner, String asFor, String asAddress, String asReading, String asRings, \
@@ -6168,6 +6390,7 @@ Function PostponeWedding(Actor akSpeaker, String asFor)
     EndIf
     If SNRom_Native.PlanPostpone(betrothed)
         PlanNoted(betrothed, "the day put off.")
+        ReleaseWeddingGoers()
     EndIf
 EndFunction
 
@@ -6209,7 +6432,10 @@ Event OnWeddingDay(String asEventName, String asPlace, Float afUnused, Form akSe
     ; begins is brought (OnWeddingBegin).
     String dest = asPlace
     If _dashNatives >= 31
-        If SNRom_Native.PlanFindable(betrothed) < 0
+        ; A place found before wpm61 kept no reference to gather at: found
+        ; again, for one.
+        If SNRom_Native.PlanFindable(betrothed) < 0 || \
+            (_dashNatives >= 32 && SNRom_Native.PlanFindable(betrothed) == 1 && SNRom_Native.PlanMarked(betrothed) == 0)
             FindWeddingPlace(betrothed)
         EndIf
         Int findable = SNRom_Native.PlanFindable(betrothed)
@@ -6218,6 +6444,11 @@ Event OnWeddingDay(String asEventName, String asPlace, Float afUnused, Form akSe
         ElseIf findable == 0
             dest = ""
         EndIf
+    EndIf
+    ; EACH TO THEIR MARK (wpm61): with a mark or a place found, the DLL sends
+    ; each one in their own time (OnWeddingGo); by name only otherwise.
+    If _dashNatives >= 32 && SNRom_Native.PlanMarked(betrothed) > 0
+        dest = ""
     EndIf
     If dest != ""
         SendToWedding(SNRom_Native.PlanOfficiant(betrothed), dest)
@@ -6360,6 +6591,9 @@ Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, For
       the rings become wedding rings (ChangeMarriage), and everyone here
       knows. }
     ReleaseWeddingHold()
+    ; Everyone who came is free to go (wpm61): after the hold, whose release
+    ; would set their packages going again.
+    ReleaseWeddingGoers()
     Actor betrothed = akSender as Actor
     Actor officiant = SNRom_Native.CeremonyLastOfficiant()
     If betrothed == None || officiant == None

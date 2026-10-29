@@ -1,6 +1,8 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -39,6 +41,13 @@ namespace RE {
 // of them at the hour, the wedding begins (SNRom_WeddingBegin); a day that passes with the
 // player absent is missed (SNRom_WeddingMissed).
 //
+// EVERYONE IN TIME, EACH TO THEIR MARK (wpm61; the author, 2026-10-28): with
+// a mark or a place found, each person sets out by how far they must come,
+// a day ahead from another hold, linked to their mark (SNRom_WeddingMark) and
+// sent SNRom_WeddingGo with the package to take; SNRom_WeddingRecall when the
+// day will not come after all. Nothing to send them to, they are sent by the
+// place's name on SNRom_WeddingDay, as before.
+//
 // IN THE CO-SAVE, so an older save rolls the plan back with everything else.
 // Thread-safe: every function takes the lock.
 namespace SNRom::WeddingPlan {
@@ -71,6 +80,34 @@ namespace SNRom::WeddingPlan {
         kGuestsSettled = 1 << 0,
         kCeremonySettled = 1 << 1,
         kOutfitSettled = 1 << 2,
+        kLayoutSettled = 1 << 3,  // wpm61: where everyone stands, marked or left to the planner
+    };
+
+    // WHOSE GUESTS (wpm61; the author, 2026-10-28): "Olfina's guests" and the
+    // player's, named by each partner. Not known, the planner asks.
+    inline constexpr std::int32_t kSideUnknown = -1;
+    inline constexpr std::int32_t kSideTheirs = 0;  // the betrothed's
+    inline constexpr std::int32_t kSideYours = 1;   // the player's
+    inline constexpr std::int32_t kSideBoth = 2;    // either's: they join the smaller side
+
+    // WHERE EVERYONE STANDS (wpm61; the author, 2026-10-28): marks the player
+    // sets by standing on the spot, as they tell the planner. The officiant
+    // and the couple hold at theirs; each side gathers around its own.
+    enum Mark : std::int32_t {
+        kMarkOfficiant = 0,
+        kMarkCouple = 1,
+        kMarkTheirs = 2,  // the betrothed's guests
+        kMarkYours = 3,   // the player's guests
+        kMarkRoles = 4,
+    };
+
+    // A VENUE (wpm61; the author: "the option to save a particular venue and
+    // its marks"): the marks are kept under the place's name, so naming the
+    // same place for another wedding brings them along. Each mark is a
+    // persistent marker placed where the player stood; 0 unmarked.
+    struct Venue {
+        std::string                            name;   // the place as first said
+        std::array<std::uint32_t, kMarkRoles>  marks{};
     };
 
     // A WEDDING RING'S STYLE (wpm51; the author: whoever gave whom an
@@ -108,6 +145,12 @@ namespace SNRom::WeddingPlan {
         Status                     status = Status::kPlanning;
         float                      missedDay = -1.0f;  // the last day the player did not come
         float                      lapsedDay = -1.0f;  // the last day that passed unready
+        // wpm61: each guest's side (absent, not known); the reference found
+        // for the place, where everyone gathers when nothing is marked; and
+        // who has set out for the wedding, each sent once.
+        std::map<std::uint32_t, std::int32_t> sides;
+        std::uint32_t                         anchor = 0;
+        std::vector<std::uint32_t>            sent;
     };
 
     // The plan for a_betrothed, or nothing.
@@ -140,6 +183,32 @@ namespace SNRom::WeddingPlan {
     bool SetOfficiant(std::int32_t a_betrothed, std::uint32_t a_officiant);
     bool AddGuest(std::int32_t a_betrothed, std::uint32_t a_guest);
     bool RemoveGuest(std::int32_t a_betrothed, std::uint32_t a_guest);
+    // A guest's side, kSideTheirs..kSideBoth. False when they are no guest or
+    // it was so already.
+    bool SetSide(std::int32_t a_betrothed, std::uint32_t a_guest, std::int32_t a_side);
+    // The side as said: either partner's name ("Olfina's", the player's),
+    // "yours" (said to the player), "mine" from the betrothed, or "both";
+    // kSideUnknown for anything else.
+    std::int32_t SideNamed(RE::Actor* a_betrothed, RE::Actor* a_speaker, const std::string& a_words);
+    // The side the game's records give: the betrothed's parents, siblings
+    // and children are theirs; the player's, and the player's spouses, the
+    // player's. kSideUnknown otherwise. Main thread.
+    std::int32_t SideOf(RE::Actor* a_betrothed, RE::Actor* a_guest);
+    // A MARK WHERE THE PLAYER STANDS (wpm61), for a_role (Mark), in the venue
+    // under the plan's place; the mark it replaces is deleted. Main thread.
+    bool SetMark(std::int32_t a_betrothed, std::int32_t a_role);
+    // Where everyone stands is left to the planner: settled, unmarked.
+    bool SettleLayout(std::int32_t a_betrothed);
+    // The roles marked for the plan's place, as bits (1 << Mark).
+    std::uint32_t Marked(std::int32_t a_betrothed);
+    // THE PLANNER'S BEST EFFORT (wpm61): the reference found for the place,
+    // where everyone gathers when nothing is marked. A load door is kept as
+    // its other side. Main thread.
+    bool SetAnchor(std::int32_t a_betrothed, RE::TESObjectREFR* a_found);
+    // One who set out for a wedding let go: their link to the mark cleared,
+    // and no longer counted as sent. Papyrus removes their package. Main
+    // thread.
+    void LetGo(RE::Actor* a_who);
     bool SetParts(std::int32_t a_betrothed, std::uint32_t a_parts);
     // Each -1 left as it is.
     bool SetRings(std::int32_t a_betrothed, std::int32_t a_yourStyle, std::int32_t a_yourMetal,
@@ -156,8 +225,10 @@ namespace SNRom::WeddingPlan {
     // "place", "officiant", "day", "hour". Empty when the day can happen.
     std::vector<std::string> Open(const Plan& a_plan);
     // The optional parts not yet settled, in order: "near" (a place no one
-    // could find, and nothing said of what it is by), "guests", "ceremony" (a
-    // planner's), "theirRing", "yourRing" (a planner's), "outfit".
+    // could find, nothing marked, and nothing said of what it is by),
+    // "guests", "sides" (a guest whose side is not known), "ceremony" (a
+    // planner's), "theirRing", "yourRing" (a planner's), "outfit", and last
+    // "layout" (a planner's: nothing marked, nor left to them).
     std::vector<std::string> Unsettled(const Plan& a_plan);
 
     // What a prompt reads (0330, 0331, 0332), relative to now: the day in

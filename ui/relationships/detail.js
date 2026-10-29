@@ -488,7 +488,8 @@
     // yet talked through.
     var NEEDS = { day: t("plan.need.day", "the day"), hour: t("plan.need.hour", "the hour"), place: t("plan.need.place", "the place"),
       officiant: t("plan.need.officiant", "someone to marry you") };
-    var TALK = { near: t("plan.talk.near", "what the place is by"), guests: t("plan.talk.guests", "the guests"), ceremony: t("plan.talk.ceremony", "the ceremony"),
+    var TALK = { near: t("plan.talk.near", "what the place is by"), guests: t("plan.talk.guests", "the guests"),
+      sides: t("plan.talk.sides", "whose guests they are"), layout: t("plan.talk.layout", "where everyone will stand"), ceremony: t("plan.talk.ceremony", "the ceremony"),
       theirRing: t("plan.talk.theirRing", "{0}'s ring", who), yourRing: t("plan.talk.yourRing", "your ring"),
       outfit: t("plan.talk.outfit", "what {0} will wear", who) };
     var open = (p.open || []).map(function (o) { return NEEDS[o] || o; });
@@ -536,6 +537,13 @@
     kv(dl, t("plan.clothes", "Clothes"), p.outfit ? t("plan.clothesChosen", "{0} has chosen", who) :
       el("span", "plan-not", t("plan.clothesNot", "{0} has not chosen yet", who)));
 
+    // WHERE EVERYONE STANDS (wpm61), as the player marked it at the place.
+    if (p.place) {
+      var MARK = { officiant: t("plan.mark.officiant", "who marries you"), couple: t("plan.mark.couple", "the two of you"),
+        theirs: t("plan.mark.theirs", "{0}'s guests", who), yours: t("plan.mark.yours", "your guests") };
+      var marked = (p.marked || []).map(function (m) { return MARK[m] || m; });
+      kv(dl, t("plan.marks", "Marked"), marked.length ? names(marked) : el("span", "plan-not", t("plan.noMarks", "nothing yet")));
+    }
     // The guests last, as the longest: a count, then the names, smaller.
     var guests = p.guests.length ? el("span", "plan-guests", names(p.guests)) : el("span", "plan-not", t("plan.noGuests", "none invited"));
     kv(dl, p.guests.length ? t("plan.guestsCount", "Guests ({0})", p.guests.length) : t("plan.guests", "Guests"), guests);

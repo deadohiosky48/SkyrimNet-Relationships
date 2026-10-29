@@ -551,6 +551,46 @@ namespace SNRom::Natives {
         bool BringToWedding(RE::StaticFunctionTag*, RE::Actor* a_who, RE::Actor* a_near) {
             return WeddingPlan::BringBeside(a_who, a_near);
         }
+        // v32: where everyone stands (WeddingPlan::SetMark), and whose guests
+        // they are.
+        bool PlanMark(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::int32_t a_role) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && WeddingPlan::SetMark(id, a_role);
+        }
+        bool PlanSettleLayout(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && WeddingPlan::SettleLayout(id);
+        }
+        std::int32_t PlanMarked(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto id = FormIdOfActor(a_betrothed);
+            const auto plan = WeddingPlan::Get(id);
+            return plan ? static_cast<std::int32_t>(WeddingPlan::Marked(id) | (plan->anchor ? 16u : 0u)) : 0;
+        }
+        bool PlanGuestSide(RE::StaticFunctionTag*, RE::Actor* a_betrothed, RE::Actor* a_guest, std::int32_t a_side) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && a_guest && WeddingPlan::SetSide(id, a_guest->GetFormID(), a_side);
+        }
+        std::int32_t PlanSideOf(RE::StaticFunctionTag*, RE::Actor* a_betrothed, RE::Actor* a_guest) {
+            const auto plan = WeddingPlan::Get(FormIdOfActor(a_betrothed));
+            if (!plan || !a_guest || !plan->sides.contains(a_guest->GetFormID())) {
+                return WeddingPlan::kSideUnknown;
+            }
+            return plan->sides.at(a_guest->GetFormID());
+        }
+        std::int32_t PlanSideNamed(RE::StaticFunctionTag*, RE::Actor* a_betrothed, RE::Actor* a_speaker,
+                                   std::string a_words) {
+            return WeddingPlan::SideNamed(a_betrothed, a_speaker, a_words);
+        }
+        std::int32_t GuestSideOf(RE::StaticFunctionTag*, RE::Actor* a_betrothed, RE::Actor* a_guest) {
+            return WeddingPlan::SideOf(a_betrothed, a_guest);
+        }
+        bool PlanSetAnchor(RE::StaticFunctionTag*, RE::Actor* a_betrothed, RE::TESObjectREFR* a_found) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && WeddingPlan::SetAnchor(id, a_found);
+        }
+        void WeddingLetGo(RE::StaticFunctionTag*, RE::Actor* a_who) {
+            WeddingPlan::LetGo(a_who);
+        }
         bool PlanSetOfficiant(RE::StaticFunctionTag*, RE::Actor* a_betrothed, RE::Actor* a_officiant) {
             const auto id = FormIdOfActor(a_betrothed);
             return id && a_officiant && WeddingPlan::SetOfficiant(id, a_officiant->GetFormID());
@@ -1033,6 +1073,17 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("PlanFindable", kScript, PlanFindable, true);
             a_vm->RegisterFunction("PlanTravelTo", kScript, PlanTravelTo, true);
             a_vm->RegisterFunction("BringToWedding", kScript, BringToWedding);
+            // v32. Main thread: a marker placed, the game's family records,
+            // names, a door's other side, a link to a mark.
+            a_vm->RegisterFunction("PlanMark", kScript, PlanMark);
+            a_vm->RegisterFunction("PlanSettleLayout", kScript, PlanSettleLayout, true);
+            a_vm->RegisterFunction("PlanMarked", kScript, PlanMarked, true);
+            a_vm->RegisterFunction("PlanGuestSide", kScript, PlanGuestSide, true);
+            a_vm->RegisterFunction("PlanSideOf", kScript, PlanSideOf, true);
+            a_vm->RegisterFunction("PlanSideNamed", kScript, PlanSideNamed);
+            a_vm->RegisterFunction("GuestSideOf", kScript, GuestSideOf);
+            a_vm->RegisterFunction("PlanSetAnchor", kScript, PlanSetAnchor);
+            a_vm->RegisterFunction("WeddingLetGo", kScript, WeddingLetGo);
             a_vm->RegisterFunction("PlanOutfit", kScript, PlanOutfit, true);
             a_vm->RegisterFunction("PlanParts", kScript, PlanParts, true);
             a_vm->RegisterFunction("PlanRing", kScript, PlanRing, true);
@@ -1069,7 +1120,8 @@ namespace SNRom::Natives {
                             "BetrothedNamed, PlanExists, PlanHire, PlanSetDay, PlanSetPlace, PlanSetOfficiant, PlanGuest, "
                             "PlanSetParts, PlanSetRings, PlanSetOutfit, PlanPostpone, PlanClear, PlanOpen, PlanOfficiant, PlanPlanner, "
                             "PlanGuests, PlanPlace, PlanOutfit, PlanParts, PlanRing, RingWeddingOfMetal, "
-                            "PlanSetFindable, PlanNear, PlanFindable, PlanTravelTo, BringToWedding",
+                            "PlanSetFindable, PlanNear, PlanFindable, PlanTravelTo, BringToWedding, PlanMark, PlanSettleLayout, "
+                            "PlanMarked, PlanGuestSide, PlanSideOf, PlanSideNamed, GuestSideOf, PlanSetAnchor, WeddingLetGo",
                             kScript, kVersion);
             return true;
         });

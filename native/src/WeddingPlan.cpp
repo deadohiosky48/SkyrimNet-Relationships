@@ -7,10 +7,12 @@
 #include "Marriage.h"
 #include "Model.h"
 #include "Officiant.h"
+#include "OurPlugin.h"
 
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <bit>
 #include <cctype>
 #include <cmath>
 #include <cstring>
@@ -27,8 +29,9 @@ namespace SNRom::WeddingPlan {
         using json = nlohmann::json;
 
         // 2 (wpm51): the rings per person, and what is settled. 3 (wpm60):
-        // what the place is by, and where people are sent.
-        constexpr std::uint32_t kRecordVersion = 3;
+        // what the place is by, and where people are sent. 4 (wpm61): each
+        // guest's side, the place found, who has set out; and the venues.
+        constexpr std::uint32_t kRecordVersion = 4;
         constexpr std::size_t   kMaxPlace = 120;
         constexpr std::size_t   kMaxGuests = 40;
 
@@ -51,8 +54,38 @@ namespace SNRom::WeddingPlan {
         // How far from the wedding a door may be to bring someone through.
         constexpr float kBringFrom = 4000.0f;
 
+        // EVERYONE IN TIME (wpm61; the author, 2026-10-28: "we must ensure
+        // everyone can reach the venue in time"). Each person sets out this
+        // many hours before the hour: two, and an hour for every 8000 units
+        // of road (straight-line, out of doors; a walk is nearer 16000, the
+        // road winds), never less than kSendAhead nor more than 30. From
+        // another worldspace a day; from nowhere that can be measured, half
+        // of one. Looked at every kSendEvery ticks (30 s).
+        constexpr float kUnitsPerHour = 8000.0f;
+        constexpr float kLeadBase = 2.0f;
+        constexpr float kLeadMost = 30.0f;
+        constexpr float kLeadElsewhere = 24.0f;
+        constexpr float kLeadUnmeasured = 12.0f;
+        constexpr int   kSendEvery = 10;
+
+        // Our plugin's SNRom_WeddingMark, and the packages taken to a mark
+        // (SNRom_Integration.esl; docs: copies of Skyrim's own hold-position
+        // and sandbox packages, near the reference linked with our keyword,
+        // with eating, sleeping and work furniture switched off).
+        constexpr RE::FormID kMarkKeyword = 0xD89;
+        constexpr RE::FormID kXMarkerHeading = 0x34;   // Skyrim.esm
+        constexpr const char* kStand = "SNRom_WeddingStand";
+        constexpr const char* kGatherSmall = "SNRom_WeddingGatherSmall";    // 300 units, up to 4 people
+        constexpr const char* kGatherMedium = "SNRom_WeddingGatherMedium";  // 500, up to 10
+        constexpr const char* kGatherLarge = "SNRom_WeddingGatherLarge";    // 800, more
+
+        constexpr std::array<const char*, kMarkRoles> kRoleWords{ "officiant", "couple", "theirs", "yours" };
+
         std::mutex                         g_lock;
         std::map<std::uint32_t, Plan>      g_plans;  // betrothed -> plan
+        std::map<std::string, Venue>       g_venues; // VenueKey -> venue
+        bool                               g_relink = false;  // links to set again (a load, a new mark)
+        int                                g_sendTicks = 0;
         std::atomic<int>                   g_generation{ 0 };
         std::chrono::steady_clock::time_point g_beginSentAt{};
 
@@ -271,6 +304,178 @@ namespace SNRom::WeddingPlan {
                    actor->GetPosition().GetDistance(a_player->GetPosition()) <= a_within;
         }
 
+        // A VENUE'S KEY: the place's name in lower case, without a leading
+        // "the", "under", "at"..., so "the Gildergreen", "under the
+        // Gildergreen" and "Gildergreen" are the one venue.
+        std::string VenueKey(const std::string& a_place) {
+            static constexpr std::array<const char*, 10> kLead{ "the ", "under ", "beneath ", "below ", "at ",
+                                                                "by ",  "near ",  "in ",      "on ",    "beside " };
+            auto key = Lower(Trim(a_place));
+            for (bool again = true; again;) {
+                again = false;
+                for (const auto* word : kLead) {
+                    if (key.starts_with(word)) {
+                        key.erase(0, std::strlen(word));
+                        again = true;
+                    }
+                }
+            }
+            return key;
+        }
+
+        RE::TESObjectREFR* RefOf(std::uint32_t a_id) {
+            auto* ref = a_id ? RE::TESForm::LookupByID<RE::TESObjectREFR>(a_id) : nullptr;
+            return ref && !ref->IsDeleted() ? ref : nullptr;
+        }
+
+        // The plan's marks, each 0 when unmarked or gone. Under g_lock.
+        std::array<std::uint32_t, kMarkRoles> MarksOf(const Plan& a_plan) {
+            std::array<std::uint32_t, kMarkRoles> out{};
+            if (const auto it = g_venues.find(VenueKey(a_plan.place)); it != g_venues.end()) {
+                for (std::size_t i = 0; i < out.size(); ++i) {
+                    out[i] = RefOf(it->second.marks[i]) ? it->second.marks[i] : 0;
+                }
+            }
+            return out;
+        }
+
+        std::uint32_t MarkedBits(const Plan& a_plan) {
+            std::uint32_t bits = 0;
+            const auto    marks = MarksOf(a_plan);
+            for (std::size_t i = 0; i < marks.size(); ++i) {
+                if (marks[i]) {
+                    bits |= 1u << i;
+                }
+            }
+            return bits;
+        }
+
+        RE::BGSKeyword* MarkKeyword() {
+            return OurForm<RE::BGSKeyword>(kMarkKeyword);
+        }
+
+        // Someone linked to their mark with our keyword, or the link cleared
+        // (a_at 0), and their packages looked at again. Main thread.
+        void Link(RE::Actor* a_who, RE::TESObjectREFR* a_at) {
+            auto* keyword = MarkKeyword();
+            if (!a_who || !keyword) {
+                return;
+            }
+            a_who->extraList.SetLinkedRef(a_at, keyword);
+            a_who->EvaluatePackage();
+        }
+
+        // WHERE SOMEONE IS, OUT OF DOORS: where they stand, or inside, the
+        // door out of their cell. Nothing for a cell with no door outside.
+        struct Outside {
+            RE::TESWorldSpace* world = nullptr;
+            RE::NiPoint3       at;
+        };
+        std::optional<Outside> OutdoorsOf(RE::TESObjectREFR* a_ref) {
+            auto* cell = a_ref ? a_ref->GetParentCell() : nullptr;
+            if (!cell || !cell->IsInteriorCell()) {
+                auto* world = a_ref ? a_ref->GetWorldspace() : nullptr;
+                return world ? std::optional<Outside>{ Outside{ world, a_ref->GetPosition() } } : std::nullopt;
+            }
+            std::optional<Outside> out;
+            cell->ForEachReference([&](RE::TESObjectREFR* a_door) {
+                auto* here = a_door ? a_door->extraList.GetByType<RE::ExtraTeleport>() : nullptr;
+                auto  other = here && here->teleportData ? here->teleportData->linkedDoor.get() : nullptr;
+                auto* world = other ? other->GetWorldspace() : nullptr;
+                if (world) {
+                    out = Outside{ world, other->GetPosition() };
+                    return RE::BSContainer::ForEachResult::kStop;
+                }
+                return RE::BSContainer::ForEachResult::kContinue;
+            });
+            return out;
+        }
+
+        // How long before the hour a_who sets out for a_to, in game days;
+        // a_distance the straight-line distance out of doors, -1 unmeasured.
+        float LeadFor(RE::TESObjectREFR* a_who, RE::TESObjectREFR* a_to, float& a_distance) {
+            a_distance = -1.0f;
+            const auto from = OutdoorsOf(a_who);
+            const auto to = OutdoorsOf(a_to);
+            float      hours = kLeadUnmeasured;
+            if (from && to && from->world == to->world) {
+                a_distance = from->at.GetDistance(to->at);
+                hours = kLeadBase + a_distance / kUnitsPerHour;
+            } else if (from && to) {
+                hours = kLeadElsewhere;
+            }
+            return std::clamp(hours, kSendAhead * 24.0f, kLeadMost) / 24.0f;
+        }
+
+        // WHERE EACH ONE GOES (wpm61): the officiant to their mark, the
+        // betrothed to the couple's, each guest to their side's; a mark not
+        // made, the next that is (docs: the couple's, then the officiant's,
+        // then the place found). A guest whose side is not known, or who is
+        // both's, joins the smaller side. How many share a mark decides how
+        // wide they gather. Empty when there is nowhere to send anyone.
+        // Under g_lock.
+        struct Goal {
+            std::uint32_t who = 0;
+            std::uint32_t at = 0;
+            const char*   where = "";
+            const char*   package = kStand;
+        };
+        std::vector<Goal> GoalsOf(std::uint32_t a_betrothed, const Plan& a_plan) {
+            static constexpr std::array<const char*, kMarkRoles + 1> kWhere{
+                "the officiant's mark", "the couple's mark", "their guests' mark", "your guests' mark", "the place found"
+            };
+            const auto marks = MarksOf(a_plan);
+            std::array<std::uint32_t, kMarkRoles + 1> at{};
+            std::copy(marks.begin(), marks.end(), at.begin());
+            at[kMarkRoles] = RefOf(a_plan.anchor) ? a_plan.anchor : 0;
+            const auto first = [&](std::initializer_list<std::size_t> a_order) {
+                for (const auto i : a_order) {
+                    if (at[i]) {
+                        return i;
+                    }
+                }
+                return at.size();
+            };
+            std::vector<Goal> out;
+            const auto        add = [&](std::uint32_t a_who, std::size_t a_at, const char* a_package) {
+                if (a_who && a_at < at.size()) {
+                    out.push_back({ a_who, at[a_at], kWhere[a_at], a_package });
+                }
+            };
+            add(a_plan.officiant, first({ kMarkOfficiant, kMarkCouple, kMarkRoles }), kStand);
+            add(a_betrothed, first({ kMarkCouple, kMarkOfficiant, kMarkRoles }), kStand);
+            const std::array<std::size_t, 2> sideAt{ first({ kMarkTheirs, kMarkCouple, kMarkOfficiant, kMarkRoles }),
+                                                     first({ kMarkYours, kMarkCouple, kMarkOfficiant, kMarkRoles }) };
+            std::array<std::vector<std::uint32_t>, 2> side;
+            std::vector<std::uint32_t>                either;
+            for (const auto guest : a_plan.guests) {
+                if (guest == a_plan.officiant) {
+                    continue;
+                }
+                const auto it = a_plan.sides.find(guest);
+                const auto s = it == a_plan.sides.end() ? kSideUnknown : it->second;
+                if (s == kSideTheirs || s == kSideYours) {
+                    side[s].push_back(guest);
+                } else {
+                    either.push_back(guest);
+                }
+            }
+            for (const auto guest : either) {
+                side[side[0].size() <= side[1].size() ? 0 : 1].push_back(guest);
+            }
+            std::map<std::size_t, std::size_t> sharing;
+            for (std::size_t s = 0; s < 2; ++s) {
+                sharing[sideAt[s]] += side[s].size();
+            }
+            for (std::size_t s = 0; s < 2; ++s) {
+                const auto n = sharing[sideAt[s]];
+                for (const auto guest : side[s]) {
+                    add(guest, sideAt[s], n <= 4 ? kGatherSmall : n <= 10 ? kGatherMedium : kGatherLarge);
+                }
+            }
+            return out;
+        }
+
         // Main thread, every few seconds while a game is loaded.
         void Tick() {
             auto* player = RE::PlayerCharacter::GetSingleton();
@@ -285,6 +490,22 @@ namespace SNRom::WeddingPlan {
                 std::string   text;
             };
             std::vector<Due> due;
+            struct Going {
+                Goal  goal;
+                float distance = -1.0f;
+                float lead = 0.0f;
+                bool  again = false;  // already on their way: linked again only
+            };
+            std::vector<Going>        going;
+            std::vector<std::uint32_t> letGo;
+            // The day will not come after all: no one goes on waiting for it.
+            const auto recall = [&](std::uint32_t a_id, Plan& a_plan) {
+                if (!a_plan.sent.empty()) {
+                    letGo.insert(letGo.end(), a_plan.sent.begin(), a_plan.sent.end());
+                    a_plan.sent.clear();
+                    due.push_back({ a_id, "SNRom_WeddingRecall", "" });
+                }
+            };
             {
                 const std::scoped_lock lock{ g_lock };
                 for (auto it = g_plans.begin(); it != g_plans.end();) {
@@ -293,6 +514,7 @@ namespace SNRom::WeddingPlan {
                     // Married, broken off, or gone: the plan goes with them.
                     if (!Marriage::Engaged(static_cast<std::int32_t>(id))) {
                         SKSE::log::info("Wedding plan: {:08X} is no longer engaged; their plan is gone", id);
+                        recall(id, plan);
                         it = g_plans.erase(it);
                         continue;
                     }
@@ -310,6 +532,7 @@ namespace SNRom::WeddingPlan {
                             plan.day = -1.0f;
                             plan.hour = -1;
                             SKSE::log::info("Wedding plan: {:08X}'s day passed with the plan unfinished; put off", id);
+                            recall(id, plan);
                             due.push_back({ id, "SNRom_WeddingLapsed", "" });
                         } else if (ready && now >= when - kSendAhead) {
                             plan.status = Status::kUnderWay;
@@ -334,6 +557,7 @@ namespace SNRom::WeddingPlan {
                         plan.day = -1.0f;
                         plan.hour = -1;
                         SKSE::log::info("Wedding plan: {:08X}'s wedding day passed without the player", id);
+                        recall(id, plan);
                         due.push_back({ id, "SNRom_WeddingMissed", "" });
                         continue;
                     }
@@ -343,6 +567,59 @@ namespace SNRom::WeddingPlan {
                         due.push_back({ id, "SNRom_WeddingBegin", "" });
                     }
                 }
+                // WHO SETS OUT NOW (wpm61): each one ready plan's people, by
+                // how far they have to come; and after a load or a new mark,
+                // those already on their way are linked again.
+                const bool relink = std::exchange(g_relink, false);
+                if (++g_sendTicks >= kSendEvery || relink) {
+                    g_sendTicks = 0;
+                    for (auto& [id, plan] : g_plans) {
+                        if (plan.day < 0.0f || !Open(plan).empty()) {
+                            continue;
+                        }
+                        const float when = When(plan);
+                        for (const auto& goal : GoalsOf(id, plan)) {
+                            if (std::ranges::find(plan.sent, goal.who) != plan.sent.end()) {
+                                if (relink) {
+                                    going.push_back({ goal, -1.0f, 0.0f, true });
+                                }
+                                continue;
+                            }
+                            auto* who = RE::TESForm::LookupByID<RE::Actor>(goal.who);
+                            auto* to = RefOf(goal.at);
+                            if (!who || who->IsDead() || !to) {
+                                continue;
+                            }
+                            float      distance = -1.0f;
+                            const auto lead = LeadFor(who, to, distance);
+                            if (now >= when - lead) {
+                                plan.sent.push_back(goal.who);
+                                going.push_back({ goal, distance, lead, false });
+                            }
+                        }
+                    }
+                }
+            }
+            for (const auto id : letGo) {
+                Link(RE::TESForm::LookupByID<RE::Actor>(id), nullptr);
+            }
+            for (const auto& g : going) {
+                auto* who = RE::TESForm::LookupByID<RE::Actor>(g.goal.who);
+                auto* to = RefOf(g.goal.at);
+                if (!who || !to) {
+                    continue;
+                }
+                Link(who, to);
+                if (g.again) {
+                    SKSE::log::info("Wedding: {} is linked again to {}", who->GetDisplayFullName(), g.goal.where);
+                    continue;
+                }
+                // TEST LOG (wpm61): who set out, from how far, how early.
+                SKSE::log::info("Wedding: {} sets out for {} ({}), {}, {:.1f} h before the hour",
+                                who->GetDisplayFullName(), g.goal.where, g.goal.package,
+                                g.distance >= 0.0f ? std::format("{:.0f} away", g.distance) : std::string("distance unknown"),
+                                g.lead * 24.0f);
+                Send("SNRom_WeddingGo", g.goal.package, g.lead * 24.0f, g.goal.who);
             }
             for (const auto& d : due) {
                 Send(d.event, d.text, 0.0f, d.betrothed);
@@ -529,13 +806,29 @@ namespace SNRom::WeddingPlan {
             return false;
         }
         if (newPlace) {
+            // Marks made before the place had a name are this place's.
+            const auto pending = g_venues.find(VenueKey(plan.place));
+            if (pending != g_venues.end() && pending->first.empty()) {
+                auto& venue = g_venues[VenueKey(a_place)];
+                if (std::ranges::all_of(venue.marks, [](std::uint32_t a_mark) { return a_mark == 0; })) {
+                    venue.name = a_place;
+                    venue.marks = pending->second.marks;
+                    g_venues.erase(pending);
+                }
+            }
             plan.place = std::move(a_place);
             plan.nearTo = std::move(a_near);
+            if (const auto bits = MarkedBits(plan)) {
+                SKSE::log::info("Venue '{}' is known: {} of its {} marks made", VenueKey(plan.place),
+                                std::popcount(bits), static_cast<int>(kMarkRoles));
+            }
         } else {
             plan.nearTo = std::move(a_near);
         }
         plan.travelTo.clear();
         plan.findable = -1;
+        plan.anchor = 0;
+        g_relink = true;
         return true;
     }
 
@@ -646,7 +939,178 @@ namespace SNRom::WeddingPlan {
             return false;
         }
         it->second.settled |= kGuestsSettled;
+        it->second.sides.erase(a_guest);
         return std::erase(it->second.guests, a_guest) > 0;
+    }
+
+    bool SetSide(std::int32_t a_betrothed, std::uint32_t a_guest, std::int32_t a_side) {
+        if (a_side < kSideTheirs || a_side > kSideBoth) {
+            return false;
+        }
+        const std::scoped_lock lock{ g_lock };
+        const auto             it = g_plans.find(static_cast<std::uint32_t>(a_betrothed));
+        if (it == g_plans.end() || std::ranges::find(it->second.guests, a_guest) == it->second.guests.end()) {
+            return false;
+        }
+        auto&      sides = it->second.sides;
+        const auto was = sides.find(a_guest);
+        if (was != sides.end() && was->second == a_side) {
+            return false;
+        }
+        sides[a_guest] = a_side;
+        return true;
+    }
+
+    std::int32_t SideNamed(RE::Actor* a_betrothed, RE::Actor* a_speaker, const std::string& a_words) {
+        const auto words = Lower(Trim(a_words));
+        if (words.empty()) {
+            return kSideUnknown;
+        }
+        std::vector<std::string> tokens;
+        std::string              token;
+        for (const char c : words + " ") {
+            if (std::isalpha(static_cast<unsigned char>(c))) {
+                token += c;
+            } else if (!token.empty()) {
+                tokens.push_back(std::exchange(token, {}));
+            }
+        }
+        const auto said = [&](std::initializer_list<const char*> a_any) {
+            return std::ranges::any_of(a_any, [&](const char* a_word) { return std::ranges::find(tokens, a_word) != tokens.end(); });
+        };
+        // A name: whole, or its first name ("Olfina's").
+        const auto named = [&](RE::Actor* a_actor) {
+            const auto name = a_actor ? Lower(a_actor->GetDisplayFullName()) : std::string{};
+            const auto first = name.substr(0, name.find_first_of(" -"));
+            return !name.empty() && (words.find(name) != std::string::npos ||
+                                     (first.size() >= 3 && std::ranges::find(tokens, first) != tokens.end()));
+        };
+        if (said({ "both", "either", "each", "everyone", "everybody" })) {
+            return kSideBoth;
+        }
+        const bool theirs = named(a_betrothed);
+        const bool yours = named(RE::PlayerCharacter::GetSingleton());
+        if (theirs && yours) {
+            return kSideBoth;
+        }
+        if (theirs) {
+            return kSideTheirs;
+        }
+        if (yours || said({ "you", "your", "yours" })) {
+            return kSideYours;
+        }
+        if (a_speaker && a_speaker == a_betrothed && said({ "my", "mine", "me" })) {
+            return kSideTheirs;
+        }
+        return kSideUnknown;
+    }
+
+    std::int32_t SideOf(RE::Actor* a_betrothed, RE::Actor* a_guest) {
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        if (!a_betrothed || !a_guest || !player) {
+            return kSideUnknown;
+        }
+        const auto among = [&](RE::Actor* a_of, std::initializer_list<const char*> a_relations) {
+            for (const auto* relation : a_relations) {
+                const auto kin = Family::Relatives(a_of, relation);
+                if (std::ranges::find(kin, a_guest) != kin.end()) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        const bool theirs = among(a_betrothed, { "parents", "siblings", "children" });
+        const bool yours = among(player, { "parents", "siblings", "children", "spouses" });
+        return theirs && yours ? kSideBoth : theirs ? kSideTheirs : yours ? kSideYours : kSideUnknown;
+    }
+
+    bool SetMark(std::int32_t a_betrothed, std::int32_t a_role) {
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        auto* marker = RE::TESForm::LookupByID<RE::TESBoundObject>(kXMarkerHeading);
+        if (a_role < 0 || a_role >= kMarkRoles || !player || !marker) {
+            return false;
+        }
+        const auto placed = player->PlaceObjectAtMe(marker, true);
+        if (!placed) {
+            SKSE::log::warn("Venue: no marker could be placed where the player stands");
+            return false;
+        }
+        std::uint32_t old = 0;
+        std::string   key;
+        {
+            const std::scoped_lock lock{ g_lock };
+            auto&                  plan = Make(a_betrothed);
+            key = VenueKey(plan.place);
+            auto& venue = g_venues[key];
+            if (venue.name.empty()) {
+                venue.name = plan.place;
+            }
+            old = std::exchange(venue.marks[a_role], placed->GetFormID());
+            plan.settled |= kLayoutSettled;
+            g_relink = true;
+        }
+        if (auto* gone = old ? RefOf(old) : nullptr; gone && gone != placed.get()) {
+            gone->Disable();
+            gone->SetDelete(true);
+        }
+        const auto  at = placed->GetPosition();
+        auto*       cell = placed->GetParentCell();
+        const char* cellName = cell ? cell->GetFormEditorID() : "";
+        // TEST LOG (wpm61).
+        SKSE::log::info("Venue '{}': {} marked at ({:.0f}, {:.0f}, {:.0f}) in {}{}", key.empty() ? "(no place yet)" : key,
+                        kRoleWords[a_role], at.x, at.y, at.z,
+                        cellName && *cellName ? cellName : std::format("{:08X}", cell ? cell->GetFormID() : 0),
+                        old ? "; the old mark removed" : "");
+        return true;
+    }
+
+    bool SettleLayout(std::int32_t a_betrothed) {
+        const std::scoped_lock lock{ g_lock };
+        auto&                  plan = Make(a_betrothed);
+        if (plan.settled & kLayoutSettled) {
+            return false;
+        }
+        plan.settled |= kLayoutSettled;
+        return true;
+    }
+
+    std::uint32_t Marked(std::int32_t a_betrothed) {
+        const std::scoped_lock lock{ g_lock };
+        const auto             it = g_plans.find(static_cast<std::uint32_t>(a_betrothed));
+        return it == g_plans.end() ? 0 : MarkedBits(it->second);
+    }
+
+    bool SetAnchor(std::int32_t a_betrothed, RE::TESObjectREFR* a_found) {
+        // A door is the way in: the spot is its other side.
+        auto* found = a_found;
+        if (auto* base = found ? found->GetBaseObject() : nullptr; base && base->Is(RE::FormType::Door)) {
+            auto* here = found->extraList.GetByType<RE::ExtraTeleport>();
+            if (auto other = here && here->teleportData ? here->teleportData->linkedDoor.get() : nullptr) {
+                found = other.get();
+            }
+        }
+        const std::scoped_lock lock{ g_lock };
+        const auto             it = g_plans.find(static_cast<std::uint32_t>(a_betrothed));
+        const auto             id = found ? found->GetFormID() : 0;
+        if (it == g_plans.end() || it->second.anchor == id) {
+            return false;
+        }
+        it->second.anchor = id;
+        g_relink = true;
+        SKSE::log::info("Wedding plan: {:08X}: everyone gathers at {:08X} when nothing is marked",
+                        static_cast<std::uint32_t>(a_betrothed), id);
+        return true;
+    }
+
+    void LetGo(RE::Actor* a_who) {
+        if (!a_who) {
+            return;
+        }
+        Link(a_who, nullptr);
+        const std::scoped_lock lock{ g_lock };
+        for (auto& [id, plan] : g_plans) {
+            std::erase(plan.sent, a_who->GetFormID());
+        }
     }
 
     bool SettleGuests(std::int32_t a_betrothed) {
@@ -711,6 +1175,8 @@ namespace SNRom::WeddingPlan {
         it->second.day = -1.0f;
         it->second.hour = -1;
         it->second.status = Status::kPlanning;
+        // Whoever set out comes back (Papyrus lets them go: LetGo).
+        it->second.sent.clear();
         return true;
     }
 
@@ -741,11 +1207,18 @@ namespace SNRom::WeddingPlan {
     std::vector<std::string> Unsettled(const Plan& a_plan) {
         std::vector<std::string> out;
         const bool planner = a_plan.planner != 0;
-        if (a_plan.findable == 0 && a_plan.nearTo.empty()) {
+        const auto marked = [&]() {
+            const std::scoped_lock lock{ g_lock };
+            return MarkedBits(a_plan);
+        }();
+        if (a_plan.findable == 0 && a_plan.nearTo.empty() && !marked) {
             out.emplace_back("near");
         }
         if (!(a_plan.settled & kGuestsSettled)) {
             out.emplace_back("guests");
+        }
+        if (std::ranges::any_of(a_plan.guests, [&](std::uint32_t a_guest) { return !a_plan.sides.contains(a_guest); })) {
+            out.emplace_back("sides");
         }
         if (planner && !(a_plan.settled & kCeremonySettled)) {
             out.emplace_back("ceremony");
@@ -759,6 +1232,11 @@ namespace SNRom::WeddingPlan {
         if (!(a_plan.settled & kOutfitSettled)) {
             out.emplace_back("outfit");
         }
+        // Last: it is walked at the place itself, so everything that can be
+        // settled anywhere is asked first.
+        if (planner && !marked && !(a_plan.settled & kLayoutSettled)) {
+            out.emplace_back("layout");
+        }
         return out;
     }
 
@@ -768,9 +1246,26 @@ namespace SNRom::WeddingPlan {
             return nullptr;
         }
         json guests = json::array();
+        // Each side's guests by name (wpm61), and those whose side is not
+        // known, for the planner to ask about.
+        json theirs = json::array();
+        json yours = json::array();
+        json both = json::array();
+        json unsided = json::array();
         for (const auto guest : plan->guests) {
-            if (auto name = NameOf(guest); !name.empty()) {
-                guests.push_back(std::move(name));
+            auto name = NameOf(guest);
+            if (name.empty()) {
+                continue;
+            }
+            const auto side = plan->sides.contains(guest) ? plan->sides.at(guest) : kSideUnknown;
+            (side == kSideTheirs ? theirs : side == kSideYours ? yours : side == kSideBoth ? both : unsided).push_back(name);
+            guests.push_back(std::move(name));
+        }
+        json                marked = json::array();
+        const std::uint32_t bits = Marked(a_betrothed);
+        for (std::size_t i = 0; i < kRoleWords.size(); ++i) {
+            if (bits & (1u << i)) {
+                marked.push_back(kRoleWords[i]);
             }
         }
         const float now = Now();
@@ -786,6 +1281,11 @@ namespace SNRom::WeddingPlan {
                  { "near", plan->nearTo },
                  { "officiant", NameOf(plan->officiant) },
                  { "guests", guests },
+                 { "theirGuests", theirs },
+                 { "yourGuests", yours },
+                 { "bothGuests", both },
+                 { "unsided", unsided },
+                 { "marked", marked },
                  { "planner", NameOf(plan->planner) },
                  { "address", (plan->parts & kAddress) ? 1 : 0 },
                  { "reading", (plan->parts & kReading) ? 1 : 0 },
@@ -828,12 +1328,25 @@ namespace SNRom::WeddingPlan {
             return nullptr;
         }
         json guests = json::array();
+        json unsided = json::array();
         for (const auto guest : plan->guests) {
             if (auto name = NameOf(guest); !name.empty()) {
+                if (!plan->sides.contains(guest)) {
+                    unsided.push_back(name);
+                }
                 guests.push_back(std::move(name));
             }
         }
+        json                marked = json::array();
+        const std::uint32_t bits = Marked(a_betrothed);
+        for (std::size_t i = 0; i < kRoleWords.size(); ++i) {
+            if (bits & (1u << i)) {
+                marked.push_back(kRoleWords[i]);
+            }
+        }
         return { { "planner", NameOf(plan->planner) },
+                 { "marked", marked },
+                 { "unsided", unsided },
                  { "day", plan->day >= 0.0f ? json(plan->day) : json(nullptr) },
                  { "hour", plan->hour },
                  { "place", plan->place },
@@ -1156,6 +1669,24 @@ namespace SNRom::WeddingPlan {
             WriteString(a_intfc, p.nearTo);
             WriteString(a_intfc, p.travelTo);
             a_intfc->WriteRecordData(p.findable);
+            a_intfc->WriteRecordData(static_cast<std::uint32_t>(p.sides.size()));
+            for (const auto& [guest, side] : p.sides) {
+                a_intfc->WriteRecordData(guest);
+                a_intfc->WriteRecordData(side);
+            }
+            a_intfc->WriteRecordData(p.anchor);
+            a_intfc->WriteRecordData(static_cast<std::uint32_t>(p.sent.size()));
+            for (const auto who : p.sent) {
+                a_intfc->WriteRecordData(who);
+            }
+        }
+        a_intfc->WriteRecordData(static_cast<std::uint32_t>(g_venues.size()));
+        for (const auto& [key, venue] : g_venues) {
+            WriteString(a_intfc, key);
+            WriteString(a_intfc, venue.name);
+            for (const auto mark : venue.marks) {
+                a_intfc->WriteRecordData(mark);
+            }
         }
     }
 
@@ -1234,6 +1765,38 @@ namespace SNRom::WeddingPlan {
                                    a_intfc->ReadRecordData(p.findable) != sizeof(p.findable))) {
                 return damaged();
             }
+            if (a_version >= 4) {
+                std::uint32_t sides = 0;
+                if (a_intfc->ReadRecordData(sides) != sizeof(sides) || sides > kMaxGuests * 4) {
+                    return damaged();
+                }
+                for (std::uint32_t s = 0; s < sides; ++s) {
+                    std::uint32_t guest = 0;
+                    std::int32_t  side = kSideUnknown;
+                    if (a_intfc->ReadRecordData(guest) != sizeof(guest) ||
+                        a_intfc->ReadRecordData(side) != sizeof(side)) {
+                        return damaged();
+                    }
+                    if (const auto now = resolve(guest)) {
+                        p.sides[now] = side;
+                    }
+                }
+                std::uint32_t sent = 0;
+                if (a_intfc->ReadRecordData(p.anchor) != sizeof(p.anchor) ||
+                    a_intfc->ReadRecordData(sent) != sizeof(sent) || sent > kMaxGuests * 4) {
+                    return damaged();
+                }
+                p.anchor = resolve(p.anchor);
+                for (std::uint32_t s = 0; s < sent; ++s) {
+                    std::uint32_t who = 0;
+                    if (a_intfc->ReadRecordData(who) != sizeof(who)) {
+                        return damaged();
+                    }
+                    if (const auto now = resolve(who)) {
+                        p.sent.push_back(now);
+                    }
+                }
+            }
             p.outfit = outfit != 0;
             if (a_version == 1) {
                 if (!p.guests.empty()) {
@@ -1250,11 +1813,37 @@ namespace SNRom::WeddingPlan {
                 g_plans[now] = std::move(p);
             }
         }
-        SKSE::log::info("Wedding plan: {} plans loaded from the save", g_plans.size());
+        g_venues.clear();
+        if (a_version >= 4) {
+            std::uint32_t venues = 0;
+            if (a_intfc->ReadRecordData(venues) != sizeof(venues) || venues > 10000) {
+                return damaged();
+            }
+            for (std::uint32_t v = 0; v < venues; ++v) {
+                std::string key;
+                Venue       venue;
+                if (!ReadString(a_intfc, key) || !ReadString(a_intfc, venue.name)) {
+                    return damaged();
+                }
+                for (auto& mark : venue.marks) {
+                    if (a_intfc->ReadRecordData(mark) != sizeof(mark)) {
+                        return damaged();
+                    }
+                    mark = resolve(mark);
+                }
+                g_venues[key] = std::move(venue);
+            }
+        }
+        // Links to a mark are not kept in the save: set again on the first
+        // look after the load.
+        g_relink = true;
+        SKSE::log::info("Wedding plan: {} plans and {} venues loaded from the save", g_plans.size(), g_venues.size());
     }
 
     void Revert() {
         const std::scoped_lock lock{ g_lock };
         g_plans.clear();
+        g_venues.clear();
+        g_relink = false;
     }
 }

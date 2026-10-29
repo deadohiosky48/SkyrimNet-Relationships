@@ -40,7 +40,10 @@ namespace SNRom::Natives {
     //  31  PlanSetPlace takes what the place is by; PlanSetFindable, PlanNear,
     //      PlanFindable, PlanTravelTo, BringToWedding: a place people can
     //      find, and anyone not there brought when it begins (2.5, wpm60)
-    inline constexpr std::int32_t kVersion = 31;
+    //  32  PlanMark, PlanSettleLayout, PlanMarked, PlanGuestSide, PlanSideOf,
+    //      PlanSideNamed, GuestSideOf, PlanSetAnchor, WeddingLetGo: where
+    //      everyone stands, and whose guests they are (2.5, wpm61)
+    inline constexpr std::int32_t kVersion = 32;
 
     // Registers the natives declared in src/scripts/SNRom_Native.psc.
     void Register(const SKSE::PapyrusInterface* a_papyrus);

@@ -37,6 +37,12 @@ parameterMapping:
     description: "the names of those no longer invited, separated by commas; empty for none"
     optional: true
     default: ""
+  # WHOSE GUESTS (wpm61): one partner's or the other's, as said.
+  - type: dynamic
+    name: asSide
+    description: "whose guests those invited now are, when it was said: the name of whichever of the couple they come for, or 'both'; empty when it was not said"
+    optional: true
+    default: ""
 
 eligibilityRules:
   - conditions:
