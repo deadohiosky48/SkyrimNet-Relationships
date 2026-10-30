@@ -508,6 +508,8 @@ Function RegisterEvents()
     ; wpm61: each one setting out for their mark, and called back.
     RegisterForModEvent("SNRom_WeddingGo", "OnWeddingGo")
     RegisterForModEvent("SNRom_WeddingRecall", "OnWeddingRecall")
+    ; wpm65: each one come to their place when it began.
+    RegisterForModEvent("SNRom_WeddingInPlace", "OnWeddingInPlace")
     ; SkyrimNetRelationships.dll asks for the roster every time the dashboard
     ; opens (OnDashboardRefresh). Without the DLL it never fires, and this costs
     ; nothing.
@@ -5611,6 +5613,7 @@ Function BlessUnion(Actor akOfficiant, String asBetrothed)
             "SkyrimNet's dialogue events are missing (see SkyrimNetRelationships.log).")
         Return
     EndIf
+    ReleaseWeddingHold()
     HoldForWedding(akOfficiant, betrothed)
     Diag(LOG_INFO(), "Ceremony: " + priest + " begins to marry the player to " + betrothed.GetDisplayName() + ".")
 EndFunction
@@ -5628,14 +5631,19 @@ String Function WeddingHolder() Global
     Return "Relationships"
 EndFunction
 
-Function HoldForWedding(Actor akOfficiant, Actor akBetrothed)
-    ReleaseWeddingHold()
+Function HoldForWedding(Actor akOfficiant, Actor akBetrothed, Actor[] akPlaced = None)
+    { akPlaced: those walking to their places (GoToPlace), who stand still
+      when they get there (OnWeddingInPlace) rather than where they are. }
     _weddingHeldA = akOfficiant
     _weddingHeldB = akBetrothed
-    StandToWatch(akOfficiant)
+    If !(akPlaced.Length > 0 && akPlaced.Find(akOfficiant) >= 0)
+        StandToWatch(akOfficiant)
+    EndIf
     ; The betrothed too (seen in play, wpm59): not held, Olfina walked on
     ; about her day, and the wedding ended as if she had left.
-    StandToWatch(akBetrothed)
+    If !(akPlaced.Length > 0 && akPlaced.Find(akBetrothed) >= 0)
+        StandToWatch(akBetrothed)
+    EndIf
     Int a = SkyrimNetApi.HoldPackages(akOfficiant, WeddingHolder())
     Int b = SkyrimNetApi.HoldPackages(akBetrothed, WeddingHolder())
     Diag(LOG_INFO(), "Ceremony: SkyrimNet's packages held for the wedding (" + a + " and " + b + " rows).")
@@ -5782,15 +5790,19 @@ EndFunction
 
 Actor[] _weddingWatchers
 
-Function StandToWatch(Actor akWho)
+Function StandToWatch(Actor akWho, Actor akLookAt = None)
     { STAYING FOR THE CEREMONY (the author, 2026-10-25): the officiant and the
       guests keep their places and watch the couple until it is over, then are
-      released (ReleaseWeddingHold). Kept here, so a load releases them too. }
+      released (ReleaseWeddingHold). Kept here, so a load releases them too.
+      They look at akLookAt, the player when None. }
     If akWho == None || akWho.IsDead() || akWho == Game.GetPlayer()
         Return
     EndIf
-    If _weddingWatchers == None || _weddingWatchers.Length == 0
+    If _weddingWatchers.Length == 0
         _weddingWatchers = new Actor[48]
+    EndIf
+    If akLookAt == None
+        akLookAt = Game.GetPlayer()
     EndIf
     Int i = 0
     While i < _weddingWatchers.Length
@@ -5799,19 +5811,64 @@ Function StandToWatch(Actor akWho)
         ElseIf _weddingWatchers[i] == None
             _weddingWatchers[i] = akWho
             akWho.SetDontMove(True)
-            akWho.SetLookAt(Game.GetPlayer())
+            akWho.SetLookAt(akLookAt)
             Return
         EndIf
         i += 1
     EndWhile
 EndFunction
 
+; ---- EACH TO THEIR PLACE (wpm65; WeddingPlan.h, TakePlaces) -----------------
+;
+; When it begins, everyone who came walks to their own place and stands still
+; there, facing the couple (the author, 2026-10-30). The walk is a PapyrusUtil
+; package override, not a SkyrimNet package: SkyrimNet's hold on the officiant
+; and the betrothed (HoldForWedding) stops every package it applies, ours too,
+; but never an ActorUtil override.
+Actor[] _weddingPlaced
+
+Package Function WeddingPlacePackage()
+    Return Game.GetFormFromFile(0x00000D8E, OurPlugin()) as Package
+EndFunction
+
+Function GoToPlace(Actor akWho)
+    Package walk = WeddingPlacePackage()
+    If akWho == None || walk == None
+        Return
+    EndIf
+    If _weddingPlaced.Length == 0
+        _weddingPlaced = new Actor[64]
+    EndIf
+    Int i = _weddingPlaced.Find(None)
+    If i < 0 || _weddingPlaced.Find(akWho) >= 0
+        Return
+    EndIf
+    _weddingPlaced[i] = akWho
+    ActorUtil.AddPackageOverride(akWho, walk, 100, 1)
+    akWho.EvaluatePackage()
+EndFunction
+
+Event OnWeddingInPlace(String asEventName, String asRole, Float afUnused, Form akSender)
+    { SNRom_WeddingInPlace: akSender is in their place (or as near as they
+      could come), turned to the couple: there they stay. The betrothed's
+      guests look at the betrothed; everyone else at the player. }
+    Actor who = akSender as Actor
+    If who == None
+        Return
+    EndIf
+    Actor lookAt = None
+    If asRole == "theirs"
+        lookAt = SNRom_Native.CeremonyBetrothed()
+    EndIf
+    StandToWatch(who, lookAt)
+EndEvent
+
 Actor[] _weddingBrought
 
 Function BringToWatch(Actor akWho)
     { One brought in when it began: they walk up by following the player,
       which ends with the wedding (ReleaseWatchers). }
-    If _weddingBrought == None || _weddingBrought.Length == 0
+    If _weddingBrought.Length == 0
         _weddingBrought = new Actor[48]
     EndIf
     Int i = _weddingBrought.Find(None)
@@ -5830,18 +5887,30 @@ Function BringToWatch(Actor akWho)
 EndFunction
 
 Function ReleaseWatchers()
-    If _weddingBrought != None
-        Int b = 0
-        While b < _weddingBrought.Length
-            If _weddingBrought[b] != None
-                SkyrimNetApi.UnregisterPackageEx(_weddingBrought[b], "FollowPlayer", WeddingHolder())
-                _weddingBrought[b] = None
+    ; Array variables never assigned are checked by Length: comparing one to
+    ; None fails at load ("Cannot cast from None to Actor[]").
+    Int b = 0
+    While b < _weddingBrought.Length
+        If _weddingBrought[b] != None
+            SkyrimNetApi.UnregisterPackageEx(_weddingBrought[b], "FollowPlayer", WeddingHolder())
+            _weddingBrought[b] = None
+        EndIf
+        b += 1
+    EndWhile
+    Package walk = WeddingPlacePackage()
+    Int p = 0
+    While p < _weddingPlaced.Length
+        If _weddingPlaced[p] != None
+            If walk != None
+                ActorUtil.RemovePackageOverride(_weddingPlaced[p], walk)
             EndIf
-            b += 1
-        EndWhile
-    EndIf
-    If _weddingWatchers == None
-        Return
+            _weddingPlaced[p].EvaluatePackage()
+            _weddingPlaced[p] = None
+        EndIf
+        p += 1
+    EndWhile
+    If _dashNatives >= 33
+        SNRom_Native.WeddingPlacesClear()
     EndIf
     Int i = 0
     While i < _weddingWatchers.Length
@@ -6493,7 +6562,19 @@ Event OnWeddingBegin(String asEventName, String asUnused, Float afUnused, Form a
         Return
     EndIf
     If SNRom_Native.CeremonyBeginPlanned(officiant, betrothed, VariantName(), SNRom_Native.PlanParts(betrothed))
-        HoldForWedding(officiant, betrothed)
+        ReleaseWeddingHold()
+        ; EACH TO THEIR PLACE (wpm65): everyone who came walks to their own
+        ; place and stands there, facing the couple.
+        Actor[] placed
+        If _dashNatives >= 33
+            placed = SNRom_Native.WeddingPlaces(betrothed)
+            Int w = 0
+            While w < placed.Length
+                GoToPlace(placed[w])
+                w += 1
+            EndWhile
+        EndIf
+        HoldForWedding(officiant, betrothed, placed)
         ; The guests who came keep their places and watch. ANYONE NOT THERE
         ; (the author, 2026-10-28) comes in through the nearest door and
         ; joins them, following the player until it is over.
@@ -6503,7 +6584,9 @@ Event OnWeddingBegin(String asEventName, String asUnused, Float afUnused, Form a
         Int brought = 0
         Int g = 0
         While g < guests.Length
-            If guests[g] != None && guests[g].Is3DLoaded() && guests[g].GetDistance(player) < 4000.0
+            If guests[g] != None && placed.Length > 0 && placed.Find(guests[g]) >= 0
+                came += 1
+            ElseIf guests[g] != None && guests[g].Is3DLoaded() && guests[g].GetDistance(player) < 4000.0
                 StandToWatch(guests[g])
                 came += 1
             ElseIf guests[g] != None && _dashNatives >= 31 && SNRom_Native.BringToWedding(guests[g], player)

@@ -213,6 +213,15 @@ namespace SNRom::WeddingPlan {
     // and no longer counted as sent. Papyrus removes their package. Main
     // thread.
     void LetGo(RE::Actor* a_who);
+    // WHEN IT BEGINS, EACH TO THEIR PLACE (wpm65): the officiant and the
+    // betrothed linked to their marks, and each guest near enough to walk it
+    // to a place of their own in rows at their side's mark, facing the
+    // couple. Returns those sent; each is reported settled with the mod event
+    // SNRom_WeddingInPlace (strArg their role). Main thread.
+    std::vector<RE::Actor*> TakePlaces(std::int32_t a_betrothed);
+    // The wedding over or stopped: the guests' places removed, and everyone
+    // still on their way linked to their mark again. Main thread.
+    void ClearPlaces();
     bool SetParts(std::int32_t a_betrothed, std::uint32_t a_parts);
     // Each -1 left as it is.
     bool SetRings(std::int32_t a_betrothed, std::int32_t a_yourStyle, std::int32_t a_yourMetal,

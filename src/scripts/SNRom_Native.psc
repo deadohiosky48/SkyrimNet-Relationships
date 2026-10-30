@@ -486,6 +486,18 @@ Bool Function PlanSetAnchor(Actor akBetrothed, ObjectReference akFound) Global N
 Function WeddingLetGo(Actor akWho) Global Native
 {VERSION 32. One who set out for a wedding let go: their link to the mark
  cleared. Their package is removed by the caller.}
+
+Actor[] Function WeddingPlaces(Actor akBetrothed) Global Native
+{VERSION 33. WHEN IT BEGINS, EACH TO THEIR PLACE: the officiant and the betrothed
+ linked to their marks, and each guest near enough to walk it to a place of
+ their own in rows at their side's mark, facing the couple. The caller walks
+ those returned there (SNRom_WeddingPlace); each is reported settled by the mod
+ event SNRom_WeddingInPlace, strArg "officiant", "betrothed", "theirs" (the
+ betrothed's guest) or "yours". Anyone not returned is not near enough.}
+
+Function WeddingPlacesClear() Global Native
+{VERSION 33. The wedding over or stopped: the guests' places removed, and anyone
+ still on their way linked to their mark again.}
 Bool Function PlanSetOfficiant(Actor akBetrothed, Actor akOfficiant) Global Native
 Bool Function PlanGuest(Actor akBetrothed, Actor akGuest, Bool abAdd) Global Native
 Bool Function PlanSetParts(Actor akBetrothed, Int aiParts) Global Native

@@ -368,6 +368,90 @@ namespace SNRom::WeddingPlan {
             a_who->EvaluatePackage();
         }
 
+        // TESObjectREFR::MoveTo_Impl, private in CommonLib: a_who moved into
+        // a_ref's cell, at a position and rotation of our own. Main thread.
+        void PutAt(RE::Actor* a_who, RE::TESObjectREFR* a_ref, const RE::NiPoint3& a_at, const RE::NiPoint3& a_rotation) {
+            using func_t = void(RE::TESObjectREFR*, const RE::ObjectRefHandle&, RE::TESObjectCELL*,
+                                RE::TESWorldSpace*, const RE::NiPoint3&, const RE::NiPoint3&);
+            static REL::Relocation<func_t> moveTo{ RELOCATION_ID(56227, 56626) };
+            moveTo(a_who, a_ref->CreateRefHandle(), a_ref->GetParentCell(), a_ref->GetWorldspace(), a_at, a_rotation);
+        }
+
+        // a_a where a_b is: the one cell indoors, the one worldspace out.
+        bool SameSpace(RE::TESObjectREFR* a_a, RE::TESObjectREFR* a_b) {
+            auto* cell = a_b->GetParentCell();
+            if (cell && cell->IsInteriorCell()) {
+                return a_a->GetParentCell() == cell;
+            }
+            auto* world = a_b->GetWorldspace();
+            return world && a_a->GetWorldspace() == world;
+        }
+
+        float Across(const RE::NiPoint3& a_a, const RE::NiPoint3& a_b) {
+            return std::hypot(a_a.x - a_b.x, a_a.y - a_b.y);
+        }
+
+        // The heading that faces a_to from a_from (0 is north, clockwise).
+        float HeadingTo(const RE::NiPoint3& a_from, const RE::NiPoint3& a_to) {
+            return std::atan2(a_to.x - a_from.x, a_to.y - a_from.y);
+        }
+
+        // On the screen now: a_at at head height projects inside the view.
+        // Walls are not looked at, so a spot behind one counts as seen.
+        bool OnScreen(const RE::NiPoint3& a_at) {
+            auto* camera = RE::Main::WorldRootCamera();
+            if (!camera) {
+                return false;
+            }
+            float x = -1.0f;
+            float y = -1.0f;
+            float z = -1.0f;
+            camera->WorldPtToScreenPt3({ a_at.x, a_at.y, a_at.z + 100.0f }, x, y, z, 1e-5f);
+            return z > 0.0f && x >= 0.0f && x <= 1.0f && y >= 0.0f && y <= 1.0f;
+        }
+
+        // THE LATE ONES (wpm65; the author, 2026-10-30). Skyrim moves no one
+        // far while they are not loaded: Kayla and Elisif, sent a day ahead,
+        // never came until the player summoned them. So from an hour before,
+        // whoever set out and is not loaded within kOnTheirWay of their mark
+        // is summoned ONTO it - the one spot known to be ground, because the
+        // player stood there (a cliff's edge a step away is not). Unseen when
+        // the player is away from the venue or the mark is off the screen; at
+        // the hour, seen or not: the ceremony comes before the illusion. One
+        // to a mark each look, so a crowd never lands on one spot. A place
+        // found rather than marked is a door's other side: brought to it.
+        constexpr float kSummonAhead = 1.0f / 24.0f;
+        constexpr float kOnTheirWay = 2000.0f;
+        constexpr float kSeenFrom = 8000.0f;
+        std::vector<std::uint32_t> g_summoned;  // who was, this session; under g_lock
+
+        // EACH TO THEIR PLACE (wpm65; the author, 2026-10-30: "When the
+        // ceremony begins, they should go to the mark and stand still,
+        // facing the couple"). The officiant and the betrothed to their own
+        // marks; each guest who came to a place of their own, in rows of
+        // kPerRow at their side's mark, facing the couple. They WALK there
+        // (SNRom_WeddingPlace, a PapyrusUtil override, which SkyrimNet's hold
+        // does not stop), so a place over an edge leaves them at the nearest
+        // ground they can reach. Settled when there, or when kGiveUpAfter
+        // looks bring them no nearer: turned to face the couple, and held
+        // still by Papyrus (SNRom_WeddingInPlace). Main thread only.
+        struct Place {
+            std::uint32_t who = 0;
+            std::uint32_t at = 0;      // their mark, or a marker of ours
+            bool          ours = false;
+            RE::NiPoint3  faceTo;
+            const char*   role = "";   // "officiant", "betrothed", "theirs", "yours"
+            float         best = -1.0f;
+            int           still = 0;
+            bool          settled = false;
+        };
+        std::vector<Place>    g_places;
+        constexpr float       kInPlace = 80.0f;
+        constexpr int         kGiveUpAfter = 5;    // looks, 3 s apart
+        constexpr std::size_t kPerRow = 4;
+        constexpr float       kSideBySide = 90.0f;
+        constexpr float       kRowBehind = 100.0f;
+
         // WHERE SOMEONE IS, OUT OF DOORS: where they stand, or inside, the
         // door out of their cell. Nothing for a cell with no door outside.
         struct Outside {
@@ -504,6 +588,12 @@ namespace SNRom::WeddingPlan {
             };
             std::vector<Going>        going;
             std::vector<std::uint32_t> letGo;
+            struct Late {
+                Goal goal;
+                bool hour = false;   // the hour has come
+                bool found = false;  // a place found, not marked
+            };
+            std::vector<Late> late;
             // The day will not come after all: no one goes on waiting for it.
             const auto recall = [&](std::uint32_t a_id, Plan& a_plan) {
                 if (!a_plan.sent.empty()) {
@@ -605,6 +695,20 @@ namespace SNRom::WeddingPlan {
                         }
                     }
                 }
+                // THE LATE ONES (wpm65): looked at every tick from an hour before.
+                if (Ceremony::Now() == 0) {
+                    for (auto& [id, plan] : g_plans) {
+                        if (plan.status != Status::kUnderWay || plan.day < 0.0f || now < When(plan) - kSummonAhead) {
+                            continue;
+                        }
+                        for (const auto& goal : GoalsOf(id, plan)) {
+                            if (std::ranges::find(plan.sent, goal.who) != plan.sent.end() &&
+                                std::ranges::find(g_summoned, goal.who) == g_summoned.end()) {
+                                late.push_back({ goal, now >= When(plan), goal.at == plan.anchor });
+                            }
+                        }
+                    }
+                }
             }
             for (const auto id : letGo) {
                 Link(RE::TESForm::LookupByID<RE::Actor>(id), nullptr);
@@ -626,6 +730,67 @@ namespace SNRom::WeddingPlan {
                                 g.distance >= 0.0f ? std::format("{:.0f} away", g.distance) : std::string("distance unknown"),
                                 g.lead * 24.0f);
                 Send("SNRom_WeddingGo", g.goal.package, g.lead * 24.0f, g.goal.who);
+            }
+            std::vector<std::uint32_t> landedOn;   // marks used this look
+            for (const auto& l : late) {
+                auto* who = RE::TESForm::LookupByID<RE::Actor>(l.goal.who);
+                auto* to = RefOf(l.goal.at);
+                if (!who || !to || who->IsDead() || who->IsDisabled() ||
+                    std::ranges::find(landedOn, l.goal.at) != landedOn.end()) {
+                    continue;
+                }
+                const bool  sameSpace = SameSpace(who, to);
+                const float from = sameSpace ? who->GetPosition().GetDistance(to->GetPosition()) : -1.0f;
+                if (who->Is3DLoaded() && sameSpace && from <= kOnTheirWay) {
+                    continue;   // there, or walking in
+                }
+                auto*       venue = to->GetParentCell();
+                const bool  away = !SameSpace(player, to) || !venue || !venue->IsAttached() ||
+                                   player->GetPosition().GetDistance(to->GetPosition()) > kSeenFrom;
+                const char* how = away                            ? "while the player was away" :
+                                  !OnScreen(to->GetPosition())    ? "out of the player's sight" :
+                                  l.hour                          ? "at the hour, in the player's sight" :
+                                                                    nullptr;
+                if (!how) {
+                    continue;
+                }
+                landedOn.push_back(l.goal.at);
+                {
+                    const std::scoped_lock lock{ g_lock };
+                    g_summoned.push_back(l.goal.who);
+                }
+                // TEST LOG (wpm65): who was summoned, from how far, and how.
+                SKSE::log::info("Wedding: {} summoned {} to {}, from {}", who->GetDisplayFullName(), how, l.goal.where,
+                                from >= 0.0f ? std::format("{:.0f} away", from) : std::string("elsewhere"));
+                if (l.found) {
+                    BringBeside(who, to);
+                } else {
+                    PutAt(who, to, to->GetPosition(), to->data.angle);
+                    who->EvaluatePackage();
+                }
+            }
+            for (auto& p : g_places) {
+                auto* who = p.settled ? nullptr : RE::TESForm::LookupByID<RE::Actor>(p.who);
+                auto* at = who ? RefOf(p.at) : nullptr;
+                if (!who || !at || who->IsDead() || !who->Is3DLoaded()) {
+                    continue;
+                }
+                const float off = Across(who->GetPosition(), at->GetPosition());
+                if (off > kInPlace) {
+                    if (p.best < 0.0f || off < p.best - 16.0f) {
+                        p.best = off;
+                        p.still = 0;
+                        continue;
+                    }
+                    if (++p.still < kGiveUpAfter) {
+                        continue;
+                    }
+                }
+                p.settled = true;
+                who->SetHeading(HeadingTo(who->GetPosition(), p.faceTo));
+                // TEST LOG (wpm65): who settled where.
+                SKSE::log::info("Wedding: {} in their place ({}), {:.0f} from it", who->GetDisplayFullName(), p.role, off);
+                Send("SNRom_WeddingInPlace", p.role, 0.0f, p.who);
             }
             for (const auto& d : due) {
                 Send(d.event, d.text, 0.0f, d.betrothed);
@@ -902,12 +1067,7 @@ namespace SNRom::WeddingPlan {
             auto actor = who.get();
             auto at = door.get();
             if (actor && at) {
-                // TESObjectREFR::MoveTo_Impl, private in CommonLib: MoveTo to a
-                // reference's cell at a position of our own.
-                using func_t = void(RE::TESObjectREFR*, const RE::ObjectRefHandle&, RE::TESObjectCELL*,
-                                    RE::TESWorldSpace*, const RE::NiPoint3&, const RE::NiPoint3&);
-                static REL::Relocation<func_t> moveTo{ RELOCATION_ID(56227, 56626) };
-                moveTo(actor.get(), door, at->GetParentCell(), at->GetWorldspace(), spot, facing);
+                PutAt(actor.get(), at.get(), spot, facing);
             }
         });
         return true;
@@ -1117,6 +1277,132 @@ namespace SNRom::WeddingPlan {
         for (auto& [id, plan] : g_plans) {
             std::erase(plan.sent, a_who->GetFormID());
         }
+    }
+
+    std::vector<RE::Actor*> TakePlaces(std::int32_t a_betrothed) {
+        ClearPlaces();
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        auto* marker = RE::TESForm::LookupByID<RE::TESBoundObject>(kXMarkerHeading);
+        if (!player || !marker) {
+            return {};
+        }
+        const auto                          betrothed = static_cast<std::uint32_t>(a_betrothed);
+        std::vector<Goal>                   goals;
+        std::array<std::uint32_t, kMarkRoles> marks{};
+        std::uint32_t                       officiant = 0;
+        std::map<std::uint32_t, std::int32_t> sides;
+        {
+            const std::scoped_lock lock{ g_lock };
+            const auto             it = g_plans.find(betrothed);
+            if (it == g_plans.end()) {
+                return {};
+            }
+            goals = GoalsOf(betrothed, it->second);
+            marks = MarksOf(it->second);
+            officiant = it->second.officiant;
+            sides = it->second.sides;
+        }
+        const auto posOf = [](std::uint32_t a_id) -> std::optional<RE::NiPoint3> {
+            auto* ref = RefOf(a_id);
+            return ref ? std::optional<RE::NiPoint3>{ ref->GetPosition() } : std::nullopt;
+        };
+        // Where the couple stands: between the player's mark and the
+        // betrothed's; at either; else where the player is.
+        const auto   you = posOf(marks[kMarkYou]);
+        const auto   them = posOf(marks[kMarkBetrothed]);
+        RE::NiPoint3 couple = player->GetPosition();
+        if (you && them) {
+            couple = { (you->x + them->x) / 2.0f, (you->y + them->y) / 2.0f, (you->z + them->z) / 2.0f };
+        } else if (you || them) {
+            couple = you ? *you : *them;
+        }
+        std::optional<RE::NiPoint3> officiantAt;
+        for (const auto& goal : goals) {
+            if (goal.who == officiant) {
+                officiantAt = posOf(goal.at);
+            }
+        }
+        // Only those here to walk it: anyone else is brought (BringBeside).
+        const auto here = [&](const Goal& a_goal) -> RE::Actor* {
+            auto* who = RE::TESForm::LookupByID<RE::Actor>(a_goal.who);
+            return who && RefOf(a_goal.at) && !who->IsDead() && who->Is3DLoaded() &&
+                           who->GetPosition().GetDistance(player->GetPosition()) <= kBringFrom ?
+                       who :
+                       nullptr;
+        };
+        std::vector<RE::Actor*>                             out;
+        std::map<std::uint32_t, std::vector<std::uint32_t>> gathering;   // a mark: the guests coming to it
+        for (const auto& goal : goals) {
+            auto* who = here(goal);
+            if (!who) {
+                continue;
+            }
+            if (goal.who == officiant || goal.who == betrothed) {
+                const bool   isOfficiant = goal.who == officiant;
+                const auto   at = RefOf(goal.at)->GetPosition();
+                // The betrothed faces the officiant, the officiant the couple.
+                const auto   face = !isOfficiant && officiantAt && Across(*officiantAt, at) > 50.0f ? *officiantAt : couple;
+                Link(who, RefOf(goal.at));
+                g_places.push_back({ goal.who, goal.at, false, face, isOfficiant ? "officiant" : "betrothed" });
+                out.push_back(who);
+            } else {
+                gathering[goal.at].push_back(goal.who);
+            }
+        }
+        for (const auto& [markId, coming] : gathering) {
+            auto*      mark = RefOf(markId);
+            const auto m = mark->GetPosition();
+            // Forward is toward the couple; the rows run across it.
+            float      fx = couple.x - m.x;
+            float      fy = couple.y - m.y;
+            const auto length = std::hypot(fx, fy);
+            if (length < 50.0f) {
+                fx = std::sin(mark->GetAngleZ());
+                fy = std::cos(mark->GetAngleZ());
+            } else {
+                fx /= length;
+                fy /= length;
+            }
+            const auto n = coming.size();
+            for (std::size_t k = 0; k < n; ++k) {
+                const auto   row = k / kPerRow;
+                const auto   inRow = std::min(kPerRow, n - row * kPerRow);
+                const float  across = (static_cast<float>(k % kPerRow) - static_cast<float>(inRow - 1) / 2.0f) * kSideBySide;
+                const float  behind = static_cast<float>(row) * kRowBehind;
+                RE::NiPoint3 at{ m.x + fy * across - fx * behind, m.y - fx * across - fy * behind, m.z };
+                const auto   placed = mark->PlaceObjectAtMe(marker, false);
+                auto*        who = RE::TESForm::LookupByID<RE::Actor>(coming[k]);
+                if (!placed || !who) {
+                    continue;
+                }
+                placed->SetPosition(at);
+                placed->SetAngle({ 0.0f, 0.0f, HeadingTo(at, couple) });
+                Link(who, placed.get());
+                const auto side = sides.find(coming[k]);
+                g_places.push_back({ coming[k], placed->GetFormID(), true, couple,
+                                     side != sides.end() && side->second == kSideTheirs ? "theirs" : "yours" });
+                out.push_back(who);
+            }
+        }
+        // TEST LOG (wpm65).
+        SKSE::log::info("Wedding: {} take their places, the guests at {} marks", out.size(), gathering.size());
+        return out;
+    }
+
+    void ClearPlaces() {
+        if (g_places.empty()) {
+            return;
+        }
+        for (const auto& p : std::exchange(g_places, {})) {
+            if (auto* ref = p.ours ? RefOf(p.at) : nullptr) {
+                ref->Disable();
+                ref->SetDelete(true);
+            }
+        }
+        // A wedding that did not finish leaves the day under way: everyone
+        // linked to their marks again.
+        const std::scoped_lock lock{ g_lock };
+        g_relink = true;
     }
 
     bool SettleGuests(std::int32_t a_betrothed) {
@@ -1860,5 +2146,7 @@ namespace SNRom::WeddingPlan {
         g_plans.clear();
         g_venues.clear();
         g_relink = false;
+        g_summoned.clear();
+        g_places.clear();
     }
 }

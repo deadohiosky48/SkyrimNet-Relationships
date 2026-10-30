@@ -591,6 +591,14 @@ namespace SNRom::Natives {
         void WeddingLetGo(RE::StaticFunctionTag*, RE::Actor* a_who) {
             WeddingPlan::LetGo(a_who);
         }
+        // v33: each to their place when it begins, and let go when it ends.
+        std::vector<RE::Actor*> WeddingPlaces(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id ? WeddingPlan::TakePlaces(id) : std::vector<RE::Actor*>{};
+        }
+        void WeddingPlacesClear(RE::StaticFunctionTag*) {
+            WeddingPlan::ClearPlaces();
+        }
         bool PlanSetOfficiant(RE::StaticFunctionTag*, RE::Actor* a_betrothed, RE::Actor* a_officiant) {
             const auto id = FormIdOfActor(a_betrothed);
             return id && a_officiant && WeddingPlan::SetOfficiant(id, a_officiant->GetFormID());
@@ -1084,6 +1092,9 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("GuestSideOf", kScript, GuestSideOf);
             a_vm->RegisterFunction("PlanSetAnchor", kScript, PlanSetAnchor);
             a_vm->RegisterFunction("WeddingLetGo", kScript, WeddingLetGo);
+            // v33. Main thread: markers placed, links set.
+            a_vm->RegisterFunction("WeddingPlaces", kScript, WeddingPlaces);
+            a_vm->RegisterFunction("WeddingPlacesClear", kScript, WeddingPlacesClear);
             a_vm->RegisterFunction("PlanOutfit", kScript, PlanOutfit, true);
             a_vm->RegisterFunction("PlanParts", kScript, PlanParts, true);
             a_vm->RegisterFunction("PlanRing", kScript, PlanRing, true);
@@ -1121,7 +1132,8 @@ namespace SNRom::Natives {
                             "PlanSetParts, PlanSetRings, PlanSetOutfit, PlanPostpone, PlanClear, PlanOpen, PlanOfficiant, PlanPlanner, "
                             "PlanGuests, PlanPlace, PlanOutfit, PlanParts, PlanRing, RingWeddingOfMetal, "
                             "PlanSetFindable, PlanNear, PlanFindable, PlanTravelTo, BringToWedding, PlanMark, PlanSettleLayout, "
-                            "PlanMarked, PlanGuestSide, PlanSideOf, PlanSideNamed, GuestSideOf, PlanSetAnchor, WeddingLetGo",
+                            "PlanMarked, PlanGuestSide, PlanSideOf, PlanSideNamed, GuestSideOf, PlanSetAnchor, WeddingLetGo, "
+                            "WeddingPlaces, WeddingPlacesClear",
                             kScript, kVersion);
             return true;
         });
