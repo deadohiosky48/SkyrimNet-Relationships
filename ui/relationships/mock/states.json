@@ -83,7 +83,9 @@
       "prose": {
         "why": "Corvane trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
         "limit": "Corvane will not leave a companion behind in a fight.",
-        "address": "By name, always."
+        "address": "By name, always.",
+
+        "playerSays": ""
       }
     },
     {
@@ -133,7 +135,9 @@
       "prose": {
         "why": "",
         "limit": "",
-        "address": ""
+        "address": "",
+
+        "playerSays": ""
       }
     },
     {
@@ -183,7 +187,9 @@
       "prose": {
         "why": "Halvard is drawn to steadiness, and wary of anyone who needs an audience.",
         "limit": "Halvard will not share a secret that was given in trust.",
-        "address": "By name, always."
+        "address": "By name, always.",
+
+        "playerSays": ""
       },
       "history": [
         {
@@ -249,7 +255,9 @@
       "prose": {
         "why": "Sabeth prizes plain speech and distrusts anyone who talks around a thing.",
         "limit": "Sabeth will not be kept as someone's second choice.",
-        "address": "By name, always."
+        "address": "By name, always.",
+
+        "playerSays": ""
       },
       "history": [
         {
@@ -322,7 +330,9 @@
       "prose": {
         "why": "Ysolde treats loyalty as a debt paid in deeds, never in words.",
         "limit": "Ysolde will not be kept as someone's second choice.",
-        "address": "'Dearest', half teasing."
+        "address": "'Dearest', half teasing.",
+
+        "playerSays": ""
       },
       "history": [
         {
@@ -402,7 +412,9 @@
       "prose": {
         "why": "Kjeld is drawn to steadiness, and wary of anyone who needs an audience.",
         "limit": "Kjeld will not take part in cruelty for sport.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+
+        "playerSays": ""
       },
       "history": [
         {
@@ -468,7 +480,9 @@
       "prose": {
         "why": "Liesl laughs easily and forgives quickly, but remembers exactly who was there when it mattered.",
         "limit": "Liesl will not take part in cruelty for sport.",
-        "address": "By name, always."
+        "address": "By name, always.",
+
+        "playerSays": ""
       },
       "history": [
         {

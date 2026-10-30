@@ -70,12 +70,14 @@ namespace SNRom::WeddingPlan {
         constexpr int   kSendEvery = 10;
 
         // Our plugin's SNRom_WeddingMark, and the packages taken to a mark
-        // (SNRom_Integration.esl; docs: copies of Skyrim's own hold-position
-        // and sandbox packages, near the reference linked with our keyword,
-        // with eating, sleeping and work furniture switched off).
+        // (SNRom_Integration.esl; docs: copies of Skyrim's own sandbox
+        // package, near the reference linked with our keyword, with eating,
+        // sleeping and work furniture switched off). The stand is the same
+        // within 128 units: it was HoldPosition until wpm64, which holds
+        // wherever they already are and never walks them there.
         constexpr RE::FormID kMarkKeyword = 0xD89;
         constexpr RE::FormID kXMarkerHeading = 0x34;   // Skyrim.esm
-        constexpr const char* kStand = "SNRom_WeddingStand";
+        constexpr const char* kStand = "SNRom_WeddingStand";                // 128, the officiant and the betrothed
         constexpr const char* kGatherSmall = "SNRom_WeddingGatherSmall";    // 300 units, up to 4 people
         constexpr const char* kGatherMedium = "SNRom_WeddingGatherMedium";  // 500, up to 10
         constexpr const char* kGatherLarge = "SNRom_WeddingGatherLarge";    // 800, more

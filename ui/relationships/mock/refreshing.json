@@ -79,7 +79,9 @@
       "prose": {
         "why": "Hrodwen is restless under routine and comes alive on the road.",
         "limit": "Hrodwen will not be kept as someone's second choice.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+
+        "playerSays": ""
       }
     },
     {
@@ -129,7 +131,9 @@
       "prose": {
         "why": "Ansel prizes plain speech and distrusts anyone who talks around a thing.",
         "limit": "Ansel will not be lied to twice.",
-        "address": "'Dearest', half teasing."
+        "address": "'Dearest', half teasing.",
+
+        "playerSays": ""
       }
     },
     {
@@ -179,7 +183,9 @@
       "prose": {
         "why": "Tova measures people by what they do when it costs them, and has little patience for charm.",
         "limit": "Tova will not be lied to twice.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+
+        "playerSays": ""
       }
     }
   ]

@@ -79,7 +79,9 @@
       "prose": {
         "why": "Marit keeps a small circle and guards it fiercely.",
         "limit": "Marit will not bow to a Thalmor justiciar, whatever it costs.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+
+        "playerSays": ""
       }
     },
     {
@@ -129,7 +131,9 @@
       "prose": {
         "why": "Osric treats loyalty as a debt paid in deeds, never in words.",
         "limit": "Osric will not bow to a Thalmor justiciar, whatever it costs.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+
+        "playerSays": ""
       }
     },
     {
@@ -179,7 +183,9 @@
       "prose": {
         "why": "Gisla wants to be needed more than admired, and notices the difference at once.",
         "limit": "Gisla will not take part in cruelty for sport.",
-        "address": "'Dearest', half teasing."
+        "address": "'Dearest', half teasing.",
+
+        "playerSays": ""
       }
     }
   ]

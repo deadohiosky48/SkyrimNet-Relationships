@@ -117,7 +117,11 @@ async function waitToast(page, text) {
   await page.waitForFunction((t) => Array.prototype.some.call(document.querySelectorAll(".toast"), (e) => e.textContent.indexOf(t) >= 0), text);
 }
 async function clearToasts(page) { await page.evaluate(() => { document.getElementById("toasts").innerHTML = ""; }); }
-async function lastLog(page) { return page.evaluate(() => window.__snromMock.log[window.__snromMock.log.length - 1]); }
+// The last envelope the page sent, passing over the portrait thumbnails a
+// scroll or a refresh asks for in the background whenever it likes.
+async function lastLog(page) {
+  return page.evaluate(() => window.__snromMock.log.filter((e) => e.kind !== "thumbnails").pop());
+}
 async function openByName(page, name) {
   await page.fill("#f-text", name);
   await page.click(`.row:has-text("${name}")`);
@@ -392,7 +396,7 @@ async function main() {
     await t.page.waitForFunction(() => document.documentElement.style.getPropertyValue("--t") === "1.3");
     L = await layoutOf(t.page);
     assert(near(L.fontPx, 16, 0.01) && near(L.nameFont, 16 * 1.3, 0.05), `Larger text on 100%: root ${L.fontPx}px, a name ${L.nameFont}px`);
-    assert(near(L.rowH, Math.round(3.5 * 16 * 1.3), 0.5), `Larger text: the rows grow with it, ${L.rowH}px`);
+    assert(near(L.rowH, Math.round(74 * 1.3), 0.5), `Larger text: the rows grow with it, ${L.rowH}px`);
     checkLayout(L, "2560x1440 100% larger");
     await shot(t.page, "display-live-100-larger-2560x1440.png");
     await t.page.evaluate(() => window.__snromMock.settings({ scale: "auto", textSize: "normal" }));
@@ -481,8 +485,8 @@ async function main() {
     }, name);
     const lissa = await rowOf("Lissa Ashkettle");   // platonic, 2640: tier 5
     assert(lissa.tier === "Best Friend", `platonic tier 5 reads ${lissa.tier}`);
-    const aldric = await rowOf("Aldric Ashkettle"); // courting, 2780: Spouse depth
-    assert(aldric.tier === "Spouse" && aldric.state === "Devoted", `courting at Spouse depth: ${JSON.stringify(aldric)}`);
+    const aldric = await rowOf("Aldric Ashkettle"); // courting, 2780: Spouse depth, unmarried (2.5: Beloved)
+    assert(aldric.tier === "Beloved" && aldric.state === "Devoted", `courting at Spouse depth: ${JSON.stringify(aldric)}`);
     await openByName(t.page, "Aldric Ashkettle");
     const blurb = await t.page.textContent(".detail .blurb");
     assert(blurb.indexOf("as deep as a bond goes") >= 0, `Devoted blurb: ${blurb}`);
@@ -725,7 +729,7 @@ async function main() {
       })));
       const repairs = sections.find((s) => s.title === "Repairs"), tools = sections.find((s) => s.title === "Developer tools");
       assert(repairs && tools, `detail sections: ${sections.map((s) => s.title)}`);
-      assert(JSON.stringify(tools.ops) === JSON.stringify(["RequestSparkNow", "UnsparkActor", "ForceDriftReview"]), `developer tools: ${tools.ops}`);
+      assert(JSON.stringify(tools.ops) === JSON.stringify(["RequestSparkNow", "UnsparkActor", "ForceDriftReview", "SetMarriageState"]), `developer tools: ${tools.ops}`);
       assert(!repairs.ops.some((op) => tools.ops.indexOf(op) >= 0), `a developer tool among the repairs: ${repairs.ops}`);
       assert(await t.page.isVisible("#devtools-btn"), "no Developer tools button in developer mode");
       if (vp.width >= 1600) {
@@ -899,7 +903,7 @@ async function main() {
     // The store repairs stay where players find them, with nothing else.
     await t.page.click("#repairs-btn");
     const repairOps = await t.page.evaluate(() => Array.prototype.map.call(document.querySelectorAll("#dialog button[data-op]"), (b) => b.getAttribute("data-op")));
-    assert(JSON.stringify(repairOps) === JSON.stringify(["StartFreshStore", "AdoptLegacyStore"]), `playthrough repairs offer ${repairOps}`);
+    assert(JSON.stringify(repairOps) === JSON.stringify(["ImportMaras", "StartFreshStore", "AdoptLegacyStore", "RestoreOurBioBlocks"]), `playthrough repairs offer ${repairOps}`);
     await t.page.click("#dialog-cancel");
     await t.page.click("#devtools-btn");
     assert(await t.page.textContent("#dialog-title") === "Developer tools", "the Developer tools dialog is not labelled");
@@ -912,6 +916,36 @@ async function main() {
     const ops = await t.page.evaluate(() => window.__snromMock.log.map((e) => e.payload.op).filter(Boolean));
     assert(ops.indexOf("CheckDisplay") >= 0, `ops sent: ${ops}`);
     await finish(t, "check-display");
+  });
+
+  // wpm63: the romance question's answers ran off the left of the floating box.
+  await test("questions: every answer inside the box, one row when they fit, else one to a row", async () => {
+    const cases = [{ q: "", stacked: false }, { q: "&q=stand", stacked: true }];
+    for (const vp of VIEWPORTS) {
+      for (const text of ["", "&text=large"]) {
+        for (const c of cases) {
+          for (const where of ["alone", "over"]) {
+            const t = await openPage(browser, base, vp, mockUrl(base, index["default"], `&ask=${where}&seconds=600${c.q}${text}`));
+            await ready(t.page);
+            await t.page.waitForSelector('#dialog[data-kind="ask"]:not([hidden])');
+            const m = await t.page.evaluate(() => {
+              const d = document.getElementById("dialog").getBoundingClientRect();
+              const bar = document.getElementById("dialog-buttons");
+              const b = Array.prototype.map.call(bar.children, (x) => x.getBoundingClientRect());
+              return { stacked: bar.classList.contains("stacked"),
+                outside: b.filter((r) => r.left < d.left || r.right > d.right).length,
+                rows: new Set(b.map((r) => Math.round(r.top))).size, count: b.length };
+            });
+            const label = `${vpName(vp)} ${where}${c.q}${text}`;
+            assert(m.outside === 0, `${label}: ${m.outside} answer(s) outside the box`);
+            assert(m.stacked === c.stacked, `${label}: stacked ${m.stacked}, expected ${c.stacked}`);
+            assert(m.rows === (c.stacked ? m.count : 1), `${label}: ${m.rows} rows for ${m.count} answers`);
+            if (vp === VIEWPORTS[1] && !text && where === "alone") await shot(t.page, `ask${c.q ? "-stand" : ""}-${vpName(vp)}.png`);
+            await finish(t, `ask ${label}`);
+          }
+        }
+      }
+    }
   });
 
   // The native path, driven the way the DLL will drive it: listeners that

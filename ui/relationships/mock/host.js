@@ -280,13 +280,13 @@
         spark: { sparked: false, decided: false, sparkedAt: null, lastCheckedAt: null },
         commitment: "none", seeded: false,
         traits: { authored: false, intimacy: "romantic", ardor: 2, exclusivity: 50, orientation: "both", orientationBasis: "unknown" },
-        prose: { why: "", limit: "", address: "" }
+        prose: { why: "", limit: "", address: "", playerSays: "" }
       };
       state.bonds.push(b);
       later(80, pushSnapshot);
       later(1200, function () {
         b.traits = { authored: true, intimacy: "casual", ardor: 3, exclusivity: 25, orientation: "both", orientationBasis: "inferred" };
-        b.prose = { why: t.name.split(" ")[0] + " is quick to size up a stranger and slow to change the verdict.", limit: t.name.split(" ")[0] + " will not be made a fool of twice.", address: "'Traveler', for now." };
+        b.prose = { why: t.name.split(" ")[0] + " is quick to size up a stranger and slow to change the verdict.", limit: t.name.split(" ")[0] + " will not be made a fool of twice.", address: "'Traveler', for now.", playerSays: "" };
         notice("Disposition authored for " + t.name + ".");
         pushSnapshot();
       });

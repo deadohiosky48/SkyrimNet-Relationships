@@ -84,7 +84,8 @@
       "prose": {
         "why": "Zell prizes plain speech and distrusts anyone who talks around a thing.",
         "limit": "Zell will not follow someone who kills for coin.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -134,7 +135,8 @@
       "prose": {
         "why": "Berrin is restless under routine and comes alive on the road.",
         "limit": "Berrin will not leave a companion behind in a fight.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -184,7 +186,8 @@
       "prose": {
         "why": "Osric trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
         "limit": "Osric will not share a secret that was given in trust.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -234,7 +237,8 @@
       "prose": {
         "why": "Teldri treats loyalty as a debt paid in deeds, never in words.",
         "limit": "Teldri will not be lied to twice.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -284,7 +288,8 @@
       "prose": {
         "why": "Wenna wants to be needed more than admired, and notices the difference at once.",
         "limit": "Wenna will not stand beside anyone who harms a child.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -334,7 +339,8 @@
       "prose": {
         "why": "Kestrel is drawn to steadiness, and wary of anyone who needs an audience.",
         "limit": "Kestrel will not be kept as someone's second choice.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -384,7 +390,8 @@
       "prose": {
         "why": "",
         "limit": "",
-        "address": ""
+        "address": "",
+        "playerSays": ""
       }
     },
     {
@@ -434,7 +441,8 @@
       "prose": {
         "why": "",
         "limit": "",
-        "address": ""
+        "address": "",
+        "playerSays": ""
       }
     },
     {
@@ -484,7 +492,8 @@
       "prose": {
         "why": "",
         "limit": "",
-        "address": ""
+        "address": "",
+        "playerSays": ""
       }
     },
     {
@@ -534,7 +543,8 @@
       "prose": {
         "why": "",
         "limit": "",
-        "address": ""
+        "address": "",
+        "playerSays": ""
       }
     },
     {
@@ -584,7 +594,8 @@
       "prose": {
         "why": "Sings-Under-Rain laughs easily and forgives quickly, but remembers exactly who was there when it mattered.",
         "limit": "Sings-Under-Rain will not be kept as someone's second choice.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -634,7 +645,8 @@
       "prose": {
         "why": "Sabeth keeps a small circle and guards it fiercely.",
         "limit": "Sabeth will not be kept as someone's second choice.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -684,7 +696,8 @@
       "prose": {
         "why": "Jessamy keeps a small circle and guards it fiercely.",
         "limit": "Jessamy will not be kept as someone's second choice.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -734,7 +747,8 @@
       "prose": {
         "why": "Kjeld reads kindness to strangers as the truest measure of a person.",
         "limit": "Kjeld will not be lied to twice.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -784,7 +798,8 @@
       "prose": {
         "why": "Yrsa keeps a small circle and guards it fiercely.",
         "limit": "Yrsa will not bow to a Thalmor justiciar, whatever it costs.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -834,7 +849,8 @@
       "prose": {
         "why": "Petra treats loyalty as a debt paid in deeds, never in words.",
         "limit": "Petra will not be lied to twice.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -884,7 +900,8 @@
       "prose": {
         "why": "Ragnith trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
         "limit": "Ragnith will not be lied to twice.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -934,7 +951,8 @@
       "prose": {
         "why": "Lorn reads kindness to strangers as the truest measure of a person.",
         "limit": "Lorn will not follow someone who kills for coin.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -984,7 +1002,8 @@
       "prose": {
         "why": "Torvald has buried enough friends to be careful about making new ones.",
         "limit": "Torvald will not share a secret that was given in trust.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -1034,7 +1053,8 @@
       "prose": {
         "why": "Varric trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
         "limit": "Varric will not be lied to twice.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -1084,7 +1104,8 @@
       "prose": {
         "why": "Jo'rassi has buried enough friends to be careful about making new ones.",
         "limit": "Jo'rassi will not take part in cruelty for sport.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -1134,7 +1155,8 @@
       "prose": {
         "why": "Corvane treats loyalty as a debt paid in deeds, never in words.",
         "limit": "Corvane will not leave a companion behind in a fight.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -1184,7 +1206,8 @@
       "prose": {
         "why": "Halvard is restless under routine and comes alive on the road.",
         "limit": "Halvard will not follow someone who kills for coin.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -1234,7 +1257,8 @@
       "prose": {
         "why": "Nerys is restless under routine and comes alive on the road.",
         "limit": "Nerys will not be lied to twice.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -1284,7 +1308,8 @@
       "prose": {
         "why": "Marit trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
         "limit": "Marit will not take part in cruelty for sport.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -1334,7 +1359,8 @@
       "prose": {
         "why": "Wenna trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
         "limit": "Wenna will not stand beside anyone who harms a child.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -1384,7 +1410,8 @@
       "prose": {
         "why": "Jessamy has buried enough friends to be careful about making new ones.",
         "limit": "Jessamy will not share a secret that was given in trust.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -1434,7 +1461,8 @@
       "prose": {
         "why": "Maelis is drawn to steadiness, and wary of anyone who needs an audience.",
         "limit": "Maelis will not share a secret that was given in trust.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -1484,7 +1512,8 @@
       "prose": {
         "why": "Veyla has buried enough friends to be careful about making new ones.",
         "limit": "Veyla will not take part in cruelty for sport.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -1534,7 +1563,8 @@
       "prose": {
         "why": "Liesl wants to be needed more than admired, and notices the difference at once.",
         "limit": "Liesl will not be kept as someone's second choice.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -1584,7 +1614,8 @@
       "prose": {
         "why": "Ullis keeps a small circle and guards it fiercely.",
         "limit": "Ullis will not share a secret that was given in trust.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -1634,7 +1665,8 @@
       "prose": {
         "why": "Berrin was raised to be useful rather than loved, and still finds the second harder to accept.",
         "limit": "Berrin will not leave a companion behind in a fight.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -1684,7 +1716,8 @@
       "prose": {
         "why": "Kestrel reads kindness to strangers as the truest measure of a person.",
         "limit": "Kestrel will not stand beside anyone who harms a child.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -1734,7 +1767,8 @@
       "prose": {
         "why": "Zell is drawn to steadiness, and wary of anyone who needs an audience.",
         "limit": "Zell will not stand beside anyone who harms a child.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -1784,7 +1818,8 @@
       "prose": {
         "why": "Ysolde prizes plain speech and distrusts anyone who talks around a thing.",
         "limit": "Ysolde will not stand beside anyone who harms a child.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -1834,7 +1869,8 @@
       "prose": {
         "why": "Osric has buried enough friends to be careful about making new ones.",
         "limit": "Osric will not stand beside anyone who harms a child.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -1884,7 +1920,8 @@
       "prose": {
         "why": "Maelis was raised to be useful rather than loved, and still finds the second harder to accept.",
         "limit": "Maelis will not follow someone who kills for coin.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -1934,7 +1971,8 @@
       "prose": {
         "why": "Undry treats loyalty as a debt paid in deeds, never in words.",
         "limit": "Undry will not be lied to twice.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -1984,7 +2022,8 @@
       "prose": {
         "why": "Dravyn trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
         "limit": "Dravyn will not take part in cruelty for sport.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -2034,7 +2073,8 @@
       "prose": {
         "why": "Ysolde was raised to be useful rather than loved, and still finds the second harder to accept.",
         "limit": "Ysolde will not share a secret that was given in trust.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -2084,7 +2124,8 @@
       "prose": {
         "why": "Eddra keeps a small circle and guards it fiercely.",
         "limit": "Eddra will not stand beside anyone who harms a child.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -2134,7 +2175,8 @@
       "prose": {
         "why": "Liesl wants to be needed more than admired, and notices the difference at once.",
         "limit": "Liesl will not stand beside anyone who harms a child.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -2184,7 +2226,8 @@
       "prose": {
         "why": "Yrsa keeps a small circle and guards it fiercely.",
         "limit": "Yrsa will not bow to a Thalmor justiciar, whatever it costs.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -2234,7 +2277,8 @@
       "prose": {
         "why": "Rook measures people by what they do when it costs them, and has little patience for charm.",
         "limit": "Rook will not follow someone who kills for coin.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -2284,7 +2328,8 @@
       "prose": {
         "why": "Aurelian has buried enough friends to be careful about making new ones.",
         "limit": "Aurelian will not follow someone who kills for coin.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -2334,7 +2379,8 @@
       "prose": {
         "why": "Idrien prizes plain speech and distrusts anyone who talks around a thing.",
         "limit": "Idrien will not take part in cruelty for sport.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -2384,7 +2430,8 @@
       "prose": {
         "why": "Tovah reads kindness to strangers as the truest measure of a person.",
         "limit": "Tovah will not follow someone who kills for coin.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -2434,7 +2481,8 @@
       "prose": {
         "why": "Marit treats loyalty as a debt paid in deeds, never in words.",
         "limit": "Marit will not be kept as someone's second choice.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -2484,7 +2532,8 @@
       "prose": {
         "why": "Petra is drawn to steadiness, and wary of anyone who needs an audience.",
         "limit": "Petra will not leave a companion behind in a fight.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -2534,7 +2583,8 @@
       "prose": {
         "why": "Tulvyn wants to be needed more than admired, and notices the difference at once.",
         "limit": "Tulvyn will not bow to a Thalmor justiciar, whatever it costs.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -2584,7 +2634,8 @@
       "prose": {
         "why": "Lorn wants to be needed more than admired, and notices the difference at once.",
         "limit": "Lorn will not share a secret that was given in trust.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -2634,7 +2685,8 @@
       "prose": {
         "why": "Petra prizes plain speech and distrusts anyone who talks around a thing.",
         "limit": "Petra will not be lied to twice.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -2684,7 +2736,8 @@
       "prose": {
         "why": "Hesketh wants to be needed more than admired, and notices the difference at once.",
         "limit": "Hesketh will not share a secret that was given in trust.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -2734,7 +2787,8 @@
       "prose": {
         "why": "Brenna keeps a small circle and guards it fiercely.",
         "limit": "Brenna will not be kept as someone's second choice.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -2784,7 +2838,8 @@
       "prose": {
         "why": "Liesl has buried enough friends to be careful about making new ones.",
         "limit": "Liesl will not bow to a Thalmor justiciar, whatever it costs.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -2834,7 +2889,8 @@
       "prose": {
         "why": "Faelis trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
         "limit": "Faelis will not be kept as someone's second choice.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -2884,7 +2940,8 @@
       "prose": {
         "why": "Keeps-The-Tides has buried enough friends to be careful about making new ones.",
         "limit": "Keeps-The-Tides will not follow someone who kills for coin.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -2934,7 +2991,8 @@
       "prose": {
         "why": "Asvild has buried enough friends to be careful about making new ones.",
         "limit": "Asvild will not bow to a Thalmor justiciar, whatever it costs.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -2984,7 +3042,8 @@
       "prose": {
         "why": "Ri'zhala was raised to be useful rather than loved, and still finds the second harder to accept.",
         "limit": "Ri'zhala will not be lied to twice.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -3034,7 +3093,8 @@
       "prose": {
         "why": "Wystan keeps a small circle and guards it fiercely.",
         "limit": "Wystan will not be lied to twice.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -3084,7 +3144,8 @@
       "prose": {
         "why": "Halvard treats loyalty as a debt paid in deeds, never in words.",
         "limit": "Halvard will not be kept as someone's second choice.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -3134,7 +3195,8 @@
       "prose": {
         "why": "Dunstan was raised to be useful rather than loved, and still finds the second harder to accept.",
         "limit": "Dunstan will not stand beside anyone who harms a child.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -3184,7 +3246,8 @@
       "prose": {
         "why": "Lorn is restless under routine and comes alive on the road.",
         "limit": "Lorn will not leave a companion behind in a fight.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -3234,7 +3297,8 @@
       "prose": {
         "why": "Idrien is drawn to steadiness, and wary of anyone who needs an audience.",
         "limit": "Idrien will not take part in cruelty for sport.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -3284,7 +3348,8 @@
       "prose": {
         "why": "Nerys prizes plain speech and distrusts anyone who talks around a thing.",
         "limit": "Nerys will not be kept as someone's second choice.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -3334,7 +3399,8 @@
       "prose": {
         "why": "Nesta is restless under routine and comes alive on the road.",
         "limit": "Nesta will not stand beside anyone who harms a child.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -3384,7 +3450,8 @@
       "prose": {
         "why": "Brenna reads kindness to strangers as the truest measure of a person.",
         "limit": "Brenna will not follow someone who kills for coin.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -3434,7 +3501,8 @@
       "prose": {
         "why": "Calla measures people by what they do when it costs them, and has little patience for charm.",
         "limit": "Calla will not bow to a Thalmor justiciar, whatever it costs.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -3484,7 +3552,8 @@
       "prose": {
         "why": "Berrin has buried enough friends to be careful about making new ones.",
         "limit": "Berrin will not leave a companion behind in a fight.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -3534,7 +3603,8 @@
       "prose": {
         "why": "Ysolde reads kindness to strangers as the truest measure of a person.",
         "limit": "Ysolde will not share a secret that was given in trust.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -3584,7 +3654,8 @@
       "prose": {
         "why": "Yrsa prizes plain speech and distrusts anyone who talks around a thing.",
         "limit": "Yrsa will not be kept as someone's second choice.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -3634,7 +3705,8 @@
       "prose": {
         "why": "Eluned measures people by what they do when it costs them, and has little patience for charm.",
         "limit": "Eluned will not share a secret that was given in trust.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -3684,7 +3756,8 @@
       "prose": {
         "why": "Sigrun is drawn to steadiness, and wary of anyone who needs an audience.",
         "limit": "Sigrun will not leave a companion behind in a fight.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -3734,7 +3807,8 @@
       "prose": {
         "why": "Gisla reads kindness to strangers as the truest measure of a person.",
         "limit": "Gisla will not stand beside anyone who harms a child.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -3784,7 +3858,8 @@
       "prose": {
         "why": "Brenna trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
         "limit": "Brenna will not be lied to twice.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -3834,7 +3909,8 @@
       "prose": {
         "why": "Veyla laughs easily and forgives quickly, but remembers exactly who was there when it mattered.",
         "limit": "Veyla will not bow to a Thalmor justiciar, whatever it costs.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -3884,7 +3960,8 @@
       "prose": {
         "why": "Faelis wants to be needed more than admired, and notices the difference at once.",
         "limit": "Faelis will not stand beside anyone who harms a child.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -3934,7 +4011,8 @@
       "prose": {
         "why": "Hesketh keeps a small circle and guards it fiercely.",
         "limit": "Hesketh will not bow to a Thalmor justiciar, whatever it costs.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -3984,7 +4062,8 @@
       "prose": {
         "why": "Tovah was raised to be useful rather than loved, and still finds the second harder to accept.",
         "limit": "Tovah will not follow someone who kills for coin.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -4034,7 +4113,8 @@
       "prose": {
         "why": "Eddra measures people by what they do when it costs them, and has little patience for charm.",
         "limit": "Eddra will not be kept as someone's second choice.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -4084,7 +4164,8 @@
       "prose": {
         "why": "Dunstan is drawn to steadiness, and wary of anyone who needs an audience.",
         "limit": "Dunstan will not follow someone who kills for coin.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -4134,7 +4215,8 @@
       "prose": {
         "why": "Sigrun laughs easily and forgives quickly, but remembers exactly who was there when it mattered.",
         "limit": "Sigrun will not take part in cruelty for sport.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -4184,7 +4266,8 @@
       "prose": {
         "why": "Sigrun was raised to be useful rather than loved, and still finds the second harder to accept.",
         "limit": "Sigrun will not take part in cruelty for sport.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -4234,7 +4317,8 @@
       "prose": {
         "why": "Sigrun laughs easily and forgives quickly, but remembers exactly who was there when it mattered.",
         "limit": "Sigrun will not share a secret that was given in trust.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -4284,7 +4368,8 @@
       "prose": {
         "why": "Nesta was raised to be useful rather than loved, and still finds the second harder to accept.",
         "limit": "Nesta will not stand beside anyone who harms a child.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -4334,7 +4419,8 @@
       "prose": {
         "why": "Corvane prizes plain speech and distrusts anyone who talks around a thing.",
         "limit": "Corvane will not leave a companion behind in a fight.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -4384,7 +4470,8 @@
       "prose": {
         "why": "Halvard treats loyalty as a debt paid in deeds, never in words.",
         "limit": "Halvard will not be lied to twice.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+        "playerSays": ""
       }
     },
     {
@@ -4434,7 +4521,8 @@
       "prose": {
         "why": "Wenna was raised to be useful rather than loved, and still finds the second harder to accept.",
         "limit": "Wenna will not stand beside anyone who harms a child.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -4484,7 +4572,8 @@
       "prose": {
         "why": "Quilla trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
         "limit": "Quilla will not be kept as someone's second choice.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -4534,7 +4623,8 @@
       "prose": {
         "why": "Wenna prizes plain speech and distrusts anyone who talks around a thing.",
         "limit": "Wenna will not be lied to twice.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -4584,7 +4674,8 @@
       "prose": {
         "why": "Zell keeps a small circle and guards it fiercely.",
         "limit": "Zell will not stand beside anyone who harms a child.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -4634,7 +4725,8 @@
       "prose": {
         "why": "Petra wants to be needed more than admired, and notices the difference at once.",
         "limit": "Petra will not take part in cruelty for sport.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -4684,7 +4776,8 @@
       "prose": {
         "why": "Orwen wants to be needed more than admired, and notices the difference at once.",
         "limit": "Orwen will not bow to a Thalmor justiciar, whatever it costs.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -4734,7 +4827,8 @@
       "prose": {
         "why": "Ragnith wants to be needed more than admired, and notices the difference at once.",
         "limit": "Ragnith will not follow someone who kills for coin.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -4784,7 +4878,8 @@
       "prose": {
         "why": "Brenna measures people by what they do when it costs them, and has little patience for charm.",
         "limit": "Brenna will not take part in cruelty for sport.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -4834,7 +4929,8 @@
       "prose": {
         "why": "Maelis wants to be needed more than admired, and notices the difference at once.",
         "limit": "Maelis will not bow to a Thalmor justiciar, whatever it costs.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -4884,7 +4980,8 @@
       "prose": {
         "why": "Marit prizes plain speech and distrusts anyone who talks around a thing.",
         "limit": "Marit will not be kept as someone's second choice.",
-        "address": "'Traveler', still."
+        "address": "'Traveler', still.",
+        "playerSays": ""
       }
     },
     {
@@ -4934,7 +5031,8 @@
       "prose": {
         "why": "Jessamy has buried enough friends to be careful about making new ones.",
         "limit": "Jessamy will not follow someone who kills for coin.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -4984,7 +5082,8 @@
       "prose": {
         "why": "Kestrel reads kindness to strangers as the truest measure of a person.",
         "limit": "Kestrel will not follow someone who kills for coin.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -5034,7 +5133,8 @@
       "prose": {
         "why": "Maelis is restless under routine and comes alive on the road.",
         "limit": "Maelis will not be kept as someone's second choice.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -5084,7 +5184,8 @@
       "prose": {
         "why": "Wenna is restless under routine and comes alive on the road.",
         "limit": "Wenna will not be lied to twice.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -5134,7 +5235,8 @@
       "prose": {
         "why": "Gisla treats loyalty as a debt paid in deeds, never in words.",
         "limit": "Gisla will not be kept as someone's second choice.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -5184,7 +5286,8 @@
       "prose": {
         "why": "Jessamy was raised to be useful rather than loved, and still finds the second harder to accept.",
         "limit": "Jessamy will not be lied to twice.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -5234,7 +5337,8 @@
       "prose": {
         "why": "Torvald is restless under routine and comes alive on the road.",
         "limit": "Torvald will not be lied to twice.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -5284,7 +5388,8 @@
       "prose": {
         "why": "Wenna has buried enough friends to be careful about making new ones.",
         "limit": "Wenna will not be lied to twice.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -5334,7 +5439,8 @@
       "prose": {
         "why": "Veyla trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
         "limit": "Veyla will not be kept as someone's second choice.",
-        "address": "'Dearest', half teasing."
+        "address": "'Dearest', half teasing.",
+        "playerSays": ""
       },
       "marriage": {
         "state": "engaged",
@@ -5414,7 +5520,8 @@
       "prose": {
         "why": "Maelis is restless under routine and comes alive on the road.",
         "limit": "Maelis will not leave a companion behind in a fight.",
-        "address": "'Love', easily."
+        "address": "'Love', easily.",
+        "playerSays": ""
       },
       "marriage": {
         "state": "married",
@@ -5475,7 +5582,8 @@
       "prose": {
         "why": "Fenwick treats loyalty as a debt paid in deeds, never in words.",
         "limit": "Fenwick will not be kept as someone's second choice.",
-        "address": "Your name, softly."
+        "address": "Your name, softly.",
+        "playerSays": ""
       }
     },
     {
@@ -5525,7 +5633,8 @@
       "prose": {
         "why": "Veyla prizes plain speech and distrusts anyone who talks around a thing.",
         "limit": "Veyla will not be kept as someone's second choice.",
-        "address": "'Love', easily."
+        "address": "'Love', easily.",
+        "playerSays": ""
       }
     },
     {
@@ -5575,7 +5684,8 @@
       "prose": {
         "why": "Eluned prizes plain speech and distrusts anyone who talks around a thing.",
         "limit": "Eluned will not be kept as someone's second choice.",
-        "address": "'Love', easily."
+        "address": "'Love', easily.",
+        "playerSays": ""
       }
     },
     {
@@ -5625,7 +5735,8 @@
       "prose": {
         "why": "Marit is restless under routine and comes alive on the road.",
         "limit": "Marit will not follow someone who kills for coin.",
-        "address": "Your name, softly."
+        "address": "Your name, softly.",
+        "playerSays": ""
       }
     },
     {
@@ -5675,7 +5786,8 @@
       "prose": {
         "why": "Brenna was raised to be useful rather than loved, and still finds the second harder to accept.",
         "limit": "Brenna will not be kept as someone's second choice.",
-        "address": "'My heart', when no one is listening."
+        "address": "'My heart', when no one is listening.",
+        "playerSays": ""
       }
     },
     {
@@ -5725,7 +5837,8 @@
       "prose": {
         "why": "Idrien keeps a small circle and guards it fiercely.",
         "limit": "Idrien will not stand beside anyone who harms a child.",
-        "address": "'Love', easily."
+        "address": "'Love', easily.",
+        "playerSays": ""
       }
     },
     {
@@ -5775,7 +5888,8 @@
       "prose": {
         "why": "Gerdis is restless under routine and comes alive on the road.",
         "limit": "Gerdis will not leave a companion behind in a fight.",
-        "address": "'My heart', when no one is listening."
+        "address": "'My heart', when no one is listening.",
+        "playerSays": ""
       }
     },
     {
@@ -5825,7 +5939,8 @@
       "prose": {
         "why": "Veyla is drawn to steadiness, and wary of anyone who needs an audience.",
         "limit": "Veyla will not share a secret that was given in trust.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     },
     {
@@ -5875,7 +5990,8 @@
       "prose": {
         "why": "Ingrith is restless under routine and comes alive on the road.",
         "limit": "Ingrith will not share a secret that was given in trust.",
-        "address": "By name, always."
+        "address": "By name, always.",
+        "playerSays": ""
       }
     },
     {
@@ -5925,7 +6041,8 @@
       "prose": {
         "why": "Hesketh was raised to be useful rather than loved, and still finds the second harder to accept.",
         "limit": "Hesketh will not be lied to twice.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -5975,7 +6092,8 @@
       "prose": {
         "why": "Ingrith is restless under routine and comes alive on the road.",
         "limit": "Ingrith will not be lied to twice.",
-        "address": "'My Thane' in company; your name alone."
+        "address": "'My Thane' in company; your name alone.",
+        "playerSays": ""
       }
     },
     {
@@ -6025,7 +6143,8 @@
       "prose": {
         "why": "Marit measures people by what they do when it costs them, and has little patience for charm.",
         "limit": "Marit will not be lied to twice.",
-        "address": "'Boss', dryly."
+        "address": "'Boss', dryly.",
+        "playerSays": ""
       }
     },
     {
@@ -6075,7 +6194,8 @@
       "prose": {
         "why": "Zell laughs easily and forgives quickly, but remembers exactly who was there when it mattered.",
         "limit": "Zell will not leave a companion behind in a fight.",
-        "address": "'Friend', and means it."
+        "address": "'Friend', and means it.",
+        "playerSays": ""
       }
     }
   ]

@@ -83,7 +83,9 @@
       "prose": {
         "why": "Lissa prizes plain speech and distrusts anyone who talks around a thing.",
         "limit": "Lissa will not be kept as someone's second choice.",
-        "address": "By name, always."
+        "address": "By name, always.",
+
+        "playerSays": ""
       }
     },
     {
@@ -133,7 +135,9 @@
       "prose": {
         "why": "Tomsin trusts slowly and keeps score quietly; warmth has to be earned twice before it counts.",
         "limit": "Tomsin will not stand beside anyone who harms a child.",
-        "address": "Your surname, like a soldier."
+        "address": "Your surname, like a soldier.",
+
+        "playerSays": ""
       }
     },
     {
@@ -183,7 +187,9 @@
       "prose": {
         "why": "Aldric is drawn to steadiness, and wary of anyone who needs an audience.",
         "limit": "Aldric will not bow to a Thalmor justiciar, whatever it costs.",
-        "address": "'My heart', when no one is listening."
+        "address": "'My heart', when no one is listening.",
+
+        "playerSays": ""
       }
     }
   ]
