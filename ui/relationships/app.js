@@ -483,6 +483,15 @@
     }
     openDialog(String(q.title || ""), body, buttons, null);
     $("dialog").setAttribute("data-kind", "ask");
+    // Answers that don't fit on one row go one to a row. The row is right-
+    // aligned, so an overflow runs off the left, where scrollWidth misses it:
+    // add up the buttons instead.
+    var bar = $("dialog-buttons");
+    bar.classList.remove("stacked");
+    var gap = parseFloat(window.getComputedStyle(bar).columnGap) || 0;
+    var need = 0;
+    Array.prototype.forEach.call(bar.children, function (b, i) { need += b.offsetWidth + (i ? gap : 0); });
+    if (need > bar.clientWidth) bar.classList.add("stacked");
     // The preferred answer has the focus, so Enter takes it.
     var focusOn = $("dialog-buttons").children[preferred];
     if (focusOn) focusOn.focus();

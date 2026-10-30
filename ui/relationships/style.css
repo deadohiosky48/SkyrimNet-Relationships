@@ -636,12 +636,21 @@ kbd {
 .dialog h2 { margin: 0 0 0.6rem; font-family: var(--serif); font-weight: normal; font-size: calc(1.35rem * var(--t)); }
 .dialog p { margin: 0.4rem 0; color: var(--muted); }
 .dialog .act-calls { margin-top: 0.6rem; }
-.dialog-buttons { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1rem; }
+/* The buttons wrap rather than overflow the box: a question's answers can be
+   whole sentences ("Tell them you do not feel that way"). */
+.dialog-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.6rem; margin-top: 1rem; }
+.dialog-buttons .btn { max-width: 100%; white-space: normal; }
 
 /* A QUESTION ALONE (app.js, showAsk): the view opened only to ask it, so the
    dashboard stays out of sight behind it. */
 body.ask-only .panel, body.ask-only .toasts { visibility: hidden; }
 .dialog[data-kind="ask"] p { color: var(--text); }
+/* A question's answers sit on one row when they fit, and otherwise one to a
+   row, full width (app.js, showAsk measures), never two and a stray. */
+.dialog[data-kind="ask"] .dialog-buttons { flex-wrap: nowrap; }
+.dialog[data-kind="ask"] .dialog-buttons .btn { flex-shrink: 0; white-space: nowrap; padding-left: 0.65rem; padding-right: 0.65rem; }
+.dialog[data-kind="ask"] .dialog-buttons.stacked { flex-direction: column; align-items: stretch; }
+.dialog[data-kind="ask"] .dialog-buttons.stacked .btn { flex-shrink: 1; white-space: normal; }
 
 /* FLOATING (M8c): alone, the question is the only thing drawn. No dark page,
    no scrim; a box low and centred over the game, which keeps playing. */

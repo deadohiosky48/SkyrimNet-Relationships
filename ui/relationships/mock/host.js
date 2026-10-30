@@ -107,10 +107,16 @@
           asked = true;
           later(400, function () {
             // M8c: a default and a timer, as SNRom_Choice asks the engagement.
+            // ?q=stand: the romance question, whose buttons are the longest.
+            var stand = params.q === "stand";
             push("ask", { id: 1, title: "",
-              body: "Ysolde Brightwater has said yes. Are the two of you promised to each other?",
-              buttons: ["Yes, we are engaged", "No, I spoke too soon", "Not yet"],
-              defaultButton: 0, seconds: Number(params.seconds) || 30, standalone: params.ask === "alone" });
+              body: stand
+                ? "Ysolde Brightwater has asked where the two of you stand. Whatever you answer, you will have answered it plainly."
+                : "Ysolde Brightwater has said yes. Are the two of you promised to each other?",
+              buttons: stand
+                ? ["Tell them you feel the same", "Tell them you do not feel that way", "Say nothing of it for now"]
+                : ["Yes, we are engaged", "No, I spoke too soon", "Not yet"],
+              defaultButton: stand ? 2 : 0, seconds: Number(params.seconds) || 30, standalone: params.ask === "alone" });
           });
         }
         return state;
