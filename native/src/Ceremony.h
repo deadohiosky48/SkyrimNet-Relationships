@@ -48,7 +48,7 @@ namespace SNRom::Ceremony {
     // WHAT IS HAPPENING NOW, as a step's kind (Ceremony.cpp, Kind): 1 the
     // opening, 2 the player's vows, 3 the betrothed's, 4-5 the player asked
     // and answering, 6-7 the betrothed, 8 the pronouncement; a planned
-    // wedding's 10 the address, 11 a reading, 12 the rings. 0 when nothing is
+    // wedding's 10 the address, 11 a reading, 12 the rings, 13 the kiss. 0 when nothing is
     // under way. Also the FACT SNRom_Ceremony rank.
     std::int32_t Now();
 

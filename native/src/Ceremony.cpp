@@ -18,6 +18,7 @@
 #include <mutex>
 #include <optional>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 namespace SNRom::Ceremony {
@@ -44,6 +45,7 @@ namespace SNRom::Ceremony {
             kAddress,       // the officiant addresses everyone gathered
             kReading,       // a reading or a blessing
             kRings,         // the rings exchanged
+            kKiss,          // the betrothed kisses the player
         };
 
         // WHAT AN NPC'S LINE MUST HAVE DONE for its step to count. wpm19
@@ -69,6 +71,7 @@ namespace SNRom::Ceremony {
             kKindAddress = 10,
             kKindReading = 11,
             kKindRings = 12,
+            kKindKiss = 13,
         };
 
         struct Step {
@@ -108,6 +111,14 @@ namespace SNRom::Ceremony {
                 steps.push_back({ Who::kOfficiant, Cue::kRings, Who::kPlayer, false, Check::kRings, kKindRings });
             }
             steps.push_back({ Who::kOfficiant, Cue::kPronounce, Who::kPlayer, false, Check::kPronounced, kKindPronounce });
+            // THE KISS (seen in play, wpm72): invited with the pronouncement,
+            // it had no time - the wedding was over with the officiant's line,
+            // and the betrothed's next prompt no longer knew of it. Now the
+            // betrothed's step, after the pronouncement; any line of theirs is
+            // it, and the wedding ends married whatever happens in it.
+            if (a_parts & WeddingPlan::kKiss) {
+                steps.push_back({ Who::kBetrothed, Cue::kKiss, Who::kPlayer, false, Check::kNone, kKindKiss });
+            }
             return steps;
         }
 
@@ -141,6 +152,8 @@ namespace SNRom::Ceremony {
         constexpr float kNpcPatience = 40.0f;
         constexpr float kNpcGiveUp = 90.0f;
         constexpr float kPlayerGiveUp = 240.0f;
+        // The kiss: waited for this long, then they are married without it.
+        constexpr float kKissWait = 30.0f;
         // Gone from the room for this long ends it.
         constexpr float kAwayRange = 3000.0f;
         constexpr float kAwaySeconds = 20.0f;
@@ -199,6 +212,8 @@ namespace SNRom::Ceremony {
         // yes, the officiant pronounced them married. The betrothed's yes then
         // ends it married: the rings and the pronouncement are not waited for.
         bool g_pronounced = false;
+        // Betrothed married by a ceremony since the last load (Begin).
+        std::unordered_set<RE::FormID> g_justWed;
         // A carried line is being heard: it is its own step's line or none,
         // and never skips a step (the author, 2026-10-31: "It's a wedding
         // ceremony. It needs to follow a precise script."). Said before the
@@ -324,6 +339,8 @@ namespace SNRom::Ceremony {
                 return off + " has welcomed everyone to the wedding of " + you + " and " + them + ".";
             case Cue::kRings:
                 return you + " and " + them + " have both said yes.";
+            case Cue::kKiss:
+                return off + " has pronounced " + you + " and " + them + " married, and invites them to kiss.";
             default:
                 return {};
             }
@@ -405,11 +422,15 @@ namespace SNRom::Ceremony {
             if (g_pronounced && g_step + 1 < Script().size() &&
                 (Script()[g_step + 1].kind == kKindRings || Script()[g_step + 1].kind == kKindPronounce)) {
                 SKSE::log::info("Ceremony: {} pronounced them married already; the rest is done", NameOf(g_officiant));
-                g_step = Script().size() - 1;
+                // To the pronouncement: the kiss, if any, still follows it.
+                while (g_step + 1 < Script().size() && Script()[g_step].kind != kKindPronounce) {
+                    ++g_step;
+                }
             }
             if (g_step + 1 >= Script().size()) {
                 g_lastOfficiant = g_officiant;
                 const auto betrothed = g_betrothed;
+                g_justWed.insert(betrothed);
                 const bool planned = g_planned;
                 End(true, "");
                 SendEvent("SNRom_CeremonyMarried", planned ? "planned" : "", 0.0f, betrothed);
@@ -644,7 +665,10 @@ namespace SNRom::Ceremony {
             // she was asked. So that step is taken as done, and the line is
             // heard as the next step's. Never a player's step: those need the
             // player.
-            if (nextSpeaker && step.check != Check::kNone && !g_replaying) {
+            // Never into the kiss: the betrothed speaking before the
+            // pronouncement has not been pronounced married.
+            if (nextSpeaker && step.check != Check::kNone && !g_replaying &&
+                Script()[g_step + 1].kind != kKindKiss) {
                 SKSE::log::info("Ceremony: step {} taken as done: {} spoke for the next", g_step + 1,
                                 NameOf(a_speaker));
                 ++g_step;
@@ -767,8 +791,13 @@ namespace SNRom::Ceremony {
             }
             const float step = static_cast<float>(kLook.count());
             g_away = Here(g_officiant, player) && Here(g_betrothed, player) ? 0.0f : g_away + step;
+            const bool kissing = Script()[g_step].kind == kKindKiss;
             if (g_away >= kAwaySeconds) {
-                End(false, "left");
+                if (kissing) {
+                    Next();   // pronounced married: walking off is not a no
+                } else {
+                    End(false, "left");
+                }
                 return;
             }
             if (g_judging) {
@@ -781,7 +810,10 @@ namespace SNRom::Ceremony {
                 return;
             }
             g_still += step;
-            if (npc && g_still >= kNpcGiveUp) {
+            if (kissing && g_still >= kKissWait) {
+                SKSE::log::info("Ceremony: step {}: no kiss heard; they are married all the same", g_step + 1);
+                Next();
+            } else if (npc && g_still >= kNpcGiveUp) {
                 End(false, "stalled");
             } else if (npc && g_still >= kNpcPatience && !g_recued) {
                 g_recued = true;
@@ -872,6 +904,15 @@ namespace SNRom::Ceremony {
                             a_betrothed->GetDisplayFullName());
             return false;
         }
+        // MARRIED JUST NOW (seen in play again, wpm72): Papyrus records the
+        // marriage when it gets to it, and that took 19 s; the day's watch
+        // began the wedding again 0.25 s after it ended. A couple married in
+        // this session is never married again before the record says so.
+        if (g_justWed.contains(a_betrothed->GetFormID())) {
+            SKSE::log::info("Ceremony: {} was married to the player just now; no wedding begins",
+                            a_betrothed->GetDisplayFullName());
+            return false;
+        }
         g_script = Build(a_planned ? a_parts : 0);
         g_planned = a_planned;
         g_parts = a_planned ? a_parts : 0;
@@ -956,10 +997,16 @@ namespace SNRom::Ceremony {
     }
 
     void Stop(std::string a_why) {
+        // Pronounced married already: nothing left to stop.
+        if (g_active && g_step < Script().size() && Script()[g_step].kind == kKindKiss) {
+            Next();
+            return;
+        }
         End(false, a_why);
     }
 
     void Reset() {
+        g_justWed.clear();
         // Quietly: the wedding belonged to the timeline being left.
         if (g_active) {
             SetBusy(false);

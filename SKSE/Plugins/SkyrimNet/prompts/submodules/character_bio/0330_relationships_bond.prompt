@@ -760,7 +760,7 @@ You have not begun planning a wedding. You can plan one together, settling the d
 {% endif %}
 {# THE WEDDING UNDER WAY (Ceremony.h; the author, 2026-10-20), by step: 1 the
    opening, 2 the player's vows, 3 yours, 4-5 the player is asked and
-   answers, 6-7 you are asked and answer, 8 the pronouncement. Vows before the
+   answers, 6-7 you are asked and answer, 8 the pronouncement, 13 the kiss. Vows before the
    questions. Your yes is yours to give; cold feet are allowed, and leave you
    engaged. #}
 {% set wed = default(rom.marriage.ceremony, 0) %}
@@ -774,6 +774,8 @@ Now: {{ wed_by }} is addressing everyone gathered for your wedding. Listen; it i
 Now: {{ wed_by }} is giving a reading, or a blessing. Listen; it is not your turn yet.
 {% elif wed == 12 %}
 Now: you have both said yes, and {{ wed_by }} invites the two of you to exchange rings. Give {{ player.name }} their ring, with a word if you wish.
+{% elif wed == 13 %}
+Now: {{ wed_by }} has pronounced you married, and invites the two of you to kiss. Kiss {{ player.name }}, married to you now, as yourself, with a word if you wish. The wedding is done; this is the first moment of your marriage.
 {% elif wed <= 2 %}
 Now: {{ wed_by }} has opened, and it is {{ player.name }}'s turn to speak their vows to you. Listen; it is not your turn yet.
 {% elif wed == 3 %}

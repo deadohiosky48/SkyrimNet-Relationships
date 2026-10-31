@@ -45,6 +45,8 @@ Now: you have asked {{ player.name }}. Wait for their answer; do not answer for 
 Now: {{ player.name }} has said yes. Ask {{ them }} whether they take {{ player.name }}. Ask it even if {{ them }} has already said something like yes: the question is yours to put, and their answer is to you. Do not pronounce them married until {{ them }} has answered you.
 {% elif step == 7 %}
 Now: you have asked {{ them }}. Let them answer for themselves; do not pronounce anything yet.
+{% elif step == 13 %}
+Now: you have pronounced them married and invited them to kiss. Let them; it is their moment, and you have nothing more to say until it has passed.
 {% elif step == 8 %}
 Now: both {{ player.name }} and {{ them }} have said yes. Pronounce them married, in your own words{% if default(off.kiss, 0) == 1 %}, and invite them to kiss{% endif %}.
 {% endif %}
