@@ -6736,17 +6736,22 @@ Event OnCeremonyYourTurn(String asEventName, String asWhat, Float afUnused, Form
     { SNRom_CeremonyYourTurn: the wedding waits on the player, for their vows
       or their answer. Said on screen, briefly: in wpm19 the officiant's
       call for vows went by unnoticed and "We are ready" stood for them
-      (2026-10-20). Our own notice view replaces the toast later (M8c). }
+      (2026-10-20). Our own notice view replaces the toast later (M8c).
+      WHOM TO LOOK AT (SkyrimNet 29.1: the NPC in the crosshair answers the
+      player, unless they name someone else): facing the betrothed, their
+      answer to the vows is their own vows; facing the officiant, their answer
+      to "I do" is the next question. Facing the other, it still goes on
+      (Ceremony.cpp, g_holdCue), a line later. }
     Actor betrothed = SNRom_Native.CeremonyBetrothed()
     Actor officiant = SNRom_Native.CeremonyOfficiant()
     If betrothed == None || officiant == None
         Return
     EndIf
     If asWhat == "answer"
-        Debug.Notification(Tr("ceremony.yourAnswer", "The wedding: {0} has asked whether you take {1}. Answer them.", \
+        Debug.Notification(Tr("ceremony.yourAnswer", "The wedding: look at {0} and answer: do you take {1}?", \
             officiant.GetDisplayName(), betrothed.GetDisplayName()))
     Else
-        Debug.Notification(Tr("ceremony.yourVows", "The wedding: speak your vows to {0}.", betrothed.GetDisplayName()))
+        Debug.Notification(Tr("ceremony.yourVows", "The wedding: look at {0} and speak your vows.", betrothed.GetDisplayName()))
     EndIf
 EndEvent
 
