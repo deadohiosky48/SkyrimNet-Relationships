@@ -129,7 +129,8 @@ namespace SNRom::Ceremony {
             // it, and the wedding ends married whatever happens in it.
             //
             // THE PRESENTATION (the author, 2026-10-31): a kiss may become an
-            // OStim scene, and the applause was over before it was. After the
+            // OStim or Baka scene (KissScene), and the applause was over
+            // before it was. After the
             // kiss, and any scene it became, the officiant presents them to
             // everyone, married; that line ends the wedding, and the guests
             // applaud it.
@@ -260,6 +261,8 @@ namespace SNRom::Ceremony {
         // scene has been seen since (Look).
         float            g_kissed = 0.0f;
         bool             g_inScene = false;
+        // The player could move when the kiss step began (KissScene).
+        bool             g_controlsFree = false;
         int              g_retries = 0;
         float            g_still = 0.0f;    // seconds at this step, the game running
         float            g_away = 0.0f;
@@ -443,6 +446,25 @@ namespace SNRom::Ceremony {
             return false;
         }
 
+        // The player cannot move: something has taken their controls.
+        bool ControlsTaken() {
+            const auto* map = RE::ControlMap::GetSingleton();
+            return map && !map->IsMovementControlsEnabled();
+        }
+
+        // THE KISS IS A SCENE (the author, 2026-10-31: OStim, "the kiss could
+        // be a baka scene, too"). OStim and SexLab put the player in a
+        // faction of theirs (Notices::PlayerInScene). Baka Motion's KissLove
+        // has none - it marks the pair in PapyrusUtil storage - but, like
+        // OStim and SexLab, it takes the player's controls for as long as it
+        // plays and gives them back at its end. So a kiss whose controls were
+        // free when the step began, and are taken now, is a scene, whoever
+        // plays it. Controls already taken at the start (another mod's) are
+        // not read as one.
+        bool KissScene() {
+            return Notices::PlayerInScene() || (g_controlsFree && ControlsTaken());
+        }
+
         void StartStep(bool a_unclear = false) {
             const auto& step = Script()[g_step];
             g_heard = false;
@@ -455,6 +477,7 @@ namespace SNRom::Ceremony {
             g_held = 0.0f;
             g_kissed = 0.0f;
             g_inScene = false;
+            g_controlsFree = step.kind == kKindKiss && !ControlsTaken();
             // Begun by the player's line (the step before was theirs): whoever
             // answers them may be this step's speaker, saying it.
             g_holdCue = !a_unclear && g_step > 0 && Script()[g_step - 1].speaker == Who::kPlayer &&
@@ -933,8 +956,8 @@ namespace SNRom::Ceremony {
             }
             const float step = static_cast<float>(kLook.count());
             const bool  kissing = Script()[g_step].kind == kKindKiss;
-            // In a scene, the couple may be anywhere OStim puts them.
-            const bool  scene = Notices::PlayerInScene();
+            // In a scene, the couple may be anywhere it puts them.
+            const bool  scene = kissing ? KissScene() : Notices::PlayerInScene();
             g_away = scene || (Here(g_officiant, player) && Here(g_betrothed, player)) ? 0.0f : g_away + step;
             if (g_away >= kAwaySeconds) {
                 if (Pronounced()) {
