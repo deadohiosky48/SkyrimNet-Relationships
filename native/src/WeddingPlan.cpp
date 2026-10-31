@@ -32,8 +32,8 @@ namespace SNRom::WeddingPlan {
         // what the place is by, and where people are sent. 4 (wpm61): each
         // guest's side, the place found, who has set out; and the venues. 5
         // (wpm62): a venue's marks counted, the betrothed's added. 6 (wpm68):
-        // the reception under way.
-        constexpr std::uint32_t kRecordVersion = 6;
+        // the reception under way. 7 (wpm69): each at it with their own mark.
+        constexpr std::uint32_t kRecordVersion = 7;
         constexpr std::size_t   kMaxPlace = 120;
         constexpr std::size_t   kMaxGuests = 40;
 
@@ -443,11 +443,21 @@ namespace SNRom::WeddingPlan {
         // the couple's mark, for kReceptionHours; then they go their ways.
         // Kept in the co-save (v6), so a load in the middle still ends it.
         // Under g_lock.
+        // EACH AROUND THEIR OWN MARK (seen in play, wpm68): around the
+        // couple's, all seventeen walked in on the altar as the rings were
+        // given. So each mingles about where they stood for it - each side
+        // at its own mark - and at only for anyone without one.
         struct Reception {
             std::vector<std::uint32_t> who;
+            std::vector<std::uint32_t> atEach;        // who[i]'s mark, 0 for at
             std::uint32_t              at = 0;
             bool                       ours = false;  // a marker placed for it, removed after
             float                      until = 0.0f;  // game days
+
+            RE::TESObjectREFR* AtOf(std::size_t a_i) const {
+                auto* own = a_i < atEach.size() ? RefOf(atEach[a_i]) : nullptr;
+                return own ? own : RefOf(at);
+            }
         };
         std::optional<Reception> g_reception;
         constexpr float          kReceptionHours = 2.0f;
@@ -777,8 +787,8 @@ namespace SNRom::WeddingPlan {
                 marker->SetDelete(true);
             }
             if (receptionAgain) {
-                for (const auto id : receptionAgain->who) {
-                    Link(RE::TESForm::LookupByID<RE::Actor>(id), RefOf(receptionAgain->at));
+                for (std::size_t i = 0; i < receptionAgain->who.size(); ++i) {
+                    Link(RE::TESForm::LookupByID<RE::Actor>(receptionAgain->who[i]), receptionAgain->AtOf(i));
                 }
             }
             for (const auto& g : going) {
@@ -2067,8 +2077,9 @@ namespace SNRom::WeddingPlan {
             a_intfc->WriteRecordData(g_reception->at);
             a_intfc->WriteRecordData(static_cast<std::uint8_t>(g_reception->ours ? 1 : 0));
             a_intfc->WriteRecordData(static_cast<std::uint32_t>(g_reception->who.size()));
-            for (const auto who : g_reception->who) {
-                a_intfc->WriteRecordData(who);
+            for (std::size_t i = 0; i < g_reception->who.size(); ++i) {
+                a_intfc->WriteRecordData(g_reception->who[i]);
+                a_intfc->WriteRecordData(i < g_reception->atEach.size() ? g_reception->atEach[i] : 0u);
             }
         }
     }
@@ -2238,11 +2249,14 @@ namespace SNRom::WeddingPlan {
             }
             for (std::uint32_t c = 0; c < staying; ++c) {
                 std::uint32_t who = 0;
-                if (a_intfc->ReadRecordData(who) != sizeof(who)) {
+                std::uint32_t own = 0;   // v7: their own mark
+                if (a_intfc->ReadRecordData(who) != sizeof(who) ||
+                    (a_version >= 7 && a_intfc->ReadRecordData(own) != sizeof(own))) {
                     return damaged();
                 }
                 if (const auto now = resolve(who)) {
                     r.who.push_back(now);
+                    r.atEach.push_back(resolve(own));
                 }
             }
             r.at = resolve(r.at);
@@ -2278,12 +2292,19 @@ namespace SNRom::WeddingPlan {
 
     std::int32_t BeginReception(std::int32_t a_betrothed) {
         std::vector<std::uint32_t> who;
+        std::vector<std::uint32_t> atEach;
         std::uint32_t              at = 0;
+        const auto                 bonds = Model::Get().FormIds();
         {
             const std::scoped_lock lock{ g_lock };
             const auto             it = g_plans.find(static_cast<std::uint32_t>(a_betrothed));
             if (it == g_plans.end()) {
                 return 0;
+            }
+            const auto goals = GoalsOf(static_cast<std::uint32_t>(a_betrothed), it->second, bonds);
+            for (const auto id : it->second.sent) {
+                const auto goal = std::ranges::find(goals, id, &Goal::who);
+                atEach.push_back(goal != goals.end() ? goal->at : 0);
             }
             // Around where the couple stood; else the betrothed's mark, the
             // officiant's, or the place found.
@@ -2320,15 +2341,16 @@ namespace SNRom::WeddingPlan {
             if (g_reception && g_reception->ours) {
                 oldMarker = g_reception->at;
             }
-            g_reception = Reception{ who, at, ours, Now() + kReceptionHours / 24.0f };
+            g_reception = Reception{ who, atEach, at, ours, Now() + kReceptionHours / 24.0f };
         }
         if (auto* gone = RefOf(oldMarker)) {
             gone->Disable();
             gone->SetDelete(true);
         }
-        for (const auto id : who) {
-            Link(RE::TESForm::LookupByID<RE::Actor>(id), RefOf(at));
-            Send("SNRom_WeddingGo", kGatherLarge, 0.0f, id);
+        const Reception now{ who, atEach, at, ours, 0.0f };
+        for (std::size_t i = 0; i < who.size(); ++i) {
+            Link(RE::TESForm::LookupByID<RE::Actor>(who[i]), now.AtOf(i));
+            Send("SNRom_WeddingGo", kGatherLarge, 0.0f, who[i]);
         }
         // TEST LOG (wpm68).
         SKSE::log::info("Wedding: the reception begins; {} stay {:.0f} hours", who.size(), kReceptionHours);

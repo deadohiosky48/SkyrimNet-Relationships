@@ -805,6 +805,16 @@ namespace SNRom::Ceremony {
         if (!a_officiant || !a_betrothed || a_officiant == a_betrothed || g_active || !g_hearing) {
             return false;
         }
+        // ONLY THE ENGAGED ARE MARRIED (seen in play, wpm68): the day's watch
+        // asked for the wedding to begin in the second between the vows and
+        // the marriage being recorded, and the couple, married, were married
+        // again; that one stalled, and everyone was told they were not
+        // married after all.
+        if (!Marriage::Engaged(static_cast<std::int32_t>(a_betrothed->GetFormID()))) {
+            SKSE::log::info("Ceremony: {} is not engaged to the player; no wedding begins",
+                            a_betrothed->GetDisplayFullName());
+            return false;
+        }
         g_script = Build(a_planned ? a_parts : 0);
         g_planned = a_planned;
         g_parts = a_planned ? a_parts : 0;

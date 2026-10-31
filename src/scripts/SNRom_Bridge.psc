@@ -6796,6 +6796,13 @@ Event OnCeremonyEnded(String asEventName, String asWhy, Float afUnused, Form akS
     ReleaseWeddingHold()
     Actor betrothed = akSender as Actor
     Actor player = Game.GetPlayer()
+    ; Married all the same (wpm68): a stray second wedding that stalls tells
+    ; no one the couple are not married.
+    If betrothed != None && OurMarriage(betrothed) == MARRIAGE_MARRIED()
+        Diag(LOG_INFO(), "Ceremony: a wedding for " + betrothed.GetDisplayName() + ", already married, went no further; " + \
+            "nothing said of it.")
+        Return
+    EndIf
     String who = "their betrothed"
     If betrothed != None
         who = betrothed.GetDisplayName()
