@@ -208,9 +208,11 @@ namespace SNRom::Ceremony {
         // cued to ask what had been answered, pronounced them married instead,
         // and the wedding went round until it stalled.
         std::deque<Line> g_carry;
-        // PRONOUNCED ALREADY (seen in play, wpm70): once the player has said
-        // yes, the officiant pronounced them married. The betrothed's yes then
-        // ends it married: the rings and the pronouncement are not waited for.
+        // PRONOUNCED ALREADY (seen in play, wpm70): the officiant pronounced
+        // them married at the rings, and never mentioned rings again. Once
+        // both have said yes, a pronouncement is remembered, and the rings and
+        // the pronouncement are not waited for. Before the betrothed's yes it
+        // counts for nothing (wpm75, Heard).
         bool g_pronounced = false;
         // Betrothed married by a ceremony since the last load (Begin).
         std::unordered_set<RE::FormID> g_justWed;
@@ -638,12 +640,24 @@ namespace SNRom::Ceremony {
             const bool  hasNext = g_step + 1 < Script().size();
             const bool  nextSpeaker = hasNext && a_speaker == IdOf(Script()[g_step + 1].speaker) &&
                                      a_speaker != IdOf(step.speaker);
-            // Pronounced, once the player has said yes: remembered (Next).
-            const bool pastYourYes = std::ranges::any_of(Script().begin(), Script().begin() + static_cast<std::ptrdiff_t>(g_step),
-                                                         [](const Step& a_s) { return a_s.kind == kKindPlayerAnswer; });
-            if (a_speaker == g_officiant && pastYourYes && !g_pronounced && WordsDo(Check::kPronounced, a_line)) {
-                g_pronounced = true;
-                SKSE::log::info("Ceremony: step {}: {} pronounced them married", g_step + 1, NameOf(a_speaker));
+            // Pronounced, once BOTH have said yes: remembered (Next). Not
+            // before (seen in play, wpm74): Danica pronounced them married in
+            // reply to the player's "I do", before Olfina was asked, and the
+            // rings and the real pronouncement were skipped for it. Said too
+            // soon, it is nothing: the betrothed is still asked, and the rest
+            // follows in order.
+            const bool pastTheirYes = std::ranges::any_of(
+                Script().begin(), Script().begin() + static_cast<std::ptrdiff_t>(g_step),
+                [](const Step& a_s) { return a_s.kind == kKindBetrothedAnswer; });
+            if (a_speaker == g_officiant && !g_pronounced && WordsDo(Check::kPronounced, a_line)) {
+                if (pastTheirYes) {
+                    g_pronounced = true;
+                    SKSE::log::info("Ceremony: step {}: {} pronounced them married", g_step + 1, NameOf(a_speaker));
+                } else {
+                    // TEST LOG (wpm75)
+                    SKSE::log::info("Ceremony: step {}: {} pronounced them married too soon; not counted",
+                                    g_step + 1, NameOf(a_speaker));
+                }
             }
             if (g_judging) {
                 if (a_speaker == g_officiant || a_speaker == g_betrothed) {

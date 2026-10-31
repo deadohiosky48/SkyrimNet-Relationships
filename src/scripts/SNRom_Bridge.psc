@@ -5944,6 +5944,7 @@ EndFunction
 Function ReleaseWatchers()
     ; Array variables never assigned are checked by Length: comparing one to
     ; None fails at load ("Cannot cast from None to Actor[]").
+    StopApplause()
     Int b = 0
     While b < _weddingBrought.Length
         If _weddingBrought[b] != None
@@ -6749,25 +6750,58 @@ Event OnCeremonyYourTurn(String asEventName, String asWhat, Float afUnused, Form
     EndIf
 EndEvent
 
+; ---- THE APPLAUSE (the author, 2026-10-31) ---------------------------------
+;
+; PlayIdle (wpm74) was accepted for 12 guests and nobody clapped: a package's
+; own idles win over it. The game's audiences applaud by package
+; (BardAudienceStayInLocationAndApplaud), and so do ours: SNRom_WeddingApplaud
+; is the same with all four applause idles, over the walk to their place, for
+; the few seconds before the reception.
+Actor[] _weddingApplauding
+
+Package Function WeddingApplaudPackage()
+    Return Game.GetFormFromFile(0x00000D8F, OurPlugin()) as Package
+EndFunction
+
 Int Function Applaud(Actor[] akGuests)
-    { Every guest standing near enough to see plays one of the game's own
-      applause idles (Skyrim.esm IdleApplaud2-5, the bards' audiences), each
-      their own, so they do not clap in unison. How many did. }
+    { Every guest standing near enough to see applauds, where they stand. How
+      many do. StopApplause ends it. }
+    Package clap = WeddingApplaudPackage()
+    If clap == None
+        Return 0
+    EndIf
+    _weddingApplauding = new Actor[64]
     Actor player = Game.GetPlayer()
     Int clapping = 0
     Int i = 0
-    While i < akGuests.Length
+    While i < akGuests.Length && clapping < _weddingApplauding.Length
         Actor guest = akGuests[i]
         If guest != None && guest != player && guest.Is3DLoaded() && !guest.IsDead() && !guest.IsInCombat() && \
                 guest.GetSitState() == 0 && guest.GetDistance(player) < 3000.0
-            Idle clap = Game.GetFormFromFile(0x000D8730 + Utility.RandomInt(0, 3), "Skyrim.esm") as Idle
-            If clap != None && guest.PlayIdle(clap)
-                clapping += 1
-            EndIf
+            ActorUtil.AddPackageOverride(guest, clap, 101, 1)
+            guest.SetDontMove(False)
+            guest.EvaluatePackage()
+            _weddingApplauding[clapping] = guest
+            clapping += 1
         EndIf
         i += 1
     EndWhile
     Return clapping
+EndFunction
+
+Function StopApplause()
+    Package clap = WeddingApplaudPackage()
+    Int i = 0
+    While i < _weddingApplauding.Length
+        If _weddingApplauding[i] != None
+            If clap != None
+                ActorUtil.RemovePackageOverride(_weddingApplauding[i], clap)
+            EndIf
+            _weddingApplauding[i].EvaluatePackage()
+            _weddingApplauding[i] = None
+        EndIf
+        i += 1
+    EndWhile
 EndFunction
 
 Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, Form akSender)
@@ -6784,7 +6818,7 @@ Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, For
         clapping = Applaud(SNRom_Native.PlanGuests(betrothed))
         Diag(LOG_INFO(), "Wedding: " + clapping + " guests applaud. (TEST LOG)")
         If clapping > 0
-            Utility.Wait(5.0)
+            Utility.Wait(6.0)
         EndIf
     EndIf
     ReleaseWeddingHold()

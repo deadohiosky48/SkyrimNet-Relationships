@@ -413,6 +413,7 @@ namespace SNRom::Decorators {
                                         : 0;
             out["planned"] = Ceremony::Planned() ? 1 : 0;
             out["kiss"] = (Ceremony::Parts() & WeddingPlan::kKiss) ? 1 : 0;
+            out["rings"] = (Ceremony::Parts() & WeddingPlan::kRings) ? 1 : 0;
         }
         return out.dump(-1, ' ', false, json::error_handler_t::replace);
     }
