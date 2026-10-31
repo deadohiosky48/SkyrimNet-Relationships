@@ -169,6 +169,11 @@ namespace SNRom::Ceremony {
         // then the wedding is over. A player's step waits longer: they may be
         // thinking, or typing their vows.
         constexpr float kNpcPatience = 40.0f;
+        // A cue sent this long ago with no line from its speaker was lost
+        // (expired, or answered with something else unheard): it is sent
+        // again, the same words, up to kMaxCues for the step.
+        constexpr float kCueLost = 22.0f;
+        constexpr int   kMaxCues = 3;
         constexpr float kNpcGiveUp = 90.0f;
         constexpr float kPlayerGiveUp = 240.0f;
         // The kiss: waited for this long, then they are married without it.
@@ -246,7 +251,16 @@ namespace SNRom::Ceremony {
         std::chrono::steady_clock::time_point g_lastHeardAt{};  // and when
         bool             g_judging = false;
         bool             g_cued = false;
-        bool             g_recued = false;
+        // CUES GET LOST (seen in play, wpm76 and wpm79): a directed turn waits
+        // 15 s for the floor and then expires, unsaid, and a long reading still
+        // playing outlasts it. How many times this step was cued, and whether
+        // Papyrus has sent the last one (CueSent) and how long ago.
+        int              g_cues = 0;
+        bool             g_sent = false;
+        float            g_sinceSent = 0.0f;
+        // The player took their turn before being asked (Heard): their step
+        // begins without the on-screen word that it is their turn.
+        bool             g_quietTurn = false;
         // THE CUE HELD FOR THE PLAYER'S ANSWER (seen in play, wpm76). Someone
         // always answers the player (SkyrimNet's player target selector has
         // no "none"), and a cue cannot wait behind that turn: Olfina spoke her
@@ -339,17 +353,17 @@ namespace SNRom::Ceremony {
         // should do now is in their own prompt, by step (0331 for the
         // officiant, 0330 for the betrothed).
         //
-        // a_again: the same step's speaker cued once more after silence. That
-        // stores nothing (DirectNarration with no content prompts a response
-        // without an event), unless it is a question asked again because the
-        // answer was unclear, which is itself a thing that happened.
-        std::string CueText(Cue a_cue, bool a_again, bool a_unclear = false) {
+        // NEVER EMPTY (seen in play, wpm79, SkyrimNet 29.1). A cue sent again
+        // after silence used to carry no words, to store nothing. 29.1 tells
+        // the speaker to answer "this event, no matter what: ``" - nothing -
+        // and Danica, asked for the opening, answered with her own feelings
+        // for the groom. A cue sent again says the same thing again.
+        // a_unclear: a question asked again because the answer was unclear,
+        // which is itself a thing that happened.
+        std::string CueText(Cue a_cue, bool a_unclear = false) {
             const auto off = NameOf(g_officiant);
             const auto you = NameOf(0x14);
             const auto them = NameOf(g_betrothed);
-            if (a_again && !a_unclear) {
-                return {};
-            }
             // WHAT COMES NOW, IN EVERY CUE (seen in play, wpm75). The cue is
             // what the line answers, and a bare fact invites the next thing
             // the model knows: "Haruk and Olfina have both said yes" brought
@@ -402,17 +416,25 @@ namespace SNRom::Ceremony {
 
         void End(bool a_married, const std::string& a_why);
 
-        // Cues this step's speaker, once. Main thread.
-        void CueNow() {
+        // Cues this step's speaker: once, or again (a_again) when the cue was
+        // lost or answered with something else, up to kMaxCues in all. Main
+        // thread.
+        void CueNow(bool a_again = false) {
             const auto& step = Script()[g_step];
-            if (!g_active || g_cued || g_judging || step.cue == Cue::kNone) {
+            if (!g_active || g_judging || step.cue == Cue::kNone || (g_cued && !a_again) || g_cues >= kMaxCues) {
                 return;
             }
             g_holdCue = false;
             g_cued = true;
-            g_still = 0.0f;
-            SKSE::log::info("Ceremony: step {}: cueing {}", g_step + 1, NameOf(IdOf(step.speaker)));
-            SendEvent("SNRom_CeremonyCue", CueText(step.cue, g_unclear, g_unclear), static_cast<float>(g_token),
+            g_sent = false;
+            g_sinceSent = 0.0f;
+            ++g_cues;
+            if (!a_again) {
+                g_still = 0.0f;
+            }
+            SKSE::log::info("Ceremony: step {}: cueing {}{}", g_step + 1, NameOf(IdOf(step.speaker)),
+                            a_again ? " again" : "");
+            SendEvent("SNRom_CeremonyCue", CueText(step.cue, g_unclear), static_cast<float>(g_token),
                       IdOf(step.speaker));
         }
 
@@ -467,10 +489,13 @@ namespace SNRom::Ceremony {
 
         void StartStep(bool a_unclear = false) {
             const auto& step = Script()[g_step];
+            const bool  quiet = std::exchange(g_quietTurn, false);
             g_heard = false;
             g_judging = false;
             g_cued = false;
-            g_recued = false;
+            g_cues = 0;
+            g_sent = false;
+            g_sinceSent = 0.0f;
             g_ahead.clear();
             g_unclear = a_unclear;
             g_still = 0.0f;
@@ -489,7 +514,9 @@ namespace SNRom::Ceremony {
                 return;
             }
             if (step.cue == Cue::kNone) {
-                SendEvent("SNRom_CeremonyYourTurn", step.judged ? "answer" : "vows", 0.0f, g_officiant);
+                if (!quiet) {
+                    SendEvent("SNRom_CeremonyYourTurn", step.judged ? "answer" : "vows", 0.0f, g_officiant);
+                }
                 return;
             }
             if (g_holdCue) {
@@ -565,7 +592,9 @@ namespace SNRom::Ceremony {
         }
 
         // A line the step's check found wanting: not the step. Its speaker is
-        // cued (once), and the step waits on. Main thread.
+        // cued again, the same words (wpm79: a cue already sent was not, and
+        // the wedding waited out its 90 s and stalled), and the step waits
+        // on. Main thread.
         void Checked(std::int32_t a_token, const std::string& a_verdict) {
             if (!g_active || a_token != g_token) {
                 return;
@@ -586,7 +615,7 @@ namespace SNRom::Ceremony {
             if (DrainCarry()) {
                 return;
             }
-            CueNow();
+            CueNow(true);
         }
 
         std::string Lower(std::string a_text) {
@@ -702,6 +731,18 @@ namespace SNRom::Ceremony {
                 }
             }
             return false;
+        }
+
+        // VOWS, BY THEIR WORDS: long, or with a word vows are made of. "We are
+        // ready" is not (wpm19); "Olfina, I pledge to love you and keep you"
+        // is (wpm79).
+        bool VowLike(const std::string& a_line) {
+            if (a_line.size() >= 60) {
+                return true;
+            }
+            const auto line = Lower(a_line);
+            return a_line.size() >= 20 && Has(line, { "vow", "promise", "pledge", "swear", "love", "cherish", "honor",
+                                                      "honour", "forever", "always", "take you" });
         }
 
         // What the line must have done, as a question for the judge.
@@ -827,6 +868,26 @@ namespace SNRom::Ceremony {
                 g_heard = true;
                 Next();
                 return;
+            }
+            // THE PLAYER LEADS (seen in play, wpm79). Danica never asked for
+            // the vows; Haruk spoke them anyway, they counted for nothing, and
+            // eight seconds later the wedding stalled. The player is never
+            // made to wait on an officiant who has not asked: their vows at
+            // the call for vows, or their plain yes at "do you take", is their
+            // own step, and the question is taken as asked. Only the player:
+            // an NPC's line still stands for nothing but its own step.
+            if (a_speaker == 0x14 && step.speaker == Who::kOfficiant && g_step + 1 < Script().size()) {
+                const auto next = Script()[g_step + 1].kind;
+                if ((step.kind == kKindOpening && next == kKindPlayerVows && VowLike(a_line)) ||
+                    (step.kind == kKindAskPlayer && next == kKindPlayerAnswer && PlainYes(a_line))) {
+                    SKSE::log::info("Ceremony: step {}: the player went ahead of {}; taken as asked", g_step + 1,
+                                    NameOf(g_officiant));
+                    g_heard = true;
+                    g_quietTurn = true;
+                    Next();
+                    Heard(a_speaker, a_target, a_line);
+                    return;
+                }
             }
             // NO CATCHING UP (the author, 2026-10-31: "a precise script";
             // seen in play, wpm75). Taking the next speaker's line as proof
@@ -1005,6 +1066,9 @@ namespace SNRom::Ceremony {
                 return;
             }
             g_still += step;
+            if (g_sent) {
+                g_sinceSent += step;
+            }
             if (kissing && g_still >= kKissWait) {
                 SKSE::log::info("Ceremony: step {}: no kiss heard; they are married all the same", g_step + 1);
                 Next();
@@ -1012,9 +1076,14 @@ namespace SNRom::Ceremony {
                 Finish("the officiant said no more");
             } else if (npc && g_still >= kNpcGiveUp) {
                 End(false, "stalled");
-            } else if (npc && g_still >= kNpcPatience && !g_recued) {
-                g_recued = true;
-                SendEvent("SNRom_CeremonyCue", CueText(now.cue, true), static_cast<float>(g_token), IdOf(now.speaker));
+            } else if (npc && g_cues < kMaxCues &&
+                       ((g_sent && g_sinceSent >= kCueLost) || (!g_sent && g_still >= kNpcPatience))) {
+                // Sent, and nothing from its speaker since: it expired, or was
+                // answered unheard. Never sent (it was not wanted when Papyrus
+                // looked): send it now.
+                SKSE::log::info("Ceremony: step {}: no line {} s after the cue (TEST LOG)", g_step + 1,
+                                static_cast<int>(g_sent ? g_sinceSent : g_still));
+                CueNow(true);
             } else if (!npc && g_still >= kPlayerGiveUp) {
                 End(false, "stalled");
             }
@@ -1183,8 +1252,10 @@ namespace SNRom::Ceremony {
     }
 
     float CueDelay(std::int32_t a_token) {
-        // The line before is still being said: about fifteen characters a
-        // second, and a breath.
+        // The line before is still being said: about eleven characters a
+        // second, solemnly, and two before the voice begins. Fifteen was too
+        // quick (wpm79): Danica's 270-character blessing outlasted the cue
+        // after it, which expired unsaid.
         // Counted from when the line was HEARD, not from the cue: wpm21 waited
         // the line's whole length again after the natural-reply wait.
         if (a_token != g_token) {
@@ -1192,7 +1263,7 @@ namespace SNRom::Ceremony {
         }
         // Only what the directed turn's floor wait cannot cover: a line still
         // playing more than kFloorWait - kFloorMargin seconds from now.
-        const float length = 1.0f + static_cast<float>(g_lastLength) / 15.0f;
+        const float length = 2.0f + static_cast<float>(g_lastLength) / 11.0f;
         const float since = std::chrono::duration<float>(std::chrono::steady_clock::now() - g_lastHeardAt).count();
         return std::max(0.0f, length - since - (kFloorWait - kFloorMargin));
     }
@@ -1202,9 +1273,11 @@ namespace SNRom::Ceremony {
     }
 
     void CueSent(std::int32_t a_token) {
-        if (g_active && a_token == g_token && !g_cued) {
+        // Each send, the first or again: kCueLost counts from here (Look).
+        if (g_active && a_token == g_token) {
             g_cued = true;
-            g_still = 0.0f;
+            g_sent = true;
+            g_sinceSent = 0.0f;
         }
     }
 

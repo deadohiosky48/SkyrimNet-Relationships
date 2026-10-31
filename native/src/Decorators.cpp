@@ -214,6 +214,18 @@ namespace SNRom::Decorators {
             out["mayMarry"] = Marriage::MayMarryAnother() ? 1 : 0;
             // Being married now, by step (Ceremony.h), and by whom.
             out["ceremony"] = 0;
+            // MARRYING THE PLAYER TO SOMEONE ELSE (seen in play, wpm79):
+            // Danica, the player's lover, officiating their wedding to Olfina,
+            // read her own bond - "if Haruk asked you to marry them now, you
+            // would want to" - at the foot of her prompt (SkyrimNet 29.1), and
+            // answered the call for vows with a confession. 0330 holds it back
+            // while she officiates.
+            if (Ceremony::RoleOf(a_formId) == 1) {
+                auto*       betrothed = Ceremony::Betrothed();
+                const char* name = betrothed ? betrothed->GetDisplayFullName() : nullptr;
+                out["officiating"] = 1;
+                out["officiatingFor"] = name ? name : "";
+            }
             if (Ceremony::RoleOf(a_formId) == 2) {
                 auto*       officiant = Ceremony::Officiant();
                 const char* name = officiant ? officiant->GetDisplayFullName() : nullptr;
@@ -443,7 +455,10 @@ namespace SNRom::Decorators {
     // A WEDDING PLANNER'S VIEW (Build B, M4p): the couples they could plan
     // for, which they were hired for, and each plan as it stands.
     std::string PlannerJson(RE::Actor* a_actor) {
-        if (Marriage::MarasOwns() || !Officiant::IsPlanner(a_actor)) {
+        // NOT DURING A WEDDING (seen in play, wpm79): Danica, planner and
+        // officiant both, was told mid-ceremony to "lead them through it" and
+        // ask whose guest the Jarl was. The plan is settled by then.
+        if (Marriage::MarasOwns() || !Officiant::IsPlanner(a_actor) || Ceremony::Now() != 0) {
             return R"({"planner":0})";
         }
         json couples = json::array();

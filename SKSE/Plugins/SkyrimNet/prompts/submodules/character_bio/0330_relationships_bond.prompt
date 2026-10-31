@@ -37,6 +37,18 @@
 {% if rom_tier >= 0 %}
 {% set actor = decnpc(actorUUID) %}
 {% set rom = get_romance(actorUUID) %}
+{# MARRYING THE PLAYER TO SOMEONE ELSE (seen in play, wpm79). Danica, the
+   player's lover, officiating their wedding to Olfina, read all of this - "if
+   Haruk asked you to marry them now, you would want to", "something between
+   you ... is close" - and SkyrimNet 29.1 puts it at the foot of the prompt,
+   beside the reply. Asked to open the wedding, she confessed her feelings to
+   the groom. While she officiates, her own bond is one quiet paragraph: she
+   knows it, and it stays out of the ceremony. Everything else returns when
+   the wedding is over. #}
+{% if default(rom.marriage.officiating, 0) == 1 %}
+
+You and {{ player.name }} have a history of your own, and you know it well. But today you are marrying {{ player.name }} to {{ default(rom.marriage.officiatingFor, "the one they love") }}, as the one they asked to marry them. Whatever is between you and {{ player.name }} stays unspoken while you do: none of it enters the ceremony, in a word or a look, and today you speak to {{ player.name }} only as the one marrying them.
+{% else %}
 {% set sparked = default(rom.sparked, 0) %}
 {% set romance_ok = default(rom.romanceOk, 0) %}
 {# WAS THE QUESTION EVER LIVE FOR THIS PAIR? 0 applies, 1 the player's own
@@ -889,6 +901,7 @@ You have been aware lately that whatever this is has been moving, and not slowly
 
 Do not state your tier, your points, or any number. Do not announce the state of the relationship. Let it show in your manner, what you notice, what you assume you are allowed to say.
 {% endif %}{# rom known, or foreclosed #}
+{% endif %}{# officiating #}
 {% endif %}
 {% endif %}
 {% endif %}
