@@ -6749,13 +6749,45 @@ Event OnCeremonyYourTurn(String asEventName, String asWhat, Float afUnused, Form
     EndIf
 EndEvent
 
+Int Function Applaud(Actor[] akGuests)
+    { Every guest standing near enough to see plays one of the game's own
+      applause idles (Skyrim.esm IdleApplaud2-5, the bards' audiences), each
+      their own, so they do not clap in unison. How many did. }
+    Actor player = Game.GetPlayer()
+    Int clapping = 0
+    Int i = 0
+    While i < akGuests.Length
+        Actor guest = akGuests[i]
+        If guest != None && guest != player && guest.Is3DLoaded() && !guest.IsDead() && !guest.IsInCombat() && \
+                guest.GetSitState() == 0 && guest.GetDistance(player) < 3000.0
+            Idle clap = Game.GetFormFromFile(0x000D8730 + Utility.RandomInt(0, 3), "Skyrim.esm") as Idle
+            If clap != None && guest.PlayIdle(clap)
+                clapping += 1
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    Return clapping
+EndFunction
+
 Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, Form akSender)
     { SNRom_CeremonyMarried: the officiant has pronounced them married, the
       last step of the script. THE ONE PLACE A WEDDING IS RECORDED: married,
       the rings become wedding rings (ChangeMarriage), and everyone here
       knows. }
-    ReleaseWeddingHold()
     Actor betrothed = akSender as Actor
+    ; THE APPLAUSE (the author, 2026-10-31): the guests applaud the kiss, still
+    ; in their places, before the reception sets them mingling.
+    Int clapping = 0
+    If asUnused == "planned" && betrothed != None && _dashNatives >= 28 && \
+            SkyrimNetApi.GetConfigBool(CFG(), "weddingApplause", True)
+        clapping = Applaud(SNRom_Native.PlanGuests(betrothed))
+        Diag(LOG_INFO(), "Wedding: " + clapping + " guests applaud. (TEST LOG)")
+        If clapping > 0
+            Utility.Wait(5.0)
+        EndIf
+    EndIf
+    ReleaseWeddingHold()
     ; THE RECEPTION (wpm68; the author, 2026-10-31): after a planned wedding
     ; everyone who came stays a while, mingling where the couple can talk to
     ; them, and goes their way two hours later (OnWeddingRecall). Otherwise,
@@ -6770,9 +6802,13 @@ Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, For
         If place == ""
             place = "the wedding"
         EndIf
+        String cheered = ""
+        If clapping > 0
+            cheered = "the guests applaud the newlyweds, and "
+        EndIf
         SkyrimNetApi.RegisterPersistentEvent("After the wedding of " + Game.GetPlayer().GetDisplayName() + " and " + \
-            betrothed.GetDisplayName() + ", everyone stays on at " + place + " for a while to celebrate.", betrothed, \
-            Game.GetPlayer())
+            betrothed.GetDisplayName() + ", " + cheered + "everyone stays on at " + place + " for a while to celebrate.", \
+            betrothed, Game.GetPlayer())
         Diag(LOG_INFO(), "Wedding: the reception begins; " + staying + " stay for two hours.")
     Else
         ReleaseWeddingGoers()
