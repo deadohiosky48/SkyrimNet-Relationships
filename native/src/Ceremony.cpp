@@ -216,12 +216,6 @@ namespace SNRom::Ceremony {
         bool g_pronounced = false;
         // Betrothed married by a ceremony since the last load (Begin).
         std::unordered_set<RE::FormID> g_justWed;
-        // A carried line is being heard: it is its own step's line or none,
-        // and never skips a step (the author, 2026-10-31: "It's a wedding
-        // ceremony. It needs to follow a precise script."). Said before the
-        // step began, it cannot mean the step before it happened: Olfina's
-        // "I do" to the player's "I do" is not Danica's question asked.
-        bool g_replaying = false;
         std::size_t      g_lastLength = 0;  // the last line heard, in characters
         std::chrono::steady_clock::time_point g_lastHeardAt{};  // and when
         bool             g_judging = false;
@@ -314,18 +308,26 @@ namespace SNRom::Ceremony {
             if (a_again && !a_unclear) {
                 return {};
             }
+            // WHAT COMES NOW, IN EVERY CUE (seen in play, wpm75). The cue is
+            // what the line answers, and a bare fact invites the next thing
+            // the model knows: "Haruk and Olfina have both said yes" brought
+            // the pronouncement where the rings belonged, and "Danica has
+            // begun the wedding" a "do you take" before any vows. Still facts:
+            // what is due now is one.
             switch (a_cue) {
             case Cue::kOpening:
-                return off + " has begun the wedding of " + you + " and " + them + ".";
+                return off + " has begun the wedding of " + you + " and " + them + "; first come " + you +
+                       "'s vows.";
             case Cue::kBetrothedVows:
-                return you + " has spoken their vows to " + them + ".";
+                return you + " has spoken their vows to " + them + "; now it is " + them + "'s turn to speak theirs.";
             case Cue::kAskPlayer:
                 return a_unclear ? off + " did not hear a clear answer from " + you + "."
-                                 : you + " and " + them + " have both spoken their vows.";
+                                 : you + " and " + them + " have both spoken their vows; now " + you +
+                                       " is to be asked whether they take " + them + ".";
             case Cue::kAskBetrothed:
                 return a_unclear ? off + " did not hear a clear answer from " + them + "."
                                  : you + " has said yes, and takes " + them + " to be their " + SpouseWord(g_betrothed) +
-                                       ".";
+                                       "; now " + them + " is to be asked the same.";
             case Cue::kBetrothedAnswer:
                 return off + " has asked " + them + " whether they take " + you + " to be their " + SpouseWord(0x14) +
                        ".";
@@ -340,7 +342,8 @@ namespace SNRom::Ceremony {
             case Cue::kReading:
                 return off + " has welcomed everyone to the wedding of " + you + " and " + them + ".";
             case Cue::kRings:
-                return you + " and " + them + " have both said yes.";
+                return you + " and " + them + " have both said yes; now come the rings, before anyone is pronounced "
+                                              "married.";
             case Cue::kKiss:
                 return off + " has pronounced " + you + " and " + them + " married, and invites them to kiss.";
             default:
@@ -377,9 +380,7 @@ namespace SNRom::Ceremony {
                 const auto line = std::move(g_carry.front());
                 g_carry.pop_front();
                 SKSE::log::info("Ceremony: step {}: {} had already spoken", g_step + 1, NameOf(line.speaker));
-                g_replaying = true;
                 Heard(line.speaker, line.target, line.text);
-                g_replaying = false;
                 if (!g_active || g_token != token) {
                     return true;   // moved on; the next step heard the rest
                 }
@@ -526,6 +527,8 @@ namespace SNRom::Ceremony {
             return false;
         }
 
+        std::vector<std::string> WordsOf(const std::string& a_line);
+
         // THE WORDS FIRST. The check is asked of the model only when plain
         // words do not settle it, and the model can then only add a yes: in
         // wpm20 it answered NO to "And Hroki, do you take Haruk to be your
@@ -533,8 +536,10 @@ namespace SNRom::Ceremony {
         bool WordsDo(Check a_check, const std::string& a_line) {
             const auto line = Lower(a_line);
             switch (a_check) {
+            // Asked of the model, always (wpm75): "Haruk, the vows you have
+            // spoken... do you take Olfina?" passed on the word "vow".
             case Check::kAskedForVows:
-                return Has(line, { "vow", "promise", "pledge", "oath" });
+                return false;
             case Check::kSpokeVows:
                 return a_line.size() >= 20;   // whatever they say to the player now is their vow
             // "Do you take <the other one>?": the name after "take" says who
@@ -543,14 +548,24 @@ namespace SNRom::Ceremony {
             case Check::kAskedBetrothed: {
                 const auto take = line.find("take");
                 const auto other = a_check == Check::kAskedPlayer ? g_betrothed : 0x14;
+                // Or the one asked named before "take" (wpm75): "Olfina, do
+                // you take this man to be your husband?" names only her - and
+                // the model, asked, said NO to it twice.
+                const auto asked = a_check == Check::kAskedPlayer ? RE::FormID{ 0x14 } : g_betrothed;
                 return take != std::string::npos && line.find('?') != std::string::npos &&
-                       Names(line.substr(take), other);
+                       (Names(line.substr(take), other) ||
+                        (Names(line.substr(0, take), asked) && !Names(line.substr(0, take), other)));
             }
             case Check::kPronounced:
                 return Has(line, { "pronounce", "husband and wife", "wife and husband", "man and wife",
                                    "now married", "are married", "you are wed", "now wed" });
-            case Check::kRings:
-                return Has(line, { "ring" });
+            // The word, not the letters (wpm75): "during", "bring", "spring".
+            case Check::kRings: {
+                const auto words = WordsOf(line);
+                return std::ranges::any_of(words, [](const std::string& a_w) {
+                    return a_w == "ring" || a_w == "rings" || a_w == "band" || a_w == "bands";
+                });
+            }
             default:
                 return false;
             }
@@ -563,7 +578,8 @@ namespace SNRom::Ceremony {
             const auto them = NameOf(g_betrothed);
             switch (a_check) {
             case Check::kAskedForVows:
-                return "Did " + off + " ask or invite " + you + " to speak their vows?";
+                return "Did " + off + " ask or invite " + you + " to speak their own vows now? Asking whether " +
+                       you + " takes " + them + " (\"do you take...\") is not asking for vows.";
             case Check::kSpokeVows:
                 return "Did " + them + " speak their vows, or promises, to " + you + "?";
             case Check::kAskedPlayer:
@@ -637,9 +653,6 @@ namespace SNRom::Ceremony {
                 return;
             }
             const auto& step = Script()[g_step];
-            const bool  hasNext = g_step + 1 < Script().size();
-            const bool  nextSpeaker = hasNext && a_speaker == IdOf(Script()[g_step + 1].speaker) &&
-                                     a_speaker != IdOf(step.speaker);
             // Pronounced, once BOTH have said yes: remembered (Next). Not
             // before (seen in play, wpm74): Danica pronounced them married in
             // reply to the player's "I do", before Olfina was asked, and the
@@ -674,22 +687,12 @@ namespace SNRom::Ceremony {
                 Next();
                 return;
             }
-            // CATCHING UP. The next step's speaker speaking means an NPC's step
-            // before it happened, recognised or not: Hroki saying "I do" means
-            // she was asked. So that step is taken as done, and the line is
-            // heard as the next step's. Never a player's step: those need the
-            // player.
-            // Never into the kiss: the betrothed speaking before the
-            // pronouncement has not been pronounced married.
-            if (nextSpeaker && step.check != Check::kNone && !g_replaying &&
-                Script()[g_step + 1].kind != kKindKiss) {
-                SKSE::log::info("Ceremony: step {} taken as done: {} spoke for the next", g_step + 1,
-                                NameOf(a_speaker));
-                ++g_step;
-                StartStep();
-                Heard(a_speaker, a_target, a_line);
-                return;
-            }
+            // NO CATCHING UP (the author, 2026-10-31: "a precise script";
+            // seen in play, wpm75). Taking the next speaker's line as proof
+            // the step before happened let Danica's "And now, Olfina, speak
+            // your vows" stand for Olfina's vows, and Haruk was asked twice. A
+            // step is done only by its own speaker's own line; anyone else's
+            // waits its turn, and a step missed is cued again.
             if (a_speaker != IdOf(step.speaker)) {
                 return;
             }

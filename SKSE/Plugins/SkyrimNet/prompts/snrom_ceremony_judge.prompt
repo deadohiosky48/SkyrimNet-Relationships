@@ -16,6 +16,8 @@ You read one line spoken at a wedding and answer one question about it. Reply wi
 
 - YES: the line plainly does what the question asks, in any words.
 - NO: it does not - it only praises, comments, waits, or does something else.
+
+People in the line may be named, or called you, him, her, this man, this woman, the bride or the groom: "Olfina, do you take this man to be your husband?" asks Olfina whether she takes the man she is marrying. The line may do other things as well; answer only whether it does what the question asks.
 {% else %}
 You judge one answer at a wedding. Reply with exactly one word: YES, NO or UNCLEAR.
 

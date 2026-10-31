@@ -38,7 +38,7 @@ Now: give a short reading or blessing fitting the faith that is yours and the tw
 {% elif step == 12 %}
 Now: both have said yes. Invite {{ player.name }} and {{ them }} to exchange rings, and stop there: let them do it. Once they have, your next words pronounce them married{% if default(off.kiss, 0) == 1 %} and invite them to kiss{% endif %}.
 {% elif step == 1 %}
-Now: open the wedding with a few words fitting the moment, then ask {{ player.name }} to speak their vows to {{ them }}.
+Now: open the wedding with a few words fitting the moment, then ask {{ player.name }} to speak their vows to {{ them }}. Not "do you take" yet: that question comes only after both of them have spoken their vows.
 {% elif step == 2 %}
 Now: {{ player.name }} is speaking their vows to {{ them }}. Listen. When they have finished, it is {{ them }}'s turn to speak their vows: you may invite them to, but ask no other question yet.
 {% elif step == 3 %}

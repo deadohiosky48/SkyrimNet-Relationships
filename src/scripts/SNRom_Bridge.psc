@@ -6756,7 +6756,7 @@ EndEvent
 ; own idles win over it. The game's audiences applaud by package
 ; (BardAudienceStayInLocationAndApplaud), and so do ours: SNRom_WeddingApplaud
 ; is the same with all four applause idles, over the walk to their place, for
-; the few seconds before the reception.
+; twelve seconds before the reception.
 Actor[] _weddingApplauding
 
 Package Function WeddingApplaudPackage()
@@ -6818,7 +6818,7 @@ Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, For
         clapping = Applaud(SNRom_Native.PlanGuests(betrothed))
         Diag(LOG_INFO(), "Wedding: " + clapping + " guests applaud. (TEST LOG)")
         If clapping > 0
-            Utility.Wait(6.0)
+            Utility.Wait(12.0)   ; long enough to be heard (the author, wpm75)
         EndIf
     EndIf
     ReleaseWeddingHold()
