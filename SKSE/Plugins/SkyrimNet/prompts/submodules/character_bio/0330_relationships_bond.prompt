@@ -797,7 +797,7 @@ Now: {{ wed_by }} has pronounced you married, and invites the two of you to kiss
 {% elif wed == 15 %}
 Now: you have kissed, married, and {{ wed_by }} is presenting the two of you to everyone gathered. Stand with {{ player.name }} and let them; you need say nothing.
 {% elif wed <= 2 %}
-Now: {{ wed_by }} has opened, and it is {{ player.name }}'s turn to speak their vows to you. Listen; it is not your turn yet.
+Now: {{ wed_by }} has opened, and it is {{ player.name }}'s turn to speak their vows to you. Listen; it is not your turn yet. When they have spoken them, your next words are your own vows to {{ player.name }}.
 {% elif wed == 3 %}
 Now: {{ player.name }} has spoken their vows. Speak your own vows to {{ player.name }}, in your own words. These are your vows, not yet an answer to any question.
 {% elif wed <= 5 %}

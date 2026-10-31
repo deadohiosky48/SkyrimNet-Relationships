@@ -200,10 +200,12 @@ namespace SNRom::Ceremony {
         using CustomPromptFn = bool (*)(const char*, const char*, const char*, std::function<void(const char*, int)>);
         using BusyFn = bool (*)(uint32_t, const char*);
         using ClearBusyFn = bool (*)(uint32_t);
+        using RegisterEventFn = int (*)(const char*, const char*, uint32_t, uint32_t, const uint32_t*, uint32_t);
 
-        CustomPromptFn g_prompt = nullptr;
-        BusyFn         g_busy = nullptr;
-        ClearBusyFn    g_clearBusy = nullptr;
+        CustomPromptFn  g_prompt = nullptr;
+        BusyFn          g_busy = nullptr;
+        ClearBusyFn     g_clearBusy = nullptr;
+        RegisterEventFn g_registerEvent = nullptr;   // v11+
         bool           g_hearing = false;
 
         // ------------------------------------------------------------------
@@ -487,6 +489,24 @@ namespace SNRom::Ceremony {
             return Notices::PlayerInScene() || (g_controlsFree && ControlsTaken());
         }
 
+        // SAID THE MOMENT THE PLAYER IS HEARD (seen in play, wpm80, SkyrimNet
+        // 29.1). A reply to the player's line is written from what was true
+        // when they opened the text box: Danica's reply to "I do" read "their
+        // answer comes next", seven seconds old, though the step had moved
+        // 125 ms before it was written, and she pronounced them married. Only
+        // the foot of the prompt ("Said and done since you last spoke") is
+        // gathered as the reply is written, and it answers the newest entry
+        // first. So what the player's line makes due is registered there at
+        // once: a persistent_generic fact, which asks no one to speak, from
+        // the player, so it is no speaker's own line.
+        void Tell(const std::string& a_fact) {
+            if (!g_registerEvent || a_fact.empty()) {
+                return;
+            }
+            const auto id = g_registerEvent("persistent_generic", a_fact.c_str(), 0x14, 0, nullptr, 0);
+            SKSE::log::info("Ceremony: step {}: said at once: {} (event {}) (TEST LOG)", g_step + 1, a_fact, id);
+        }
+
         void StartStep(bool a_unclear = false) {
             const auto& step = Script()[g_step];
             const bool  quiet = std::exchange(g_quietTurn, false);
@@ -520,6 +540,7 @@ namespace SNRom::Ceremony {
                 return;
             }
             if (g_holdCue) {
+                Tell(CueText(step.cue, g_unclear));
                 SKSE::log::info("Ceremony: step {}: {}'s cue waits for the player's answer (TEST LOG)", g_step + 1,
                                 NameOf(IdOf(step.speaker)));
                 return;
@@ -709,7 +730,8 @@ namespace SNRom::Ceremony {
         // two seconds it took, Danica's reply was written with the wedding
         // still waiting on that answer - and she pronounced them married
         // before Olfina was asked. SkyrimNet begins writing a reply about
-        // 160 ms after a line; this is decided as the line is heard. "yes"
+        // 160 ms after a line; this is decided as the line is heard (though
+        // the reply's profile can be older still: Tell). "yes"
         // for a plain yes with no word of refusal in it; anything else ("I do
         // not", "no one could stop me - I do") is asked of the judge.
         bool PlainYes(const std::string& a_line) {
@@ -1145,6 +1167,9 @@ namespace SNRom::Ceremony {
         g_prompt = reinterpret_cast<CustomPromptFn>(GetProcAddress(mod, "PublicSendCustomPromptToLLM"));
         g_busy = reinterpret_cast<BusyFn>(GetProcAddress(mod, "PublicSetActorBusy"));
         g_clearBusy = reinterpret_cast<ClearBusyFn>(GetProcAddress(mod, "PublicClearActorBusy"));
+        if (api >= 11) {
+            g_registerEvent = reinterpret_cast<RegisterEventFn>(GetProcAddress(mod, "PublicRegisterEvent"));
+        }
         if (listen) {
             const auto a = listen("dialogue", OnDialogueEvent);
             const auto b = listen("dialogue_player_text", OnDialogueEvent);
