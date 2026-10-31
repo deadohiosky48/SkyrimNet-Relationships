@@ -200,6 +200,78 @@ String Function ActivePresetName(Actor akActor) Global
     Return SeverActionsNative.Native_OutfitSlot_GetPresetName(akActor, index)
 EndFunction
 
+Int Function ReplaceInOutfits(Actor akActor, Form akOld, Form akNew) Global
+    { THE WEDDING RING TAKES THE ENGAGEMENT RING'S PLACE IN EVERY OUTFIT SHE
+      HAS (seen in play, wpm68). Olfina's 'Wedding' slot preset, saved while
+      she wore her engagement ring, kept a copy in its chest; re-applied, it
+      grants a copy of anything the wearer does not hold, so the ring removed
+      at the wedding came straight back and took the wedding ring's place.
+      So akOld becomes akNew in akActor's lock, in each named preset, and in
+      each slot preset's chest; holding akNew, the wearer's own is equipped
+      and no copy is granted. How many outfits changed. The caller has
+      checked that SeverActions is installed. }
+    If akActor == None || akOld == None || akNew == None
+        Return 0
+    EndIf
+    Int changed = 0
+    Form[] locked = SeverActionsNative.Native_Outfit_GetLockedItems(akActor)
+    If locked.Length > 0 && locked.Find(akOld) >= 0
+        SeverActionsNative.Native_Outfit_BeginLock(akActor)
+        AddReplaced(akActor, locked, akOld, akNew, False)
+        SeverActionsNative.Native_Outfit_CommitLock(akActor)
+        changed += 1
+    EndIf
+    Int presets = SeverActionsNative.Native_Outfit_GetPresetCount(akActor)
+    Int p = 0
+    While p < presets
+        String name = SeverActionsNative.Native_Outfit_GetPresetNameAt(akActor, p)
+        Form[] items = SeverActionsNative.Native_Outfit_GetPresetItems(akActor, name)
+        If items.Length > 0 && items.Find(akOld) >= 0
+            SeverActionsNative.Native_Outfit_BeginPreset(akActor, name)
+            AddReplaced(akActor, items, akOld, akNew, True)
+            SeverActionsNative.Native_Outfit_CommitPreset(akActor)
+            changed += 1
+        EndIf
+        p += 1
+    EndWhile
+    Int slot = SeverActionsNative.Native_OutfitSlot_GetSlot(akActor)
+    Int s = 0
+    While slot >= 0 && s < 8
+        ObjectReference chest = SeverActionsNative.Native_OutfitSlot_GetContainer(slot, s)
+        If chest != None && chest.GetItemCount(akOld) > 0
+            chest.RemoveItem(akOld, chest.GetItemCount(akOld), True)
+            If chest.GetItemCount(akNew) == 0
+                chest.AddItem(akNew, 1, True)
+            EndIf
+            changed += 1
+        EndIf
+        s += 1
+    EndWhile
+    Return changed
+EndFunction
+
+Function AddReplaced(Actor akActor, Form[] akItems, Form akOld, Form akNew, Bool abPreset) Global
+    { Stages akItems again, akOld as akNew, once (ReplaceInOutfits). }
+    Bool added = False
+    Int i = 0
+    While i < akItems.Length
+        Form item = akItems[i]
+        If item == akOld || item == akNew
+            item = akNew
+            If added
+                item = None
+            EndIf
+            added = True
+        EndIf
+        If item != None && abPreset
+            SeverActionsNative.Native_Outfit_AddPresetItem(akActor, item)
+        ElseIf item != None
+            SeverActionsNative.Native_Outfit_AddLockedItem(akActor, item)
+        EndIf
+        i += 1
+    EndWhile
+EndFunction
+
 Bool Function OnBlacklist(Form akItem) Global
     { akItem is on SeverActions' equipment blacklist, itself or by its plugin. }
     Return akItem != None && SeverActionsNative.Native_Blacklist_IsBlacklisted(akItem)

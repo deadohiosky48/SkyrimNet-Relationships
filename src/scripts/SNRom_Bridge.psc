@@ -5445,6 +5445,25 @@ Function WeddingRingFor(Actor akWearer, Actor akSpouse, Bool abSpouseWears, Int 
     If ring == None
         Return
     EndIf
+    Actor player = Game.GetPlayer()
+    ; THE BANDS THEY BROUGHT (the author, 2026-10-31: "the original design was
+    ; for the couple to acquire their wedding bands before the ceremony ...
+    ; the bride would carry the groom's ring until the ceremony, and the groom
+    ; would carry the bride's ring"). The band that goes on - alone, or
+    ; joined to the engagement ring - is the one the giver carries, else one
+    ; the wearer already holds; only when neither has it is one made, so the
+    ; wedding never fails for a band left at home, and never leaves a spare.
+    Form band = SNRom_Native.RingBand(metal, aiStyle == 1)
+    Actor giver = akSpouse
+    If abSpouseWears
+        giver = player
+    EndIf
+    Actor source = None
+    If band != None && giver.GetItemCount(band) > 0
+        source = giver
+    ElseIf band != None && akWearer.GetItemCount(band) > 0
+        source = akWearer
+    EndIf
     If engaged && aiStyle != 1
         ; The engagement ring becomes the wedding ring: its band joined to it.
         akWearer.RemoveItem(recorded, 1, True)
@@ -5452,9 +5471,33 @@ Function WeddingRingFor(Actor akWearer, Actor akSpouse, Bool abSpouseWears, Int 
         ; The wide band takes the finger; the engagement ring is kept.
         akWearer.UnequipItem(recorded, False, True)
     EndIf
-    akWearer.AddItem(ring, 1, True)
+    If source != None && ring == band
+        If source != akWearer
+            source.RemoveItem(band, 1, True, akWearer)
+        EndIf
+    ElseIf source != None
+        source.RemoveItem(band, 1, True)    ; joined to the engagement ring
+        akWearer.AddItem(ring, 1, True)
+    Else
+        akWearer.AddItem(ring, 1, True)
+    EndIf
+    String brought = "made for the wedding"
+    If source == giver
+        brought = "brought by " + giver.GetDisplayName()
+    ElseIf source != None
+        brought = "already " + akWearer.GetDisplayName() + "'s"
+    EndIf
+    ; TEST LOG (wpm70): whose band it was.
+    Diag(LOG_INFO(), "Ring: " + ring.GetName() + " for " + akWearer.GetDisplayName() + ", its band " + brought + ".")
+    ; Her outfits keep the wedding ring on, not the engagement ring (wpm70).
+    If engaged && akWearer != player && SeverActionsPresent()
+        Int outfits = SNRom_SABio.ReplaceInOutfits(akWearer, recorded, ring)
+        If outfits > 0
+            Diag(LOG_INFO(), "Ring: " + ring.GetName() + " takes " + recorded.GetName() + "'s place in " + outfits + \
+                " of " + akWearer.GetDisplayName() + "'s SeverActions outfits.")
+        EndIf
+    EndIf
     SNRom_Native.SetMarriageRing(akSpouse, abSpouseWears, ring)
-    Actor player = Game.GetPlayer()
     String who = akSpouse.GetDisplayName()
     If abSpouseWears
         Diag(LOG_INFO(), "Ring: " + who + " wears " + ring.GetName() + ".")
