@@ -177,21 +177,28 @@ namespace SNRom::Ceremony {
         bool             g_heard = false;   // this step's line arrived
         bool             g_unclear = false; // this step asks again after an unclear answer
 
-        // A line from the NEXT step's speaker that arrived while this step's
-        // line was being judged: looked at once the judging is done.
+        // The officiant's and the betrothed's lines that arrived while this
+        // step's line was being judged, in order: looked at once the judging
+        // is done.
         struct Line {
             RE::FormID  speaker = 0;
             RE::FormID  target = 0;
             std::string text;
         };
-        std::optional<Line> g_ahead;
-        // THAT LINE, CARRIED INTO THE NEXT STEP (seen in play, wpm65). The
-        // judging said yes, so the step it waited on is now: heard as that
-        // step's before anyone is cued. Danica asked "do you take Haruk?" a
-        // quarter of a second before the player's yes was judged; the line
-        // was dropped, she was cued to ask what she had asked, pronounced them
-        // married instead, and the wedding went round until it stalled.
-        std::optional<Line> g_carry;
+        std::vector<Line> g_ahead;
+        // THOSE LINES, CARRIED INTO THE NEXT STEPS (seen in play, wpm65 and
+        // wpm70). The judging said yes, so the steps they belong to are now:
+        // each heard, in order, before anyone is cued. Danica asked "do you
+        // take Haruk?" a quarter of a second before the player's yes was
+        // judged (wpm65); Olfina said "I do" to the player's own "I do",
+        // before Danica asked her (wpm70). Each line was dropped, Danica was
+        // cued to ask what had been answered, pronounced them married instead,
+        // and the wedding went round until it stalled.
+        std::deque<Line> g_carry;
+        // PRONOUNCED ALREADY (seen in play, wpm70): once the player has said
+        // yes, the officiant pronounced them married. The betrothed's yes then
+        // ends it married: the rings and the pronouncement are not waited for.
+        bool g_pronounced = false;
         std::size_t      g_lastLength = 0;  // the last line heard, in characters
         std::chrono::steady_clock::time_point g_lastHeardAt{};  // and when
         bool             g_judging = false;
@@ -336,25 +343,45 @@ namespace SNRom::Ceremony {
         // thread.
         void Heard(RE::FormID a_speaker, RE::FormID a_target, const std::string& a_line);
 
+        // The carried lines heard, in order, as this step's. True when the
+        // step moved on or is being judged: nothing to cue. A judging keeps
+        // the rest of them for after its verdict.
+        bool DrainCarry() {
+            const auto token = g_token;
+            while (!g_carry.empty()) {
+                const auto line = std::move(g_carry.front());
+                g_carry.pop_front();
+                SKSE::log::info("Ceremony: step {}: {} had already spoken", g_step + 1, NameOf(line.speaker));
+                Heard(line.speaker, line.target, line.text);
+                if (!g_active || g_token != token) {
+                    return true;   // moved on; the next step heard the rest
+                }
+                if (g_judging) {
+                    g_ahead.insert(g_ahead.begin(), g_carry.begin(), g_carry.end());
+                    g_carry.clear();
+                    return true;
+                }
+                if (g_heard) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         void StartStep(bool a_unclear = false) {
             const auto& step = Script()[g_step];
             g_heard = false;
             g_judging = false;
             g_cued = false;
             g_recued = false;
-            g_ahead.reset();
+            g_ahead.clear();
             g_unclear = a_unclear;
             g_still = 0.0f;
             ++g_token;
             SetRanks(step.kind);
             SKSE::log::info("Ceremony: step {} of {}", g_step + 1, Script().size());
-            if (auto carry = std::exchange(g_carry, std::nullopt); carry && carry->speaker == IdOf(step.speaker)) {
-                const auto token = g_token;
-                SKSE::log::info("Ceremony: step {}: {} had already spoken", g_step + 1, NameOf(carry->speaker));
-                Heard(carry->speaker, carry->target, carry->text);
-                if (!g_active || g_token != token || g_heard || g_judging) {
-                    return;   // that was the step, or is being judged
-                }
+            if (DrainCarry()) {
+                return;
             }
             if (step.cue == Cue::kNone) {
                 SendEvent("SNRom_CeremonyYourTurn", step.judged ? "answer" : "vows", 0.0f, g_officiant);
@@ -364,6 +391,14 @@ namespace SNRom::Ceremony {
         }
 
         void Next() {
+            // Pronounced already: from the betrothed's yes on, nothing is left
+            // to wait for - the rings are exchanged when the marriage is
+            // recorded (SNRom_CeremonyMarried).
+            if (g_pronounced && g_step + 1 < Script().size() &&
+                (Script()[g_step + 1].kind == kKindRings || Script()[g_step + 1].kind == kKindPronounce)) {
+                SKSE::log::info("Ceremony: {} pronounced them married already; the rest is done", NameOf(g_officiant));
+                g_step = Script().size() - 1;
+            }
             if (g_step + 1 >= Script().size()) {
                 g_lastOfficiant = g_officiant;
                 const auto betrothed = g_betrothed;
@@ -385,11 +420,13 @@ namespace SNRom::Ceremony {
             SKSE::log::info("Ceremony: {} answered: {}", step.speaker == Who::kPlayer ? "the player" : "the betrothed",
                             a_verdict);
             if (a_verdict == "yes") {
-                g_carry = std::exchange(g_ahead, std::nullopt);
+                g_carry.insert(g_carry.end(), g_ahead.begin(), g_ahead.end());
+                g_ahead.clear();
                 Next();
             } else if (a_verdict == "no") {
                 End(false, step.speaker == Who::kPlayer ? "the player did not say yes" : "they could not say yes");
             } else if (++g_retries <= kRetries) {
+                g_ahead.clear();
                 g_step -= 1;   // the question again
                 StartStep(true);
             } else {
@@ -405,21 +442,19 @@ namespace SNRom::Ceremony {
             }
             g_judging = false;
             if (a_verdict == "yes") {
-                g_carry = std::exchange(g_ahead, std::nullopt);
+                g_carry.insert(g_carry.end(), g_ahead.begin(), g_ahead.end());
+                g_ahead.clear();
                 Next();
                 return;
             }
             SKSE::log::info("Ceremony: step {}: that line was not the step ({})", g_step + 1, a_verdict);
             g_heard = false;
-            // The next speaker spoke while it was judged: the step may have
-            // happened after all (Heard, catching up).
-            if (g_ahead) {
-                const auto ahead = *g_ahead;
-                g_ahead.reset();
-                Heard(ahead.speaker, ahead.target, ahead.text);
-                if (g_heard || g_judging) {
-                    return;
-                }
+            // Others spoke while it was judged: the step may have happened
+            // after all (Heard, catching up).
+            g_carry.insert(g_carry.end(), g_ahead.begin(), g_ahead.end());
+            g_ahead.clear();
+            if (DrainCarry()) {
+                return;
             }
             CueNow();
         }
@@ -574,13 +609,26 @@ namespace SNRom::Ceremony {
             const bool  hasNext = g_step + 1 < Script().size();
             const bool  nextSpeaker = hasNext && a_speaker == IdOf(Script()[g_step + 1].speaker) &&
                                      a_speaker != IdOf(step.speaker);
+            // Pronounced, once the player has said yes: remembered (Next).
+            const bool pastYourYes = std::ranges::any_of(Script().begin(), Script().begin() + static_cast<std::ptrdiff_t>(g_step),
+                                                         [](const Step& a_s) { return a_s.kind == kKindPlayerAnswer; });
+            if (a_speaker == g_officiant && pastYourYes && !g_pronounced && WordsDo(Check::kPronounced, a_line)) {
+                g_pronounced = true;
+                SKSE::log::info("Ceremony: step {}: {} pronounced them married", g_step + 1, NameOf(a_speaker));
+            }
             if (g_judging) {
-                if (nextSpeaker) {
-                    g_ahead = Line{ a_speaker, a_target, a_line };
+                if (a_speaker == g_officiant || a_speaker == g_betrothed) {
+                    g_ahead.push_back(Line{ a_speaker, a_target, a_line });
                 }
                 return;
             }
             if (g_heard) {
+                return;
+            }
+            // The pronouncement at the rings, or at its own step: done.
+            if (g_pronounced && a_speaker == g_officiant && (step.kind == kKindRings || step.kind == kKindPronounce)) {
+                g_heard = true;
+                Next();
                 return;
             }
             // CATCHING UP. The next step's speaker speaking means an NPC's step
@@ -762,8 +810,9 @@ namespace SNRom::Ceremony {
                 ++g_token;
             }
             ++g_generation;
-            g_ahead.reset();
-            g_carry.reset();
+            g_ahead.clear();
+            g_carry.clear();
+            g_pronounced = false;
             SKSE::log::info("Ceremony: over ({})", a_married ? "married" : a_why);
             if (!a_married) {
                 // A planned day that stalled or met a no waits for the
@@ -827,6 +876,9 @@ namespace SNRom::Ceremony {
         g_variant = std::move(a_variant);
         g_step = 0;
         g_retries = 0;
+        g_ahead.clear();
+        g_carry.clear();
+        g_pronounced = false;
         g_away = 0.0f;
         SetBusy(true);
         SKSE::log::info("Ceremony: {:08X} begins marrying the player to {:08X}", g_officiant, g_betrothed);
