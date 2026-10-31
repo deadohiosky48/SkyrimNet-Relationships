@@ -497,8 +497,9 @@ namespace SNRom::WeddingPlan {
         // WHERE EACH ONE GOES (wpm61): the officiant to their mark, the
         // betrothed to the couple's, each guest to their side's; a mark not
         // made, the next that is (docs: the couple's, then the officiant's,
-        // then the place found). A guest whose side is not known, or who is
-        // both's, joins the smaller side. How many share a mark decides how
+        // then the place found). A guest whose side is not known is the
+        // player's when they have a bond with the player; otherwise, or when
+        // they are both's, they join the smaller side. How many share a mark decides how
         // wide they gather. Empty when there is nowhere to send anyone.
         // Under g_lock.
         struct Goal {
@@ -507,7 +508,9 @@ namespace SNRom::WeddingPlan {
             const char*   where = "";
             const char*   package = kStand;
         };
-        std::vector<Goal> GoalsOf(std::uint32_t a_betrothed, const Plan& a_plan) {
+        // a_bonds: everyone with a bond with the player (Model::FormIds, read
+        // before g_lock is taken).
+        std::vector<Goal> GoalsOf(std::uint32_t a_betrothed, const Plan& a_plan, const std::vector<std::int32_t>& a_bonds) {
             static constexpr std::array<const char*, kMarkRoles + 1> kWhere{
                 "the officiant's mark", "the player's mark",    "their guests' mark",
                 "your guests' mark",    "the betrothed's mark", "the place found"
@@ -551,6 +554,17 @@ namespace SNRom::WeddingPlan {
                 }
             }
             for (const auto guest : either) {
+                // NO SIDE SAID (wpm66; the author, 2026-10-31): someone with a
+                // bond with the player is the player's guest. Camilla and
+                // Tormir, the player's friends, stood with Olfina's family,
+                // which was the smaller side. Anyone else, and anyone who is
+                // both's, joins the smaller side.
+                const auto it = a_plan.sides.find(guest);
+                if ((it == a_plan.sides.end() || it->second == kSideUnknown) &&
+                    std::ranges::find(a_bonds, static_cast<std::int32_t>(guest)) != a_bonds.end()) {
+                    side[kSideYours].push_back(guest);
+                    continue;
+                }
                 side[side[0].size() <= side[1].size() ? 0 : 1].push_back(guest);
             }
             std::map<std::size_t, std::size_t> sharing;
@@ -573,6 +587,7 @@ namespace SNRom::WeddingPlan {
             if (!player || !player->Is3DLoaded() || (ui && ui->GameIsPaused())) {
                 return;
             }
+            const auto bonds = Model::Get().FormIds();
             const float now = Now();
             struct Due {
                 std::uint32_t betrothed;
@@ -674,7 +689,7 @@ namespace SNRom::WeddingPlan {
                             continue;
                         }
                         const float when = When(plan);
-                        for (const auto& goal : GoalsOf(id, plan)) {
+                        for (const auto& goal : GoalsOf(id, plan, bonds)) {
                             if (std::ranges::find(plan.sent, goal.who) != plan.sent.end()) {
                                 if (relink) {
                                     going.push_back({ goal, -1.0f, 0.0f, true });
@@ -701,7 +716,7 @@ namespace SNRom::WeddingPlan {
                         if (plan.status != Status::kUnderWay || plan.day < 0.0f || now < When(plan) - kSummonAhead) {
                             continue;
                         }
-                        for (const auto& goal : GoalsOf(id, plan)) {
+                        for (const auto& goal : GoalsOf(id, plan, bonds)) {
                             if (std::ranges::find(plan.sent, goal.who) != plan.sent.end() &&
                                 std::ranges::find(g_summoned, goal.who) == g_summoned.end()) {
                                 late.push_back({ goal, now >= When(plan), goal.at == plan.anchor });
@@ -775,9 +790,13 @@ namespace SNRom::WeddingPlan {
                 if (!who || !at || who->IsDead() || !who->Is3DLoaded()) {
                     continue;
                 }
+                // Still on a bench or a stool is not in place (wpm66): held
+                // still there, they would watch the vows sitting down.
+                const auto* state = who->AsActorState();
+                const bool  seated = state && state->GetSitSleepState() != RE::SIT_SLEEP_STATE::kNormal;
                 const float off = Across(who->GetPosition(), at->GetPosition());
-                if (off > kInPlace) {
-                    if (p.best < 0.0f || off < p.best - 16.0f) {
+                if (off > kInPlace || seated) {
+                    if (!seated && (p.best < 0.0f || off < p.best - 16.0f)) {
                         p.best = off;
                         p.still = 0;
                         continue;
@@ -789,7 +808,8 @@ namespace SNRom::WeddingPlan {
                 p.settled = true;
                 who->SetHeading(HeadingTo(who->GetPosition(), p.faceTo));
                 // TEST LOG (wpm65): who settled where.
-                SKSE::log::info("Wedding: {} in their place ({}), {:.0f} from it", who->GetDisplayFullName(), p.role, off);
+                SKSE::log::info("Wedding: {} in their place ({}), {:.0f} from it{}", who->GetDisplayFullName(), p.role,
+                                off, seated ? ", still seated" : "");
                 Send("SNRom_WeddingInPlace", p.role, 0.0f, p.who);
             }
             for (const auto& d : due) {
@@ -1291,13 +1311,14 @@ namespace SNRom::WeddingPlan {
         std::array<std::uint32_t, kMarkRoles> marks{};
         std::uint32_t                       officiant = 0;
         std::map<std::uint32_t, std::int32_t> sides;
+        const auto                          bonds = Model::Get().FormIds();
         {
             const std::scoped_lock lock{ g_lock };
             const auto             it = g_plans.find(betrothed);
             if (it == g_plans.end()) {
                 return {};
             }
-            goals = GoalsOf(betrothed, it->second);
+            goals = GoalsOf(betrothed, it->second, bonds);
             marks = MarksOf(it->second);
             officiant = it->second.officiant;
             sides = it->second.sides;
@@ -1375,6 +1396,9 @@ namespace SNRom::WeddingPlan {
                 if (!placed || !who) {
                     continue;
                 }
+                // TEST LOG (wpm66): how far each one has to walk.
+                SKSE::log::info("Wedding: {}'s place is {:.0f} from them", who->GetDisplayFullName(),
+                                Across(who->GetPosition(), at));
                 placed->SetPosition(at);
                 placed->SetAngle({ 0.0f, 0.0f, HeadingTo(at, couple) });
                 Link(who, placed.get());

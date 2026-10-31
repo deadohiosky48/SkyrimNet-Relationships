@@ -185,6 +185,13 @@ namespace SNRom::Ceremony {
             std::string text;
         };
         std::optional<Line> g_ahead;
+        // THAT LINE, CARRIED INTO THE NEXT STEP (seen in play, wpm65). The
+        // judging said yes, so the step it waited on is now: heard as that
+        // step's before anyone is cued. Danica asked "do you take Haruk?" a
+        // quarter of a second before the player's yes was judged; the line
+        // was dropped, she was cued to ask what she had asked, pronounced them
+        // married instead, and the wedding went round until it stalled.
+        std::optional<Line> g_carry;
         std::size_t      g_lastLength = 0;  // the last line heard, in characters
         std::chrono::steady_clock::time_point g_lastHeardAt{};  // and when
         bool             g_judging = false;
@@ -327,6 +334,8 @@ namespace SNRom::Ceremony {
         // Begins step g_step: its rank; for an NPC's step, its cue at once;
         // for the player's, a word on screen that it is their turn. Main
         // thread.
+        void Heard(RE::FormID a_speaker, RE::FormID a_target, const std::string& a_line);
+
         void StartStep(bool a_unclear = false) {
             const auto& step = Script()[g_step];
             g_heard = false;
@@ -339,6 +348,14 @@ namespace SNRom::Ceremony {
             ++g_token;
             SetRanks(step.kind);
             SKSE::log::info("Ceremony: step {} of {}", g_step + 1, Script().size());
+            if (auto carry = std::exchange(g_carry, std::nullopt); carry && carry->speaker == IdOf(step.speaker)) {
+                const auto token = g_token;
+                SKSE::log::info("Ceremony: step {}: {} had already spoken", g_step + 1, NameOf(carry->speaker));
+                Heard(carry->speaker, carry->target, carry->text);
+                if (!g_active || g_token != token || g_heard || g_judging) {
+                    return;   // that was the step, or is being judged
+                }
+            }
             if (step.cue == Cue::kNone) {
                 SendEvent("SNRom_CeremonyYourTurn", step.judged ? "answer" : "vows", 0.0f, g_officiant);
                 return;
@@ -368,6 +385,7 @@ namespace SNRom::Ceremony {
             SKSE::log::info("Ceremony: {} answered: {}", step.speaker == Who::kPlayer ? "the player" : "the betrothed",
                             a_verdict);
             if (a_verdict == "yes") {
+                g_carry = std::exchange(g_ahead, std::nullopt);
                 Next();
             } else if (a_verdict == "no") {
                 End(false, step.speaker == Who::kPlayer ? "the player did not say yes" : "they could not say yes");
@@ -379,8 +397,6 @@ namespace SNRom::Ceremony {
             }
         }
 
-        void Heard(RE::FormID a_speaker, RE::FormID a_target, const std::string& a_line);
-
         // A line the step's check found wanting: not the step. Its speaker is
         // cued (once), and the step waits on. Main thread.
         void Checked(std::int32_t a_token, const std::string& a_verdict) {
@@ -389,6 +405,7 @@ namespace SNRom::Ceremony {
             }
             g_judging = false;
             if (a_verdict == "yes") {
+                g_carry = std::exchange(g_ahead, std::nullopt);
                 Next();
                 return;
             }
@@ -745,6 +762,8 @@ namespace SNRom::Ceremony {
                 ++g_token;
             }
             ++g_generation;
+            g_ahead.reset();
+            g_carry.reset();
             SKSE::log::info("Ceremony: over ({})", a_married ? "married" : a_why);
             if (!a_married) {
                 SendEvent("SNRom_CeremonyEnded", a_why, 0.0f, betrothed);

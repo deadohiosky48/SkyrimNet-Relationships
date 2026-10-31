@@ -5844,6 +5844,10 @@ Function GoToPlace(Actor akWho)
         Return
     EndIf
     _weddingPlaced[i] = akWho
+    ; HELD, AS THE TWO AT THE ALTAR ARE (seen in play, wpm65): the guests'
+    ; SkyrimNet sandbox outranked the walk, and some sandboxed on through the
+    ; vows. The hold stops it (and any walk to talk); the override walks on.
+    SkyrimNetApi.HoldPackages(akWho, WeddingHolder())
     ActorUtil.AddPackageOverride(akWho, walk, 100, 1)
     akWho.EvaluatePackage()
 EndFunction
@@ -5904,6 +5908,7 @@ Function ReleaseWatchers()
             If walk != None
                 ActorUtil.RemovePackageOverride(_weddingPlaced[p], walk)
             EndIf
+            SkyrimNetApi.ReleaseHeldPackages(_weddingPlaced[p], WeddingHolder())
             _weddingPlaced[p].EvaluatePackage()
             _weddingPlaced[p] = None
         EndIf
