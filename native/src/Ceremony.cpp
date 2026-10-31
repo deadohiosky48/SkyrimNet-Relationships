@@ -5,6 +5,7 @@
 #include "OurPlugin.h"
 
 #include "Marriage.h"
+#include "Notices.h"
 #include "WeddingPlan.h"
 
 #include <algorithm>
@@ -45,7 +46,9 @@ namespace SNRom::Ceremony {
             kAddress,       // the officiant addresses everyone gathered
             kReading,       // a reading or a blessing
             kRings,         // the rings exchanged
+            kRingsGiven,    // the betrothed gives the player theirs
             kKiss,          // the betrothed kisses the player
+            kPresent,       // the officiant presents them, married
         };
 
         // WHAT AN NPC'S LINE MUST HAVE DONE for its step to count. wpm19
@@ -72,6 +75,8 @@ namespace SNRom::Ceremony {
             kKindReading = 11,
             kKindRings = 12,
             kKindKiss = 13,
+            kKindRingsGiven = 14,
+            kKindPresent = 15,
         };
 
         struct Step {
@@ -107,8 +112,14 @@ namespace SNRom::Ceremony {
                   kKindAskBetrothed },
                 { Who::kBetrothed, Cue::kBetrothedAnswer, Who::kOfficiant, true, Check::kNone, kKindBetrothedAnswer },
             });
+            // THE RINGS GIVEN (seen in play, wpm76): the officiant's "Please,
+            // present the rings" was the whole exchange, and her pronouncement
+            // was cued 0.2 s later. The betrothed's ring, with a word, is a
+            // step of its own; the pronouncement waits for it.
             if (a_parts & WeddingPlan::kRings) {
                 steps.push_back({ Who::kOfficiant, Cue::kRings, Who::kPlayer, false, Check::kRings, kKindRings });
+                steps.push_back({ Who::kBetrothed, Cue::kRingsGiven, Who::kPlayer, false, Check::kNone,
+                                  kKindRingsGiven });
             }
             steps.push_back({ Who::kOfficiant, Cue::kPronounce, Who::kPlayer, false, Check::kPronounced, kKindPronounce });
             // THE KISS (seen in play, wpm72): invited with the pronouncement,
@@ -116,8 +127,15 @@ namespace SNRom::Ceremony {
             // and the betrothed's next prompt no longer knew of it. Now the
             // betrothed's step, after the pronouncement; any line of theirs is
             // it, and the wedding ends married whatever happens in it.
+            //
+            // THE PRESENTATION (the author, 2026-10-31): a kiss may become an
+            // OStim scene, and the applause was over before it was. After the
+            // kiss, and any scene it became, the officiant presents them to
+            // everyone, married; that line ends the wedding, and the guests
+            // applaud it.
             if (a_parts & WeddingPlan::kKiss) {
                 steps.push_back({ Who::kBetrothed, Cue::kKiss, Who::kPlayer, false, Check::kNone, kKindKiss });
+                steps.push_back({ Who::kOfficiant, Cue::kPresent, Who::kPlayer, false, Check::kNone, kKindPresent });
             }
             return steps;
         }
@@ -154,6 +172,13 @@ namespace SNRom::Ceremony {
         constexpr float kPlayerGiveUp = 240.0f;
         // The kiss: waited for this long, then they are married without it.
         constexpr float kKissWait = 30.0f;
+        // After the kiss, this long for a scene to begin before the officiant
+        // presents them; a scene that does is waited out, up to kSceneCap.
+        constexpr float kKissBeat = 8.0f;
+        constexpr float kSceneCap = 900.0f;
+        // An NPC's step that began with the player's line: its cue waits this
+        // long for the player to be answered (StartStep, g_holdCue).
+        constexpr float kReplyWait = 6.0f;
         // Gone from the room for this long ends it.
         constexpr float kAwayRange = 3000.0f;
         constexpr float kAwaySeconds = 20.0f;
@@ -221,6 +246,20 @@ namespace SNRom::Ceremony {
         bool             g_judging = false;
         bool             g_cued = false;
         bool             g_recued = false;
+        // THE CUE HELD FOR THE PLAYER'S ANSWER (seen in play, wpm76). Someone
+        // always answers the player (SkyrimNet's player target selector has
+        // no "none"), and a cue cannot wait behind that turn: Olfina spoke her
+        // vows in answer to the player's, and her cue, queued meanwhile, came
+        // after them ("I'm listening, Haruk"), while Danica's question, queued
+        // behind it, expired unheard and waited 40 s for its second cue. So an
+        // NPC's step that begins with the player's line is cued only once the
+        // player has been answered by someone else, or after kReplyWait.
+        bool             g_holdCue = false;
+        float            g_held = 0.0f;
+        // The kiss step: seconds since the kiss was heard, and whether a
+        // scene has been seen since (Look).
+        float            g_kissed = 0.0f;
+        bool             g_inScene = false;
         int              g_retries = 0;
         float            g_still = 0.0f;    // seconds at this step, the game running
         float            g_away = 0.0f;
@@ -332,8 +371,9 @@ namespace SNRom::Ceremony {
                 return off + " has asked " + them + " whether they take " + you + " to be their " + SpouseWord(0x14) +
                        ".";
             case Cue::kPronounce:
-                return (g_parts & WeddingPlan::kRings) ? you + " and " + them + " have exchanged rings."
-                                                       : you + " and " + them + " have both said yes.";
+                return ((g_parts & WeddingPlan::kRings) ? you + " and " + them + " have exchanged rings"
+                                                        : you + " and " + them + " have both said yes") +
+                       "; now " + off + " pronounces them married.";
             // A planned wedding's (M4p). Facts, as every cue is.
             // NOT "everyone has gathered" (seen in play, wpm59): said with no
             // one else there, and a fact everyone reads back.
@@ -344,8 +384,14 @@ namespace SNRom::Ceremony {
             case Cue::kRings:
                 return you + " and " + them + " have both said yes; now come the rings, before anyone is pronounced "
                                               "married.";
+            case Cue::kRingsGiven:
+                return off + " has invited " + you + " and " + them + " to exchange rings; now " + them +
+                       " puts a ring on " + you + "'s finger.";
             case Cue::kKiss:
                 return off + " has pronounced " + you + " and " + them + " married, and invites them to kiss.";
+            case Cue::kPresent:
+                return you + " and " + them + " have kissed, married; now " + off +
+                       " presents them to everyone gathered.";
             default:
                 return {};
             }
@@ -359,6 +405,7 @@ namespace SNRom::Ceremony {
             if (!g_active || g_cued || g_judging || step.cue == Cue::kNone) {
                 return;
             }
+            g_holdCue = false;
             g_cued = true;
             g_still = 0.0f;
             SKSE::log::info("Ceremony: step {}: cueing {}", g_step + 1, NameOf(IdOf(step.speaker)));
@@ -405,6 +452,13 @@ namespace SNRom::Ceremony {
             g_ahead.clear();
             g_unclear = a_unclear;
             g_still = 0.0f;
+            g_held = 0.0f;
+            g_kissed = 0.0f;
+            g_inScene = false;
+            // Begun by the player's line (the step before was theirs): whoever
+            // answers them may be this step's speaker, saying it.
+            g_holdCue = !a_unclear && g_step > 0 && Script()[g_step - 1].speaker == Who::kPlayer &&
+                        step.cue != Cue::kNone;
             ++g_token;
             SetRanks(step.kind);
             SKSE::log::info("Ceremony: step {} of {}", g_step + 1, Script().size());
@@ -415,7 +469,19 @@ namespace SNRom::Ceremony {
                 SendEvent("SNRom_CeremonyYourTurn", step.judged ? "answer" : "vows", 0.0f, g_officiant);
                 return;
             }
+            if (g_holdCue) {
+                SKSE::log::info("Ceremony: step {}: {}'s cue waits for the player's answer (TEST LOG)", g_step + 1,
+                                NameOf(IdOf(step.speaker)));
+                return;
+            }
             CueNow();
+        }
+
+        // After the pronouncement: the kiss, the presentation. Whatever
+        // happens now, they are married (Finish).
+        bool Pronounced() {
+            return g_step < Script().size() &&
+                   (Script()[g_step].kind == kKindKiss || Script()[g_step].kind == kKindPresent);
         }
 
         void Next() {
@@ -423,7 +489,8 @@ namespace SNRom::Ceremony {
             // to wait for - the rings are exchanged when the marriage is
             // recorded (SNRom_CeremonyMarried).
             if (g_pronounced && g_step + 1 < Script().size() &&
-                (Script()[g_step + 1].kind == kKindRings || Script()[g_step + 1].kind == kKindPronounce)) {
+                (Script()[g_step + 1].kind == kKindRings || Script()[g_step + 1].kind == kKindRingsGiven ||
+                 Script()[g_step + 1].kind == kKindPronounce)) {
                 SKSE::log::info("Ceremony: {} pronounced them married already; the rest is done", NameOf(g_officiant));
                 // To the pronouncement: the kiss, if any, still follows it.
                 while (g_step + 1 < Script().size() && Script()[g_step].kind != kKindPronounce) {
@@ -441,6 +508,14 @@ namespace SNRom::Ceremony {
             }
             ++g_step;
             StartStep();
+        }
+
+        // Married, at once, from the kiss or the presentation: someone
+        // walked off, the scene ran too long, or nobody went on.
+        void Finish(const char* a_why) {
+            SKSE::log::info("Ceremony: step {}: {}; they are married all the same", g_step + 1, a_why);
+            g_step = Script().size() - 1;
+            Next();
         }
 
         // An answer, judged. Main thread.
@@ -556,9 +631,15 @@ namespace SNRom::Ceremony {
                        (Names(line.substr(take), other) ||
                         (Names(line.substr(0, take), asked) && !Names(line.substr(0, take), other)));
             }
+            // "...the bond is sealed. You are now joined as one... You may kiss
+            // your bride" went to the model (wpm76), and the kiss waited on it.
+            // Not "joined": a line at the rings may say it ("these rings, a
+            // sign you are joined as one"), and a pronouncement remembered
+            // there skips the rings.
             case Check::kPronounced:
                 return Has(line, { "pronounce", "husband and wife", "wife and husband", "man and wife",
-                                   "now married", "are married", "you are wed", "now wed" });
+                                   "husband and husband", "wife and wife", "now married", "are married",
+                                   "you are wed", "now wed", "may kiss", "may now kiss" });
             // The word, not the letters (wpm75): "during", "bring", "spring".
             case Check::kRings: {
                 const auto words = WordsOf(line);
@@ -569,6 +650,35 @@ namespace SNRom::Ceremony {
             default:
                 return false;
             }
+        }
+
+        // AN ANSWER IN PLAIN WORDS, decided before anyone replies to it (seen
+        // in play, wpm76). The player's "I do" went to the judge, and in the
+        // two seconds it took, Danica's reply was written with the wedding
+        // still waiting on that answer - and she pronounced them married
+        // before Olfina was asked. SkyrimNet begins writing a reply about
+        // 160 ms after a line; this is decided as the line is heard. "yes"
+        // for a plain yes with no word of refusal in it; anything else ("I do
+        // not", "no one could stop me - I do") is asked of the judge.
+        bool PlainYes(const std::string& a_line) {
+            const auto words = WordsOf(Lower(a_line));
+            for (const auto& w : words) {
+                if (w == "no" || w == "not" || w == "never" || w == "nay" || w == "cannot" || w == "refuse" ||
+                    (w.size() > 3 && (w.ends_with("n't") || w.ends_with("n\xE2\x80\x99t")))) {
+                    return false;
+                }
+            }
+            for (std::size_t i = 0; i < words.size(); ++i) {
+                const auto& w = words[i];
+                if (w == "yes" || w == "aye" || w == "yea") {
+                    return true;
+                }
+                if (w == "i" && i + 1 < words.size() &&
+                    (words[i + 1] == "do" || words[i + 1] == "will" || words[i + 1] == "take")) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // What the line must have done, as a question for the judge.
@@ -672,11 +782,19 @@ namespace SNRom::Ceremony {
                                     g_step + 1, NameOf(a_speaker));
                 }
             }
+            // The player's too (wpm77): their vows, said while the call for
+            // them was still being judged, were lost.
             if (g_judging) {
-                if (a_speaker == g_officiant || a_speaker == g_betrothed) {
+                if (a_speaker == g_officiant || a_speaker == g_betrothed || a_speaker == 0x14) {
                     g_ahead.push_back(Line{ a_speaker, a_target, a_line });
                 }
                 return;
+            }
+            // Someone else answered the player: this step's cue goes now.
+            if (g_holdCue && a_speaker != 0x14 && a_speaker != IdOf(step.speaker)) {
+                SKSE::log::info("Ceremony: step {}: {} answered the player; cueing (TEST LOG)", g_step + 1,
+                                NameOf(a_speaker));
+                CueNow();
             }
             if (g_heard) {
                 return;
@@ -700,8 +818,15 @@ namespace SNRom::Ceremony {
             g_lastLength = a_line.size();
             g_lastHeardAt = std::chrono::steady_clock::now();
             SKSE::log::info("Ceremony: step {}: heard {}", g_step + 1, NameOf(a_speaker));
-            if (step.judged) {
+            if (step.judged && PlainYes(a_line)) {
+                SKSE::log::info("Ceremony: {} answered: yes, in plain words",
+                                step.speaker == Who::kPlayer ? "the player" : "the betrothed");
+                Next();
+            } else if (step.judged) {
                 Judge(a_line);
+            } else if (step.kind == kKindKiss) {
+                // Not over with the line: the kiss may be a scene (Look).
+                g_holdCue = false;
             } else if (step.check != Check::kNone && WordsDo(step.check, a_line)) {
                 SKSE::log::info("Ceremony: step {}: the words do it", g_step + 1);
                 Next();
@@ -807,17 +932,47 @@ namespace SNRom::Ceremony {
                 return;   // a pause is not time passing at the altar
             }
             const float step = static_cast<float>(kLook.count());
-            g_away = Here(g_officiant, player) && Here(g_betrothed, player) ? 0.0f : g_away + step;
-            const bool kissing = Script()[g_step].kind == kKindKiss;
+            const bool  kissing = Script()[g_step].kind == kKindKiss;
+            // In a scene, the couple may be anywhere OStim puts them.
+            const bool  scene = Notices::PlayerInScene();
+            g_away = scene || (Here(g_officiant, player) && Here(g_betrothed, player)) ? 0.0f : g_away + step;
             if (g_away >= kAwaySeconds) {
-                if (kissing) {
-                    Next();   // pronounced married: walking off is not a no
+                if (Pronounced()) {
+                    Finish("someone walked off");   // pronounced married: walking off is not a no
                 } else {
                     End(false, "left");
                 }
                 return;
             }
             if (g_judging) {
+                return;
+            }
+            // THE KISS, AND ANY SCENE IT BECAME (the author, 2026-10-31): the
+            // officiant presents them once it is over, not during it.
+            if (kissing && (g_heard || scene)) {
+                g_kissed += step;
+                if (scene && !g_inScene) {
+                    g_inScene = true;
+                    SKSE::log::info("Ceremony: step {}: the kiss is a scene; waiting it out", g_step + 1);
+                }
+                if (scene && g_kissed < kSceneCap) {
+                    return;
+                }
+                if (!scene && g_kissed >= (g_inScene ? step : kKissBeat)) {
+                    Next();
+                } else if (scene) {
+                    Finish("the scene went on too long");
+                }
+                return;
+            }
+            // The player's answer: no one else has spoken, so the cue goes.
+            if (g_holdCue) {
+                g_held += step;
+                if (g_held >= kReplyWait) {
+                    SKSE::log::info("Ceremony: step {}: nobody else answered the player; cueing (TEST LOG)",
+                                    g_step + 1);
+                    CueNow();
+                }
                 return;
             }
             // Patience counts from the cue, for an NPC's step.
@@ -830,6 +985,8 @@ namespace SNRom::Ceremony {
             if (kissing && g_still >= kKissWait) {
                 SKSE::log::info("Ceremony: step {}: no kiss heard; they are married all the same", g_step + 1);
                 Next();
+            } else if (npc && g_still >= kNpcGiveUp && Pronounced()) {
+                Finish("the officiant said no more");
             } else if (npc && g_still >= kNpcGiveUp) {
                 End(false, "stalled");
             } else if (npc && g_still >= kNpcPatience && !g_recued) {
@@ -958,6 +1115,21 @@ namespace SNRom::Ceremony {
         return g_active && g_step < g_script.size() ? g_script[g_step].kind : 0;
     }
 
+    std::int32_t Turn() {
+        const std::scoped_lock lock{ g_lock };
+        if (!g_active || g_step >= g_script.size() || g_judging || g_heard) {
+            return 0;
+        }
+        switch (g_script[g_step].speaker) {
+        case Who::kOfficiant:
+            return 1;
+        case Who::kPlayer:
+            return 2;
+        default:
+            return 3;
+        }
+    }
+
     bool Planned() {
         const std::scoped_lock lock{ g_lock };
         return g_active && g_planned;
@@ -1015,8 +1187,8 @@ namespace SNRom::Ceremony {
 
     void Stop(std::string a_why) {
         // Pronounced married already: nothing left to stop.
-        if (g_active && g_step < Script().size() && Script()[g_step].kind == kKindKiss) {
-            Next();
+        if (g_active && Pronounced()) {
+            Finish("stopped after the pronouncement");
             return;
         }
         End(false, a_why);

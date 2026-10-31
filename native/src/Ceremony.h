@@ -48,9 +48,16 @@ namespace SNRom::Ceremony {
     // WHAT IS HAPPENING NOW, as a step's kind (Ceremony.cpp, Kind): 1 the
     // opening, 2 the player's vows, 3 the betrothed's, 4-5 the player asked
     // and answering, 6-7 the betrothed, 8 the pronouncement; a planned
-    // wedding's 10 the address, 11 a reading, 12 the rings, 13 the kiss. 0 when nothing is
-    // under way. Also the FACT SNRom_Ceremony rank.
+    // wedding's 10 the address, 11 a reading, 12 the rings invited, 14 the
+    // betrothed's ring given, 13 the kiss, 15 the officiant presenting them.
+    // 0 when nothing is under way. Also the FACT SNRom_Ceremony rank.
     std::int32_t Now();
+
+    // WHOSE TURN IT IS (wpm77), for SkyrimNet's choice of who speaks next
+    // (get_wedding_turn, 0331): 1 the officiant, 2 the player, 3 the
+    // betrothed; 0 when nothing is under way, or when the step's line is in
+    // and the script is deciding what comes next.
+    std::int32_t Turn();
 
     // The wedding under way is a planned one, and its parts.
     bool          Planned();

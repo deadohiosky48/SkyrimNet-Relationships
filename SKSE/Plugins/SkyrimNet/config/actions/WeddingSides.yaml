@@ -58,6 +58,15 @@ eligibilityRules:
         expectedValue: 0
     logicalOperator: "OR"
     required: true
+  # NOT DURING A WEDDING (wpm77): the ceremony is the script's alone, and
+  # the officiant chose this category mid-ceremony in wpm76.
+  - conditions:
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "SNRom_Ceremony"]
+        comparisonOperator: "<"
+        expectedValue: 1
+    logicalOperator: "AND"
+    required: true
 
 eventString: "{{ actor.name }} and {{ player.name }} settled whose guests are whose."
 isShortLived: true

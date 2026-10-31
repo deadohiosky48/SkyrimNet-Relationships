@@ -418,6 +418,28 @@ namespace SNRom::Decorators {
         return out.dump(-1, ' ', false, json::error_handler_t::replace);
     }
 
+    // WHOSE TURN IT IS IN THE WEDDING UNDER WAY (wpm77), for anyone: read by
+    // 0331 into the profile SkyrimNet's speaker choice sees (interject_inline,
+    // short_inline). {"wedding":0} when nothing is under way.
+    std::string WeddingTurnJson(RE::Actor* a_actor) {
+        auto* officiant = Ceremony::Officiant();
+        auto* betrothed = Ceremony::Betrothed();
+        if (!a_actor || !officiant || !betrothed || Ceremony::Now() == 0) {
+            return R"({"wedding":0})";
+        }
+        const auto  role = Ceremony::RoleOf(a_actor);
+        const auto  turn = Ceremony::Turn();
+        const char* off = officiant->GetDisplayFullName();
+        const char* them = betrothed->GetDisplayFullName();
+        json        out{ { "wedding", 1 },
+                         { "role", role == 1 ? "officiant" : role == 2 ? "betrothed" : "guest" },
+                         { "officiant", off ? off : "" },
+                         { "betrothed", them ? them : "" },
+                         { "turn", turn == 1 ? "officiant" : turn == 2 ? "player" : turn == 3 ? "betrothed" : "" },
+                         { "step", Ceremony::Now() } };
+        return out.dump(-1, ' ', false, json::error_handler_t::replace);
+    }
+
     // A WEDDING PLANNER'S VIEW (Build B, M4p): the couples they could plan
     // for, which they were hired for, and each plan as it stands.
     std::string PlannerJson(RE::Actor* a_actor) {
@@ -481,6 +503,9 @@ namespace SNRom::Decorators {
             { "get_wedding_planner",
               reg("get_wedding_planner", "Relationships: what a wedding planner knows of the player's weddings, as JSON",
                   [](RE::Actor* a_actor) { return PlannerJson(a_actor); }) },
+            { "get_wedding_turn",
+              reg("get_wedding_turn", "Relationships: this person's part in the wedding under way, and whose turn it is, as JSON",
+                  [](RE::Actor* a_actor) { return WeddingTurnJson(a_actor); }) },
         };
         for (const auto& [name, ok] : marriage) {
             SKSE::log::info("Decorators: native {} {}", name, ok ? "registered" : "REFUSED");

@@ -6810,8 +6810,9 @@ Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, For
       the rings become wedding rings (ChangeMarriage), and everyone here
       knows. }
     Actor betrothed = akSender as Actor
-    ; THE APPLAUSE (the author, 2026-10-31): the guests applaud the kiss, still
-    ; in their places, before the reception sets them mingling.
+    ; THE APPLAUSE (the author, 2026-10-31): the guests applaud the officiant
+    ; presenting the couple, after the kiss and any scene it became (wpm77),
+    ; still in their places, before the reception sets them mingling.
     Int clapping = 0
     If asUnused == "planned" && betrothed != None && _dashNatives >= 28 && \
             SkyrimNetApi.GetConfigBool(CFG(), "weddingApplause", True)
