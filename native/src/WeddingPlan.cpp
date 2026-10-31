@@ -31,8 +31,9 @@ namespace SNRom::WeddingPlan {
         // 2 (wpm51): the rings per person, and what is settled. 3 (wpm60):
         // what the place is by, and where people are sent. 4 (wpm61): each
         // guest's side, the place found, who has set out; and the venues. 5
-        // (wpm62): a venue's marks counted, the betrothed's added.
-        constexpr std::uint32_t kRecordVersion = 5;
+        // (wpm62): a venue's marks counted, the betrothed's added. 6 (wpm68):
+        // the reception under way.
+        constexpr std::uint32_t kRecordVersion = 6;
         constexpr std::size_t   kMaxPlace = 120;
         constexpr std::size_t   kMaxGuests = 40;
 
@@ -434,6 +435,23 @@ namespace SNRom::WeddingPlan {
         // The betrothed of each such day; this session, under g_lock.
         std::vector<std::uint32_t> g_stoppedShort;
 
+        // THE RECEPTION (wpm68; the author, 2026-10-31: everyone should
+        // "sandbox in the area for a while, probably 2 hours, to emulate them
+        // socializing with one another and giving the couple a chance to talk
+        // to them before they disperse"). A planned wedding that ends married
+        // keeps everyone who set out for it at the place, gathered wide around
+        // the couple's mark, for kReceptionHours; then they go their ways.
+        // Kept in the co-save (v6), so a load in the middle still ends it.
+        // Under g_lock.
+        struct Reception {
+            std::vector<std::uint32_t> who;
+            std::uint32_t              at = 0;
+            bool                       ours = false;  // a marker placed for it, removed after
+            float                      until = 0.0f;  // game days
+        };
+        std::optional<Reception> g_reception;
+        constexpr float          kReceptionHours = 2.0f;
+
         // EACH TO THEIR PLACE (wpm65; the author, 2026-10-30: "When the
         // ceremony begins, they should go to the mark and stand still,
         // facing the couple"). The officiant and the betrothed to their own
@@ -618,6 +636,8 @@ namespace SNRom::WeddingPlan {
                 bool found = false;  // a place found, not marked
             };
             std::vector<Late> late;
+            std::uint32_t            receptionMarker = 0;  // ours, to remove
+            std::optional<Reception> receptionAgain;       // to link again
             // The day will not come after all: no one goes on waiting for it.
             const auto recall = [&](std::uint32_t a_id, Plan& a_plan) {
                 std::erase(g_stoppedShort, a_id);
@@ -735,9 +755,31 @@ namespace SNRom::WeddingPlan {
                         }
                     }
                 }
+                // THE RECEPTION (wpm68): over at its hour, everyone their own
+                // way; after a load, everyone at it linked again.
+                if (g_reception && now >= g_reception->until) {
+                    letGo.insert(letGo.end(), g_reception->who.begin(), g_reception->who.end());
+                    if (g_reception->ours) {
+                        receptionMarker = g_reception->at;
+                    }
+                    due.push_back({ 0, "SNRom_WeddingRecall", "" });
+                    SKSE::log::info("Wedding: the reception is over; {} go their ways", g_reception->who.size());
+                    g_reception.reset();
+                } else if (g_reception && relink) {
+                    receptionAgain = *g_reception;
+                }
             }
             for (const auto id : letGo) {
                 Link(RE::TESForm::LookupByID<RE::Actor>(id), nullptr);
+            }
+            if (auto* marker = RefOf(receptionMarker)) {
+                marker->Disable();
+                marker->SetDelete(true);
+            }
+            if (receptionAgain) {
+                for (const auto id : receptionAgain->who) {
+                    Link(RE::TESForm::LookupByID<RE::Actor>(id), RefOf(receptionAgain->at));
+                }
             }
             for (const auto& g : going) {
                 auto* who = RE::TESForm::LookupByID<RE::Actor>(g.goal.who);
@@ -2019,6 +2061,16 @@ namespace SNRom::WeddingPlan {
                 a_intfc->WriteRecordData(mark);
             }
         }
+        a_intfc->WriteRecordData(static_cast<std::uint8_t>(g_reception ? 1 : 0));
+        if (g_reception) {
+            a_intfc->WriteRecordData(g_reception->until);
+            a_intfc->WriteRecordData(g_reception->at);
+            a_intfc->WriteRecordData(static_cast<std::uint8_t>(g_reception->ours ? 1 : 0));
+            a_intfc->WriteRecordData(static_cast<std::uint32_t>(g_reception->who.size()));
+            for (const auto who : g_reception->who) {
+                a_intfc->WriteRecordData(who);
+            }
+        }
     }
 
     void Load(SKSE::SerializationInterface* a_intfc, std::uint32_t a_version) {
@@ -2173,6 +2225,30 @@ namespace SNRom::WeddingPlan {
                 g_venues[key] = std::move(venue);
             }
         }
+        g_reception.reset();
+        std::uint8_t celebrating = 0;
+        if (a_version >= 6 && a_intfc->ReadRecordData(celebrating) == sizeof(celebrating) && celebrating) {
+            Reception    r;
+            std::uint8_t ours = 0;
+            std::uint32_t staying = 0;
+            if (a_intfc->ReadRecordData(r.until) != sizeof(r.until) || a_intfc->ReadRecordData(r.at) != sizeof(r.at) ||
+                a_intfc->ReadRecordData(ours) != sizeof(ours) || a_intfc->ReadRecordData(staying) != sizeof(staying) ||
+                staying > kMaxGuests * 4) {
+                return damaged();
+            }
+            for (std::uint32_t c = 0; c < staying; ++c) {
+                std::uint32_t who = 0;
+                if (a_intfc->ReadRecordData(who) != sizeof(who)) {
+                    return damaged();
+                }
+                if (const auto now = resolve(who)) {
+                    r.who.push_back(now);
+                }
+            }
+            r.at = resolve(r.at);
+            r.ours = ours != 0;
+            g_reception = std::move(r);
+        }
         // Links to a mark are not kept in the save: set again on the first
         // look after the load.
         g_relink = true;
@@ -2187,6 +2263,7 @@ namespace SNRom::WeddingPlan {
         g_summoned.clear();
         g_stoppedShort.clear();
         g_places.clear();
+        g_reception.reset();
     }
 
     void StoppedShort(std::int32_t a_betrothed) {
@@ -2197,6 +2274,65 @@ namespace SNRom::WeddingPlan {
             SKSE::log::info("Wedding plan: {:08X}'s wedding stopped short; it begins again only when the officiant does",
                             id);
         }
+    }
+
+    std::int32_t BeginReception(std::int32_t a_betrothed) {
+        std::vector<std::uint32_t> who;
+        std::uint32_t              at = 0;
+        {
+            const std::scoped_lock lock{ g_lock };
+            const auto             it = g_plans.find(static_cast<std::uint32_t>(a_betrothed));
+            if (it == g_plans.end()) {
+                return 0;
+            }
+            // Around where the couple stood; else the betrothed's mark, the
+            // officiant's, or the place found.
+            const auto marks = MarksOf(it->second);
+            for (const auto role : { kMarkYou, kMarkBetrothed, kMarkOfficiant }) {
+                if (marks[role]) {
+                    at = marks[role];
+                    break;
+                }
+            }
+            if (!at && RefOf(it->second.anchor)) {
+                at = it->second.anchor;
+            }
+            // Theirs now: the plan's end (no longer engaged) lets no one go.
+            who = std::exchange(it->second.sent, {});
+        }
+        if (who.empty()) {
+            return 0;
+        }
+        bool ours = false;
+        if (!at) {
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            auto* marker = RE::TESForm::LookupByID<RE::TESBoundObject>(kXMarkerHeading);
+            const auto placed = player && marker ? player->PlaceObjectAtMe(marker, true) : nullptr;
+            if (!placed) {
+                return 0;
+            }
+            at = placed->GetFormID();
+            ours = true;
+        }
+        std::uint32_t oldMarker = 0;
+        {
+            const std::scoped_lock lock{ g_lock };
+            if (g_reception && g_reception->ours) {
+                oldMarker = g_reception->at;
+            }
+            g_reception = Reception{ who, at, ours, Now() + kReceptionHours / 24.0f };
+        }
+        if (auto* gone = RefOf(oldMarker)) {
+            gone->Disable();
+            gone->SetDelete(true);
+        }
+        for (const auto id : who) {
+            Link(RE::TESForm::LookupByID<RE::Actor>(id), RefOf(at));
+            Send("SNRom_WeddingGo", kGatherLarge, 0.0f, id);
+        }
+        // TEST LOG (wpm68).
+        SKSE::log::info("Wedding: the reception begins; {} stay {:.0f} hours", who.size(), kReceptionHours);
+        return static_cast<std::int32_t>(who.size());
     }
 
     void BegunAgain(std::int32_t a_betrothed) {

@@ -5971,8 +5971,12 @@ Event OnWeddingGo(String asEventName, String asPackage, Float afLeadHours, Form 
     _weddingGoerPackages[i] = asPackage
     Int rc = SkyrimNetApi.RegisterPackageEx(who, asPackage, -1, True, WeddingHolder(), "Going to the wedding", False)
     ; TEST LOG (wpm61): rc 1 applied, 2 stored while held, 0 failed.
-    Diag(LOG_INFO(), "Wedding: " + who.GetDisplayName() + " is on their way (" + asPackage + ", " + afLeadHours + \
-        " h before the hour, rc " + rc + ").")
+    If afLeadHours > 0.0
+        Diag(LOG_INFO(), "Wedding: " + who.GetDisplayName() + " is on their way (" + asPackage + ", " + afLeadHours + \
+            " h before the hour, rc " + rc + ").")
+    Else
+        Diag(LOG_INFO(), "Wedding: " + who.GetDisplayName() + " stays for the reception (" + asPackage + ", rc " + rc + ").")
+    EndIf
 EndEvent
 
 Event OnWeddingRecall(String asEventName, String asUnused, Float afUnused, Form akSender)
@@ -6708,10 +6712,28 @@ Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, For
       the rings become wedding rings (ChangeMarriage), and everyone here
       knows. }
     ReleaseWeddingHold()
-    ; Everyone who came is free to go (wpm61): after the hold, whose release
-    ; would set their packages going again.
-    ReleaseWeddingGoers()
     Actor betrothed = akSender as Actor
+    ; THE RECEPTION (wpm68; the author, 2026-10-31): after a planned wedding
+    ; everyone who came stays a while, mingling where the couple can talk to
+    ; them, and goes their way two hours later (OnWeddingRecall). Otherwise,
+    ; or with no one to stay, everyone is free to go now (wpm61): after the
+    ; hold, whose release would set their packages going again.
+    Int staying = 0
+    If asUnused == "planned" && _dashNatives >= 35 && betrothed != None
+        staying = SNRom_Native.WeddingReception(betrothed)
+    EndIf
+    If staying > 0
+        String place = SNRom_Native.PlanPlace(betrothed)
+        If place == ""
+            place = "the wedding"
+        EndIf
+        SkyrimNetApi.RegisterPersistentEvent("After the wedding of " + Game.GetPlayer().GetDisplayName() + " and " + \
+            betrothed.GetDisplayName() + ", everyone stays on at " + place + " for a while to celebrate.", betrothed, \
+            Game.GetPlayer())
+        Diag(LOG_INFO(), "Wedding: the reception begins; " + staying + " stay for two hours.")
+    Else
+        ReleaseWeddingGoers()
+    EndIf
     Actor officiant = SNRom_Native.CeremonyLastOfficiant()
     If betrothed == None || officiant == None
         Return

@@ -499,6 +499,12 @@ Bool Function PlanToday(Actor akBetrothed) Global Native
 {VERSION 34. The betrothed's planned wedding day has begun: an officiant who
  marries them now begins the planned wedding, its parts and places.}
 
+Int Function WeddingReception(Actor akBetrothed) Global Native
+{VERSION 35. THE RECEPTION: married, everyone who set out for the wedding stays at
+ the place, gathered wide around the couple's mark, for two hours, then goes
+ their way (SNRom_WeddingRecall). Call before PlanClear. How many stay; 0 when
+ none do, and they should be let go now.}
+
 Function WeddingPlacesClear() Global Native
 {VERSION 33. The wedding over or stopped: the guests' places removed, and anyone
  still on their way linked to their mark again.}

@@ -609,6 +609,11 @@ namespace SNRom::Natives {
             const auto id = FormIdOfActor(a_betrothed);
             return id && WeddingPlan::Today(id);
         }
+        // v35: married, everyone stays a while.
+        std::int32_t WeddingReception(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id ? WeddingPlan::BeginReception(id) : 0;
+        }
         bool PlanSetOfficiant(RE::StaticFunctionTag*, RE::Actor* a_betrothed, RE::Actor* a_officiant) {
             const auto id = FormIdOfActor(a_betrothed);
             return id && a_officiant && WeddingPlan::SetOfficiant(id, a_officiant->GetFormID());
@@ -1106,6 +1111,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("WeddingPlaces", kScript, WeddingPlaces);
             a_vm->RegisterFunction("WeddingPlacesClear", kScript, WeddingPlacesClear);
             a_vm->RegisterFunction("PlanToday", kScript, PlanToday, true);
+            a_vm->RegisterFunction("WeddingReception", kScript, WeddingReception);
             a_vm->RegisterFunction("PlanOutfit", kScript, PlanOutfit, true);
             a_vm->RegisterFunction("PlanParts", kScript, PlanParts, true);
             a_vm->RegisterFunction("PlanRing", kScript, PlanRing, true);
@@ -1144,7 +1150,7 @@ namespace SNRom::Natives {
                             "PlanGuests, PlanPlace, PlanOutfit, PlanParts, PlanRing, RingWeddingOfMetal, "
                             "PlanSetFindable, PlanNear, PlanFindable, PlanTravelTo, BringToWedding, PlanMark, PlanSettleLayout, "
                             "PlanMarked, PlanGuestSide, PlanSideOf, PlanSideNamed, GuestSideOf, PlanSetAnchor, WeddingLetGo, "
-                            "WeddingPlaces, WeddingPlacesClear, PlanToday",
+                            "WeddingPlaces, WeddingPlacesClear, PlanToday, WeddingReception",
                             kScript, kVersion);
             return true;
         });

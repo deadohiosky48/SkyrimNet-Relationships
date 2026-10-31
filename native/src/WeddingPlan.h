@@ -229,6 +229,11 @@ namespace SNRom::WeddingPlan {
     void BegunAgain(std::int32_t a_betrothed);
     // The betrothed's planned wedding day has begun (everyone sent).
     bool Today(std::int32_t a_betrothed);
+    // THE RECEPTION (wpm68): married, everyone who set out for it stays at
+    // the place, gathered wide around the couple's mark, for two hours, then
+    // goes their way (SNRom_WeddingRecall). Call before the plan is cleared.
+    // How many stay; 0 for none (let them go at once). Main thread.
+    std::int32_t BeginReception(std::int32_t a_betrothed);
     bool SetParts(std::int32_t a_betrothed, std::uint32_t a_parts);
     // Each -1 left as it is.
     bool SetRings(std::int32_t a_betrothed, std::int32_t a_yourStyle, std::int32_t a_yourMetal,
