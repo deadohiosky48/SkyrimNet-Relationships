@@ -42,7 +42,7 @@ Now: both have spoken their vows. Ask {{ player.name }}, plainly, whether they t
 {% elif step == 5 %}
 Now: you have asked {{ player.name }}. Wait for their answer; do not answer for them, and do not ask {{ them }} yet.
 {% elif step == 6 %}
-Now: {{ player.name }} has said yes. Ask {{ them }} whether they take {{ player.name }}.
+Now: {{ player.name }} has said yes. Ask {{ them }} whether they take {{ player.name }}. Ask it even if {{ them }} has already said something like yes: the question is yours to put, and their answer is to you. Do not pronounce them married until {{ them }} has answered you.
 {% elif step == 7 %}
 Now: you have asked {{ them }}. Let them answer for themselves; do not pronounce anything yet.
 {% elif step == 8 %}

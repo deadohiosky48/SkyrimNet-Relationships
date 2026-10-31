@@ -779,7 +779,7 @@ Now: {{ wed_by }} has opened, and it is {{ player.name }}'s turn to speak their 
 {% elif wed == 3 %}
 Now: {{ player.name }} has spoken their vows. Speak your own vows to {{ player.name }}, in your own words. These are your vows, not yet an answer to any question.
 {% elif wed <= 5 %}
-Now: {{ wed_by }} is asking {{ player.name }} whether they take you. Listen for their answer; it is not your turn yet.
+Now: {{ wed_by }} is asking {{ player.name }} whether they take you. Listen for their answer; it is not your turn yet. Whatever {{ player.name }} says now, even said to you, is their answer to {{ wed_by }}, not a question for you. Do not answer it for yourself: no "I do", no yes of your own, no vow. {{ wed_by }} will ask you next, and only then is it yours to answer. For now a look, a smile, a few words of what you feel, nothing more.
 {% elif wed <= 7 %}
 Now: {{ player.name }} has said yes, and {{ wed_by }} is asking you whether you take {{ player.name }}. Answer as yourself, aloud: yes, if your heart says yes - or, if you cannot, say so, and the wedding stops here.
 {% else %}

@@ -199,6 +199,12 @@ namespace SNRom::Ceremony {
         // yes, the officiant pronounced them married. The betrothed's yes then
         // ends it married: the rings and the pronouncement are not waited for.
         bool g_pronounced = false;
+        // A carried line is being heard: it is its own step's line or none,
+        // and never skips a step (the author, 2026-10-31: "It's a wedding
+        // ceremony. It needs to follow a precise script."). Said before the
+        // step began, it cannot mean the step before it happened: Olfina's
+        // "I do" to the player's "I do" is not Danica's question asked.
+        bool g_replaying = false;
         std::size_t      g_lastLength = 0;  // the last line heard, in characters
         std::chrono::steady_clock::time_point g_lastHeardAt{};  // and when
         bool             g_judging = false;
@@ -352,7 +358,9 @@ namespace SNRom::Ceremony {
                 const auto line = std::move(g_carry.front());
                 g_carry.pop_front();
                 SKSE::log::info("Ceremony: step {}: {} had already spoken", g_step + 1, NameOf(line.speaker));
+                g_replaying = true;
                 Heard(line.speaker, line.target, line.text);
+                g_replaying = false;
                 if (!g_active || g_token != token) {
                     return true;   // moved on; the next step heard the rest
                 }
@@ -636,7 +644,7 @@ namespace SNRom::Ceremony {
             // she was asked. So that step is taken as done, and the line is
             // heard as the next step's. Never a player's step: those need the
             // player.
-            if (nextSpeaker && step.check != Check::kNone) {
+            if (nextSpeaker && step.check != Check::kNone && !g_replaying) {
                 SKSE::log::info("Ceremony: step {} taken as done: {} spoke for the next", g_step + 1,
                                 NameOf(a_speaker));
                 ++g_step;
