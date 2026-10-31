@@ -425,6 +425,15 @@ namespace SNRom::WeddingPlan {
         constexpr float kSeenFrom = 8000.0f;
         std::vector<std::uint32_t> g_summoned;  // who was, this session; under g_lock
 
+        // STOPPED SHORT (wpm67; the author, 2026-10-31: "have Danica offer to
+        // begin again instead"). A planned wedding that stalled, or met a no,
+        // does not begin again by itself: in wpm65 one began from the top two
+        // seconds after the last went round until it stalled. The officiant
+        // knows (OfficiatingFor) and may offer; MarriageBless begins it again.
+        // Someone walking off still brings it back at the hour, as before.
+        // The betrothed of each such day; this session, under g_lock.
+        std::vector<std::uint32_t> g_stoppedShort;
+
         // EACH TO THEIR PLACE (wpm65; the author, 2026-10-30: "When the
         // ceremony begins, they should go to the mark and stand still,
         // facing the couple"). The officiant and the betrothed to their own
@@ -611,6 +620,7 @@ namespace SNRom::WeddingPlan {
             std::vector<Late> late;
             // The day will not come after all: no one goes on waiting for it.
             const auto recall = [&](std::uint32_t a_id, Plan& a_plan) {
+                std::erase(g_stoppedShort, a_id);
                 if (!a_plan.sent.empty()) {
                     letGo.insert(letGo.end(), a_plan.sent.begin(), a_plan.sent.end());
                     a_plan.sent.clear();
@@ -672,7 +682,8 @@ namespace SNRom::WeddingPlan {
                         due.push_back({ id, "SNRom_WeddingMissed", "" });
                         continue;
                     }
-                    if (now >= when && Present(player, id, kBeside) && Present(player, plan.officiant, kHere) &&
+                    if (now >= when && std::ranges::find(g_stoppedShort, id) == g_stoppedShort.end() &&
+                        Present(player, id, kBeside) && Present(player, plan.officiant, kHere) &&
                         std::chrono::steady_clock::now() - g_beginSentAt > std::chrono::seconds{ 30 }) {
                         g_beginSentAt = std::chrono::steady_clock::now();
                         due.push_back({ id, "SNRom_WeddingBegin", "" });
@@ -1621,6 +1632,7 @@ namespace SNRom::WeddingPlan {
     json OfficiatingFor(std::uint32_t a_officiant) {
         json out = json::array();
         std::vector<std::pair<std::uint32_t, Plan>> mine;
+        std::vector<std::uint32_t>                  stopped;
         {
             const std::scoped_lock lock{ g_lock };
             for (const auto& [id, plan] : g_plans) {
@@ -1628,12 +1640,14 @@ namespace SNRom::WeddingPlan {
                     mine.emplace_back(id, plan);
                 }
             }
+            stopped = g_stoppedShort;
         }
         for (const auto& [id, plan] : mine) {
             out.push_back({ { "betrothed", NameOf(id) },
                             { "day", DayWords(plan) },
                             { "place", plan.place },
-                            { "underWay", plan.status == Status::kUnderWay ? 1 : 0 } });
+                            { "underWay", plan.status == Status::kUnderWay ? 1 : 0 },
+                            { "stoppedShort", std::ranges::find(stopped, id) != stopped.end() ? 1 : 0 } });
         }
         return out;
     }
@@ -2171,6 +2185,28 @@ namespace SNRom::WeddingPlan {
         g_venues.clear();
         g_relink = false;
         g_summoned.clear();
+        g_stoppedShort.clear();
         g_places.clear();
+    }
+
+    void StoppedShort(std::int32_t a_betrothed) {
+        const std::scoped_lock lock{ g_lock };
+        const auto             id = static_cast<std::uint32_t>(a_betrothed);
+        if (g_plans.contains(id) && std::ranges::find(g_stoppedShort, id) == g_stoppedShort.end()) {
+            g_stoppedShort.push_back(id);
+            SKSE::log::info("Wedding plan: {:08X}'s wedding stopped short; it begins again only when the officiant does",
+                            id);
+        }
+    }
+
+    void BegunAgain(std::int32_t a_betrothed) {
+        const std::scoped_lock lock{ g_lock };
+        std::erase(g_stoppedShort, static_cast<std::uint32_t>(a_betrothed));
+    }
+
+    bool Today(std::int32_t a_betrothed) {
+        const std::scoped_lock lock{ g_lock };
+        const auto             it = g_plans.find(static_cast<std::uint32_t>(a_betrothed));
+        return it != g_plans.end() && it->second.status == Status::kUnderWay;
     }
 }

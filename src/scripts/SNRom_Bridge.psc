@@ -5608,6 +5608,14 @@ Function BlessUnion(Actor akOfficiant, String asBetrothed)
     If betrothed == None
         Return
     EndIf
+    ; THEIR OWN WEDDING, ON ITS DAY (wpm67): the officiant who agreed to it,
+    ; offering to begin again after it stopped short, begins the planned one,
+    ; with its parts, places and rings.
+    If _dashNatives >= 34 && SNRom_Native.PlanToday(betrothed) && SNRom_Native.PlanOfficiant(betrothed) == akOfficiant
+        Diag(LOG_INFO(), "Ceremony: " + priest + " begins the planned wedding again.")
+        BeginPlannedWedding(betrothed)
+        Return
+    EndIf
     If !SNRom_Native.CeremonyBegin(akOfficiant, betrothed, VariantName())
         Diag(LOG_WARN(), "Ceremony: " + priest + " offered to begin, but a wedding is already under way, or " + \
             "SkyrimNet's dialogue events are missing (see SkyrimNetRelationships.log).")
@@ -6558,7 +6566,12 @@ EndEvent
 Event OnWeddingBegin(String asEventName, String asUnused, Float afUnused, Form akSender)
     { SNRom_WeddingBegin: the player is with the officiant and the betrothed
       on the day. The wedding begins, with the planner's parts. }
-    Actor betrothed = akSender as Actor
+    BeginPlannedWedding(akSender as Actor)
+EndEvent
+
+Function BeginPlannedWedding(Actor betrothed)
+    { The planned wedding begins: at the hour (OnWeddingBegin), or when the
+      officiant begins it again after it stopped short (BlessUnion). }
     If betrothed == None || _dashNatives < 28
         Return
     EndIf
@@ -6604,7 +6617,7 @@ Event OnWeddingBegin(String asEventName, String asUnused, Float afUnused, Form a
         Diag(LOG_INFO(), "Ceremony: " + officiant.GetDisplayName() + " begins the planned wedding of the player and " + \
             betrothed.GetDisplayName() + " (parts " + SNRom_Native.PlanParts(betrothed) + ").")
     EndIf
-EndEvent
+EndFunction
 
 Event OnWeddingMissed(String asEventName, String asUnused, Float afUnused, Form akSender)
     { SNRom_WeddingMissed: the day passed and the player never came. It

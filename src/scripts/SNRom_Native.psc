@@ -495,6 +495,10 @@ Actor[] Function WeddingPlaces(Actor akBetrothed) Global Native
  event SNRom_WeddingInPlace, strArg "officiant", "betrothed", "theirs" (the
  betrothed's guest) or "yours". Anyone not returned is not near enough.}
 
+Bool Function PlanToday(Actor akBetrothed) Global Native
+{VERSION 34. The betrothed's planned wedding day has begun: an officiant who
+ marries them now begins the planned wedding, its parts and places.}
+
 Function WeddingPlacesClear() Global Native
 {VERSION 33. The wedding over or stopped: the guests' places removed, and anyone
  still on their way linked to their mark again.}

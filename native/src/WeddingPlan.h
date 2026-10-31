@@ -222,6 +222,13 @@ namespace SNRom::WeddingPlan {
     // The wedding over or stopped: the guests' places removed, and everyone
     // still on their way linked to their mark again. Main thread.
     void ClearPlaces();
+    // STOPPED SHORT (wpm67): a planned wedding that stalled or met a no does
+    // not begin again by itself; the officiant may offer (OfficiatingFor,
+    // stoppedShort), and BegunAgain clears it when they do.
+    void StoppedShort(std::int32_t a_betrothed);
+    void BegunAgain(std::int32_t a_betrothed);
+    // The betrothed's planned wedding day has begun (everyone sent).
+    bool Today(std::int32_t a_betrothed);
     bool SetParts(std::int32_t a_betrothed, std::uint32_t a_parts);
     // Each -1 left as it is.
     bool SetRings(std::int32_t a_betrothed, std::int32_t a_yourStyle, std::int32_t a_yourMetal,

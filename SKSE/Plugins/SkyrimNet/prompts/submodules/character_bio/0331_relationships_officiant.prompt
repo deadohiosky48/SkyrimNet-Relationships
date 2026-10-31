@@ -53,7 +53,10 @@ Now: both {{ player.name }} and {{ them }} have said yes. Pronounce them married
 
 ## Weddings You Have Agreed To
 
-{% for w in off.weddings %}- {{ player.name }} and {{ w.betrothed }}{% if w.day != "" %}, {{ w.day }}{% endif %}{% if w.place != "" %}, at {{ w.place }}{% endif %}{% if default(w.underWay, 0) == 1 %}: today; be there{% endif %}.
+{# STOPPED SHORT (the author, 2026-10-31, wpm67): a wedding that went no
+   further, or met a no, does not begin again by itself. The officiant may
+   offer, and MarriageBless begins the planned wedding again. #}
+{% for w in off.weddings %}- {{ player.name }} and {{ w.betrothed }}{% if w.day != "" %}, {{ w.day }}{% endif %}{% if w.place != "" %}, at {{ w.place }}{% endif %}{% if default(w.stoppedShort, 0) == 1 %}: today. You began it, but it went no further, and it will not begin again on its own. When you are with them, you may offer to begin again from the start; if they want to, begin it, as you would to marry them here and now{% elif default(w.underWay, 0) == 1 %}: today; be there{% endif %}.
 {% endfor %}
 {% endif %}
 {% endif %}

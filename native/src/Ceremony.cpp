@@ -766,6 +766,12 @@ namespace SNRom::Ceremony {
             g_carry.reset();
             SKSE::log::info("Ceremony: over ({})", a_married ? "married" : a_why);
             if (!a_married) {
+                // A planned day that stalled or met a no waits for the
+                // officiant to begin it again (WeddingPlan::StoppedShort);
+                // one someone walked out of comes back at the hour.
+                if (g_planned && a_why != "left") {
+                    WeddingPlan::StoppedShort(static_cast<std::int32_t>(betrothed));
+                }
                 SendEvent("SNRom_CeremonyEnded", a_why, 0.0f, betrothed);
             }
         }

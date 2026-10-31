@@ -455,8 +455,12 @@ namespace SNRom::Natives {
         // VERSION 28 (Build B, M4p and M4w): the wedding plan (WeddingPlan.h).
         bool CeremonyBeginPlanned(RE::StaticFunctionTag*, RE::Actor* a_officiant, RE::Actor* a_betrothed,
                                   std::string a_variant, std::int32_t a_parts) {
-            return Ceremony::Begin(a_officiant, a_betrothed, std::move(a_variant), static_cast<std::uint32_t>(a_parts),
-                                   true);
+            const bool begun = Ceremony::Begin(a_officiant, a_betrothed, std::move(a_variant),
+                                               static_cast<std::uint32_t>(a_parts), true);
+            if (begun) {
+                WeddingPlan::BegunAgain(FormIdOfActor(a_betrothed));
+            }
+            return begun;
         }
         void SetMarasOwns(RE::StaticFunctionTag*, bool a_owns) {
             Marriage::SetMarasOwns(a_owns);
@@ -598,6 +602,12 @@ namespace SNRom::Natives {
         }
         void WeddingPlacesClear(RE::StaticFunctionTag*) {
             WeddingPlan::ClearPlaces();
+        }
+        // v34: the planned day has begun, so the officiant begins the planned
+        // wedding, not one of their own.
+        bool PlanToday(RE::StaticFunctionTag*, RE::Actor* a_betrothed) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && WeddingPlan::Today(id);
         }
         bool PlanSetOfficiant(RE::StaticFunctionTag*, RE::Actor* a_betrothed, RE::Actor* a_officiant) {
             const auto id = FormIdOfActor(a_betrothed);
@@ -1095,6 +1105,7 @@ namespace SNRom::Natives {
             // v33. Main thread: markers placed, links set.
             a_vm->RegisterFunction("WeddingPlaces", kScript, WeddingPlaces);
             a_vm->RegisterFunction("WeddingPlacesClear", kScript, WeddingPlacesClear);
+            a_vm->RegisterFunction("PlanToday", kScript, PlanToday, true);
             a_vm->RegisterFunction("PlanOutfit", kScript, PlanOutfit, true);
             a_vm->RegisterFunction("PlanParts", kScript, PlanParts, true);
             a_vm->RegisterFunction("PlanRing", kScript, PlanRing, true);
@@ -1133,7 +1144,7 @@ namespace SNRom::Natives {
                             "PlanGuests, PlanPlace, PlanOutfit, PlanParts, PlanRing, RingWeddingOfMetal, "
                             "PlanSetFindable, PlanNear, PlanFindable, PlanTravelTo, BringToWedding, PlanMark, PlanSettleLayout, "
                             "PlanMarked, PlanGuestSide, PlanSideOf, PlanSideNamed, GuestSideOf, PlanSetAnchor, WeddingLetGo, "
-                            "WeddingPlaces, WeddingPlacesClear",
+                            "WeddingPlaces, WeddingPlacesClear, PlanToday",
                             kScript, kVersion);
             return true;
         });
