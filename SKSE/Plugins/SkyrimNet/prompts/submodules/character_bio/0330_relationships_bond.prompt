@@ -792,6 +792,7 @@ Now: {{ wed_by }} is giving a reading, or a blessing. Listen; it is not your tur
 Now: you have both said yes, and {{ wed_by }} is about to invite the two of you to exchange rings. Wait for that; it is not your turn yet.
 {% elif wed == 14 %}
 Now: {{ wed_by }} has invited the two of you to exchange rings. Put a ring on {{ player.name }}'s finger, as they put one on yours, with a word if you wish. Not the kiss yet: {{ wed_by }} has still to pronounce you married.
+The rings are your wedding rings, chosen for today, and they go on as you speak: hand over nothing from your pack, and choose no action for it - no other ring is part of this.
 {% elif wed == 13 %}
 Now: {{ wed_by }} has pronounced you married, and invites the two of you to kiss. Kiss {{ player.name }}, married to you now, as yourself, with a word if you wish. This is the first moment of your marriage.
 {% elif wed == 15 %}

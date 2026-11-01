@@ -88,6 +88,10 @@ namespace SNRom::Ceremony {
     // save kept from one is cleared from everyone near.
     void Reset();
 
+    // Married to the player by a ceremony since the last load: the day's watch
+    // leaves their plan to the reception (WeddingPlan.cpp). Main thread.
+    bool JustWed(std::uint32_t a_formId);
+
     // For get_officiant and get_romance: a_actor's part in the ceremony under
     // way: 1 the officiant, 2 the betrothed, 0 none.
     std::int32_t RoleOf(RE::Actor* a_actor);

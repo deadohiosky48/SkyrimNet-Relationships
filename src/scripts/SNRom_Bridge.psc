@@ -479,6 +479,7 @@ Function RegisterEvents()
     RegisterForModEvent("SNRom_CeremonyEnded", "OnCeremonyEnded")
     RegisterForModEvent("SNRom_CeremonyCue", "OnCeremonyCue")
     RegisterForModEvent("SNRom_CeremonyMarried", "OnCeremonyMarried")
+    RegisterForModEvent("SNRom_CeremonyRings", "OnCeremonyRings")
     RegisterForModEvent("SNRom_CeremonyYourTurn", "OnCeremonyYourTurn")
     ; A wedding is never carried across a load; neither is its hold.
     ReleaseWeddingHold()
@@ -6893,6 +6894,37 @@ Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, For
     If _dashNatives >= 28
         SNRom_Native.PlanClear(betrothed)
     EndIf
+EndEvent
+
+Event OnCeremonyRings(String asEventName, String asPlanned, Float afUnused, Form akSender)
+    { SNRom_CeremonyRings: the betrothed has put the ring on the player's
+      finger, at the wedding's own step (Ceremony.cpp, wpm82). Both wedding
+      rings go on now, the planner's choices as at the record, which then
+      finds them on and keeps them (WeddingRingFor, once per marriage). In
+      wpm81 they went on only at the record, a minute later, and Olfina's
+      words "this ring" became SeverActions' GiveItem of a plain Silver Ring. }
+    Actor betrothed = akSender as Actor
+    If betrothed == None || _dashNatives < 22
+        Return
+    EndIf
+    _planRingMetal = -1
+    _planBandMetal = -1
+    _planBandWide = -1
+    _planTheirStyle = -1
+    If asPlanned == "planned" && _dashNatives >= 28
+        _planRingMetal = SNRom_Native.PlanRing(betrothed, 0)
+        _planBandMetal = SNRom_Native.PlanRing(betrothed, 1)
+        _planBandWide = SNRom_Native.PlanRing(betrothed, 2)
+        If _dashNatives >= 29
+            _planTheirStyle = SNRom_Native.PlanRing(betrothed, 3)
+        EndIf
+    EndIf
+    RingsBecomeWeddingRings(betrothed)
+    _planRingMetal = -1
+    _planBandMetal = -1
+    _planBandWide = -1
+    _planTheirStyle = -1
+    Diag(LOG_INFO(), "Wedding: the rings exchanged at their step. (TEST LOG)")
 EndEvent
 
 Function CeremonyColdFeet(Actor akActor, String asWhy)

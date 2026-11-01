@@ -550,9 +550,17 @@ namespace SNRom::Ceremony {
 
         // After the pronouncement: the kiss, the presentation. Whatever
         // happens now, they are married (Finish).
+        // Or past the rings (wpm82): both have said yes and wear the wedding
+        // rings now, so nothing that happens before the pronouncement leaves
+        // them engaged.
         bool Pronounced() {
-            return g_step < Script().size() &&
-                   (Script()[g_step].kind == kKindKiss || Script()[g_step].kind == kKindPresent);
+            if (g_step >= Script().size()) {
+                return false;
+            }
+            const auto kind = Script()[g_step].kind;
+            return kind == kKindKiss || kind == kKindPresent ||
+                   std::ranges::any_of(Script().begin(), Script().begin() + static_cast<std::ptrdiff_t>(g_step),
+                                       [](const Step& a_s) { return a_s.kind == kKindRingsGiven; });
         }
 
         void Next() {
@@ -933,6 +941,17 @@ namespace SNRom::Ceremony {
             } else if (step.kind == kKindKiss) {
                 // Not over with the line: the kiss may be a scene (Look).
                 g_holdCue = false;
+            } else if (step.kind == kKindRingsGiven) {
+                // THE RINGS GO ON AS SHE SAYS IT (seen in play, wpm81). The
+                // wedding rings were put on only when the marriage was
+                // recorded, a minute later; meanwhile Olfina, sliding "the
+                // ring" onto Haruk's finger, chose SeverActions' GiveItem and
+                // handed him a plain Silver Ring from her pack. Now both
+                // rings are exchanged here (SNRom_CeremonyRings), and the
+                // record finds them on and leaves them.
+                SKSE::log::info("Ceremony: step {}: the rings are exchanged", g_step + 1);
+                SendEvent("SNRom_CeremonyRings", g_planned ? "planned" : "", 0.0f, g_betrothed);
+                Next();
             } else if (step.check != Check::kNone && WordsDo(step.check, a_line)) {
                 SKSE::log::info("Ceremony: step {}: the words do it", g_step + 1);
                 Next();
@@ -1350,6 +1369,10 @@ namespace SNRom::Ceremony {
                 clear(RE::TESForm::LookupByID<RE::Actor>(static_cast<RE::FormID>(id)));
             }
         });
+    }
+
+    bool JustWed(std::uint32_t a_formId) {
+        return g_justWed.contains(a_formId);
     }
 
     std::int32_t RoleOf(RE::Actor* a_actor) {

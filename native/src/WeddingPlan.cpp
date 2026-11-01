@@ -670,7 +670,8 @@ namespace SNRom::WeddingPlan {
                         continue;
                     }
                     ++it;
-                    if (plan.day < 0.0f) {
+                    // Wed by a ceremony just now: the rest is the reception's.
+                    if (plan.day < 0.0f || Ceremony::JustWed(id)) {
                         continue;
                     }
                     const float when = When(plan);
@@ -726,7 +727,7 @@ namespace SNRom::WeddingPlan {
                 if (++g_sendTicks >= kSendEvery || relink) {
                     g_sendTicks = 0;
                     for (auto& [id, plan] : g_plans) {
-                        if (plan.day < 0.0f || !Open(plan).empty()) {
+                        if (plan.day < 0.0f || !Open(plan).empty() || Ceremony::JustWed(id)) {
                             continue;
                         }
                         const float when = When(plan);
@@ -754,7 +755,8 @@ namespace SNRom::WeddingPlan {
                 // THE LATE ONES (wpm65): looked at every tick from an hour before.
                 if (Ceremony::Now() == 0) {
                     for (auto& [id, plan] : g_plans) {
-                        if (plan.status != Status::kUnderWay || plan.day < 0.0f || now < When(plan) - kSummonAhead) {
+                        if (plan.status != Status::kUnderWay || plan.day < 0.0f || Ceremony::JustWed(id) ||
+                            now < When(plan) - kSummonAhead) {
                             continue;
                         }
                         for (const auto& goal : GoalsOf(id, plan, bonds)) {
@@ -2320,6 +2322,14 @@ namespace SNRom::WeddingPlan {
             }
             // Theirs now: the plan's end (no longer engaged) lets no one go.
             who = std::exchange(it->second.sent, {});
+            // AND THE DAY IS DONE (seen in play, wpm81). The marriage is
+            // recorded a moment after this, and the plan lives until then: in
+            // that half second the day's watch found everyone "not yet sent",
+            // sent all seventeen back to their places for the ceremony, and
+            // the plan's end then let them all go home - the reception over
+            // three seconds after it began. A plan with no day sends no one.
+            it->second.day = -1.0f;
+            it->second.hour = -1;
         }
         if (who.empty()) {
             return 0;
