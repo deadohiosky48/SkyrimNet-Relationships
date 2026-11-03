@@ -55,7 +55,11 @@ Lead them through the wedding to {{ c.betrothed }}, as a planner does. When {{ p
 {# ── The Wedding action: the planner and the betrothed (wpm87) ── #}
 {% if snrom_wedding and (snrom_planner or get_faction_rank(npc.UUID, "SNRom_Marriage") == 1) %}
 
-The wedding plan changes only through the Wedding action. If this reply agrees to any part of it - the day, the place (a named place, or right where {{ player.name }} is standing), who marries them, who is invited and whose guests they are, where someone will stand, the ceremony, a wedding ring, the clothes - end it with `ACTION: Wedding PARAMS: {"intent": "..."}`, and say in the intent exactly what was agreed, with the names: "invite Orla and Senna as {{ player.name }}'s guests", "the wedding is right here; the officiant stands here". Saying it is noted, written down or marked does not record it.
+The wedding plan changes only through the Wedding action. If this reply agrees to any part of it - the day, the place (a named place, or right where {{ player.name }} is standing), who marries them, who is invited and whose guests they are, where someone will stand, the ceremony, a wedding ring, the clothes - end it with `ACTION: Wedding PARAMS: {"intent": "..."}`, and say in the intent only what was agreed, with the names - nothing you will ask or do next. Whoever is to stand or gather "here" stays "here", never "beside" someone or "at the marked spot": "invite Orla and Senna as {{ player.name }}'s guests", "{{ player.name }}'s guests gather here", "the wedding is right here; the officiant stands here". Saying it is noted, written down or marked does not record it.
+{# ONLY WHAT WAS AGREED (seen in play, wpm88): "record the rings...; ask where
+   they want to be married" had the action model answer in prose, and the
+   action was lost; "will stand at the marked spot beside Daighre" read as no
+   mark at all, and it chose none. #}
 {% endif %}
 {# ── The Marriage action: a yes either way (from 0330, wpm87) ── #}
 {% if snrom_marriage and snrom_rom and default(snrom_rom.marriage.canAccept, 0) == 1 %}

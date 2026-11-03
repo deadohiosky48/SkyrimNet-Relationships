@@ -296,7 +296,8 @@ namespace SNRom::Officiant {
         SKSE::log::info("Officiants: {} marked again after the load (their factions came from the save)", again);
     }
 
-    RE::Actor* Named(const std::string& a_name) {
+    // Named, as it was said.
+    static RE::Actor* AsSaid(const std::string& a_name) {
         // "Jarl Elisif the Fair" asks for Elisif the Fair: the title is not
         // part of her record's name.
         const std::string wanted = Plain(a_name);
@@ -353,6 +354,49 @@ namespace SNRom::Officiant {
             }
         }
         return partial;
+    }
+
+    // TITLES OFF (seen in play, wpm88): "Mother Hamal" found no one, since
+    // her record is "Hamal"; the plan judge, reading "Hamal", rescued it.
+    std::string TitleOff(std::string_view a_said) {
+        static constexpr std::array kTitles{ "high priestess ", "high priest ", "priestess ", "priest ", "mother ",
+                                             "father ", "sister ", "brother ", "lady ", "lord ", "thane ",
+                                             "master ", "mistress ", "madam ", "sir ", "dame ", "elder ",
+                                             "auntie ", "uncle " };
+        std::string lower;
+        std::size_t start = 0;
+        while (start < a_said.size() && std::isspace(static_cast<unsigned char>(a_said[start]))) {
+            ++start;
+        }
+        for (std::size_t i = start; i < a_said.size(); ++i) {
+            lower += static_cast<char>(std::tolower(static_cast<unsigned char>(a_said[i])));
+        }
+        std::size_t skip = lower.starts_with("the ") ? 4 : 0;
+        for (const auto* title : kTitles) {
+            if (lower.compare(skip, std::strlen(title), title) == 0) {
+                std::string rest(a_said.substr(start + skip + std::strlen(title)));
+                while (!rest.empty() && std::isspace(static_cast<unsigned char>(rest.front()))) {
+                    rest.erase(0, 1);
+                }
+                return rest;
+            }
+        }
+        return {};
+    }
+
+    RE::Actor* Named(const std::string& a_name) {
+        if (auto* actor = AsSaid(a_name)) {
+            return actor;
+        }
+        const auto bare = TitleOff(a_name);
+        auto*      actor = bare.empty() ? nullptr : AsSaid(bare);
+        // TEST LOG (wpm89): a name found only without its title; remove once
+        // validated.
+        if (!bare.empty()) {
+            SKSE::log::info("Officiants: '{}' without its title is '{}': {}", a_name, bare,
+                            actor ? actor->GetDisplayFullName() : "still no one");
+        }
+        return actor;
     }
 
     RE::Actor* InPlaceOf(std::uint32_t a_officiant) {

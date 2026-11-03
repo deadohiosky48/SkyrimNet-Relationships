@@ -2022,7 +2022,8 @@ namespace SNRom::WeddingPlan {
                  { "missedDay", plan->missedDay >= 0.0f ? json(plan->missedDay) : json(nullptr) } };
     }
 
-    RE::Actor* PersonNamed(const std::string& a_name) {
+    // Named, as it was said.
+    static RE::Actor* PersonAsSaid(const std::string& a_name) {
         const auto wanted = Lower(Trim(a_name));
         if (wanted.empty()) {
             return nullptr;
@@ -2081,6 +2082,22 @@ namespace SNRom::WeddingPlan {
             }
         }
         return best;
+    }
+
+    RE::Actor* PersonNamed(const std::string& a_name) {
+        if (auto* actor = PersonAsSaid(a_name)) {
+            return actor;
+        }
+        // Without a leading title (wpm89): "Mother Hamal" is Hamal.
+        const auto bare = Officiant::TitleOff(a_name);
+        auto*      actor = bare.empty() ? nullptr : PersonAsSaid(bare);
+        // TEST LOG (wpm89): a name found only without its title; remove once
+        // validated.
+        if (!bare.empty()) {
+            SKSE::log::info("Names: '{}' without its title is '{}': {}", a_name, bare,
+                            actor ? actor->GetDisplayFullName() : "still no one");
+        }
+        return actor;
     }
 
     std::vector<RE::Actor*> GuestsNamed(RE::Actor* a_speaker, const std::string& a_list) {

@@ -41,8 +41,14 @@ namespace SNRom::Officiant {
     // 2026-10-25: any of them, assumed willing, travels to the wedding).
     // None when no officiant has that name, or they are dead. A leading
     // "Jarl" is not part of a name, and "the Jarl of <hold>" (by city or
-    // hold, wpm48) is whoever rules that hold now.
+    // hold, wpm48) is whoever rules that hold now. Named as said first, then
+    // without a leading title (TitleOff).
     RE::Actor* Named(const std::string& a_name);
+
+    // What was said without a leading title of address ("Mother Hamal" is
+    // Hamal); empty when it has none. Some names hold their title ("Brother
+    // Verulus"), so a name is always looked for as said first.
+    std::string TitleOff(std::string_view a_said);
 
     // The officiant to send on the wedding day in place of a_officiant: the
     // same one, unless they were a hold's jarl who has since died or been
