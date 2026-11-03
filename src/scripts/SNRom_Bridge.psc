@@ -6823,6 +6823,10 @@ Function SaveWeddingOutfit(Actor akBetrothed)
     Int rc = SkyrimNetApi.ExecuteAction("SaveOutfitPreset", akBetrothed, "{\"presetName\":\"wedding\"}")
     If SNRom_Native.PlanSetOutfit(akBetrothed, True)
         PlanNoted(akBetrothed, "their wedding clothes saved (rc " + rc + ").")
+    Else
+        ; SAVED AGAIN (seen in play, wpm88): Daighre, given a new dress, chose
+        ; it, and the preset was saved over in silence.
+        PlanNoted(akBetrothed, "their wedding clothes saved again, as they wear them now (rc " + rc + ").")
     EndIf
 EndFunction
 
