@@ -83,7 +83,8 @@ namespace SNRom::Dashboard {
     // when it is answered. From a VM thread.
     //
     // Ask returns the question's id, or 0 when there is no dashboard view (no
-    // UI framework): the caller then asks some other way.
+    // UI framework): there is no other way to ask since 2026-11-03, so the
+    // player is told once a session and the caller asks again later.
     // a_default: the button a running-out timer of a_seconds chooses (-1:
     // none, so it is dismissed; 0 seconds: no timer). M8c.
     std::int32_t Ask(std::string a_title, std::string a_body, std::vector<std::string> a_buttons,

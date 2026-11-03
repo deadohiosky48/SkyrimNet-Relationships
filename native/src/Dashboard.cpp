@@ -21,6 +21,7 @@
 
 #include "Api.h"
 #include "Ceremony.h"
+#include "L10n.h"
 #include "MagelightHost.h"
 #include "MeridianHost.h"
 #include "Model.h"
@@ -208,6 +209,27 @@ namespace SNRom::Dashboard {
 
         void Notify(const char* a_text) {
             RE::SendHUDMessage::ShowHUDMessage(a_text);
+        }
+
+        // NO VIEW TO ASK IN (the author, 2026-11-03). Every question is one of
+        // our cards now, with no Papyrus MessageBox behind it, so without
+        // Meridian UI, Magelight UI or Prisma UI a question cannot be asked.
+        // The player is told once a session; each caller treats it as
+        // unanswered and asks again later. Called from the VM thread (Ask),
+        // so the notice is queued.
+        std::atomic<bool> g_saidNoView{ false };
+
+        void NoViewToAsk() {
+            if (g_saidNoView.exchange(true)) {
+                return;
+            }
+            SKSE::log::warn("A question could not be asked: no Meridian UI, Magelight UI or Prisma UI view");
+            SKSE::GetTaskInterface()->AddTask([]() {
+                const auto text = L10n::Text("ask.noView",
+                                             "Relationships wanted to ask you something, but it needs Meridian UI, "
+                                             "Magelight UI or Prisma UI to ask in.");
+                Notify(text.c_str());
+            });
         }
 
         // ------------------------------------------------------------------
@@ -902,10 +924,12 @@ namespace SNRom::Dashboard {
         if (g_host) {
             SKSE::log::info("{} found{}", g_host->Name(), vr ? " (Skyrim VR)" : "");
         } else {
-            // ONCE, and not an error. No dashboard is a supported configuration
-            // (design 7.5), and nothing else in the mod depends on it.
-            SKSE::log::info("No Meridian UI, Magelight UI or Prisma UI found: no dashboard. "
-                            "Everything else in SkyrimNet Relationships works without it.");
+            // ONCE. Since 2026-11-03 the questions are asked in this view too
+            // (NoViewToAsk), so without one there is no dashboard and nothing
+            // can be asked: the consent question and every marriage and
+            // wedding confirmation wait.
+            SKSE::log::warn("No Meridian UI, Magelight UI or Prisma UI found: no dashboard, and no question can be "
+                            "asked (the consent question, engagements, weddings). One of them is required.");
         }
     }
 
@@ -957,7 +981,11 @@ namespace SNRom::Dashboard {
 
     std::int32_t Ask(std::string a_title, std::string a_body, std::vector<std::string> a_buttons,
                      std::int32_t a_default, float a_seconds) {
-        if (!g_host || !g_created || a_buttons.empty()) {
+        if (a_buttons.empty()) {
+            return 0;
+        }
+        if (!g_host || !g_created) {
+            NoViewToAsk();
             return 0;
         }
         if (a_default < -1 || a_default >= static_cast<std::int32_t>(a_buttons.size())) {

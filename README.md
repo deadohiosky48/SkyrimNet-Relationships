@@ -192,8 +192,9 @@ dashboard is written to be played without it.
 Press Escape to close it. The dashboard needs Meridian UI, Magelight UI or
 Prisma UI. Magelight comes with SeverActions 4.x, so you may have it already.
 With more than one installed it uses Meridian, then Magelight, then Prisma -
-and in Skyrim VR, where Meridian does not run, Magelight, then Prisma. Without
-any of them, everything else works and only the dashboard is missing.
+and in Skyrim VR, where Meridian does not run, Magelight, then Prisma. The
+same view asks you every question the mod has for you - where the two of you
+stand, whether you are engaged, which ring - so one of them is required.
 
 ## Hotkeys
 
@@ -225,7 +226,7 @@ fires, modifier or not. Pick keys nothing else in your load order uses.
 | [Address Library for SKSE Plugins](https://www.nexusmods.com/skyrimspecialedition/mods/32444) | required — for the included SkyrimNetRelationships.dll |
 | PapyrusUtil SE | required — StorageUtil, JsonUtil, MiscUtil |
 | [powerofthree's Papyrus Extender](https://www.nexusmods.com/skyrimspecialedition/mods/22854) | required — the marriage gate uses it to hold a keyword on someone. Most load orders already have it |
-| Papyrus MessageBox ([Nexus 83578](https://www.nexusmods.com/skyrimspecialedition/mods/83578)) | required for the consent prompt; bundled by MARAS |
+| Meridian UI 1.5.0 or newer, Magelight UI 0.30.5 or newer (comes with SeverActions 4.2.0), or Prisma UI 1.5.1 or newer | required, any one of them — the dashboard, and every question the mod asks you. In Skyrim VR, Magelight UI or Prisma UI |
 | An LLM backend SkyrimNet can reach | required — local or hosted |
 
 The included **SkyrimNetRelationships.dll** is required from 2.0: it runs the
@@ -239,7 +240,6 @@ inert; nothing errors and no prompt breaks.
 
 | | adds |
 |---|---|
-| Meridian UI 1.5.0 or newer, Magelight UI 0.30.5 or newer (comes with SeverActions 4.2.0), or Prisma UI 1.5.1 or newer | the dashboard. In Skyrim VR, Magelight UI or Prisma UI |
 | SeverActions | follower detection, including for companions you already know. From **3.9.11** it detects this mod and steps its own Intimacy & Consent section aside, so nobody is handed two ideas of how receptive they are. From **4.0.1** everyone you enroll gets this mod's Relationships bio blocks, chosen from their character - see *Bio blocks* below |
 | OStim Community Resource | physical attraction as an input, for characters whose disposition allows it to matter |
 | OStim NG or SexLab | tier notices wait until a scene is over |

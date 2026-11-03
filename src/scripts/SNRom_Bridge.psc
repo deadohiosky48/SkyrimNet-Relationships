@@ -2632,9 +2632,9 @@ Function AskTheQuestion(Actor akActor)
       is then parsed as code. That is what "no viable alternative at character
       ':'" means, and it cost a build.)
 
-      What it proves before anything is built on top: that SkyMessage's natives
-      link at all, that a box reaches the screen, and that the chosen index
-      comes back and moves the stance. Everything else in the loop - crossing
+      What it proves before anything is built on top: that the question reaches
+      the screen as our card (SNRom_Choice, our own UI since 2026-11-03), and
+      that the chosen index comes back and moves the stance. Everything else in the loop - crossing
       detection, the trigger that has her raise it in her own voice, the retry
       timer, the decline penalty - hangs off this working.
 
@@ -2682,12 +2682,11 @@ Function AskTheQuestion(Actor akActor)
         ApiTouch(akActor)
         Diag(LOG_INFO(), "Question deferred for " + who + " - stance left unanswered, still open.")
     Else
-        ; ANSWER_NONE covers BOTH "timed out" and "the box never opened because
-        ; SkyrimScripting.MessageBox.dll is missing". Those need telling apart,
-        ; so say so rather than logging a bare failure.
+        ; ANSWER_NONE covers BOTH "timed out" and "could not be asked, as no UI
+        ; framework is installed". Those need telling apart, so say so rather
+        ; than logging a bare failure.
         Diag(LOG_WARN(), "No answer captured for " + who + \
-            " - the box timed out, or Papyrus MessageBox (Nexus 83578) is not installed. " + \
-            "MARAS bundles it; check SkyrimScripting.MessageBox.dll is in SKSE\\Plugins.")
+            " - the question timed out, or no Meridian UI, Magelight UI or Prisma UI is installed to ask it in.")
     EndIf
 EndFunction
 
@@ -4399,8 +4398,7 @@ Function OpenPendingBox()
     If id == 0
         _boxPending = None
         Diag(LOG_WARN(), "Could not open the question for " + who + \
-            " - Papyrus MessageBox (Nexus 83578) is missing. MARAS bundles it; " + \
-            "check SkyrimScripting.MessageBox.dll is in SKSE\\Plugins. Retrying on a later sweep.")
+            " - no Meridian UI, Magelight UI or Prisma UI is installed to ask it in. Retrying on a later sweep.")
         Return
     EndIf
     _boxPending = None
