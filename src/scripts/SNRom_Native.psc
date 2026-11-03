@@ -395,6 +395,10 @@ Function SetMarasOwns(Bool abOwns) Global Native
 {VERSION 28. Who runs marriage this session: MARAS (True) while it is installed
  and its marriages have not been imported, else Relationships.}
 
+Bool Function MarasInstalled() Global Native
+{VERSION 36. MARAS itself: TT_MARAS.esp listed AND MARAS.dll loaded. An empty
+ stub plugin left in its place is not MARAS (extras/MARAS Stub).}
+
 Bool Function CeremonyPlanned() Global Native
 {The wedding under way is a planned one, not an elopement.}
 

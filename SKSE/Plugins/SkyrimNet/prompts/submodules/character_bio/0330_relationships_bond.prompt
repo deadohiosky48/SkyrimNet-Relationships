@@ -828,7 +828,10 @@ You were married to {{ player.name }}, and you are divorced.
    ASKING IS THEIRS ONLY WHERE A YES CAN BE KEPT (the author, 2026-10-30):
    Daighre proposed at Lover, where MarriageAgree is not offered, so a yes
    from the player would have been words with nothing behind them. Below
-   canAccept they may want it, never ask. #}
+   canAccept they may want it, never ask.
+   A YES IS KEPT BY THE ACTION (wpm83): Daighre asked again at Beloved; the
+   player's yes came two days later, ring in hand, and her glad reply chose
+   no action, so nothing was recorded. Say which reply chooses it. #}
 {% if default(rom.marriage.canAccept, 0) == 1 %}
 {% if default(rom.marriage.cooldown, 0) == 1 %}
 
@@ -838,6 +841,7 @@ You were married to {{ player.name }}, and you are divorced.
 If {{ player.name }} asks you to marry them, the answer is yours to give - yes, or not yet - as you truly feel.
 {% endif %}
 You may also ask {{ player.name }} to marry you yourself, if and when it feels right to you; their yes would make you engaged just the same.
+Whichever way the yes goes - yours to their asking, or theirs to yours, even days after you asked - choose the Marriage action in the reply that answers it. Without it the promise is only words.
 A yes makes the two of you engaged, promised to each other; it is not the wedding. The wedding comes later, when and how you both want it, as grand or as quiet as you like.
 {% if default(rom.marriage.earlierNo, 0) == 1 %}
 You told {{ player.name }} "not yet" once, when the two of you were not as close as you are now. That answer belonged to then; it does not bind you. Answer as you feel now.

@@ -100,8 +100,15 @@ namespace SNRom::Marriage {
     // is invited to import. Once imported, Relationships runs marriage even
     // with MARAS still installed, and MARAS is silenced as far as we reach
     // (SNRom_Bridge.SilenceMaras). DetectMaras at kDataLoaded assumes MARAS
-    // until Papyrus says otherwise each session (SetMarasOwns), since the
-    // import is recorded in the save.
+    // when it is installed, until Papyrus says otherwise each session
+    // (SetMarasOwns), since the import is recorded in the save.
+    //
+    // MARAS IS INSTALLED only when its plugin is listed AND MARAS.dll is
+    // loaded (2026-11-02). Players drop MARAS after the import and keep an
+    // empty TT_MARAS.esp so their saves load (extras/MARAS Stub); the plugin's
+    // name alone would then pass for MARAS, and every MARAS native would be
+    // unbound. Its natives live in the DLL, so the DLL is the test.
+    bool MarasInstalled();
     void DetectMaras();
     bool MarasOwns();
     void SetMarasOwns(bool a_owns);

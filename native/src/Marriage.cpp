@@ -378,10 +378,25 @@ namespace SNRom::Marriage {
         std::atomic<bool> g_marasOwns{ false };
     }
 
+    bool MarasInstalled() {
+        // Neither can change within a session; asked once, logged once.
+        static const bool installed = [] {
+            auto*      data   = RE::TESDataHandler::GetSingleton();
+            const bool listed = data && data->LookupModByName("TT_MARAS.esp") != nullptr;
+            const bool loaded = GetModuleHandleW(L"MARAS.dll") != nullptr;
+            if (listed && !loaded) {
+                SKSE::log::info("Marriage: TT_MARAS.esp is listed but MARAS.dll is not loaded: a stub, so MARAS "
+                                "is not installed");
+            } else {
+                SKSE::log::info("Marriage: MARAS is {}installed", listed && loaded ? "" : "not ");
+            }
+            return listed && loaded;
+        }();
+        return installed;
+    }
+
     void DetectMaras() {
-        auto* data = RE::TESDataHandler::GetSingleton();
-        g_marasOwns = data && data->LookupModByName("TT_MARAS.esp") != nullptr;
-        SKSE::log::info("Marriage: MARAS is {}installed", g_marasOwns ? "" : "not ");
+        g_marasOwns = MarasInstalled();
     }
 
     bool MarasOwns() {

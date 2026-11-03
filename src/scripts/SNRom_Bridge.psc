@@ -488,7 +488,12 @@ Function RegisterEvents()
     ; The natives' version is asked directly: _dashNatives is set later in the
     ; bootstrap (ArmDashboard), so a check on it here never passed, and the
     ; DLL went on believing MARAS ran marriage after the import (wpm35).
-    If SNRom_Native.Version() >= 28
+    ; Stored here too, not only in ArmDashboard: MarasPresent reads it, and on
+    ; the first load after an upgrade it would otherwise still hold the old
+    ; DLL's version, and an empty TT_MARAS.esp would pass for MARAS.
+    Int nativesNow = SNRom_Native.Version()
+    StorageUtil.SetIntValue(None, "SNRom_NativesV", nativesNow)
+    If nativesNow >= 28
         SNRom_Native.SetMarasOwns(MarriageStandsAside())
     EndIf
     If MarriageStandsAside()
@@ -500,6 +505,18 @@ Function RegisterEvents()
         ; once it has, on a stack of its own.
         RegisterForModEvent("SNRom_SilenceMarasLater", "OnSilenceMarasLater")
         SendModEvent("SNRom_SilenceMarasLater")
+    EndIf
+    ; MARAS REMOVED BEFORE THE IMPORT (2026-11-02): its plugin's name is here,
+    ; as the stub, but MARAS is not, and nothing was brought over. Only MARAS
+    ; itself can be imported from, so the way back is to reinstall it for one
+    ; load, import, and remove it again. Said once a playthrough.
+    If !MarasPresent() && Game.IsPluginInstalled("TT_MARAS.esp") && \
+       StorageUtil.GetIntValue(None, "SNRom_MarasImported", 0) != 1 && \
+       StorageUtil.GetIntValue(None, "SNRom_MarasGoneSaid", 0) != 1
+        StorageUtil.SetIntValue(None, "SNRom_MarasGoneSaid", 1)
+        Diag(LOG_WARN(), "TT_MARAS.esp is here but MARAS is not (a stub), and its marriages were never imported. " + \
+            "To keep them: reinstall MARAS, import from the dashboard's Playthrough repairs, then remove it again.")
+        Say(Tr("maras.goneBeforeImport", "MARAS was removed before Relationships imported from it. If you married there, reinstall MARAS to bring those marriages over."))
     EndIf
     ; Build B (M4w): the planned wedding's day (WeddingPlan.h).
     RegisterForModEvent("SNRom_WeddingDay", "OnWeddingDay")
@@ -4762,7 +4779,8 @@ String Function MarasContext(Actor akActor) Global
     ; known without it. mara_exception is the one rule on more spouses. A
     ; candidate is someone at Spouse not yet engaged or married (M3 narrows it
     ; to who may actually be asked); MARAS's candidate list no longer counts.
-    ; Its engagements and marriages still do, until the import (M9) takes them.
+    ; Its engagements and marriages still do, until the import (M9) takes them;
+    ; after it, MARAS is not asked at all (MarriageStandsAside).
     Int present   = 0
     Int known     = 0
     Int exception = 0
@@ -4781,7 +4799,7 @@ String Function MarasContext(Actor akActor) Global
     If OurMarriage(akActor) == MARRIAGE_ENGAGED()
         engaged = 1
     EndIf
-    If MarasPresent()
+    If MarriageStandsAside()
         present = 1
         known = 1
         If MARAS.IsNPCStatus(akActor, "engaged")
@@ -4802,22 +4820,31 @@ Bool Function MarasPresent() Global
       no instance state to cache into, and IsPluginInstalled is a cheap native
       lookup. Made Global when IsMarriedToPlayer had to be reachable from
       SNRom_Decorators. The previous version cached into _marasState and logged
-      once on absence; the log line is the only thing lost, and it was DEBUG. }
+      once on absence; the log line is the only thing lost, and it was DEBUG.
+
+      MARAS ITSELF, NOT ITS PLUGIN'S NAME (2026-11-02): after the import
+      players remove MARAS and keep an empty TT_MARAS.esp so their saves load
+      (extras/MARAS Stub). By name that stub is MARAS, every MARAS native is
+      unbound, and a save never imported would stand aside for good. The DLL
+      answers whether MARAS.dll is loaded (Marriage::MarasInstalled). }
+    If StorageUtil.GetIntValue(None, "SNRom_NativesV", 0) >= 36
+        Return SNRom_Native.MarasInstalled()
+    EndIf
     Return Game.IsPluginInstalled("TT_MARAS.esp")
 EndFunction
 
 
 Int Function SpouseCount() Global
     { Everyone married to the player, each counted once whichever record holds
-      them: ours (married or separated), then MARAS's that ours does not have.
-      Vanilla's faction keeps no list and is not counted; a vanilla spouse with
-      neither record is the M9 import's to bring in. }
+      them: ours (married or separated), then MARAS's that ours does not have,
+      until the import. Vanilla's faction keeps no list and is not counted; a
+      vanilla spouse with neither record is the M9 import's to bring in. }
     Int n = 0
     If StorageUtil.GetIntValue(None, "SNRom_NativesV", 0) >= 15
         n = SNRom_Native.MarriageWithState(MARRIAGE_MARRIED()).Length + \
             SNRom_Native.MarriageWithState(MARRIAGE_SEPARATED()).Length
     EndIf
-    If MarasPresent()
+    If MarriageStandsAside()
         Actor[] theirs = MARAS.GetNPCsByStatus("married")
         Int i = 0
         While i < theirs.Length
@@ -4974,7 +5001,7 @@ Int Function SeedTarget(Actor akActor)
     If IsMarriedToPlayer(akActor)
         best = 2500                             ; Spouse - see the cap exemption
     ElseIf OurMarriage(akActor) == MARRIAGE_ENGAGED() || \
-           (MarasPresent() && MARAS.IsNPCStatus(akActor, "engaged"))
+           (MarriageStandsAside() && MARAS.IsNPCStatus(akActor, "engaged"))
         If 2000 > best
             best = 2000                         ; Lover
         EndIf
@@ -5012,7 +5039,7 @@ Int Function CommitmentState(Actor akActor) Global
     If OurMarriage(akActor) == MARRIAGE_ENGAGED()       ; 2.5; Display::Commitment too
         Return 2
     EndIf
-    If MarasPresent()
+    If MarriageStandsAside()
         If MARAS.IsNPCStatus(akActor, "engaged")
             Return 2
         EndIf
@@ -5025,7 +5052,8 @@ EndFunction
 Bool Function IsMarriedToPlayer(Actor akActor) Global
     { Married, by whichever system the player actually uses. Vanilla and MARAS
       both count and neither is preferred - the question is whether the game
-      records a completed marriage, not which mod recorded it.
+      records a completed marriage, not which mod recorded it. MARAS only
+      until its marriages are imported: from then on they are ours.
 
       GLOBAL so SNRom_Decorators.RomanceOk can reach it. That gate runs on
       authored orientation, and an authored trait must never be able to
@@ -5046,7 +5074,7 @@ Bool Function IsMarriedToPlayer(Actor akActor) Global
     If ours == MARRIAGE_MARRIED() || ours == MARRIAGE_SEPARATED()
         Return True
     EndIf
-    If MarasPresent() && MARAS.IsNPCStatus(akActor, "married")
+    If MarriageStandsAside() && MARAS.IsNPCStatus(akActor, "married")
         Return True
     EndIf
     Return False
@@ -5712,12 +5740,18 @@ Int _planBandMetal = -1
 Int _planBandWide = -1      ; the player's ring's style: 0 slim, 1 wide
 Int _planTheirStyle = -1    ; the betrothed's (wpm51)
 
-Bool Function MarriageStandsAside()
+Bool Function MarriageStandsAside() Global
     { WHO RUNS MARRIAGE (the author, 2026-10-25). MARAS, only while it is
       installed and its marriages have not been imported: then every marriage
       feature of ours stands aside, and the player is invited to import
       (Playthrough repairs). Once imported, Relationships runs marriage even
-      with MARAS still installed, and MARAS is silenced (SilenceMaras). }
+      with MARAS still installed, and MARAS is silenced (SilenceMaras).
+
+      AND MARAS IS NO LONGER A SOURCE OF FACTS (the author, 2026-11-02:
+      "remove MARAS from everything that Relationships owns"). Every read of
+      MARAS's record - married, engaged, spouse counts, the dashboard's
+      batch - asks this, not MarasPresent, so after the import only our
+      record speaks. GLOBAL for those readers, which are. }
     Return MarasPresent() && StorageUtil.GetIntValue(None, "SNRom_MarasImported", 0) != 1
 EndFunction
 
@@ -7133,7 +7167,7 @@ Bool Function SeedRomanticEvidence(Actor akActor)
     If ours == MARRIAGE_ENGAGED() || ours == MARRIAGE_MARRIED() || ours == MARRIAGE_SEPARATED()
         Return True
     EndIf
-    If MarasPresent()
+    If MarriageStandsAside()
         If MARAS.IsNPCStatus(akActor, "married") || MARAS.IsNPCStatus(akActor, "engaged")
             Return True
         EndIf
@@ -7230,15 +7264,12 @@ Bool Function SeedActor(Actor akActor)
     ; from "2500 to Spouse" and has never been confirmed against Romantasy's
     ; native code. Logging what actually landed is how that finally gets
     ; verified, from real saves, without hardcoding the guess anywhere.
-    Int affection = -1
-    If MarasPresent()
-        affection = MARAS.GetPermanentAffection(akActor)
-    EndIf
+    ; MARAS's affection was logged here for calibration and never used; it
+    ; went with MARAS's other reads (2026-11-02).
     Diag(LOG_INFO(), "Seeded " + akActor.GetDisplayName() + " +" + delta + " -> " + \
         PointsOf(akActor) + " pts, tier " + TierOf(akActor) + \
         " (" + TierName(TierOf(akActor)) + "). rapport=" + rapportNow + \
-        " rank=" + akActor.GetRelationshipRank(Game.GetPlayer()) + \
-        " marasAffection=" + affection + " (logged for calibration only, unused)" +         MarasStateLine(akActor))
+        " rank=" + akActor.GetRelationshipRank(Game.GetPlayer()) + MarasStateLine(akActor))
 
     SeedRomanticFlag(akActor)
     Return True
@@ -7353,6 +7384,9 @@ Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEn
       for why enforcement has to happen on an event rather than through
       eligibility, and why engagement rather than marriage is the intercept.
 
+      After the import, everything but that reversal is ignored; what
+      follows is the time before it.
+
       MARRIED re-seeds rather than topping up, because ReseedActor clears the
       stamp and re-runs the whole computation, which will now see the marriage and
       land on Spouse. That re-seed is ASYNCHRONOUS since it became a record read,
@@ -7380,6 +7414,11 @@ Event OnMarasStatusChanged(String asEventName, String asStatus, Float afStatusEn
         Else
             Diag(LOG_ERROR(), "MARAS refused to undo " + who.GetDisplayName() + "'s engagement." + MarasStateLine(who))
         EndIf
+        Return
+    EndIf
+    ; Once its marriages are ours, nothing else MARAS announces is a fact of
+    ; ours (2026-11-02).
+    If !MarriageStandsAside()
         Return
     EndIf
     If !IsEnrolled(who)
@@ -9097,7 +9136,10 @@ Function DashboardPutFacts(Int aiGeneration)
     Actor[] married
     Actor[] engaged
     Actor[] candidates
-    If _dashMaras
+    ; Only while MARAS runs marriage; an import mid-session takes effect at
+    ; the next refresh, not the next load.
+    Bool marasFacts = _dashMaras && MarriageStandsAside()
+    If marasFacts
         married = MARAS.GetNPCsByStatus("married")
         engaged = MARAS.GetNPCsByStatus("engaged")
         candidates = MARAS.GetNPCsByStatus("candidate")
@@ -9108,7 +9150,7 @@ Function DashboardPutFacts(Int aiGeneration)
         severActive = SeverActionsNativeExt.Native_GetActiveFollowerRoster()
         severDead = SeverActionsNativeExt.Native_GetDeadTrackedFollowers()
     EndIf
-    SNRom_Native.PutRefreshFacts(aiGeneration, _dashKinGuard > 0, _dashMaras, married, engaged, candidates, \
+    SNRom_Native.PutRefreshFacts(aiGeneration, _dashKinGuard > 0, marasFacts, married, engaged, candidates, \
         _dashSever, severActive, severDead)
 EndFunction
 

@@ -1,0 +1,41 @@
+{
+  "skyrimnet_knowledge_pack": {
+    "format_version": 2,
+    "name": "Relationships: Wedding Planners",
+    "description": "Who plans weddings in Skyrim. Always known to everyone who can marry a couple and to the player's betrothed; anyone else recalls it when weddings come up.",
+    "version": "1.0.0",
+    "author": "deadohiosky48",
+    "entries": [
+      {
+        "content": "Weddings in Skyrim are planned by five priestesses, one in the temple of each great city, for a fee: Dinya Balu at the Temple of Mara in Riften, Silana Petreia at the Temple of the Divines in Solitude, Danica Pure-Spring at the Temple of Kynareth in Whiterun, Senna at the Temple of Dibella in Markarth, and Jora at the Temple of Talos in Windhelm. A couple who wants a wedding planned goes to one of them. Any other priest or priestess, or a jarl, may marry a couple - there and then, or on a day the couple chooses - but does not plan weddings, and sends anyone who asks to one of the five.",
+        "condition_expr": "get_faction_rank(actorUUID, \"SNRom_Officiant\") >= 0 or get_faction_rank(actorUUID, \"SNRom_Marriage\") == 1",
+        "always_inject": true,
+        "importance": 0.8,
+        "display_name": "Relationships: wedding planners (officiants, the betrothed)",
+        "knowledge_key": "relationships_wedding_planners_known",
+        "tags": [
+          "relationships",
+          "wedding"
+        ],
+        "type": "KNOWLEDGE",
+        "emotion": "",
+        "location": ""
+      },
+      {
+        "content": "Weddings in Skyrim are planned by five priestesses, one in the temple of each great city, for a fee: Dinya Balu at the Temple of Mara in Riften, Silana Petreia at the Temple of the Divines in Solitude, Danica Pure-Spring at the Temple of Kynareth in Whiterun, Senna at the Temple of Dibella in Markarth, and Jora at the Temple of Talos in Windhelm. A couple who wants a wedding planned goes to one of them. Any other priest or priestess, or a jarl, may marry a couple - there and then, or on a day the couple chooses - but does not plan weddings.",
+        "condition_expr": "get_faction_rank(actorUUID, \"SNRom_Officiant\") < 0 and get_faction_rank(actorUUID, \"SNRom_Marriage\") != 1",
+        "always_inject": false,
+        "importance": 0.7,
+        "display_name": "Relationships: wedding planners (everyone else)",
+        "knowledge_key": "relationships_wedding_planners_heard",
+        "tags": [
+          "relationships",
+          "wedding"
+        ],
+        "type": "KNOWLEDGE",
+        "emotion": "",
+        "location": ""
+      }
+    ]
+  }
+}

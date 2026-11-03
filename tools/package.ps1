@@ -140,6 +140,10 @@ try {
 
     # prompts keep their sub-paths verbatim; only the config\ prefix is dropped
     Copy-Item (Join-Path $snRoot 'prompts') $ext -Recurse -Force
+    # Knowledge packs (2.5: who plans weddings) exist only in the plugin
+    # library; there is no classic layout for them to have come from.
+    $knowledge = Join-Path $snRoot 'knowledge'
+    if (Test-Path $knowledge) { Copy-Item $knowledge $ext -Recurse -Force }
     foreach ($kind in 'triggers', 'actions') {
         $src = Join-Path $snRoot "config\$kind"
         if (Test-Path $src) { Copy-Item $src $ext -Recurse -Force }
@@ -243,6 +247,7 @@ try {
     # tested, which is the worst possible place to discover it.
     $legacy = @()
     $legacy += Get-ChildItem (Join-Path $snRoot 'prompts') -Recurse -File
+    if (Test-Path $knowledge) { $legacy += Get-ChildItem $knowledge -Recurse -File }
     foreach ($kind in 'triggers', 'actions') {
         $d = Join-Path $snRoot "config\$kind"
         if (Test-Path $d) { $legacy += Get-ChildItem $d -Recurse -File }
@@ -268,6 +273,7 @@ try {
     # anyway; on Beta 24 it would half-work. The plugin settings manifest in
     # config\plugins stays: Beta 25 reads that one where it is.
     Remove-Item (Join-Path $snRoot 'prompts') -Recurse -Force
+    if (Test-Path $knowledge) { Remove-Item $knowledge -Recurse -Force }
     foreach ($kind in 'triggers', 'actions') {
         $d = Join-Path $snRoot "config\$kind"
         if (Test-Path $d) { Remove-Item $d -Recurse -Force }

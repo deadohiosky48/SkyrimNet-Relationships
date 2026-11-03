@@ -465,6 +465,9 @@ namespace SNRom::Natives {
         void SetMarasOwns(RE::StaticFunctionTag*, bool a_owns) {
             Marriage::SetMarasOwns(a_owns);
         }
+        bool MarasInstalled(RE::StaticFunctionTag*) {
+            return Marriage::MarasInstalled();
+        }
         bool CeremonyPlanned(RE::StaticFunctionTag*) {
             return Ceremony::Planned();
         }
@@ -1069,6 +1072,7 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("CeremonyBeginPlanned", kScript, CeremonyBeginPlanned);
             a_vm->RegisterFunction("CeremonyPlanned", kScript, CeremonyPlanned, true);
             a_vm->RegisterFunction("SetMarasOwns", kScript, SetMarasOwns, true);
+            a_vm->RegisterFunction("MarasInstalled", kScript, MarasInstalled, true);
             a_vm->RegisterFunction("IsWeddingPlanner", kScript, IsWeddingPlanner, true);
             a_vm->RegisterFunction("PersonNamed", kScript, PersonNamed);
             a_vm->RegisterFunction("GuestsNamed", kScript, GuestsNamed);
@@ -1150,7 +1154,7 @@ namespace SNRom::Natives {
                             "PlanGuests, PlanPlace, PlanOutfit, PlanParts, PlanRing, RingWeddingOfMetal, "
                             "PlanSetFindable, PlanNear, PlanFindable, PlanTravelTo, BringToWedding, PlanMark, PlanSettleLayout, "
                             "PlanMarked, PlanGuestSide, PlanSideOf, PlanSideNamed, GuestSideOf, PlanSetAnchor, WeddingLetGo, "
-                            "WeddingPlaces, WeddingPlacesClear, PlanToday, WeddingReception",
+                            "WeddingPlaces, WeddingPlacesClear, PlanToday, WeddingReception, MarasInstalled",
                             kScript, kVersion);
             return true;
         });

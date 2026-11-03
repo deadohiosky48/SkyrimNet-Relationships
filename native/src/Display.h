@@ -41,7 +41,7 @@ namespace SNRom::Display {
     // What Papyrus fetches ONCE per refresh, with the batch APIs, and hands
     // over in one native (SNRom_Native.PutRefreshFacts).
     struct BatchFacts {
-        bool                             maras = false;  // TT_MARAS.esp installed (SNRom_Bridge.MarasPresent)
+        bool                             maras = false;  // MARAS runs marriage: installed, not imported (MarriageStandsAside)
         std::unordered_set<std::int32_t> married;        // MARAS.GetNPCsByStatus("married")
         std::unordered_set<std::int32_t> engaged;        // MARAS.GetNPCsByStatus("engaged")
         std::unordered_set<std::int32_t> candidates;     // MARAS.GetNPCsByStatus("candidate")

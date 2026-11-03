@@ -48,7 +48,8 @@ namespace SNRom::Natives {
     //  34  PlanToday: the officiant begins the planned wedding on its day,
     //      which no longer begins again by itself once stopped short (wpm67)
     //  35  WeddingReception: married, everyone stays a while (wpm68)
-    inline constexpr std::int32_t kVersion = 35;
+    //  36  MarasInstalled: MARAS itself, not a stub of its plugin (wpm83)
+    inline constexpr std::int32_t kVersion = 36;
 
     // Registers the natives declared in src/scripts/SNRom_Native.psc.
     void Register(const SKSE::PapyrusInterface* a_papyrus);
