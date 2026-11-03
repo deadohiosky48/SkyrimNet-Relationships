@@ -399,6 +399,23 @@ Bool Function MarasInstalled() Global Native
 {VERSION 36. MARAS itself: TT_MARAS.esp listed AND MARAS.dll loaded. An empty
  stub plugin left in its place is not MARAS (extras/MARAS Stub).}
 
+Function PlanJudgeStart(String asVariant) Global Native
+{VERSION 37. The planner heard (PlanJudge.h): the LLM variant to judge a
+ conversation with the hired planner with. Nothing is judged before it.}
+
+String Function PlanHeardField(Int aiToken, String asKey) Global Native
+{VERSION 37. One field of what the judge heard (ModEvent SNRom_PlanHeard, the
+ token as its number): DAY, TIME, PLACE, NEAR, OFFICIANT, INVITE_THEIRS,
+ INVITE_YOURS, INVITE, UNINVITE, ADDRESS, READING, RINGS, KISS, THEIR_STYLE,
+ THEIR_METAL, YOUR_STYLE, YOUR_METAL, OUTFIT; empty when it said nothing.}
+
+Function PlanHeardDone(Int aiToken) Global Native
+{VERSION 37. Done with what was heard.}
+
+Bool Function PlanSetDayAt(Actor akBetrothed, Int aiDaysFromToday, Int aiHour) Global Native
+{VERSION 37. The day by hand (the dashboard): days from today and the hour,
+ each -1 left as it is.}
+
 Bool Function CeremonyPlanned() Global Native
 {The wedding under way is a planned one, not an elopement.}
 

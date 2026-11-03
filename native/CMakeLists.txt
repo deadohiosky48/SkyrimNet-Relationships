@@ -90,6 +90,7 @@ set(SOURCES
     src/MagelightHost.cpp
     src/Marriage.cpp
     src/Officiant.cpp
+    src/PlanJudge.cpp
     src/Rings.cpp
     src/Ceremony.cpp
     src/RingCatalog.cpp

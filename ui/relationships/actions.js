@@ -92,6 +92,19 @@
       confirm: t("action.undoChange.confirm", "This change leaves their history and its points are taken back, as if it never happened. SkyrimNet's events and memories of it stay until you delete them there. There is no undo.")
     },
     {
+      // wpm85: the wedding plan by hand, a last resort (detail.js planEditor).
+      // Its own scope, so it is never listed among the repairs: the plan
+      // editor sends it, one change at a time.
+      op: "EditWeddingPlan",
+      scope: "plan",
+      calls: "SNRom_Bridge.EditWeddingPlanByHand(Actor, Int[], String)",
+      label: t("action.editWeddingPlan.label", "Change the wedding plan"),
+      help: t("action.editWeddingPlan.help", "Sets one part of the wedding plan by hand, as if it had been agreed in conversation."),
+      needs: null,
+      needsNearby: false,
+      confirm: null
+    },
+    {
       op: "ClearAddress",
       scope: "bond",
       calls: "SNRom_Bridge.ClearAddress(Actor)",

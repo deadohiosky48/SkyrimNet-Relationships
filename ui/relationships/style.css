@@ -516,6 +516,15 @@ button, input, select { font: inherit; color: inherit; }
 .plan-ring-who { display: inline-block; min-width: calc(4.5rem * var(--t)); color: var(--muted); }
 .plan-not { color: var(--faint); font-style: italic; }
 .plan-guests { color: var(--muted); font-size: calc(0.86rem * var(--t)); line-height: 1.45; }
+/* wpm85: the plan by hand, folded away under the plan. */
+.plan-edit { margin-top: 0.7rem; padding-top: 0.5rem; border-top: 1px dashed var(--line); }
+.plan-edit-body { margin-top: 0.4rem; display: flex; flex-direction: column; gap: 0.45rem; }
+.plan-edit-row { display: flex; flex-direction: column; gap: 0.2rem; }
+.plan-edit-label { color: var(--muted); font-size: calc(0.84rem * var(--t)); }
+.plan-edit-row .act-form input.is-wide { width: calc(14rem * var(--t)); max-width: 100%; }
+.plan-edit-note { color: var(--muted); font-size: calc(0.86rem * var(--t)); }
+.plan-edit-check { display: inline-flex; align-items: center; gap: 0.25rem; font-size: calc(0.88rem * var(--t)); }
+.act-form .plan-edit-check input { width: auto; margin: 0; }
 
 /* FAMILY (M8b). */
 .family-list { list-style: none; margin: 0.3rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }

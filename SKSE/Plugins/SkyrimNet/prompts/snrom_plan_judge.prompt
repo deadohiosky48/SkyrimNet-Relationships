@@ -1,0 +1,48 @@
+[ system ]
+{# ══════════════════════════════════════════════════════════════════════════
+   THE PLANNER HEARD (2.5, wpm85; native/src/PlanJudge.cpp). A conversation
+   with the hired wedding planner, judged once the planner has answered: what
+   did it settle? The answer is recorded as the planner's own choices, beside
+   the Wedding actions, which a reply often fails to choose.
+   Rendered with plan_betrothed, plan_planner, plan_player, plan_now (the
+   plan as it stands; WeddingPlan::ForPrompt), plan_earlier (lines already
+   judged, as context) and plan_lines (the new ones). [ system ] and
+   [ user ] markers are required: without them the messages array is empty.
+   ══════════════════════════════════════════════════════════════════════════ #}
+You read part of a conversation in Skyrim between {{ plan_player }}, who is engaged to {{ plan_betrothed }}, and {{ plan_planner }}, the wedding planner they hired. You list what the NEW lines settled about the wedding, so it can be written into the plan.
+
+Settled means agreed: {{ plan_player }} or {{ plan_betrothed }} chose it and the planner went along with it, or the planner proposed it and one of them agreed. Not settled: something only asked about, floated, wondered about, put off until later ("we'll decide that later", "once we pick the venue"), or refused. Anything settled only in the EARLIER lines is not listed again.
+
+Write one line for each thing settled, in this form and nothing else:
+DAY: the day as it was said - a date ("the 4th of Sun's Height"), a weekday ("next Loredas") or how far off ("in two days", "tomorrow")
+TIME: morning, noon, afternoon, evening, dusk or night
+PLACE: where, as a proper name
+NEAR: what the place is by (the temple, hall, inn or town nearest it), when that was said
+OFFICIANT: the name of the priest, priestess or jarl who will marry them
+INVITE_THEIRS: guests invited as {{ plan_betrothed }}'s, by name, separated by commas
+INVITE_YOURS: guests invited as {{ plan_player }}'s, by name, separated by commas
+INVITE: guests invited whose side was not said, separated by commas
+UNINVITE: guests taken off the list, separated by commas
+CEREMONY: address=yes|no, reading=yes|no, rings=yes|no, kiss=yes|no
+THEIR_RING: style=slim|wide, metal=gold|silver|ebony
+YOUR_RING: style=slim|wide, metal=gold|silver|ebony
+OUTFIT: yes - only when {{ plan_betrothed }} will wear to the wedding what they are wearing now
+
+Rules:
+- Names exactly as they were said, relations too ("my brother", "Olfina's mother").
+- CEREMONY only when the parts were chosen. The vows are always the couple's own and never a part. Once they choose, a part they did not name is no: "our vows, the rings and a kiss" is address=no, reading=no, rings=yes, kiss=yes.
+- THEIR_RING is {{ plan_betrothed }}'s wedding ring, YOUR_RING is {{ plan_player }}'s. Give a style only when it was said of THAT ring: slim when it is slim, braided, or joined to or matching that person's own engagement ring; wide when it is wide, plain or broad. A ring said to match the other one's says nothing of its style. Leave out what was not said: "style=, metal=silver" is not written; write "metal=silver".
+- If nothing was settled, write exactly: NOTHING
+
+[ user ]
+The plan as it stands: {% if plan_now.day != "" %}the day {{ plan_now.day }}{% else %}no day yet{% endif %}; {% if plan_now.place != "" %}the place {{ plan_now.place }}{% else %}no place yet{% endif %}; {% if plan_now.officiant != "" %}{{ plan_now.officiant }} will marry them{% else %}no one chosen to marry them{% endif %}; guests: {% if length(plan_now.guests) > 0 %}{{ join(plan_now.guests, ", ") }}{% else %}none yet{% endif %}; {{ plan_betrothed }}'s ring {{ plan_now.theirRing.style }}{% if plan_now.theirRing.metal != "" %}, {{ plan_now.theirRing.metal }}{% endif %}; {{ plan_player }}'s ring {{ plan_now.yourRing.style }}{% if plan_now.yourRing.metal != "" %}, {{ plan_now.yourRing.metal }}{% endif %}.
+{% if length(plan_earlier) > 0 %}
+
+EARLIER (already recorded; context only):
+{% for l in plan_earlier %}{{ l }}
+{% endfor %}{% endif %}
+
+NEW:
+{% for l in plan_lines %}{{ l }}
+{% endfor %}
+What did the NEW lines settle? One line each, in the form given, or NOTHING.

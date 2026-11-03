@@ -235,6 +235,10 @@ namespace SNRom::WeddingPlan {
     // How many stay; 0 for none (let them go at once). Main thread.
     std::int32_t BeginReception(std::int32_t a_betrothed);
     bool SetParts(std::int32_t a_betrothed, std::uint32_t a_parts);
+    // A ring's style as the wedding will make it: chosen, or the usual one -
+    // the wide band for a man, the slim set for a woman (2026-11-03). -1 with
+    // no plan. a_theirs: the betrothed's ring, else the player's.
+    std::int32_t RingStyle(std::int32_t a_betrothed, bool a_theirs);
     // Each -1 left as it is.
     bool SetRings(std::int32_t a_betrothed, std::int32_t a_yourStyle, std::int32_t a_yourMetal,
                   std::int32_t a_theirStyle, std::int32_t a_theirMetal);
@@ -262,6 +266,9 @@ namespace SNRom::WeddingPlan {
     nlohmann::json ForPrompt(std::int32_t a_betrothed);
     // Every plan a_officiant agreed to officiate, for get_officiant.
     nlohmann::json OfficiatingFor(std::uint32_t a_officiant);
+    // The betrothed whose wedding a_planner was hired to plan and is still
+    // being planned; 0 for none (PlanJudge, 2026-11-03).
+    std::uint32_t PlannedBy(std::uint32_t a_planner);
     // The snapshot's plan (snapshot.schema.json, marriage.plan); null for none.
     nlohmann::json ForSnapshot(std::int32_t a_betrothed);
 

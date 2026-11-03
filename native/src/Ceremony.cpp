@@ -6,6 +6,7 @@
 
 #include "Marriage.h"
 #include "Notices.h"
+#include "PlanJudge.h"
 #include "WeddingPlan.h"
 
 #include <algorithm>
@@ -1040,7 +1041,11 @@ namespace SNRom::Ceremony {
                     g_recent.pop_front();
                 }
             }
-            SKSE::GetTaskInterface()->AddTask([speaker, target, line]() { Heard(speaker, target, line); });
+            // The planner hears the same lines (PlanJudge, 2026-11-03).
+            SKSE::GetTaskInterface()->AddTask([speaker, target, line]() {
+                Heard(speaker, target, line);
+                PlanJudge::Heard(speaker, target, line);
+            });
         }
 
         bool Here(RE::FormID a_id, RE::PlayerCharacter* a_player) {

@@ -15,6 +15,7 @@
 #include "Hotkey.h"
 #include "Notices.h"
 #include "Officiant.h"
+#include "PlanJudge.h"
 #include "WeddingPlan.h"
 #include "RingCatalog.h"
 #include "Settings.h"
@@ -468,6 +469,22 @@ namespace SNRom::Natives {
         bool MarasInstalled(RE::StaticFunctionTag*) {
             return Marriage::MarasInstalled();
         }
+        // VERSION 37: the planner heard (PlanJudge.h).
+        void PlanJudgeStart(RE::StaticFunctionTag*, std::string a_variant) {
+            PlanJudge::SetVariant(std::move(a_variant));
+        }
+        std::string PlanHeardField(RE::StaticFunctionTag*, std::int32_t a_token, std::string a_key) {
+            return PlanJudge::Field(a_token, a_key);
+        }
+        void PlanHeardDone(RE::StaticFunctionTag*, std::int32_t a_token) {
+            PlanJudge::Forget(a_token);
+        }
+        // VERSION 37: the day by hand, from the dashboard: days from today and
+        // the hour, each -1 left as it is.
+        bool PlanSetDayAt(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::int32_t a_days, std::int32_t a_hour) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id && WeddingPlan::SetDay(id, a_days, a_hour);
+        }
         bool CeremonyPlanned(RE::StaticFunctionTag*) {
             return Ceremony::Planned();
         }
@@ -705,9 +722,11 @@ namespace SNRom::Natives {
             if (!plan) {
                 return -1;
             }
-            // 0 their metal, 1 your metal, 2 your style, 3 their style.
+            // 0 their metal, 1 your metal, 2 your style, 3 their style. A style
+            // nobody chose is the usual one for the wearer (v37, 2026-11-03).
+            const auto id = FormIdOfActor(a_betrothed);
             return a_which == 0 ? plan->theirMetal : a_which == 1 ? plan->yourMetal :
-                   a_which == 2 ? plan->yourStyle : plan->theirStyle;
+                   a_which == 2 ? WeddingPlan::RingStyle(id, false) : WeddingPlan::RingStyle(id, true);
         }
         RE::Actor* CeremonyOfficiant(RE::StaticFunctionTag*) {
             return Ceremony::Officiant();
@@ -1073,6 +1092,10 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("CeremonyPlanned", kScript, CeremonyPlanned, true);
             a_vm->RegisterFunction("SetMarasOwns", kScript, SetMarasOwns, true);
             a_vm->RegisterFunction("MarasInstalled", kScript, MarasInstalled, true);
+            a_vm->RegisterFunction("PlanJudgeStart", kScript, PlanJudgeStart, true);
+            a_vm->RegisterFunction("PlanHeardField", kScript, PlanHeardField, true);
+            a_vm->RegisterFunction("PlanHeardDone", kScript, PlanHeardDone, true);
+            a_vm->RegisterFunction("PlanSetDayAt", kScript, PlanSetDayAt, true);
             a_vm->RegisterFunction("IsWeddingPlanner", kScript, IsWeddingPlanner, true);
             a_vm->RegisterFunction("PersonNamed", kScript, PersonNamed);
             a_vm->RegisterFunction("GuestsNamed", kScript, GuestsNamed);
@@ -1154,7 +1177,7 @@ namespace SNRom::Natives {
                             "PlanGuests, PlanPlace, PlanOutfit, PlanParts, PlanRing, RingWeddingOfMetal, "
                             "PlanSetFindable, PlanNear, PlanFindable, PlanTravelTo, BringToWedding, PlanMark, PlanSettleLayout, "
                             "PlanMarked, PlanGuestSide, PlanSideOf, PlanSideNamed, GuestSideOf, PlanSetAnchor, WeddingLetGo, "
-                            "WeddingPlaces, WeddingPlacesClear, PlanToday, WeddingReception, MarasInstalled",
+                            "WeddingPlaces, WeddingPlacesClear, PlanToday, WeddingReception, MarasInstalled, PlanJudgeStart, PlanHeardField, PlanHeardDone, PlanSetDayAt",
                             kScript, kVersion);
             return true;
         });

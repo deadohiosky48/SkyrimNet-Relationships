@@ -140,6 +140,36 @@
 
     // One function per op, each shaped like the Papyrus it stands in for.
     var ops = {
+      // wpm85: the plan by hand (SNRom_Bridge.EditWeddingPlanByHand), roughly.
+      EditWeddingPlan: function (b, args, text) {
+        var pl = b.marriage && b.marriage.plan;
+        if (!pl) return [true, "There is no wedding to plan with them."];
+        var SIDES = ["theirs", "yours", "both"];
+        var METALS = ["gold", "silver", "ebony"];
+        var what = args[0];
+        if (what === 1) { if (args[1] >= 0) pl.day = Math.floor(state.generatedAt) + args[1]; if (args[2] >= 0) pl.hour = args[2]; }
+        else if (what === 2) pl.place = text;
+        else if (what === 3) pl.near = text;
+        else if (what === 4) pl.officiant = text;
+        else if (what === 5) text.split(",").map(function (n) { return n.trim(); }).filter(Boolean).forEach(function (n) {
+          if (pl.guests.indexOf(n) < 0) pl.guests.push(n);
+          pl.guestSides = (pl.guestSides || []).filter(function (g) { return g.name !== n; });
+          pl.guestSides.push({ name: n, side: SIDES[args[1]] || "" });
+        });
+        else if (what === 6) { pl.guests = pl.guests.filter(function (n) { return n !== text; }); pl.guestSides = (pl.guestSides || []).filter(function (g) { return g.name !== text; }); }
+        else if (what === 7) (pl.guestSides || []).forEach(function (g) { if (g.name === text) g.side = SIDES[args[1]] || ""; });
+        else if (what === 8) pl.parts = { address: !!(args[1] & 1), reading: !!(args[1] & 2), rings: !!(args[1] & 4), kiss: !!(args[1] & 8) };
+        else if (what === 9) {
+          if (args[1] >= 0) pl.yourRing = { style: args[1], chosen: true, metal: pl.yourRing.metal };
+          if (args[2] >= 0) pl.yourRing.metal = METALS[args[2]];
+          if (args[3] >= 0) pl.theirRing = { style: args[3], chosen: true, metal: pl.theirRing.metal };
+          if (args[4] >= 0) pl.theirRing.metal = METALS[args[4]];
+        }
+        else if (what === 10) pl.day = null;
+        else if (what === 11) pl.outfit = true;
+        later(80, pushSnapshot);
+        return [true, "The wedding plan is changed."];
+      },
       ReseedActor: function (b) {
         // No follow requirement from 1.9: the points are Relationships' own
         // (WP4), so a re-read lands wherever they are.
@@ -300,7 +330,7 @@
       if (!ops[op]) return [false, "Unknown operation " + op + "."];
       var b = bondOf(p.subject);
       if (!b) return [false, "Nobody with that form id is on the roster."];
-      return ops[op](b, p.args || []);
+      return ops[op](b, p.args || [], p.text || "");
     }
 
     function send(envelope) {

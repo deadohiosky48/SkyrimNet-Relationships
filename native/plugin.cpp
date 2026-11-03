@@ -9,6 +9,7 @@
 #include "src/Hotkey.h"
 #include "src/L10n.h"
 #include "src/Marriage.h"
+#include "src/PlanJudge.h"
 #include "src/Natives.h"
 #include "src/Notices.h"
 #include "src/Officiant.h"
@@ -64,6 +65,7 @@ namespace {
             SNRom::Family::Index();
             SNRom::WeddingPlan::Start();
             SNRom::Ceremony::Register();
+            SNRom::PlanJudge::Register();
             SNRom::RingCatalog::StockJewelers();
             break;
         // Positions are real once a save has loaded: who is here now.

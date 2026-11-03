@@ -528,6 +528,11 @@ Function RegisterEvents()
     RegisterForModEvent("SNRom_WeddingRecall", "OnWeddingRecall")
     ; wpm65: each one come to their place when it began.
     RegisterForModEvent("SNRom_WeddingInPlace", "OnWeddingInPlace")
+    ; wpm85: the planner heard (PlanJudge.h), judged with the ceremony's variant.
+    RegisterForModEvent("SNRom_PlanHeard", "OnPlanHeard")
+    If nativesNow >= 37
+        SNRom_Native.PlanJudgeStart(VariantName())
+    EndIf
     ; SkyrimNetRelationships.dll asks for the roster every time the dashboard
     ; opens (OnDashboardRefresh). Without the DLL it never fires, and this costs
     ; nothing.
@@ -5461,8 +5466,18 @@ Function WeddingRingFor(Actor akWearer, Actor akSpouse, Bool abSpouseWears, Int 
     If metal < 0
         metal = 0
     EndIf
+    ; THE USUAL RING (the author, 2026-11-03): with no style chosen - an
+    ; elopement, or a plan that never said - a man wears the wide band and a
+    ; woman the slim set. A plan's own reading (PlanRing) already applies it.
+    Int style = aiStyle
+    If style < 0
+        style = 1
+        If akWearer.GetActorBase().GetSex() == 1
+            style = 0
+        EndIf
+    EndIf
     Form ring = None
-    If aiStyle == 1
+    If style == 1
         ring = SNRom_Native.RingBand(metal, True)
     ElseIf engaged
         ring = SNRom_Native.RingWeddingOfMetal(metal)
@@ -5480,7 +5495,7 @@ Function WeddingRingFor(Actor akWearer, Actor akSpouse, Bool abSpouseWears, Int 
     ; joined to the engagement ring - is the one the giver carries, else one
     ; the wearer already holds; only when neither has it is one made, so the
     ; wedding never fails for a band left at home, and never leaves a spare.
-    Form band = SNRom_Native.RingBand(metal, aiStyle == 1)
+    Form band = SNRom_Native.RingBand(metal, style == 1)
     Actor giver = akSpouse
     If abSpouseWears
         giver = player
@@ -5491,7 +5506,7 @@ Function WeddingRingFor(Actor akWearer, Actor akSpouse, Bool abSpouseWears, Int 
     ElseIf band != None && akWearer.GetItemCount(band) > 0
         source = akWearer
     EndIf
-    If engaged && aiStyle != 1
+    If engaged && style != 1
         ; The engagement ring becomes the wedding ring: its band joined to it.
         akWearer.RemoveItem(recorded, 1, True)
     ElseIf engaged
@@ -6134,10 +6149,190 @@ Function PlanNoted(Actor akBetrothed, String asWhat)
     { One part of the plan agreed: logged, and the dashboard and the read API
       told. The prompts read the plan as it stands, so nothing is kept as an
       event that a later change would make untrue. }
-    Diag(LOG_INFO(), "Wedding plan for " + akBetrothed.GetDisplayName() + ": " + asWhat + \
+    String how = ""
+    If _planHeard
+        how = " (heard)"
+    ElseIf _planByHand
+        how = " (by hand)"
+    EndIf
+    Diag(LOG_INFO(), "Wedding plan for " + akBetrothed.GetDisplayName() + ": " + asWhat + how + \
         " Still open: [" + SNRom_Native.PlanOpen(akBetrothed) + "].")
     ApiTouch(akBetrothed)
 EndFunction
+
+Bool _planHeard = False     ; recording what the judge heard (OnPlanHeard)
+Bool _planByHand = False    ; recording an edit from the dashboard (EditWeddingPlanByHand)
+
+String Function EditWeddingPlanByHand(Actor akBetrothed, Int[] aiArgs, String asText)
+    { THE PLAN BY HAND (wpm85; the author, 2026-11-03: "allowing the user to
+      edit the wedding plan in the UI as a last resort. I think there's always
+      going to be some risk that the right actions don't get taken"). One
+      change from the betrothed's page, made as the betrothed would make it -
+      through the same functions the Wedding actions call, so the same rules
+      hold and the same notes are kept - and logged "(by hand)".
+
+      aiArgs[0] is what changes; the rest and asText its value:
+        1  the day: aiArgs[1] days from today, aiArgs[2] the hour (-1 keeps it)
+        2  the place, asText
+        3  what the place is by, asText
+        4  who marries them, asText (a priest, priestess or jarl, by name)
+        5  invite asText (names, separated by commas); aiArgs[1] their side:
+           0 the betrothed's, 1 the player's, 2 both, -1 not known
+        6  take asText off the guest list
+        7  one guest's side: asText the guest, aiArgs[1] as for 5
+        8  the ceremony's parts: aiArgs[1] the bits (1 address, 2 reading,
+           4 rings, 8 kiss)
+        9  the rings: aiArgs[1..4] the player's style and metal, then theirs
+           (style 0 slim, 1 wide; metal 0 gold, 1 silver, 2 ebony; -1 keeps)
+        10 the day put off (the rest kept)
+        11 what they wear now, kept for the wedding }
+    If akBetrothed == None || _dashNatives < 37 || OurMarriage(akBetrothed) != MARRIAGE_ENGAGED()
+        Return Tr("plan.edit.notEngaged", "There is no wedding to plan with them.")
+    EndIf
+    String whoName = akBetrothed.GetDisplayName()
+    String playerName = Game.GetPlayer().GetDisplayName()
+    Int what = aiArgs[0]
+    String text = SNRom_Decorators.Trim(asText)
+    String answer = Tr("plan.edit.done", "The wedding plan is changed.")
+    _planByHand = True
+    If what == 1 && aiArgs.Length >= 3
+        If SNRom_Native.PlanSetDayAt(akBetrothed, aiArgs[1], aiArgs[2])
+            PlanNoted(akBetrothed, "the day set: " + aiArgs[1] + " days from today, hour " + aiArgs[2] + ".")
+        EndIf
+    ElseIf what == 2 || what == 3
+        If text == "" && what == 2
+            answer = Tr("plan.edit.needPlace", "Write where the wedding is to be.")
+        ElseIf what == 2
+            PlanWeddingPlace(akBetrothed, "", text, "")
+        Else
+            PlanWeddingPlace(akBetrothed, "", "", text)
+        EndIf
+    ElseIf what == 4
+        If SNRom_Native.OfficiantNamed(text) == None
+            answer = Tr("plan.edit.noOfficiant", "No priest, priestess or jarl called {0} was found.", text)
+        Else
+            ChooseWeddingOfficiant(akBetrothed, "", text)
+        EndIf
+    ElseIf what == 5 && text != ""
+        PlanWeddingGuests(akBetrothed, "", text, "", SideWord(akBetrothed, aiArgs, playerName))
+    ElseIf what == 6 && text != ""
+        PlanWeddingGuests(akBetrothed, "", "", text, "")
+    ElseIf what == 7 && text != "" && aiArgs.Length >= 2
+        If aiArgs[1] == 0
+            PlanWeddingSides(akBetrothed, "", text, "", "")
+        ElseIf aiArgs[1] == 1
+            PlanWeddingSides(akBetrothed, "", "", text, "")
+        ElseIf aiArgs[1] == 2
+            PlanWeddingSides(akBetrothed, "", "", "", text)
+        EndIf
+    ElseIf what == 8 && aiArgs.Length >= 2
+        If SNRom_Native.PlanSetParts(akBetrothed, aiArgs[1])
+            PlanNoted(akBetrothed, "the ceremony's parts set (" + aiArgs[1] + ").")
+        EndIf
+    ElseIf what == 9 && aiArgs.Length >= 5
+        If SNRom_Native.PlanSetRings(akBetrothed, aiArgs[1], aiArgs[2], aiArgs[3], aiArgs[4])
+            PlanNoted(akBetrothed, "the rings chosen: the player's style " + aiArgs[1] + " metal " + aiArgs[2] + \
+                ", theirs style " + aiArgs[3] + " metal " + aiArgs[4] + ".")
+        EndIf
+    ElseIf what == 10
+        PostponeWedding(akBetrothed, "")
+    ElseIf what == 11
+        SaveWeddingOutfit(akBetrothed)
+    Else
+        answer = Tr("plan.edit.unknown", "That change could not be made.")
+    EndIf
+    _planByHand = False
+    Return answer
+EndFunction
+
+String Function SideWord(Actor akBetrothed, Int[] aiArgs, String asPlayerName)
+    { A side as PlanSideNamed reads it: the betrothed's name, the player's, or
+      "both"; empty when not known. }
+    If aiArgs.Length < 2
+        Return ""
+    ElseIf aiArgs[1] == 0
+        Return akBetrothed.GetDisplayName()
+    ElseIf aiArgs[1] == 1
+        Return asPlayerName
+    ElseIf aiArgs[1] == 2
+        Return "both"
+    EndIf
+    Return ""
+EndFunction
+
+Event OnPlanHeard(String asEventName, String asToken, Float afToken, Form akSender)
+    { THE PLANNER HEARD (wpm85; the author, 2026-11-03: "Build the backstop").
+      What a conversation with the hired planner settled, as judged by
+      snrom_plan_judge (native/src/PlanJudge.cpp), recorded through the same
+      functions the Wedding actions call, as the planner: MayPlan, the names
+      read as said, the notes. What an action already recorded changes
+      nothing the second time. }
+    Int token = afToken as Int
+    Actor betrothed = akSender as Actor
+    If betrothed == None || !_ready || _dashNatives < 37 || OurMarriage(betrothed) != MARRIAGE_ENGAGED()
+        SNRom_Native.PlanHeardDone(token)
+        Return
+    EndIf
+    Actor planner = SNRom_Native.PlanPlanner(betrothed)
+    If planner == None
+        SNRom_Native.PlanHeardDone(token)
+        Return
+    EndIf
+    String forName = betrothed.GetDisplayName()
+    String day = SNRom_Native.PlanHeardField(token, "DAY")
+    String time = SNRom_Native.PlanHeardField(token, "TIME")
+    String place = SNRom_Native.PlanHeardField(token, "PLACE")
+    String near = SNRom_Native.PlanHeardField(token, "NEAR")
+    String officiant = SNRom_Native.PlanHeardField(token, "OFFICIANT")
+    String theirs = SNRom_Native.PlanHeardField(token, "INVITE_THEIRS")
+    String yours = SNRom_Native.PlanHeardField(token, "INVITE_YOURS")
+    String unsided = SNRom_Native.PlanHeardField(token, "INVITE")
+    String uninvite = SNRom_Native.PlanHeardField(token, "UNINVITE")
+    String address = SNRom_Native.PlanHeardField(token, "ADDRESS")
+    String reading = SNRom_Native.PlanHeardField(token, "READING")
+    String rings = SNRom_Native.PlanHeardField(token, "RINGS")
+    String kiss = SNRom_Native.PlanHeardField(token, "KISS")
+    String theirStyle = SNRom_Native.PlanHeardField(token, "THEIR_STYLE")
+    String theirMetal = SNRom_Native.PlanHeardField(token, "THEIR_METAL")
+    String yourStyle = SNRom_Native.PlanHeardField(token, "YOUR_STYLE")
+    String yourMetal = SNRom_Native.PlanHeardField(token, "YOUR_METAL")
+    String wearing = SNRom_Native.PlanHeardField(token, "OUTFIT")
+    SNRom_Native.PlanHeardDone(token)
+    _planHeard = True
+    If day != "" || time != ""
+        PlanWeddingDay(planner, forName, day, time)
+    EndIf
+    If place != "" || near != ""
+        PlanWeddingPlace(planner, forName, place, near)
+    EndIf
+    If officiant != ""
+        ChooseWeddingOfficiant(planner, forName, officiant)
+    EndIf
+    If theirs != ""
+        PlanWeddingGuests(planner, forName, theirs, "", forName)
+    EndIf
+    If yours != ""
+        PlanWeddingGuests(planner, forName, yours, "", Game.GetPlayer().GetDisplayName())
+    EndIf
+    If unsided != ""
+        PlanWeddingGuests(planner, forName, unsided, "", "")
+    EndIf
+    If uninvite != ""
+        PlanWeddingGuests(planner, forName, "", uninvite, "")
+    EndIf
+    ; The parts only once all four were judged: one said alone is not a choice.
+    If address != "" && reading != "" && rings != "" && kiss != ""
+        PlanWeddingCeremony(planner, forName, address, reading, rings, kiss)
+    EndIf
+    If theirStyle != "" || theirMetal != "" || yourStyle != "" || yourMetal != ""
+        PlanWeddingRings(planner, forName, yourStyle, yourMetal, theirStyle, theirMetal)
+    EndIf
+    ; What they wear now: only while they are here to be seen in it.
+    If YesWord(wearing) && betrothed.Is3DLoaded() && betrothed.GetDistance(Game.GetPlayer()) < 1500.0
+        SaveWeddingOutfit(betrothed)
+    EndIf
+    _planHeard = False
+EndEvent
 
 Bool Function YesWord(String asText)
     { "yes", "true", "1", "y", "on", "keep": yes. Action parameters arrive as
@@ -9396,6 +9591,13 @@ Event OnDashboardAction(String asEventName, String asOp, Float afRequestId, Form
         answer = SetMaraExceptionByHand(granted)
     ElseIf asOp == "WeddingReport"
         answer = WeddingPrototypeReport()
+    ElseIf asOp == "EditWeddingPlan"
+        Int[] planArgs = SNRom_Native.ActionArgs(requestId)
+        If planArgs.Length < 1
+            SNRom_Native.ActionDone(requestId, False, "Changing the wedding plan needs what to change.")
+            Return
+        EndIf
+        answer = EditWeddingPlanByHand(who, planArgs, SNRom_Native.ActionText(requestId))
     Else
         SNRom_Native.ActionDone(requestId, False, "This version of the scripts has no operation " + asOp + ".")
         Return

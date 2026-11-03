@@ -109,6 +109,22 @@ namespace SNRom::WeddingPlan {
             return name && *name ? name : "";
         }
 
+        // THE USUAL RING (the author, 2026-11-03): "Default to male characters
+        // using the wide wedding band and female characters using the slim
+        // engagement/wedding band combo unless the user explicitly expresses
+        // otherwise." A style nobody chose is this one, everywhere the plan
+        // is read: the prompts, the dashboard, the wedding.
+        std::int32_t UsualStyle(std::uint32_t a_formId) {
+            auto* form = a_formId ? RE::TESForm::LookupByID(a_formId) : nullptr;
+            auto* actor = form ? form->As<RE::Actor>() : nullptr;
+            auto* base = actor ? actor->GetActorBase() : nullptr;
+            return base && base->GetSex() == RE::SEX::kFemale ? kSlim : kWide;
+        }
+
+        std::int32_t StyleOf(std::int32_t a_chosen, std::uint32_t a_wearer) {
+            return a_chosen >= 0 ? a_chosen : UsualStyle(a_wearer);
+        }
+
         std::string Lower(std::string a_text) {
             for (auto& c : a_text) {
                 c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -1536,6 +1552,15 @@ namespace SNRom::WeddingPlan {
         return changed;
     }
 
+    std::int32_t RingStyle(std::int32_t a_betrothed, bool a_theirs) {
+        const auto plan = Get(a_betrothed);
+        if (!plan) {
+            return -1;
+        }
+        return a_theirs ? StyleOf(plan->theirStyle, static_cast<std::uint32_t>(a_betrothed)) :
+                          StyleOf(plan->yourStyle, 0x14);
+    }
+
     bool SetOutfit(std::int32_t a_betrothed, bool a_saved) {
         const std::scoped_lock lock{ g_lock };
         auto&                  plan = Make(a_betrothed);
@@ -1604,10 +1629,12 @@ namespace SNRom::WeddingPlan {
         if (planner && !(a_plan.settled & kCeremonySettled)) {
             out.emplace_back("ceremony");
         }
-        if (planner && (a_plan.theirStyle < 0 || a_plan.theirMetal < 0)) {
+        // Only the metal is still to talk through: a style nobody chose is the
+        // usual one (UsualStyle).
+        if (planner && a_plan.theirMetal < 0) {
             out.emplace_back("theirRing");
         }
-        if (planner && (a_plan.yourStyle < 0 || a_plan.yourMetal < 0)) {
+        if (planner && a_plan.yourMetal < 0) {
             out.emplace_back("yourRing");
         }
         if (!(a_plan.settled & kOutfitSettled)) {
@@ -1650,8 +1677,12 @@ namespace SNRom::WeddingPlan {
             }
         }
         const float now = Now();
-        const auto  ring = [](std::int32_t a_style, std::int32_t a_metal) {
-            return json{ { "style", a_style == kWide ? "the wide plain band" : a_style == kSlim ? "the slim set" : "" },
+        // The style as it will be: chosen, or the usual one for the wearer,
+        // and which (0332 says the usual one is theirs unless they say so).
+        const auto  ring = [](std::int32_t a_chosen, std::int32_t a_metal, std::uint32_t a_wearer) {
+            const auto style = StyleOf(a_chosen, a_wearer);
+            return json{ { "style", style == kWide ? "the wide plain band" : "the slim set" },
+                         { "usual", a_chosen < 0 ? 1 : 0 },
                          { "metal", MetalWord(a_metal) } };
         };
         const auto in = plan->day >= 0.0f ? static_cast<std::int32_t>(plan->day - std::floor(now)) : -1;
@@ -1672,8 +1703,8 @@ namespace SNRom::WeddingPlan {
                  { "reading", (plan->parts & kReading) ? 1 : 0 },
                  { "rings", (plan->parts & kRings) ? 1 : 0 },
                  { "kiss", (plan->parts & kKiss) ? 1 : 0 },
-                 { "theirRing", ring(plan->theirStyle, plan->theirMetal) },
-                 { "yourRing", ring(plan->yourStyle, plan->yourMetal) },
+                 { "theirRing", ring(plan->theirStyle, plan->theirMetal, static_cast<std::uint32_t>(a_betrothed)) },
+                 { "yourRing", ring(plan->yourStyle, plan->yourMetal, 0x14) },
                  { "outfit", plan->outfit ? 1 : 0 },
                  { "open", Open(*plan) },
                  { "unsettled", Unsettled(*plan) },
@@ -1681,6 +1712,19 @@ namespace SNRom::WeddingPlan {
                  { "soon", plan->day >= 0.0f && When(*plan) - now <= 1.5f ? 1 : 0 },
                  { "missed", plan->missedDay >= 0.0f ? 1 : 0 },
                  { "lapsed", plan->lapsedDay >= 0.0f && plan->day < 0.0f ? 1 : 0 } };
+    }
+
+    std::uint32_t PlannedBy(std::uint32_t a_planner) {
+        if (!a_planner) {
+            return 0;
+        }
+        const std::scoped_lock lock{ g_lock };
+        for (const auto& [id, plan] : g_plans) {
+            if (plan.planner == a_planner && plan.status == Status::kPlanning) {
+                return id;
+            }
+        }
+        return 0;
     }
 
     json OfficiatingFor(std::uint32_t a_officiant) {
@@ -1713,11 +1757,17 @@ namespace SNRom::WeddingPlan {
         }
         json guests = json::array();
         json unsided = json::array();
+        // Each guest with their side (2026-11-03), for the page's plan editor.
+        json guestSides = json::array();
         for (const auto guest : plan->guests) {
             if (auto name = NameOf(guest); !name.empty()) {
+                const auto side = plan->sides.contains(guest) ? plan->sides.at(guest) : kSideUnknown;
                 if (!plan->sides.contains(guest)) {
                     unsided.push_back(name);
                 }
+                guestSides.push_back({ { "name", name },
+                                       { "side", side == kSideTheirs ? "theirs" : side == kSideYours ? "yours" :
+                                                 side == kSideBoth   ? "both" : "" } });
                 guests.push_back(std::move(name));
             }
         }
@@ -1741,8 +1791,13 @@ namespace SNRom::WeddingPlan {
                               { "reading", (plan->parts & kReading) != 0 },
                               { "rings", (plan->parts & kRings) != 0 },
                               { "kiss", (plan->parts & kKiss) != 0 } } },
-                 { "theirRing", { { "style", plan->theirStyle }, { "metal", MetalWord(plan->theirMetal) } } },
-                 { "yourRing", { { "style", plan->yourStyle }, { "metal", MetalWord(plan->yourMetal) } } },
+                 { "theirRing", { { "style", StyleOf(plan->theirStyle, static_cast<std::uint32_t>(a_betrothed)) },
+                                  { "chosen", plan->theirStyle >= 0 },
+                                  { "metal", MetalWord(plan->theirMetal) } } },
+                 { "yourRing", { { "style", StyleOf(plan->yourStyle, 0x14) },
+                                 { "chosen", plan->yourStyle >= 0 },
+                                 { "metal", MetalWord(plan->yourMetal) } } },
+                 { "guestSides", guestSides },
                  { "outfit", plan->outfit },
                  { "status", plan->status == Status::kUnderWay ? "underWay" : "planning" },
                  { "open", Open(*plan) },

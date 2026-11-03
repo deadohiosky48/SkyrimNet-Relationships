@@ -158,6 +158,10 @@ namespace SNRom::Dashboard {
                 1 },
             Op{ "SetMaraException", "SNRom_Bridge.SetMaraExceptionByHand(Int)", OpScope::kPlaythrough, true, {}, 1, 1 },
             Op{ "WeddingReport", "SNRom_Bridge.WeddingPrototypeReport()", OpScope::kPlaythrough, true },
+            // wpm85: the wedding plan by hand, a last resort when what was
+            // agreed in conversation was not recorded. Not a developer tool.
+            Op{ "EditWeddingPlan", "SNRom_Bridge.EditWeddingPlanByHand(Actor, Int[], String)", OpScope::kBond, false,
+                {}, 1, 5, true, {}, true },
             // Runs the real Papyrus rules for every bond against the display
             // copies (Display.h; CheckBond below). About a minute with 120
             // bonds: it pays the old per-bond cost on purpose.

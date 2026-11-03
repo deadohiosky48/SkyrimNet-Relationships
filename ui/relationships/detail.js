@@ -522,6 +522,9 @@
     function ringWords(r) {
       if (!r || (r.style < 0 && !r.metal)) return null;
       var style = r.style === 1 ? t("plan.ringWide", "wide band") : r.style === 0 ? t("plan.ringSlim", "slim set") : "";
+      // wpm85: a style nobody chose is the usual one, the wide band for a man
+      // and the slim set for a woman, and is shown as such.
+      if (style && r.chosen === false) style = t("plan.ringUsual", "{0} (the usual)", style);
       return [style, r.metal].filter(function (x) { return x; }).join(", ");
     }
     var rings = el("span", "plan-rings");
@@ -551,7 +554,154 @@
     if (p.missedDay !== null && p.missedDay !== undefined) {
       wrap.appendChild(el("p", "depth-note", t("plan.missedNote", "You did not come on the day you had set ({0}).", L.daysAgo(p.missedDay, snap.generatedAt))));
     }
+    if (!today) wrap.appendChild(this.planEditor(p, b, snap));
     return wrap;
+  };
+
+  // THE PLAN BY HAND (wpm85; the author, 2026-11-03: "allowing the user to
+  // edit the wedding plan in the UI as a last resort"). What was agreed in
+  // conversation is recorded by the planner's actions and by the judge that
+  // hears them (PlanJudge); when neither took, it is set here. Behind a
+  // button, so the plan reads as it was agreed and this is the exception.
+  // Each row changes one thing (SNRom_Bridge.EditWeddingPlanByHand).
+  var planEditOpen = null;   // whose plan editor is open (a form id)
+  Detail.prototype.planEditor = function (p, b, snap) {
+    var self = this;
+    var C = UI.calendar;
+    var who = b.subject.name.split(" ")[0];
+    var EDIT = A.byOp("EditWeddingPlan");
+    var box = el("div", "plan-edit");
+    var toggle = el("button", "btn btn-quiet", t("plan.edit.open", "Change the plan by hand"));
+    toggle.type = "button";
+    toggle.setAttribute("aria-expanded", "false");
+    var body = el("div", "plan-edit-body");
+    // Open stays open across the redraw each change brings, for this person.
+    body.hidden = planEditOpen !== b.subject.formId;
+    toggle.setAttribute("aria-expanded", body.hidden ? "false" : "true");
+    toggle.addEventListener("click", function () {
+      body.hidden = !body.hidden;
+      planEditOpen = body.hidden ? null : b.subject.formId;
+      toggle.setAttribute("aria-expanded", body.hidden ? "false" : "true");
+    });
+    box.appendChild(toggle);
+    body.appendChild(el("p", "act-help", t("plan.edit.help", "For when something you agreed with {0} or the planner was not written into the plan. Each change is made as if {0} had agreed to it.", who)));
+    box.appendChild(body);
+
+    function send(args, text, btn) { self.onAction(EDIT, b, { args: args, text: text || "" }, btn); }
+    function button(label, run) {
+      var bt = el("button", "btn", label);
+      bt.type = "button";
+      bt.setAttribute("data-op", "EditWeddingPlan");
+      bt.addEventListener("click", function () { run(bt); });
+      return bt;
+    }
+    function input(value, label) {
+      var i = el("input", "is-wide");
+      i.type = "text";
+      i.value = value || "";
+      i.setAttribute("aria-label", label);
+      return i;
+    }
+    function select(options, current, label) {
+      var sel = el("select");
+      sel.setAttribute("aria-label", label);
+      options.forEach(function (o) {
+        var opt = el("option", null, o[1]);
+        opt.value = String(o[0]);
+        if (String(o[0]) === String(current)) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      return sel;
+    }
+    function row(label, nodes) {
+      var r = el("div", "plan-edit-row");
+      r.appendChild(el("span", "plan-edit-label", label));
+      var f = el("div", "act-form");
+      nodes.forEach(function (n) { f.appendChild(n); });
+      r.appendChild(f);
+      body.appendChild(r);
+    }
+
+    // The day: how many days from today, and the hour.
+    var ahead = p.day !== null && p.day !== undefined ? Math.max(0, Math.floor(p.day) - Math.floor(snap.generatedAt)) : 2;
+    var days = el("input");
+    days.type = "number"; days.min = "0"; days.max = "365"; days.step = "1"; days.value = String(ahead);
+    days.setAttribute("aria-label", t("plan.edit.daysAhead", "Days from today"));
+    var hours = [[-1, t("plan.edit.keepHour", "keep the hour")]];
+    for (var h = 0; h < 24; h++) hours.push([h, C.hourWords(h)]);
+    var hour = select(hours, p.hour >= 0 ? p.hour : 12, t("plan.edit.hour", "Hour"));
+    row(t("plan.edit.day", "The day"), [days, el("span", "plan-edit-note", t("plan.edit.daysFromToday", "days from today, at")), hour,
+      button(t("plan.edit.set", "Set"), function (bt) {
+        send([1, Math.max(0, Math.min(365, parseInt(days.value, 10) || 0)), parseInt(hour.value, 10)], "", bt);
+      }),
+      button(t("plan.edit.postpone", "Put the day off"), function (bt) { send([10], "", bt); })]);
+
+    // The place, and what it is by.
+    var place = input(p.place, t("plan.edit.place", "The place"));
+    row(t("plan.edit.place", "The place"), [place, button(t("plan.edit.set", "Set"), function (bt) { send([2], place.value, bt); })]);
+    var near = input(p.near, t("plan.edit.near", "What it is by"));
+    row(t("plan.edit.near", "What it is by"), [near, button(t("plan.edit.set", "Set"), function (bt) { send([3], near.value, bt); })]);
+
+    // Who marries them: any priest, priestess or jarl, by name.
+    var off = input(p.officiant, t("plan.edit.officiant", "Who marries you"));
+    row(t("plan.edit.officiant", "Who marries you"), [off, button(t("plan.edit.set", "Set"), function (bt) { send([4], off.value, bt); })]);
+
+    // The ceremony's parts; the vows are always theirs.
+    var bits = [[1, "address", t("plan.address", "address")], [2, "reading", t("plan.reading", "reading")],
+      [4, "rings", t("plan.rings", "rings")], [8, "kiss", t("plan.kiss", "kiss")]];
+    var boxes = bits.map(function (bt) {
+      var lab = el("label", "plan-edit-check");
+      var c = el("input");
+      c.type = "checkbox";
+      c.checked = !!(p.parts && p.parts[bt[1]]);
+      lab.appendChild(c);
+      lab.appendChild(document.createTextNode(" " + bt[2]));
+      lab._bit = bt[0]; lab._box = c;
+      return lab;
+    });
+    row(t("plan.ceremony", "Ceremony"), boxes.concat([button(t("plan.edit.set", "Set"), function (bt) {
+      var parts = 0;
+      boxes.forEach(function (lb) { if (lb._box.checked) parts += lb._bit; });
+      send([8, parts], "", bt);
+    })]));
+
+    // The rings: style and metal, theirs and yours.
+    var STYLES = [[0, t("plan.ringSlim", "slim set")], [1, t("plan.ringWide", "wide band")]];
+    var METALS = [[-1, t("plan.edit.noMetal", "metal not chosen")], [0, t("plan.metal.gold", "gold")], [1, t("plan.metal.silver", "silver")], [2, t("plan.metal.ebony", "ebony")]];
+    var METAL_OF = { gold: 0, silver: 1, ebony: 2 };
+    function ringPick(r, label) {
+      var st = select(STYLES, r && r.style >= 0 ? r.style : 0, t("plan.edit.style", "{0}: style", label));
+      var mt = select(METALS, r && r.metal ? METAL_OF[r.metal] : -1, t("plan.edit.metal", "{0}: metal", label));
+      return [st, mt];
+    }
+    var theirs = ringPick(p.theirRing, who);
+    var yours = ringPick(p.yourRing, t("plan.you", "You"));
+    row(t("plan.edit.theirRing", "{0}'s ring", who), theirs);
+    row(t("plan.edit.yourRing", "Your ring"), yours.concat([button(t("plan.edit.setRings", "Set both rings"), function (bt) {
+      send([9, parseInt(yours[0].value, 10), parseInt(yours[1].value, 10), parseInt(theirs[0].value, 10), parseInt(theirs[1].value, 10)], "", bt);
+    })]));
+
+    // The guests: each one's side, or off the list; and more invited.
+    var SIDES = [[-1, t("plan.edit.sideUnknown", "side not known")], [0, t("plan.edit.sideTheirs", "{0}'s", who)],
+      [1, t("plan.edit.sideYours", "yours")], [2, t("plan.edit.sideBoth", "both")]];
+    var SIDE_OF = { theirs: 0, yours: 1, both: 2 };
+    var listed = p.guestSides || (p.guests || []).map(function (n) { return { name: n, side: "" }; });
+    listed.forEach(function (g) {
+      var side = select(SIDES, g.side in SIDE_OF ? SIDE_OF[g.side] : -1, t("plan.edit.sideOf", "{0}: whose guest", g.name));
+      row(g.name, [side,
+        button(t("plan.edit.set", "Set"), function (bt) { if (parseInt(side.value, 10) >= 0) send([7, parseInt(side.value, 10)], g.name, bt); }),
+        button(t("plan.edit.uninvite", "Take off the list"), function (bt) { send([6], g.name, bt); })]);
+    });
+    var more = input("", t("plan.edit.invite", "Invite"));
+    more.placeholder = t("plan.edit.invitePlaceholder", "names, separated by commas");
+    var moreSide = select(SIDES, -1, t("plan.edit.inviteSide", "Whose guests"));
+    row(t("plan.edit.invite", "Invite"), [more, moreSide, button(t("plan.edit.inviteGo", "Invite"), function (bt) {
+      if (more.value.trim()) send([5, parseInt(moreSide.value, 10)], more.value, bt);
+    })]);
+
+    // What they wear: what they have on now, kept for the day.
+    row(t("plan.clothes", "Clothes"), [button(t("plan.edit.outfit", "Keep what {0} wears now", who), function (bt) { send([11], "", bt); })]);
+    return box;
   };
 
   Detail.prototype.actionBlock = function (a, b, busy) {

@@ -6,11 +6,17 @@
 # SNRom_Officiant (every priest, priestess and jarl). Who may change what is
 # checked again in Papyrus (SNRom_Bridge.MayPlan): the betrothed, the planner
 # hired for it, and for the day and the place the officiant who agreed.
+#
+# A STYLE ONLY WHEN SAID OF THAT RING (wpm85). "A silver band to match her
+# engagement ring" and "I'll have a matching wide silver band" came back as
+# both wide: "matching" was read as the style. Unsaid, a man wears the wide
+# band and a woman the slim set (the author, 2026-11-03), so leaving a style
+# empty is never a wrong answer.
 
 customCategory: wedding
 name: WeddingRings
 description: |
-  As the wedding planner, you settle with {{ player.name }} the wedding ring each of the two will wear once married. Each chooses their own, whatever either of them is and whoever gave whom an engagement ring: the slim set (the engagement ring joined to its band, for one who wears an engagement ring; otherwise the slim braided band) or the wide plain band, in gold, silver or ebony. They may choose the same. The rings are made for the wedding.
+  As the wedding planner, you settle with {{ player.name }} the wedding ring each of the two will wear once married. Each chooses their own, whatever either of them is and whoever gave whom an engagement ring: the slim set (the engagement ring joined to its band, for one who wears an engagement ring; otherwise the slim braided band) or the wide plain band, in gold, silver or ebony. They may choose the same. The rings are made for the wedding. Unless one of them says otherwise, a man wears the wide band and a woman the slim set, so a style is only ever set when it is said of that ring.
 
   USE when any of it is chosen, in this conversation; leave empty what was not said.
 
@@ -29,7 +35,7 @@ parameterMapping:
     default: ""
   - type: dynamic
     name: asYourStyle
-    description: "{{ player.name }}'s ring: slim or wide; empty when not said"
+    description: "{{ player.name }}'s ring style, only as said of THIS ring: slim (also: braided, or joined to or matching their own engagement ring) or wide (also: plain, broad). A ring said to match the other one's says nothing of its style. Empty when not said: the usual one is used"
     optional: true
     default: ""
   - type: dynamic
@@ -39,7 +45,7 @@ parameterMapping:
     default: ""
   - type: dynamic
     name: asTheirStyle
-    description: "the ring of the one {{ player.name }} is marrying: slim or wide; empty when not said"
+    description: "the style of the ring of the one {{ player.name }} is marrying, only as said of THIS ring: slim (also: braided, or joined to or matching their engagement ring) or wide (also: plain, broad). A ring said to match the other one's says nothing of its style. Empty when not said: the usual one is used"
     optional: true
     default: ""
   - type: dynamic
