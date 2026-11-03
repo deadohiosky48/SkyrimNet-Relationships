@@ -12,7 +12,7 @@ name: WeddingSetPlace
 description: |
   Where the wedding will be is agreed, or changed: as the one {{ player.name }} is marrying, as the planner hired for it, or as the one who will marry them.
 
-  USE when a place is settled in this conversation, or what it is by is said. Name it as a real place one could walk to: a temple, a hall, an inn, a spot that means something to them. A spot that is not a building or a town (beneath an old tree, a lakeshore, a hilltop) needs what it is by, so the guests can find it.
+  USE when a place is settled in this conversation, or what it is by is said. Name it as a real place one could walk to: a temple, a hall, an inn, a spot that means something to them. A spot that is not a building or a town (beneath an old tree, a lakeshore, a hilltop) needs what it is by, so the guests can find it. When it is right where {{ player.name }} is standing as they say so ("this is the place", "right here", "this spot"), the place is here: it is marked where they stand, and needs nothing else.
 
 questEditorId: SNRom_Quest
 scriptName: SNRom_Bridge
@@ -29,11 +29,13 @@ parameterMapping:
     default: ""
   - type: dynamic
     name: asPlace
-    description: "the place's proper name, e.g. 'Temple of Mara, Riften' or 'Dragonsreach'; add the town when names repeat; empty when only what it is by was said"
+    description: "the place's proper name, e.g. 'Temple of Mara, Riften' or 'Dragonsreach'; add the town when names repeat; 'here' when it is right where {{ player.name }} stands, or 'here: ' and a few words for it ('here: the crag above the valley'); empty when only what it is by was said"
     optional: true
     default: ""
   # A PLACE PEOPLE CAN FIND (seen in play, wpm59): "Under the Gildergreen"
   # was no place SeverActions knew, and everyone sent to it went nowhere.
+  # RIGHT HERE (wpm86): a crag near nothing had no name to give, and the
+  # place was left empty, "by The Reach". 'here' is the spot itself.
   - type: dynamic
     name: asNear
     description: "for a spot that is not a building or a town, the temple, hall, inn or town it is by, e.g. 'Riverwood' or 'Temple of Kynareth'; empty otherwise"

@@ -413,6 +413,7 @@
                         "hour": { "type": "integer", "minimum": -1, "maximum": 23 },
                         "place": { "type": "string" },
                         "near": { "type": "string", "description": "2.5 (wpm60): what the place is by, for a spot no one could find by its own name; empty when not said." },
+                        "spot": { "type": "boolean", "description": "wpm86: the place is a spot chosen where the player stood, marked there; near is the nearest place on the map." },
                         "officiant": { "type": "string", "description": "Who agreed to marry them, by name; empty until one has." },
                         "guests": { "type": "array", "items": { "type": "string" } },
                         "guestSides": { "type": "array", "description": "wpm85: each guest with their side, for the page's plan editor.", "items": { "type": "object", "additionalProperties": false, "required": ["name", "side"], "properties": { "name": { "type": "string" }, "side": { "enum": ["theirs", "yours", "both", ""] } } } },

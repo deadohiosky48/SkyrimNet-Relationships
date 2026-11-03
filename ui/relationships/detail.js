@@ -480,7 +480,9 @@
     when.appendChild(date);
     var where = el("div", "plan-where");
     if (p.day !== null && C.dateWords(snap, p.day)) where.appendChild(el("span", null, L.daysAhead(p.day, snap.generatedAt)));
-    where.appendChild(p.place ? el("span", null, p.near ? t("plan.placeBy", "{0}, by {1}", p.place, p.near) : p.place) : el("span", "is-open", t("plan.noPlace", "no place chosen yet")));
+    // A spot chosen where they stood (wpm86) is named for what it is by.
+    var by = p.near && p.place.indexOf(p.near) < 0;
+    where.appendChild(p.place ? el("span", null, by ? t("plan.placeBy", "{0}, by {1}", p.place, p.near) : p.place) : el("span", "is-open", t("plan.noPlace", "no place chosen yet")));
     when.appendChild(where);
     wrap.appendChild(when);
 
@@ -638,7 +640,12 @@
 
     // The place, and what it is by.
     var place = input(p.place, t("plan.edit.place", "The place"));
-    row(t("plan.edit.place", "The place"), [place, button(t("plan.edit.set", "Set"), function (bt) { send([2], place.value, bt); })]);
+    row(t("plan.edit.place", "The place"), [place, button(t("plan.edit.set", "Set"), function (bt) { send([2], place.value, bt); }),
+      // wpm86: the spot itself, for a place with no name to give it; named
+      // by what is written, else for the nearest place on the map.
+      button(t("plan.edit.placeHere", "Right here, where you stand"), function (bt) {
+        send([12], place.value && place.value !== p.place ? place.value : "", bt);
+      })]);
     var near = input(p.near, t("plan.edit.near", "What it is by"));
     row(t("plan.edit.near", "What it is by"), [near, button(t("plan.edit.set", "Set"), function (bt) { send([3], near.value, bt); })]);
 
@@ -697,6 +704,14 @@
     var moreSide = select(SIDES, -1, t("plan.edit.inviteSide", "Whose guests"));
     row(t("plan.edit.invite", "Invite"), [more, moreSide, button(t("plan.edit.inviteGo", "Invite"), function (bt) {
       if (more.value.trim()) send([5, parseInt(moreSide.value, 10)], more.value, bt);
+    })]);
+
+    // Where everyone stands (wpm86): marked where the player stands now.
+    var ROLES = [[0, t("plan.edit.markOfficiant", "who marries you")], [1, t("plan.edit.markYou", "you")],
+      [4, who], [2, t("plan.edit.markTheirs", "{0}'s guests", who)], [3, t("plan.edit.markYours", "your guests")]];
+    var role = select(ROLES, 0, t("plan.edit.markWho", "Who stands here"));
+    row(t("plan.edit.mark", "Stands here"), [role, button(t("plan.edit.markGo", "Mark where you stand"), function (bt) {
+      send([13, parseInt(role.value, 10)], "", bt);
     })]);
 
     // What they wear: what they have on now, kept for the day.

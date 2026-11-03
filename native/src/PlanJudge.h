@@ -37,9 +37,14 @@ namespace SNRom::PlanJudge {
     // One field of a judgment sent to Papyrus, by key (DAY, TIME, PLACE, NEAR,
     // OFFICIANT, INVITE_THEIRS, INVITE_YOURS, INVITE, UNINVITE, ADDRESS,
     // READING, RINGS, KISS, THEIR_STYLE, THEIR_METAL, YOUR_STYLE, YOUR_METAL,
-    // OUTFIT); empty when it said nothing of it. From a VM thread.
+    // OUTFIT, MARK); empty when it said nothing of it. From a VM thread.
     std::string Field(std::int32_t a_token, const std::string& a_key);
 
-    // Papyrus is done with it.
+    // Natives v38: the marks and a place "here" from this judgment are made
+    // where the player stood when they last spoke in it (WeddingPlan::
+    // UseSpot), until Forget. False when they did not speak in it.
+    bool UseSpotOf(std::int32_t a_token);
+
+    // Papyrus is done with it; marks are made where the player stands again.
     void Forget(std::int32_t a_token);
 }

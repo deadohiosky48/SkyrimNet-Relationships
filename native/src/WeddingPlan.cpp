@@ -19,6 +19,7 @@
 #include <format>
 #include <map>
 #include <mutex>
+#include <limits>
 #include <optional>
 #include <thread>
 
@@ -346,6 +347,105 @@ namespace SNRom::WeddingPlan {
         RE::TESObjectREFR* RefOf(std::uint32_t a_id) {
             auto* ref = a_id ? RE::TESForm::LookupByID<RE::TESObjectREFR>(a_id) : nullptr;
             return ref && !ref->IsDeleted() ? ref : nullptr;
+        }
+
+        // THE SPOT AS SAID (wpm86), for the marks being made now (UseSpot).
+        std::mutex                     g_spotLock;
+        std::optional<WeddingPlan::Spot> g_spot;
+        // Farther than this from where they said it, and they have gone
+        // elsewhere since: the mark is where they stand.
+        constexpr float kSpotFrom = 4096.0f;
+
+        // A marker where the player said "here" (the spot in use), else where
+        // they stand. Main thread or a VM thread.
+        RE::NiPointer<RE::TESObjectREFR> PlaceMarker() {
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            auto* marker = RE::TESForm::LookupByID<RE::TESBoundObject>(kXMarkerHeading);
+            if (!player || !marker) {
+                return {};
+            }
+            auto placed = player->PlaceObjectAtMe(marker, true);
+            std::optional<WeddingPlan::Spot> spot;
+            {
+                const std::scoped_lock lock{ g_spotLock };
+                spot = g_spot;
+            }
+            auto*      cell = player->GetParentCell();
+            auto*      world = player->GetWorldspace();
+            const bool same = spot && (world ? world->GetFormID() == spot->world
+                                             : cell && cell->GetFormID() == spot->cell);
+            if (placed && same && spot->at.GetDistance(player->GetPosition()) <= kSpotFrom) {
+                // As Papyrus's SetPosition: within the world it is in.
+                placed->SetAngle(RE::NiPoint3{ 0.0f, 0.0f, spot->angle });
+                placed->SetPosition(spot->at);
+                // TEST LOG (wpm86).
+                SKSE::log::info("Venue: marked where the player said it, {:.0f} from where they stand now",
+                                spot->at.GetDistance(player->GetPosition()));
+            }
+            return placed;
+        }
+
+        // The nearest place on the map to a_ref, by its marker; else the
+        // location it is in. Main thread or a VM thread.
+        std::string NearestNamed(RE::TESObjectREFR* a_ref) {
+            std::string best;
+            float       nearest = std::numeric_limits<float>::max();
+            auto* cell = a_ref ? a_ref->GetParentCell() : nullptr;
+            if (auto* tes = RE::TES::GetSingleton(); tes && cell && !cell->IsInteriorCell()) {
+                const auto origin = a_ref->GetPosition();
+                tes->ForEachReferenceInRange(a_ref, 30000.0f, [&](RE::TESObjectREFR* a_other) {
+                    auto*       extra = a_other ? a_other->extraList.GetByType<RE::ExtraMapMarker>() : nullptr;
+                    const char* name = extra && extra->mapData ? extra->mapData->locationName.GetFullName() : nullptr;
+                    if (name && *name) {
+                        if (const float d = a_other->GetPosition().GetDistance(origin); d < nearest) {
+                            nearest = d;
+                            best = name;
+                        }
+                    }
+                    return RE::BSContainer::ForEachResult::kContinue;
+                });
+            }
+            if (best.empty()) {
+                auto*       player = RE::PlayerCharacter::GetSingleton();
+                auto*       location = player ? player->GetCurrentLocation() : nullptr;
+                const char* name = location ? location->GetFullName() : nullptr;
+                best = name ? name : "";
+            }
+            return best;
+        }
+
+        // "here", "right here", "this spot"..., and the words for it after a
+        // colon or a dash: nothing when a_said is no place here.
+        std::optional<std::string> HereWords(const std::string& a_said) {
+            auto       text = Trim(a_said);
+            std::string tail;
+            for (const auto* sep : { ":", " - ", " -- ", "\xE2\x80\x94" }) {
+                if (const auto at = text.find(sep); at != std::string::npos) {
+                    tail = Trim(text.substr(at + std::strlen(sep)));
+                    text = Trim(text.substr(0, at));
+                    break;
+                }
+            }
+            auto head = Lower(text);
+            for (bool again = true; again;) {
+                again = false;
+                for (const auto* lead : { "right ", "just ", "on ", "at ", "in ", "it is ", "it's ", "the wedding is " }) {
+                    if (head.starts_with(lead)) {
+                        head.erase(0, std::strlen(lead));
+                        again = true;
+                    }
+                }
+            }
+            static constexpr std::array<const char*, 12> kHereWords{
+                "here",           "this spot",        "this place",   "this very spot", "this one",  "where we stand",
+                "where we are",   "where we're standing", "where we are standing", "this exact spot", "the spot here",
+                "where i stand"
+            };
+            if (std::ranges::find(kHereWords, head) != kHereWords.end() || head.starts_with("here ") ||
+                head.starts_with("here,") || head.starts_with("right where")) {
+                return tail;
+            }
+            return std::nullopt;
         }
 
         // The plan's marks, each 0 when unmarked or gone. Under g_lock.
@@ -1071,12 +1171,18 @@ namespace SNRom::WeddingPlan {
         a_near = Trim(std::move(a_near));
         a_place.resize(std::min(a_place.size(), kMaxPlace));
         a_near.resize(std::min(a_near.size(), kMaxPlace));
-        const std::scoped_lock lock{ g_lock };
-        auto&                  plan = Make(a_betrothed);
-        const bool             newPlace = !a_place.empty() && plan.place != a_place;
+        std::unique_lock lock{ g_lock };
+        auto&            plan = Make(a_betrothed);
+        const bool       newPlace = !a_place.empty() && plan.place != a_place;
         if (!newPlace && (a_near.empty() || plan.nearTo == a_near)) {
             return false;
         }
+        // A SPOT CHOSEN STANDS (wpm86): what it is by, said afterwards, would
+        // have it looked for by that name and everyone sent to "The Reach".
+        if (!newPlace && plan.findable == 2) {
+            return false;
+        }
+        const std::uint32_t oldSpot = newPlace && plan.findable == 2 ? plan.anchor : 0;
         if (newPlace) {
             // Marks made before the place had a name are this place's.
             const auto pending = g_venues.find(VenueKey(plan.place));
@@ -1101,7 +1207,88 @@ namespace SNRom::WeddingPlan {
         plan.findable = -1;
         plan.anchor = 0;
         g_relink = true;
+        lock.unlock();
+        if (auto* gone = RefOf(oldSpot)) {
+            gone->Disable();
+            gone->SetDelete(true);
+        }
         return true;
+    }
+
+    std::optional<Spot> PlayerSpot() {
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        auto* cell = player ? player->GetParentCell() : nullptr;
+        if (!cell) {
+            return std::nullopt;
+        }
+        auto* world = player->GetWorldspace();
+        return Spot{ player->GetPosition(), player->GetAngleZ(), cell->GetFormID(), world ? world->GetFormID() : 0 };
+    }
+
+    void UseSpot(std::optional<Spot> a_spot) {
+        const std::scoped_lock lock{ g_spotLock };
+        g_spot = a_spot;
+    }
+
+    std::int32_t SetPlaceHere(std::int32_t a_betrothed, const std::string& a_said, bool a_always) {
+        auto words = HereWords(a_said);
+        if (!words && !a_always) {
+            return 0;
+        }
+        auto placed = PlaceMarker();
+        if (!placed) {
+            SKSE::log::warn("Wedding plan: no marker could be placed for a place here");
+            return -1;
+        }
+        const auto by = NearestNamed(placed.get());
+        // Named by its own words when it was given some ("the crag above
+        // Karthwasten"); a_always (the dashboard) by what it was given.
+        std::string given = words ? *words : Trim(a_said);
+        if (HereWords(given)) {
+            given.clear();
+        }
+        std::string   name;
+        std::uint32_t old = 0;
+        {
+            const std::scoped_lock lock{ g_lock };
+            auto&                  plan = Make(a_betrothed);
+            // "Right here" again, unnamed: the same spot moved, its name and
+            // marks kept.
+            name = !given.empty()                            ? given :
+                   plan.findable == 2 && !plan.place.empty() ? plan.place :
+                   by.empty()                                ? std::string("the spot they chose") :
+                                                               "the spot they chose near " + by;
+            name.resize(std::min(name.size(), kMaxPlace));
+            if (plan.place != name) {
+                // Marks made before the place had a name are this place's.
+                const auto pending = g_venues.find(VenueKey(plan.place));
+                if (pending != g_venues.end() && pending->first.empty()) {
+                    auto& venue = g_venues[VenueKey(name)];
+                    if (std::ranges::all_of(venue.marks, [](std::uint32_t a_mark) { return a_mark == 0; })) {
+                        venue.name = name;
+                        venue.marks = pending->second.marks;
+                        g_venues.erase(pending);
+                    }
+                }
+            }
+            old = plan.findable == 2 ? plan.anchor : 0;
+            plan.place = name;
+            plan.nearTo = by;
+            plan.travelTo.clear();
+            plan.findable = 2;
+            plan.anchor = placed->GetFormID();
+            g_relink = true;
+        }
+        if (auto* gone = RefOf(old); gone && gone != placed.get()) {
+            gone->Disable();
+            gone->SetDelete(true);
+        }
+        const auto at = placed->GetPosition();
+        // TEST LOG (wpm86).
+        SKSE::log::info("Wedding plan: {:08X}: the place is the spot chosen, '{}' (by '{}'), marked at ({:.0f}, "
+                        "{:.0f}, {:.0f}); everyone gathers there",
+                        static_cast<std::uint32_t>(a_betrothed), name, by, at.x, at.y, at.z);
+        return 1;
     }
 
     bool SetFindable(std::int32_t a_betrothed, std::string a_travelTo) {
@@ -1111,6 +1298,9 @@ namespace SNRom::WeddingPlan {
             return false;
         }
         auto& plan = it->second;
+        if (plan.findable == 2) {
+            return false;   // a spot chosen: it is the place, and its anchor
+        }
         plan.findable = a_travelTo.empty() ? 0 : 1;
         plan.travelTo = std::move(a_travelTo);
         if (plan.findable) {
@@ -1292,12 +1482,10 @@ namespace SNRom::WeddingPlan {
     }
 
     bool SetMark(std::int32_t a_betrothed, std::int32_t a_role) {
-        auto* player = RE::PlayerCharacter::GetSingleton();
-        auto* marker = RE::TESForm::LookupByID<RE::TESBoundObject>(kXMarkerHeading);
-        if (a_role < 0 || a_role >= kMarkRoles || !player || !marker) {
+        if (a_role < 0 || a_role >= kMarkRoles) {
             return false;
         }
-        const auto placed = player->PlaceObjectAtMe(marker, true);
+        const auto placed = PlaceMarker();
         if (!placed) {
             SKSE::log::warn("Venue: no marker could be placed where the player stands");
             return false;
@@ -1313,7 +1501,6 @@ namespace SNRom::WeddingPlan {
                 venue.name = plan.place;
             }
             old = std::exchange(venue.marks[a_role], placed->GetFormID());
-            plan.settled |= kLayoutSettled;
             g_relink = true;
         }
         if (auto* gone = old ? RefOf(old) : nullptr; gone && gone != placed.get()) {
@@ -1359,7 +1546,7 @@ namespace SNRom::WeddingPlan {
         const std::scoped_lock lock{ g_lock };
         const auto             it = g_plans.find(static_cast<std::uint32_t>(a_betrothed));
         const auto             id = found ? found->GetFormID() : 0;
-        if (it == g_plans.end() || it->second.anchor == id) {
+        if (it == g_plans.end() || it->second.anchor == id || it->second.findable == 2) {
             return false;
         }
         it->second.anchor = id;
@@ -1610,6 +1797,32 @@ namespace SNRom::WeddingPlan {
         return open;
     }
 
+    // WHO HAS NO MARK YET (wpm86; the author: "I was never asked where the
+    // bride, groom, or guests would stand"). One mark settled the whole
+    // layout, so the officiant's alone ended the asking. Now the planner asks
+    // until each is marked or left to them: the officiant, the couple (either
+    // one: the other stands beside), and each side that has guests.
+    std::vector<std::string> Unmarked(const Plan& a_plan, std::uint32_t a_marked) {
+        std::vector<std::string> out;
+        const auto               has = [&](std::int32_t a_role) { return (a_marked & (1u << a_role)) != 0; };
+        const auto               side = [&](std::int32_t a_side) {
+            return std::ranges::any_of(a_plan.sides, [&](const auto& a_kv) { return a_kv.second == a_side; });
+        };
+        if (!has(kMarkOfficiant)) {
+            out.emplace_back(kRoleWords[kMarkOfficiant]);
+        }
+        if (!has(kMarkYou) && !has(kMarkBetrothed)) {
+            out.emplace_back(kRoleWords[kMarkYou]);
+        }
+        if (!has(kMarkTheirs) && side(kSideTheirs)) {
+            out.emplace_back(kRoleWords[kMarkTheirs]);
+        }
+        if (!has(kMarkYours) && side(kSideYours)) {
+            out.emplace_back(kRoleWords[kMarkYours]);
+        }
+        return out;
+    }
+
     std::vector<std::string> Unsettled(const Plan& a_plan) {
         std::vector<std::string> out;
         const bool planner = a_plan.planner != 0;
@@ -1642,7 +1855,7 @@ namespace SNRom::WeddingPlan {
         }
         // Last: it is walked at the place itself, so everything that can be
         // settled anywhere is asked first.
-        if (planner && !marked && !(a_plan.settled & kLayoutSettled)) {
+        if (planner && !(a_plan.settled & kLayoutSettled) && !Unmarked(a_plan, marked).empty()) {
             out.emplace_back("layout");
         }
         return out;
@@ -1676,6 +1889,7 @@ namespace SNRom::WeddingPlan {
                 marked.push_back(kRoleWords[i]);
             }
         }
+        const json  unmarked = (plan->settled & kLayoutSettled) ? std::vector<std::string>{} : Unmarked(*plan, bits);
         const float now = Now();
         // The style as it will be: chosen, or the usual one for the wearer,
         // and which (0332 says the usual one is theirs unless they say so).
@@ -1691,6 +1905,8 @@ namespace SNRom::WeddingPlan {
                  { "date", in >= 0 ? DateWords(in) : std::string{} },
                  { "place", plan->place },
                  { "near", plan->nearTo },
+                 { "spot", plan->findable == 2 },
+                 { "unmarked", unmarked },
                  { "officiant", NameOf(plan->officiant) },
                  { "guests", guests },
                  { "theirGuests", theirs },
@@ -1785,6 +2001,7 @@ namespace SNRom::WeddingPlan {
                  { "hour", plan->hour },
                  { "place", plan->place },
                  { "near", plan->nearTo },
+                 { "spot", plan->findable == 2 },
                  { "officiant", NameOf(plan->officiant) },
                  { "guests", guests },
                  { "parts", { { "address", (plan->parts & kAddress) != 0 },
@@ -1869,8 +2086,11 @@ namespace SNRom::WeddingPlan {
     std::vector<RE::Actor*> GuestsNamed(RE::Actor* a_speaker, const std::string& a_list) {
         std::vector<RE::Actor*> out;
         auto*                   player = RE::PlayerCharacter::GetSingleton();
-        const auto              keep = [&](RE::Actor* a_actor) {
-            if (a_actor && a_actor != a_speaker && !a_actor->IsPlayerRef() &&
+        // THE SPEAKER, NAMED OUTRIGHT (seen in play, wpm85): "Orla and you,
+        // Senna" lost Senna, the planner, who was the one speaking. Only a
+        // relation leaves the speaker out ("my family").
+        const auto              keep = [&](RE::Actor* a_actor, bool a_named = false) {
+            if (a_actor && (a_named || a_actor != a_speaker) && !a_actor->IsPlayerRef() &&
                 std::ranges::find(out, a_actor) == out.end()) {
                 out.push_back(a_actor);
             }
@@ -1926,7 +2146,7 @@ namespace SNRom::WeddingPlan {
                 if (q == lower || q.starts_with(lower + " ") || q.starts_with(lower + "-")) {
                     if (spoken(item, named)) {
                         SKSE::log::info("Guests: '{}' is {}", item, named->GetDisplayFullName());
-                        keep(named);
+                        keep(named, true);
                     }
                     continue;
                 }
@@ -2021,9 +2241,27 @@ namespace SNRom::WeddingPlan {
             if (auto* named = bare != lower || !relational ? PersonNamed(bare) : nullptr) {
                 if (spoken(item, named)) {
                     SKSE::log::info("Guests: '{}' is {}", item, named->GetDisplayFullName());
-                    keep(named);
+                    keep(named, true);
                 }
                 continue;
+            }
+            // 4. A NAME AT THE END (seen in play, wpm85): "her housemate
+            // Tormir" is no relation the game records and no title, but it
+            // ends in a name someone said.
+            if (const auto space = item.find_last_of(' '); space != std::string::npos) {
+                const auto last = Trim(item.substr(space + 1));
+                auto*      named = last.size() >= 3 && std::isupper(static_cast<unsigned char>(last[0])) ?
+                                       PersonNamed(last) :
+                                       nullptr;
+                const auto full = named ? Lower(named->GetDisplayFullName()) : std::string{};
+                const auto lastLower = Lower(last);
+                if (named && (full == lastLower || full.starts_with(lastLower + " ") || full.starts_with(lastLower + "-"))) {
+                    if (spoken(item, named)) {
+                        SKSE::log::info("Guests: '{}' is {}", item, named->GetDisplayFullName());
+                        keep(named, true);
+                    }
+                    continue;
+                }
             }
             SKSE::log::warn("Guests: no one living could be found for '{}'{}", item,
                             relational ? (owner ? std::format(" ({} has no such relative in the game's records)",

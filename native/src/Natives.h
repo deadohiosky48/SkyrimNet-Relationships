@@ -52,7 +52,9 @@ namespace SNRom::Natives {
     //  37  PlanJudgeStart, PlanHeardField, PlanHeardDone: the planner heard;
     //      PlanSetDayAt and the EditWeddingPlan op: the plan by hand;
     //      PlanRing's styles are the usual ones when none was chosen (wpm85)
-    inline constexpr std::int32_t kVersion = 37;
+    //  38  PlanPlaceHere: the place right where they stand; PlanHeardSpot:
+    //      a judgment's marks where the player said them (wpm86)
+    inline constexpr std::int32_t kVersion = 38;
 
     // Registers the natives declared in src/scripts/SNRom_Native.psc.
     void Register(const SKSE::PapyrusInterface* a_papyrus);

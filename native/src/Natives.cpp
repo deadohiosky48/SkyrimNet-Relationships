@@ -485,6 +485,15 @@ namespace SNRom::Natives {
             const auto id = FormIdOfActor(a_betrothed);
             return id && WeddingPlan::SetDay(id, a_days, a_hour);
         }
+        // VERSION 38: a place right where they stand, and the spot a judgment
+        // was said at (WeddingPlan::SetPlaceHere, PlanJudge::UseSpotOf).
+        std::int32_t PlanPlaceHere(RE::StaticFunctionTag*, RE::Actor* a_betrothed, std::string a_said, bool a_always) {
+            const auto id = FormIdOfActor(a_betrothed);
+            return id ? WeddingPlan::SetPlaceHere(id, a_said, a_always) : -1;
+        }
+        bool PlanHeardSpot(RE::StaticFunctionTag*, std::int32_t a_token) {
+            return PlanJudge::UseSpotOf(a_token);
+        }
         bool CeremonyPlanned(RE::StaticFunctionTag*) {
             return Ceremony::Planned();
         }
@@ -1096,6 +1105,8 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("PlanHeardField", kScript, PlanHeardField, true);
             a_vm->RegisterFunction("PlanHeardDone", kScript, PlanHeardDone, true);
             a_vm->RegisterFunction("PlanSetDayAt", kScript, PlanSetDayAt, true);
+            a_vm->RegisterFunction("PlanPlaceHere", kScript, PlanPlaceHere);
+            a_vm->RegisterFunction("PlanHeardSpot", kScript, PlanHeardSpot, true);
             a_vm->RegisterFunction("IsWeddingPlanner", kScript, IsWeddingPlanner, true);
             a_vm->RegisterFunction("PersonNamed", kScript, PersonNamed);
             a_vm->RegisterFunction("GuestsNamed", kScript, GuestsNamed);
@@ -1177,7 +1188,8 @@ namespace SNRom::Natives {
                             "PlanGuests, PlanPlace, PlanOutfit, PlanParts, PlanRing, RingWeddingOfMetal, "
                             "PlanSetFindable, PlanNear, PlanFindable, PlanTravelTo, BringToWedding, PlanMark, PlanSettleLayout, "
                             "PlanMarked, PlanGuestSide, PlanSideOf, PlanSideNamed, GuestSideOf, PlanSetAnchor, WeddingLetGo, "
-                            "WeddingPlaces, WeddingPlacesClear, PlanToday, WeddingReception, MarasInstalled, PlanJudgeStart, PlanHeardField, PlanHeardDone, PlanSetDayAt",
+                            "WeddingPlaces, WeddingPlacesClear, PlanToday, WeddingReception, MarasInstalled, PlanJudgeStart, PlanHeardField, PlanHeardDone, PlanSetDayAt, PlanPlaceHere, "
+                            "PlanHeardSpot",
                             kScript, kVersion);
             return true;
         });

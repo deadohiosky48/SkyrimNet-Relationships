@@ -16,7 +16,7 @@ Settled means agreed: {{ plan_player }} or {{ plan_betrothed }} chose it and the
 Write one line for each thing settled, in this form and nothing else:
 DAY: the day as it was said - a date ("the 4th of Sun's Height"), a weekday ("next Loredas") or how far off ("in two days", "tomorrow")
 TIME: morning, noon, afternoon, evening, dusk or night
-PLACE: where, as a proper name
+PLACE: where, as a proper name; or, when it is right where {{ plan_player }} is standing as they say so ("this is the place", "right here", "this spot"), here: a few words for it ("here: the crag above the valley"), or just here
 NEAR: what the place is by (the temple, hall, inn or town nearest it), when that was said
 OFFICIANT: the name of the priest, priestess or jarl who will marry them
 INVITE_THEIRS: guests invited as {{ plan_betrothed }}'s, by name, separated by commas
@@ -27,9 +27,11 @@ CEREMONY: address=yes|no, reading=yes|no, rings=yes|no, kiss=yes|no
 THEIR_RING: style=slim|wide, metal=gold|silver|ebony
 YOUR_RING: style=slim|wide, metal=gold|silver|ebony
 OUTFIT: yes - only when {{ plan_betrothed }} will wear to the wedding what they are wearing now
+MARK: who will stand right where {{ plan_player }} is standing as they say it - officiant (the one who marries them), player ({{ plan_player }}), betrothed ({{ plan_betrothed }}), their guests ({{ plan_betrothed }}'s), your guests ({{ plan_player }}'s) - separated by commas; or none, when they leave where everyone stands to the planner
 
 Rules:
-- Names exactly as they were said, relations too ("my brother", "Olfina's mother").
+- Guests by name alone when a name was said: "her daughter Erith and her housemate Tormir" is Erith, Tormir. A relation only when no name was said ("my brother", "Olfina's mother"). Anyone named is a guest, the planner too.
+- MARK only for "here", "this spot", "stand here" said by {{ plan_player }}: a spot pointed at or to be picked later is not a mark. The same words can settle the place and a mark at once: "This is the place; the officiant stands here" is PLACE: here and MARK: officiant.
 - CEREMONY only when the parts were chosen. The vows are always the couple's own and never a part. Once they choose, a part they did not name is no: "our vows, the rings and a kiss" is address=no, reading=no, rings=yes, kiss=yes.
 - THEIR_RING is {{ plan_betrothed }}'s wedding ring, YOUR_RING is {{ plan_player }}'s. Give a style only when it was said of THAT ring: slim when it is slim, braided, or joined to or matching that person's own engagement ring; wide when it is wide, plain or broad. A ring said to match the other one's says nothing of its style. Leave out what was not said: "style=, metal=silver" is not written; write "metal=silver".
 - If nothing was settled, write exactly: NOTHING

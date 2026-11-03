@@ -6185,7 +6185,12 @@ String Function EditWeddingPlanByHand(Actor akBetrothed, Int[] aiArgs, String as
         9  the rings: aiArgs[1..4] the player's style and metal, then theirs
            (style 0 slim, 1 wide; metal 0 gold, 1 silver, 2 ebony; -1 keeps)
         10 the day put off (the rest kept)
-        11 what they wear now, kept for the wedding }
+        11 what they wear now, kept for the wedding
+        12 (v38) the place right where the player stands; asText its name, or
+           empty for one from the nearest place on the map
+        13 (v38) a mark where the player stands: aiArgs[1] 0 the officiant,
+           1 the player, 2 the betrothed's guests, 3 the player's guests,
+           4 the betrothed }
     If akBetrothed == None || _dashNatives < 37 || OurMarriage(akBetrothed) != MARRIAGE_ENGAGED()
         Return Tr("plan.edit.notEngaged", "There is no wedding to plan with them.")
     EndIf
@@ -6238,6 +6243,25 @@ String Function EditWeddingPlanByHand(Actor akBetrothed, Int[] aiArgs, String as
         PostponeWedding(akBetrothed, "")
     ElseIf what == 11
         SaveWeddingOutfit(akBetrothed)
+    ElseIf what == 12 && _dashNatives >= 38
+        If SNRom_Native.PlanPlaceHere(akBetrothed, text, True) == 1
+            PlanNoted(akBetrothed, "the place set: right here, '" + SNRom_Native.PlanPlace(akBetrothed) + "', by '" + \
+                SNRom_Native.PlanNear(akBetrothed) + "'.")
+        Else
+            answer = Tr("plan.edit.unknown", "That change could not be made.")
+        EndIf
+    ElseIf what == 13 && aiArgs.Length >= 2 && _dashNatives >= 38
+        If aiArgs[1] == 0
+            PlanWeddingMark(akBetrothed, "", "officiant", "")
+        ElseIf aiArgs[1] == 1
+            PlanWeddingMark(akBetrothed, "", "player", "")
+        ElseIf aiArgs[1] == 2
+            PlanWeddingMark(akBetrothed, "", "guests", whoName)
+        ElseIf aiArgs[1] == 3
+            PlanWeddingMark(akBetrothed, "", "guests", playerName)
+        ElseIf aiArgs[1] == 4
+            PlanWeddingMark(akBetrothed, "", "betrothed", "")
+        EndIf
     Else
         answer = Tr("plan.edit.unknown", "That change could not be made.")
     EndIf
@@ -6297,7 +6321,12 @@ Event OnPlanHeard(String asEventName, String asToken, Float afToken, Form akSend
     String yourStyle = SNRom_Native.PlanHeardField(token, "YOUR_STYLE")
     String yourMetal = SNRom_Native.PlanHeardField(token, "YOUR_METAL")
     String wearing = SNRom_Native.PlanHeardField(token, "OUTFIT")
-    SNRom_Native.PlanHeardDone(token)
+    String marks = ""
+    If _dashNatives >= 38
+        marks = SNRom_Native.PlanHeardField(token, "MARK")
+        ; "Here" is where the player stood saying it, not where they stand now.
+        SNRom_Native.PlanHeardSpot(token)
+    EndIf
     _planHeard = True
     If day != "" || time != ""
         PlanWeddingDay(planner, forName, day, time)
@@ -6331,8 +6360,38 @@ Event OnPlanHeard(String asEventName, String asToken, Float afToken, Form akSend
     If YesWord(wearing) && betrothed.Is3DLoaded() && betrothed.GetDistance(Game.GetPlayer()) < 1500.0
         SaveWeddingOutfit(betrothed)
     EndIf
+    ; WHERE EVERYONE STANDS (wpm86; seen in play: "Hamal will be the
+    ; officiant, and she will stand in this spot" was not marked). After the
+    ; place, so marks made with it are its own.
+    If marks != ""
+        HeardMarks(planner, betrothed, marks)
+    EndIf
+    SNRom_Native.PlanHeardDone(token)
     _planHeard = False
 EndEvent
+
+Function HeardMarks(Actor akPlanner, Actor akBetrothed, String asMarks)
+    { MARK as the judge said it: officiant, player, betrothed, their guests,
+      your guests or none, separated by commas; each through WeddingMark's
+      function. }
+    String forName = akBetrothed.GetDisplayName()
+    String playerName = Game.GetPlayer().GetDisplayName()
+    String[] each = StringUtil.Split(asMarks, ",")
+    Int i = 0
+    While i < each.Length
+        String m = SNRom_Decorators.Upper(SNRom_Decorators.Trim(each[i]))
+        If StringUtil.Find(m, "GUEST") >= 0
+            If StringUtil.Find(m, "YOUR") >= 0 || StringUtil.Find(m, SNRom_Decorators.Upper(playerName)) >= 0
+                PlanWeddingMark(akPlanner, forName, "guests", playerName)
+            Else
+                PlanWeddingMark(akPlanner, forName, "guests", forName)
+            EndIf
+        ElseIf m != ""
+            PlanWeddingMark(akPlanner, forName, m, "")
+        EndIf
+        i += 1
+    EndWhile
+EndFunction
 
 Bool Function YesWord(String asText)
     { "yes", "true", "1", "y", "on", "keep": yes. Action parameters arrive as
@@ -6418,6 +6477,18 @@ Function PlanWeddingPlace(Actor akSpeaker, String asFor, String asPlace, String 
     Actor betrothed = PlanTarget(akSpeaker, asFor)
     If betrothed == None || !MayPlan(akSpeaker, betrothed, True) || _dashNatives < 31
         Return
+    EndIf
+    ; RIGHT HERE (wpm86; seen in play: "This is the place for the ceremony",
+    ; on a Reach crag near nothing, was never recorded): the spot itself.
+    If _dashNatives >= 38
+        Int here = SNRom_Native.PlanPlaceHere(betrothed, asPlace, False)
+        If here == 1
+            PlanNoted(betrothed, "the place set: right here, '" + SNRom_Native.PlanPlace(betrothed) + "', by '" + \
+                SNRom_Native.PlanNear(betrothed) + "'.")
+            Return
+        ElseIf here < 0
+            Return
+        EndIf
     EndIf
     If SNRom_Native.PlanSetPlace(betrothed, asPlace, asNear)
         PlanNoted(betrothed, "the place set: '" + asPlace + "', by '" + asNear + "'.")
@@ -6815,7 +6886,9 @@ Event OnWeddingDay(String asEventName, String asPlace, Float afUnused, Form akSe
         Int findable = SNRom_Native.PlanFindable(betrothed)
         If findable == 1
             dest = SNRom_Native.PlanTravelTo(betrothed)
-        ElseIf findable == 0
+        ElseIf findable == 0 || findable == 2
+            ; 2 (wpm86): a spot chosen where they stood. No one can be sent
+            ; there by its name; the DLL walks each one to it.
             dest = ""
         EndIf
     EndIf

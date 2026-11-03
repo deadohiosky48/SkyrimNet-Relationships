@@ -407,14 +407,28 @@ String Function PlanHeardField(Int aiToken, String asKey) Global Native
 {VERSION 37. One field of what the judge heard (ModEvent SNRom_PlanHeard, the
  token as its number): DAY, TIME, PLACE, NEAR, OFFICIANT, INVITE_THEIRS,
  INVITE_YOURS, INVITE, UNINVITE, ADDRESS, READING, RINGS, KISS, THEIR_STYLE,
- THEIR_METAL, YOUR_STYLE, YOUR_METAL, OUTFIT; empty when it said nothing.}
+ THEIR_METAL, YOUR_STYLE, YOUR_METAL, OUTFIT, MARK (v38); empty when it said
+ nothing.}
 
 Function PlanHeardDone(Int aiToken) Global Native
-{VERSION 37. Done with what was heard.}
+{VERSION 37. Done with what was heard; from v38 marks are made where the
+ player stands again.}
 
 Bool Function PlanSetDayAt(Actor akBetrothed, Int aiDaysFromToday, Int aiHour) Global Native
 {VERSION 37. The day by hand (the dashboard): days from today and the hour,
  each -1 left as it is.}
+
+Int Function PlanPlaceHere(Actor akBetrothed, String asSaid, Bool abAlways) Global Native
+{VERSION 38. A place right where they stand: when asSaid says so ("here",
+ "right here", "this spot", "here: the crag above Karthwasten"), or
+ abAlways, a marker there is the place, named by the words after "here" or for
+ the nearest place on the map, and everyone gathers at it. 1 set, 0 asSaid is
+ no place here (nothing done), -1 failed.}
+
+Bool Function PlanHeardSpot(Int aiToken) Global Native
+{VERSION 38. The marks and a place "here" from what was heard are made where
+ the player stood when they said it, until PlanHeardDone. False when the
+ player did not speak in it.}
 
 Bool Function CeremonyPlanned() Global Native
 {The wedding under way is a planned one, not an elopement.}

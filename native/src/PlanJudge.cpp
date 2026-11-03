@@ -11,6 +11,7 @@
 #include <functional>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <vector>
 
@@ -41,11 +42,13 @@ namespace SNRom::PlanJudge {
                                               "OFFICIANT",    "INVITE_THEIRS", "INVITE_YOURS", "INVITE",
                                               "UNINVITE",     "ADDRESS",      "READING",     "RINGS",
                                               "KISS",         "THEIR_STYLE",  "THEIR_METAL", "YOUR_STYLE",
-                                              "YOUR_METAL",   "OUTFIT" };
+                                              "YOUR_METAL",   "OUTFIT",       "MARK" };
 
         struct Line {
             std::string who;
             std::string text;
+            // THE SPOT AS SAID (wpm86): where the player stood saying it.
+            std::optional<WeddingPlan::Spot> spot;
         };
 
         CustomPromptFn g_prompt = nullptr;
@@ -64,6 +67,7 @@ namespace SNRom::PlanJudge {
         bool                                                     g_again = false;
         std::int32_t                                             g_nextToken = 1;
         std::map<std::int32_t, std::map<std::string, std::string>> g_results;
+        std::map<std::int32_t, WeddingPlan::Spot>                  g_spots;
 
         std::string NameOf(std::uint32_t a_formId) {
             auto*       form = a_formId ? RE::TESForm::LookupByID(a_formId) : nullptr;
@@ -174,7 +178,7 @@ namespace SNRom::PlanJudge {
         }
 
         // The judgment back. Main thread.
-        void Judged(std::uint32_t a_betrothed, const std::string& a_text) {
+        void Judged(std::uint32_t a_betrothed, const std::string& a_text, std::optional<WeddingPlan::Spot> a_spot) {
             std::map<std::string, std::string> heard = Parse(a_text);
             std::int32_t                       token = 0;
             bool                               again = false;
@@ -187,6 +191,9 @@ namespace SNRom::PlanJudge {
                 if (!heard.empty()) {
                     token = g_nextToken++;
                     g_results[token] = heard;
+                    if (a_spot) {
+                        g_spots[token] = *a_spot;
+                    }
                 }
             }
             // TEST LOG (wpm85): what the judge said, and why nothing was sent.
@@ -217,6 +224,8 @@ namespace SNRom::PlanJudge {
             json          ctx;
             std::string   variant;
             std::uint32_t betrothed = 0;
+            // "Here" in what was judged: where the player last spoke in it.
+            std::optional<WeddingPlan::Spot> spot;
             {
                 const std::scoped_lock lock{ g_lock };
                 if (a_generation != g_generation || g_judged >= g_lines.size() || !g_betrothed) {
@@ -235,6 +244,9 @@ namespace SNRom::PlanJudge {
                         }
                     } else {
                         fresh.push_back(g_lines[i].who + ": " + g_lines[i].text);
+                        if (g_lines[i].spot) {
+                            spot = g_lines[i].spot;
+                        }
                     }
                 }
                 betrothed = g_betrothed;
@@ -250,9 +262,9 @@ namespace SNRom::PlanJudge {
             ctx["plan_now"] = WeddingPlan::ForPrompt(static_cast<std::int32_t>(betrothed));
             const bool queued = g_prompt(
                 "snrom_plan_judge", variant.c_str(), ctx.dump(-1, ' ', false, json::error_handler_t::replace).c_str(),
-                [betrothed](const char* a_response, int a_success) {
+                [betrothed, spot](const char* a_response, int a_success) {
                     std::string text = a_success && a_response ? a_response : "";
-                    SKSE::GetTaskInterface()->AddTask([betrothed, text]() { Judged(betrothed, text); });
+                    SKSE::GetTaskInterface()->AddTask([betrothed, text, spot]() { Judged(betrothed, text, spot); });
                 });
             if (!queued) {
                 const std::scoped_lock lock{ g_lock };
@@ -322,7 +334,8 @@ namespace SNRom::PlanJudge {
                     return;
                 }
             }
-            g_lines.push_back({ NameOf(a_speaker), a_line });
+            g_lines.push_back({ NameOf(a_speaker), a_line,
+                                a_speaker == kPlayer ? WeddingPlan::PlayerSpot() : std::nullopt });
             while (g_lines.size() > kMaxLines) {
                 g_lines.pop_front();
                 if (g_judged) {
@@ -350,8 +363,24 @@ namespace SNRom::PlanJudge {
         return field == it->second.end() ? std::string{} : field->second;
     }
 
+    bool UseSpotOf(std::int32_t a_token) {
+        std::optional<WeddingPlan::Spot> spot;
+        {
+            const std::scoped_lock lock{ g_lock };
+            if (const auto it = g_spots.find(a_token); it != g_spots.end()) {
+                spot = it->second;
+            }
+        }
+        WeddingPlan::UseSpot(spot);
+        return spot.has_value();
+    }
+
     void Forget(std::int32_t a_token) {
-        const std::scoped_lock lock{ g_lock };
-        g_results.erase(a_token);
+        {
+            const std::scoped_lock lock{ g_lock };
+            g_results.erase(a_token);
+            g_spots.erase(a_token);
+        }
+        WeddingPlan::UseSpot(std::nullopt);
     }
 }

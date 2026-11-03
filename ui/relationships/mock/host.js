@@ -167,6 +167,8 @@
         }
         else if (what === 10) pl.day = null;
         else if (what === 11) pl.outfit = true;
+        else if (what === 12) { pl.place = text || "the spot they chose near Karthwasten"; pl.near = "Karthwasten"; pl.spot = true; pl.open = (pl.open || []).filter(function (o) { return o !== "place"; }); }
+        else if (what === 13) { var R = ["officiant", "you", "theirs", "yours", "betrothed"]; pl.marked = pl.marked || []; if (pl.marked.indexOf(R[args[1]]) < 0) pl.marked.push(R[args[1]]); }
         later(80, pushSnapshot);
         return [true, "The wedding plan is changed."];
       },

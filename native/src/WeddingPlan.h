@@ -131,7 +131,9 @@ namespace SNRom::WeddingPlan {
         // Gildergreen" was no place SeverActions knew, and all fourteen sent
         // to it went nowhere. nearTo is what the place is by, as said ("Temple
         // of Kynareth"); travelTo whichever of the two Papyrus found, and
-        // findable -1 not yet looked for, 0 neither found, 1 travelTo found.
+        // findable -1 not yet looked for, 0 neither found, 1 travelTo found,
+        // 2 a spot chosen where they stood (SetPlaceHere): the anchor is our
+        // marker there, and no one is sent by name.
         std::string                nearTo;
         std::string                travelTo;
         std::int32_t               findable = -1;
@@ -201,6 +203,28 @@ namespace SNRom::WeddingPlan {
     // A MARK WHERE THE PLAYER STANDS (wpm61), for a_role (Mark), in the venue
     // under the plan's place; the mark it replaces is deleted. Main thread.
     bool SetMark(std::int32_t a_betrothed, std::int32_t a_role);
+    // THE SPOT AS SAID (wpm86): where the player stood when they said a line,
+    // so "she will stand here" marks that spot, not wherever they have
+    // walked to by the time it is judged. Main thread.
+    struct Spot {
+        RE::NiPoint3  at;
+        float         angle = 0.0f;
+        std::uint32_t cell = 0;
+        std::uint32_t world = 0;
+    };
+    std::optional<Spot> PlayerSpot();
+    // The spot the next marks and a place "here" are made at, instead of
+    // where the player stands now; nothing returns to where they stand. Kept
+    // only while it is near the player and in the same world.
+    void UseSpot(std::optional<Spot> a_spot);
+    // A PLACE RIGHT HERE (wpm86; seen in play: "this is the place", on a
+    // Reach crag near nothing, was never recorded). When a_said says the
+    // wedding is where they stand ("here", "right here", "this spot",
+    // optionally "here: <a few words for it>"), or a_always, a marker is
+    // placed at the spot and the place is it: named by the words after
+    // "here", else for the nearest place on the map; everyone gathers there
+    // and no one is sent by name. 1 set, 0 not a place here, -1 failed.
+    std::int32_t SetPlaceHere(std::int32_t a_betrothed, const std::string& a_said, bool a_always);
     // Where everyone stands is left to the planner: settled, unmarked.
     bool SettleLayout(std::int32_t a_betrothed);
     // The roles marked for the plan's place, as bits (1 << Mark).
