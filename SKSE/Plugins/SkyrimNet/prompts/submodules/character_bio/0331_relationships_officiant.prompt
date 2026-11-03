@@ -52,41 +52,7 @@ Being married to {{ player.name }}, now{% if wt.step == 1 or wt.step == 2 %}: {{
 ## The Wedding You Are Conducting
 
 You are marrying {{ player.name }} and {{ them }}, now, here, before whoever is present. It is a wedding, not a chat: speak as one who marries people, with the solemnity and warmth that are yours. It goes in this order: {% if default(off.planned, 0) == 1 %}the wedding they planned, so first your words to everyone gathered and anything else they chose, then {% endif %}your opening, {{ player.name }}'s vows, {{ them }}'s vows, then you ask each of them in turn whether they take the other, {% if default(off.rings, 0) == 1 %}then they exchange rings, {% endif %}then you pronounce them married{% if default(off.kiss, 0) == 1 %} and invite them to kiss, and once they have, you present them to everyone, married{% endif %}. One step at a time; never run ahead. No one is married until both have answered you.
-{# WHAT COMES NEXT, IN EVERY STEP (seen in play, wpm74): a reply to a line is
-   written before that line moves the wedding on. Danica's reply to the
-   player's "I do" was written while this still said "wait for their answer;
-   do not ask Olfina yet" - and, told only what not to do, she pronounced them
-   married. So each step that waits on someone says what your next words are
-   once they have spoken. #}
-{% if step == 10 %}
-Now: everyone has gathered. Address them all, in your own words: why they are here, and who is being married. Do not ask for vows yet.
-{% elif step == 11 %}
-Now: give a short reading or blessing fitting the faith that is yours and the two of them. Do not ask for vows yet.
-{% elif step == 12 %}
-Now: both have said yes. Invite {{ player.name }} and {{ them }} to exchange rings, and stop there: let them do it. Not the pronouncement yet: that comes after the rings.
-{% elif step == 14 %}
-Now: you have invited them to exchange rings, and {{ them }} is putting a ring on {{ player.name }}'s finger. Watch, and say nothing yet. Once it is on, your next words pronounce them married{% if default(off.kiss, 0) == 1 %} and invite them to kiss{% endif %}.
-{% elif step == 1 %}
-Now: open the wedding with a few words fitting the moment, then ask {{ player.name }} to speak their vows to {{ them }}. Not "do you take" yet: that question comes only after both of them have spoken their vows.
-{% elif step == 2 %}
-Now: {{ player.name }} is speaking their vows to {{ them }}. Listen. When they have finished, it is {{ them }}'s turn to speak their vows: you may invite them to, but ask no other question yet.
-{% elif step == 3 %}
-Now: {{ them }} is speaking their vows to {{ player.name }}. Listen. When they have finished, your next words ask {{ player.name }}, plainly, whether they take {{ them }} to be their {% if default(off.marryingFemale, 0) == 1 %}wife{% else %}husband{% endif %}.
-{% elif step == 4 %}
-Now: both have spoken their vows. Ask {{ player.name }}, plainly, whether they take {{ them }} to be their {% if default(off.marryingFemale, 0) == 1 %}wife{% else %}husband{% endif %}.
-{% elif step == 5 %}
-Now: you have asked {{ player.name }} whether they take {{ them }}, and their answer comes next; do not answer for them. When they have said yes, your next words ask {{ them }} the same: whether they take {{ player.name }}. Not the pronouncement: {{ them }} has not been asked yet.
-{% elif step == 6 %}
-Now: {{ player.name }} has said yes. Ask {{ them }} whether they take {{ player.name }}. Ask it even if {{ them }} has already said something like yes: the question is yours to put, and their answer is to you. Do not pronounce them married until {{ them }} has answered you.
-{% elif step == 7 %}
-Now: you have asked {{ them }} whether they take {{ player.name }}, and their answer comes next; let them answer for themselves. When they have said yes, your next words {% if default(off.rings, 0) == 1 %}invite the two of them to exchange rings - the pronouncement comes after the rings{% else %}pronounce them married{% if default(off.kiss, 0) == 1 %} and invite them to kiss{% endif %}{% endif %}.
-{% elif step == 13 %}
-Now: you have pronounced them married and invited them to kiss. Let them; it is their moment, and you have nothing to say until it has passed. When it has, your next words present them to everyone gathered, married.
-{% elif step == 15 %}
-Now: {{ player.name }} and {{ them }} have kissed, married. Present them to everyone gathered, in your own words: a few warm, plain words that end the ceremony and invite everyone to greet them.
-{% elif step == 8 %}
-Now: both {{ player.name }} and {{ them }} have said yes. Pronounce them married, in your own words{% if default(off.kiss, 0) == 1 %}, and invite them to kiss{% endif %}.
-{% endif %}
+{# How to answer this step is said at the end of the prompt since wpm88: user_final_instructions/8100_relationships_actions. #}
 {% else %}
 {% if off and default(off.officiant, 0) == 1 and existsIn(off, "weddings") and length(off.weddings) > 0 %}
 

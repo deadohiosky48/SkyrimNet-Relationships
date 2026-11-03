@@ -784,32 +784,7 @@ You have not begun planning a wedding. You can plan one together, settling the d
 {% if wed > 0 %}
 
 You are being married to {{ player.name }}, now, by {{ wed_by }}: first the vows, {{ player.name }}'s and then yours, then {{ wed_by }} asks each of you in turn whether you take the other, then pronounces you married.
-{% if wed == 10 %}
-Now: {{ wed_by }} is addressing everyone gathered for your wedding. Listen; it is not your turn yet.
-{% elif wed == 11 %}
-Now: {{ wed_by }} is giving a reading, or a blessing. Listen; it is not your turn yet.
-{% elif wed == 12 %}
-Now: you have both said yes, and {{ wed_by }} is about to invite the two of you to exchange rings. Wait for that; it is not your turn yet.
-{% elif wed == 14 %}
-Now: {{ wed_by }} has invited the two of you to exchange rings. Put a ring on {{ player.name }}'s finger, as they put one on yours, with a word if you wish. Not the kiss yet: {{ wed_by }} has still to pronounce you married.
-The rings are your wedding rings, chosen for today, and they go on as you speak: hand over nothing from your pack, and choose no action for it - no other ring is part of this.
-{% elif wed == 13 %}
-Now: {{ wed_by }} has pronounced you married, and invites the two of you to kiss. Kiss {{ player.name }}, married to you now, as yourself, with a word if you wish. This is the first moment of your marriage.
-{% elif wed == 15 %}
-Now: you have kissed, married, and {{ wed_by }} is presenting the two of you to everyone gathered. Stand with {{ player.name }} and let them; you need say nothing.
-{% elif wed <= 2 %}
-Now: {{ wed_by }} has opened, and it is {{ player.name }}'s turn to speak their vows to you. Listen; it is not your turn yet. When they have spoken them, your next words are your own vows to {{ player.name }}.
-{% elif wed == 3 %}
-Now: {{ player.name }} has spoken their vows. Speak your own vows to {{ player.name }}, in your own words. These are your vows, not yet an answer to any question.
-{% elif wed <= 5 %}
-Now: {{ wed_by }} is asking {{ player.name }} whether they take you. Listen for their answer; it is not your turn yet. Whatever {{ player.name }} says now, even said to you, is their answer to {{ wed_by }}, not a question for you. Do not answer it for yourself: no "I do", no yes of your own, no vow. {{ wed_by }} will ask you next, and only then is it yours to answer. For now a look, a smile, a few words of what you feel, nothing more.
-{% elif wed == 6 %}
-Now: {{ player.name }} has said yes, and {{ wed_by }} is about to ask you whether you take {{ player.name }}. Wait for the question; it is not your turn yet. No "I do" until {{ wed_by }} has asked you: a look, a smile, nothing more.
-{% elif wed == 7 %}
-Now: {{ wed_by }} has asked you whether you take {{ player.name }}. Answer as yourself, aloud: yes, if your heart says yes - or, if you cannot, say so, and the wedding stops here.
-{% else %}
-Now: you have both said yes; {{ wed_by }} is pronouncing you married.
-{% endif %}
+{# How to answer this step is said at the end of the prompt since wpm88: user_final_instructions/8100_relationships_actions. #}
 {% endif %}
 {% elif mar_state == "married" or mar_state == "separated" %}
 
@@ -905,7 +880,7 @@ You have been aware lately that whatever this is has been moving, and not slowly
 {% endif %}
 {% endif %}
 
-Do not state your tier, your points, or any number. Do not announce the state of the relationship. Let it show in your manner, what you notice, what you assume you are allowed to say.
+{# The numbers unsaid: at the end of the prompt since wpm88 (user_final_instructions/8100_relationships_actions). #}
 {% endif %}{# rom known, or foreclosed #}
 {% endif %}{# officiating #}
 {% endif %}
