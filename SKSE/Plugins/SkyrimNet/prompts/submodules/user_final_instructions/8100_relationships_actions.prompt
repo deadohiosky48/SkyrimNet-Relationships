@@ -1,0 +1,37 @@
+{% if render_mode == "full" %}
+{# render_mode guard MUST be within the first 5 lines (see 0330). #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{# Relationships - the actions that record a wedding and an engagement, said  #}
+{# at the end of the prompt (wpm87; SkyrimNet's lead developer, 2026-11-03:   #}
+{# "things at the very start and very end get the most attention"). From     #}
+{# 29.1 rc2 the action list sits in the cached system message, and these     #}
+{# lines, in 0332 and 0330 in the middle of the bio, lost to it: Senna        #}
+{# settled six things in seven replies and wrote no ACTION line for any.      #}
+{# Only when the action is offered now, and only with embedded actions.      #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{% if default(embed_actions_in_dialogue, false) and exists("eligible_actions") and not is_player(npc.UUID) %}
+{% if is_plugin_loaded("SNRom_Integration.esl") or is_plugin_loaded("SNRom_Integration.esp") %}
+{% set snrom_wedding = false %}
+{% set snrom_marriage = false %}
+{% for a in eligible_actions %}{% if a.name == "Wedding" %}{% set snrom_wedding = true %}{% elif a.name == "Marriage" %}{% set snrom_marriage = true %}{% endif %}{% endfor %}
+{# The hired planner, and the betrothed: the two who settle a plan. #}
+{% set snrom_plans = false %}
+{% if snrom_wedding %}
+{% set snrom_wp = get_wedding_planner(npc.UUID) %}
+{% if snrom_wp and existsIn(snrom_wp, "couples") %}{% for c in snrom_wp.couples %}{% if default(c.hired, 0) == 1 %}{% set snrom_plans = true %}{% endif %}{% endfor %}{% endif %}
+{% if get_faction_rank(npc.UUID, "SNRom_Marriage") == 1 %}{% set snrom_plans = true %}{% endif %}
+{% endif %}
+{% if snrom_plans %}
+
+The wedding plan changes only through the Wedding action. If this reply agrees to any part of it - the day, the place (a named place, or right where {{ player.name }} is standing), who marries them, who is invited and whose guests they are, where someone will stand, the ceremony, a wedding ring, the clothes - end it with `ACTION: Wedding PARAMS: {"intent": "..."}`, and say in the intent exactly what was agreed, with the names: "invite Orla and Senna as {{ player.name }}'s guests", "the wedding is right here; the officiant stands here". Saying it is noted, written down or marked does not record it.
+{% endif %}
+{% if snrom_marriage %}
+{% set snrom_rom = get_romance(npc.UUID) %}
+{% if default(snrom_rom.marriage.canAccept, 0) == 1 %}
+
+If in this reply you say yes to marrying {{ player.name }}, or {{ player.name }} says yes to you - even days after it was asked - end it with the Marriage action. Without it the promise is only words.
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
