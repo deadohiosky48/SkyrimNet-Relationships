@@ -590,8 +590,6 @@ Known limitations, honestly:
   recorded by the model choosing actions, with a second reading of the
   conversation behind it, and once in a while something is still missed.
   Change it by hand on your betrothed's card.
-- **The seventeen languages besides English are machine-drafted.** Corrections from native
-  speakers are welcome.
 
 - **No likes or dislikes, for now.** 2.0 removed Romantasy's, which were built on
   game statistics. They return in a later update, written in the mod's own terms
