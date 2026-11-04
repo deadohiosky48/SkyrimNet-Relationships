@@ -1284,4 +1284,14 @@ namespace SNRom::Dashboard {
             SendSnapshot();
         });
     }
+
+    void Push(std::string a_kind, std::string a_payloadJson) {
+        SKSE::GetTaskInterface()->AddTask([kind = std::move(a_kind), text = std::move(a_payloadJson)]() {
+            auto payload = json::parse(text, nullptr, false);
+            if (payload.is_discarded()) {
+                return;
+            }
+            Send({ { "v", kProtocol }, { "kind", kind }, { "payload", std::move(payload) } });
+        });
+    }
 }

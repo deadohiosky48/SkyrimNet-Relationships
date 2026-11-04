@@ -111,6 +111,11 @@
     img.src = p.src;
     img.alt = "";
     slot.appendChild(img);
+    // What the vision model made of it, as the people of Skyrim will know it.
+    if (p.title) slot.appendChild(el("p", "painting-test-title", p.title));
+    if (p.description) slot.appendChild(el("p", "painting-test-description", p.description));
+    if (p.describing === "asked") slot.appendChild(el("p", "blurb", "The vision model is looking at it…"));
+    else if (p.describing) slot.appendChild(el("p", "blurb", "Not described: " + p.describing.replace(/^failed: /, "")));
     slot.appendChild(el("p", "blurb", "Full size: " + p.painted + ". The camera's own shot is beside it, ending _shot.png."));
   }
   function paintingTest(b) {

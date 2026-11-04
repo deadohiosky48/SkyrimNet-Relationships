@@ -18,6 +18,11 @@ namespace SNRom::Dashboard {
     // kInputLoaded: ask for the UI framework. Logs once if there is none.
     void OnInputLoaded();
 
+    // A message of a_kind to the page, if it is there (2.6: the painting's
+    // description, when the vision model answers). Any thread; sent from the
+    // main thread.
+    void Push(std::string a_kind, std::string a_payloadJson);
+
     // kDataLoaded: create the (hidden) view and register the page's two
     // window functions, snromRequest and snromClose.
     void OnDataLoaded();

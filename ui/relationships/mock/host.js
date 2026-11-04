@@ -420,7 +420,10 @@
           } else if (envelope.kind === "paintSit") {
             answer(envelope.id, true, "The painter is ready. Hold still.");
             setTimeout(function () {
-              push("painting", { name: "Painting_mock", src: MOCK_PORTRAIT, painted: "Paintings\Painting_mock_painted.png", shot: "" });
+              push("painting", { name: "Painting_mock", src: MOCK_PORTRAIT, painted: "Paintings\Painting_mock_painted.png", shot: "",
+                title: "Olfina and Haruk in the Gildergreen's Shade",
+                description: "Olfina Gray-Mane and Haruk stand close beside the old tree, her hand resting on his arm. She wears a white silk gown with a long veil over silver-white hair; he wears a black fur mantle over dark blue breeches with a gold-trimmed belt. Both look toward the viewer, she smiling, he steady and solemn. Behind them dark green foliage and grey stone fall away into soft evening light.",
+                describing: "" });
             }, 800);
           } else if (envelope.kind === "paintShowOn") {
             answer(envelope.id, false, "Nothing was under your crosshair when the dashboard opened.");

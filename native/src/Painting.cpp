@@ -2,6 +2,8 @@
 
 #include "PCH.h"
 
+#include "Dashboard.h"
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -10,6 +12,7 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <functional>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -57,6 +60,13 @@ namespace SNRom::Painting {
         std::string g_latestSrc;      // PNG data URL, small
         std::string g_latestPainted;  // full paths, for the card
         std::string g_latestShot;
+        std::string g_latestTitle;  // the vision model's, "" until it answers
+        std::string g_latestDescription;
+        std::string g_latestDescribing;  // "asked", "failed: why", or ""
+
+        // SkyrimNet's custom prompt (CppAPI/PublicAPI.h, v8+), resolved at the
+        // first description.
+        using CustomPromptFn = bool (*)(const char*, const char*, const char*, std::function<void(const char*, int)>);
 
         void Step();
 
@@ -445,6 +455,7 @@ namespace SNRom::Painting {
         }
 
         void Paint(Shot a_shot, Sitting a_sit);
+        void Describe(std::string a_name, std::string a_jpeg, Sitting a_sit);
 
         void Step() {
             if (g_sit.phase == Phase::kIdle) {
@@ -821,10 +832,21 @@ namespace SNRom::Painting {
 
         // A PNG of a_img, scaled to a_w by a_h (its own size when 0). Empty
         // on failure (logged). COM is the caller's.
+        std::vector<std::uint8_t> Encode(const Image& a_img, UINT a_w, UINT a_h, const GUID& a_container);
+
         std::vector<std::uint8_t> Png(const Image& a_img, UINT a_w = 0, UINT a_h = 0) {
+            return Encode(a_img, a_w, a_h, GUID_ContainerFormatPng);
+        }
+
+        // A JPEG, for the vision model: a tenth of a PNG's size.
+        std::vector<std::uint8_t> Jpeg(const Image& a_img, UINT a_w, UINT a_h) {
+            return Encode(a_img, a_w, a_h, GUID_ContainerFormatJpeg);
+        }
+
+        std::vector<std::uint8_t> Encode(const Image& a_img, UINT a_w, UINT a_h, const GUID& a_container) {
             std::vector<std::uint8_t> out;
             const auto fail = [](const char* a_step, HRESULT a_hr) {
-                SKSE::log::warn("Painting: PNG failed at {} (0x{:08X})", a_step, static_cast<std::uint32_t>(a_hr));
+                SKSE::log::warn("Painting: encoding failed at {} (0x{:08X})", a_step, static_cast<std::uint32_t>(a_hr));
                 return std::vector<std::uint8_t>{};
             };
             const UINT w = a_w ? a_w : a_img.w, h = a_h ? a_h : a_img.h;
@@ -856,7 +878,7 @@ namespace SNRom::Painting {
             ComPtr<IWICBitmapFrameEncode> frame;
             hr = CreateStreamOnHGlobal(nullptr, TRUE, &stream);
             if (SUCCEEDED(hr)) {
-                hr = factory->CreateEncoder(GUID_ContainerFormatPng, nullptr, &encoder);
+                hr = factory->CreateEncoder(a_container, nullptr, &encoder);
             }
             if (SUCCEEDED(hr)) {
                 hr = encoder->Initialize(stream.Get(), WICBitmapEncoderNoCache);
@@ -870,9 +892,22 @@ namespace SNRom::Painting {
             if (SUCCEEDED(hr)) {
                 hr = frame->SetSize(w, h);
             }
-            WICPixelFormatGUID format = GUID_WICPixelFormat32bppBGRA;
+            WICPixelFormatGUID format = a_container == GUID_ContainerFormatJpeg ? GUID_WICPixelFormat24bppBGR
+                                                                                   : GUID_WICPixelFormat32bppBGRA;
             if (SUCCEEDED(hr)) {
                 hr = frame->SetPixelFormat(&format);
+            }
+            // Whatever the encoder settled on, the source is converted to it.
+            ComPtr<IWICFormatConverter> converter;
+            if (SUCCEEDED(hr) && format != GUID_WICPixelFormat32bppBGRA) {
+                hr = factory->CreateFormatConverter(&converter);
+                if (SUCCEEDED(hr)) {
+                    hr = converter->Initialize(source.Get(), format, WICBitmapDitherTypeNone, nullptr, 0.0,
+                                               WICBitmapPaletteTypeCustom);
+                }
+                if (SUCCEEDED(hr)) {
+                    source = converter;
+                }
             }
             if (SUCCEEDED(hr)) {
                 hr = frame->WriteSource(source.Get(), nullptr);
@@ -1002,6 +1037,7 @@ namespace SNRom::Painting {
             const auto shotPng = Png(shot);
             const auto paintedPng = Png(painted);
             const auto cardPng = Png(painted, 384, 480);
+            const auto visionJpeg = Jpeg(painted, 512, 640);
             bool       ok = !previews.empty() && !shotPng.empty() && !paintedPng.empty();
             ok = ok && WriteFile(previews / (name + "_shot.png"), shotPng.data(), shotPng.size());
             ok = ok && WriteFile(previews / (name + "_painted.png"), paintedPng.data(), paintedPng.size());
@@ -1021,13 +1057,118 @@ namespace SNRom::Painting {
                     g_latestSrc = cardPng.empty() ? "" : "data:image/png;base64," + Base64(cardPng);
                     g_latestPainted = (previews / (name + "_painted.png")).string();
                     g_latestShot = (previews / (name + "_shot.png")).string();
+                    g_latestTitle.clear();
+                    g_latestDescription.clear();
+                    g_latestDescribing.clear();
                 }
             }
             g_busy = false;
+            if (dds && !visionJpeg.empty()) {
+                SKSE::GetTaskInterface()->AddTask(
+                    [name, jpeg = "data:image/jpeg;base64," + Base64(visionJpeg), a_sit]() { Describe(name, jpeg, a_sit); });
+            }
             SKSE::GetTaskInterface()->AddTask([dds]() {
                 RE::SendHUDMessage::ShowHUDMessage(dds ? "[Relationships] The painter has finished. See the card."
                                           : "[Relationships] The painting could not be saved. See the log.");
             });
+        }
+
+        // Latest() as JSON text, for a push.
+        std::string LatestText();
+
+        // THE DESCRIPTION (the author, 2026-11-04: "so NPCs have that info and
+        // can talk about it"). The painting goes to SkyrimNet's vision model -
+        // the "vision" variant OmniSight's own captures use - in our own
+        // template, snrom_painting_describe, which an [image] block carries.
+        // Told who stands on which side, so the description names them; an
+        // OmniSight capture of the canvas could not know who is who. Main
+        // thread.
+        void Describe(std::string a_name, std::string a_jpeg, Sitting a_sit) {
+            static CustomPromptFn prompt = []() -> CustomPromptFn {
+                const auto mod = GetModuleHandleW(L"SkyrimNet.dll");
+                using VersionFn = int (*)();
+                const auto version = mod ? reinterpret_cast<VersionFn>(GetProcAddress(mod, "PublicGetVersion")) : nullptr;
+                if (!version || version() < 8) {
+                    return nullptr;
+                }
+                return reinterpret_cast<CustomPromptFn>(GetProcAddress(mod, "PublicSendCustomPromptToLLM"));
+            }();
+            const auto fail = [&](const std::string& a_why) {
+                SKSE::log::warn("Painting: {} is not described: {}", a_name, a_why);
+                {
+                    std::scoped_lock lock(g_latestLock);
+                    if (g_latestName == a_name) {
+                        g_latestDescribing = "failed: " + a_why;
+                    }
+                }
+                Dashboard::Push("painting", LatestText());
+            };
+            if (!prompt) {
+                return fail("SkyrimNet has no custom prompts");
+            }
+            auto*       player = RE::PlayerCharacter::GetSingleton();
+            auto*       partner = RE::TESForm::LookupByID<RE::Actor>(a_sit.partner);
+            std::string you = player ? player->GetDisplayFullName() : "";
+            std::string them = partner ? partner->GetDisplayFullName() : "";
+            // As the viewer sees it: whose head is further left.
+            const bool youLeft = a_sit.points[0][0] <= a_sit.points[1][0];
+            json       ctx = { { "painting_image", a_jpeg },
+                               { "painting_player", you },
+                               { "painting_partner", them },
+                               { "painting_left", youLeft ? you : them },
+                               { "painting_right", youLeft ? them : you },
+                               { "painting_place", "" } };
+            if (auto* where = player ? player->GetCurrentLocation() : nullptr) {
+                ctx["painting_place"] = where->GetFullName() ? where->GetFullName() : "";
+            }
+            {
+                std::scoped_lock lock(g_latestLock);
+                if (g_latestName == a_name) {
+                    g_latestDescribing = "asked";
+                }
+            }
+            Dashboard::Push("painting", LatestText());
+            const auto started = std::chrono::steady_clock::now();
+            const bool queued = prompt(
+                "snrom_painting_describe", "vision", ctx.dump(-1, ' ', false, json::error_handler_t::replace).c_str(),
+                [a_name, started](const char* a_response, int a_success) {
+                    std::string text = a_response ? a_response : "";
+                    const auto  ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started).count();
+                    SKSE::GetTaskInterface()->AddTask([a_name, text, ok = a_success != 0, ms]() {
+                        SKSE::log::info("Painting: the vision model answered for {} in {} ms ({}): {}", a_name, ms,
+                                        ok ? "ok" : "FAILED", text.substr(0, 800));
+                        {
+                            std::scoped_lock lock(g_latestLock);
+                            if (g_latestName == a_name) {
+                                if (!ok) {
+                                    g_latestDescribing = "failed: " + text.substr(0, 200);
+                                } else {
+                                    // JSON, perhaps fenced or with words around
+                                    // it: the outermost braces.
+                                    const auto open = text.find('{');
+                                    const auto close = text.rfind('}');
+                                    auto       answer = open != std::string::npos && close != std::string::npos && close > open
+                                                            ? json::parse(text.substr(open, close - open + 1), nullptr, false)
+                                                            : json(nullptr);
+                                    if (answer.is_object() && answer.contains("description")) {
+                                        g_latestTitle = answer.value("title", std::string{});
+                                        g_latestDescription = answer.value("description", std::string{});
+                                        g_latestDescribing.clear();
+                                    } else {
+                                        g_latestDescription = text;  // shown as it came, to judge
+                                        g_latestDescribing = "failed: the answer was not the JSON asked for";
+                                    }
+                                }
+                            }
+                        }
+                        Dashboard::Push("painting", LatestText());
+                    });
+                });
+            SKSE::log::info("Painting: {} sent to the vision model ({} KB){}", a_name, a_jpeg.size() / 1024,
+                            queued ? "" : " - REFUSED");
+            if (!queued) {
+                fail("SkyrimNet would not send it");
+            }
         }
 
     }  // namespace
@@ -1123,7 +1264,16 @@ namespace SNRom::Painting {
 
     json Latest() {
         std::scoped_lock lock(g_latestLock);
-        return { { "name", g_latestName }, { "src", g_latestSrc }, { "painted", g_latestPainted }, { "shot", g_latestShot } };
+        return { { "name", g_latestName },       { "src", g_latestSrc },
+                 { "painted", g_latestPainted }, { "shot", g_latestShot },
+                 { "title", g_latestTitle },     { "description", g_latestDescription },
+                 { "describing", g_latestDescribing } };
+    }
+
+    namespace {
+        std::string LatestText() {
+            return Latest().dump(-1, ' ', false, json::error_handler_t::replace);
+        }
     }
 
 }  // namespace SNRom::Painting
