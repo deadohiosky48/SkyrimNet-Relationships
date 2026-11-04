@@ -4,13 +4,23 @@
 
 #include "Marriage.h"
 
+#include <cctype>
 #include <map>
 #include <mutex>
+#include <set>
+#include <string>
 #include <vector>
 
 namespace SNRom::Family {
 
     namespace {
+
+        std::string Lower(std::string a_text) {
+            for (auto& c : a_text) {
+                c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            }
+            return a_text;
+        }
 
         // Base records (TESNPC form ids): a child's parents, a parent's
         // children, as the plugins declare them. Written once at kDataLoaded.
@@ -141,6 +151,13 @@ namespace SNRom::Family {
                 }
             }
         }
+        // ONE CHILD, ONE LINE (2.6; seen in play, the author, 2026-11-04):
+        // Erith, Daighre's daughter by the game's records, adopted by the
+        // player in Kinship with Daighre as her mother, was listed twice. A
+        // child Kinship lists is not listed again from the records: by base,
+        // or by name when Kinship's child has no body to resolve.
+        std::set<RE::FormID>  kinBases;
+        std::set<std::string> kinNames;
         // Theirs with the player first: Kinship's.
         if (const auto* kin = Kinship()) {
             const auto id = static_cast<std::uint32_t>(a_formId);
@@ -155,6 +172,13 @@ namespace SNRom::Family {
                     for (const auto& k : kids) {
                         if (!k.is_object()) {
                             continue;
+                        }
+                        const auto ref = static_cast<RE::FormID>(k.value("refId", std::uint64_t{ 0 }));
+                        auto*      body = ref ? RE::TESForm::LookupByID<RE::Actor>(ref) : nullptr;
+                        if (auto* npc = body ? body->GetActorBase() : nullptr) {
+                            kinBases.insert(npc->GetFormID());
+                        } else if (auto said = Lower(k.value("name", "")); !said.empty()) {
+                            kinNames.insert(std::move(said));
                         }
                         out["children"].push_back({ { "name", k.value("name", "") },
                                                     { "child", k.value("child", "") },
@@ -171,7 +195,7 @@ namespace SNRom::Family {
         if (const auto it = g_childrenOf.find(self); it != g_childrenOf.end()) {
             for (const auto child : it->second) {
                 auto name = NameOf(child);
-                if (name.empty()) {
+                if (name.empty() || kinBases.contains(child) || kinNames.contains(Lower(name))) {
                     continue;
                 }
                 std::string other;
