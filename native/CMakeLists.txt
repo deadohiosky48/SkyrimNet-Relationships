@@ -97,6 +97,7 @@ set(SOURCES
     src/MeridianHost.cpp
     src/Model.cpp
     src/L10n.cpp
+    src/LoversComfort.cpp
     src/Natives.cpp
     src/Notices.cpp
     src/Portraits.cpp

@@ -8,6 +8,7 @@
 #include "src/History.h"
 #include "src/Hotkey.h"
 #include "src/L10n.h"
+#include "src/LoversComfort.h"
 #include "src/Marriage.h"
 #include "src/PlanJudge.h"
 #include "src/Natives.h"
@@ -60,6 +61,7 @@ namespace {
             // while these are live (Decorators.h).
             SNRom::Decorators::Register();
             SNRom::Rings::Register();
+            SNRom::LoversComfort::Register();
             SNRom::Marriage::DetectMaras();
             SNRom::Officiant::MarkAll();
             SNRom::Family::Index();
