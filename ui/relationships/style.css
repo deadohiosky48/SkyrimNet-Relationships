@@ -587,6 +587,12 @@ button, input, select { font: inherit; color: inherit; }
 .ft-level > li:last-child::before { border-right: 1px solid var(--faint); border-radius: 0 6px 0 0; }
 .ft-level > li:first-child::after { border-radius: 6px 0 0 0; }
 .family-tree-btn { margin-top: 0.6rem; }
+
+/* 2.6 test build: the wedding painting's feasibility test. */
+.painting-test { margin-top: 0.8rem; }
+.painting-test-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.4rem 0; }
+.painting-test-preview img { display: block; width: 12rem; max-width: 100%; height: auto;
+  border: 0.45rem solid #6b4a2b; outline: 1px solid #c9a46a; box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.45); margin: 0.4rem 0; }
 .cal-nav { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
 .cal-title { flex: 1; margin: 0; text-align: center; font-family: var(--serif); font-weight: normal; font-size: calc(1.15rem * var(--t)); }
 .cal-today { margin-left: 0.4rem; }

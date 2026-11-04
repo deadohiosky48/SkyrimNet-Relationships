@@ -417,6 +417,16 @@
             var src = index >= 0 && index % 2 === 0 ? MOCK_PORTRAIT : "";
             push("portrait", { formId: envelope.payload.formId, src: src });
             answer(envelope.id, true, "");
+          } else if (envelope.kind === "paintSit") {
+            answer(envelope.id, true, "The painter is ready. Hold still.");
+            setTimeout(function () {
+              push("painting", { name: "Painting_mock", src: MOCK_PORTRAIT, painted: "Paintings\Painting_mock_painted.png", shot: "" });
+            }, 800);
+          } else if (envelope.kind === "paintShowOn") {
+            answer(envelope.id, false, "Nothing was under your crosshair when the dashboard opened.");
+          } else if (envelope.kind === "paintLatest") {
+            push("painting", { name: "", src: "", painted: "", shot: "" });
+            answer(envelope.id, true, "");
           } else if (envelope.kind === "familyTree") {
             push("familyTree", mockTree());
             answer(envelope.id, true, "");

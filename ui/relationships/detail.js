@@ -94,6 +94,56 @@
     slot.appendChild(img);
     slot.hidden = false;
   }
+  // THE WEDDING PAINTING, feasibility test (2.6 test build; Painting.h in
+  // the DLL): a sitting with this person now, and the latest painting put on
+  // whatever was under the crosshair when the dashboard opened. Test-only,
+  // so in English; it goes once the painting is built for real.
+  var latestPainting = null;
+  snrom.on("painting", function (p) {
+    latestPainting = p || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".painting-test-preview"), fillPaintingPreview);
+  });
+  function fillPaintingPreview(slot) {
+    slot.innerHTML = "";
+    var p = latestPainting;
+    if (!p || !p.src) { slot.appendChild(el("p", "blurb", "No painting yet this session.")); return; }
+    var img = document.createElement("img");
+    img.src = p.src;
+    img.alt = "";
+    slot.appendChild(img);
+    slot.appendChild(el("p", "blurb", "Full size: " + p.painted + ". The camera's own shot is beside it, ending _shot.png."));
+  }
+  function paintingTest(b) {
+    var box = el("div", "painting-test");
+    box.appendChild(el("h4", "sub-head", "Wedding painting (test build)"));
+    box.appendChild(el("p", "blurb", "Stand beside them, then paint. The dashboard closes, the camera poses on the two of you for a few seconds, and the painting appears here."));
+    var status = el("p", "blurb painting-test-status");
+    function ask(kind, payload, button) {
+      button.disabled = true;
+      status.textContent = "…";
+      snrom.request(kind, payload).then(function (r) {
+        button.disabled = false;
+        status.textContent = r.message || "";
+      });
+    }
+    var row = el("div", "painting-test-buttons");
+    var sit = el("button", "btn btn-quiet", "Paint the two of you now");
+    sit.type = "button";
+    sit.addEventListener("click", function () { ask("paintSit", { formId: b.subject.formId }, sit); });
+    var on = el("button", "btn btn-quiet", "Put the last painting on what was under your crosshair");
+    on.type = "button";
+    on.addEventListener("click", function () { ask("paintShowOn", {}, on); });
+    row.appendChild(sit);
+    row.appendChild(on);
+    box.appendChild(row);
+    box.appendChild(status);
+    var preview = el("div", "painting-test-preview");
+    fillPaintingPreview(preview);
+    box.appendChild(preview);
+    snrom.request("paintLatest", {});
+    return box;
+  }
+
   function portraitSlot(formId) {
     var slot = el("div", "detail-portrait");
     slot.setAttribute("data-form", String(formId));
@@ -347,6 +397,8 @@
       if (m.ringToPlayer) kv(mdl, t("detail.ringToYou", "Their ring to you"), m.ringToPlayer);
       ms.appendChild(mdl);
       if (m.plan) ms.appendChild(this.planBlock(m.plan, b, snap));
+      // 2.6 TEST BUILD: the wedding painting's feasibility test.
+      if (m.state === "married" || m.state === "engaged" || m.state === "separated") ms.appendChild(paintingTest(b));
       scroll.appendChild(ms);
     }
 

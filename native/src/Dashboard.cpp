@@ -25,6 +25,7 @@
 #include "MagelightHost.h"
 #include "MeridianHost.h"
 #include "Family.h"
+#include "Painting.h"
 #include "Marriage.h"
 #include "Model.h"
 #include "Portraits.h"
@@ -778,6 +779,26 @@ namespace SNRom::Dashboard {
                     // THE FAMILY TREE (2.6; Family::Tree), built when the
                     // view opens, as its own message.
                     Send({ { "v", kProtocol }, { "kind", "familyTree" }, { "payload", Family::Tree() } });
+                    Result(id, true, "");
+                } else if (kind == "paintSit") {
+                    // THE WEDDING PAINTING (2.6 feasibility test; Painting.h):
+                    // a sitting with the card's person, once the dashboard
+                    // has closed and the game runs.
+                    const auto payload = message.value("payload", json::object());
+                    const auto formId = static_cast<RE::FormID>(payload.value("formId", std::int64_t{ 0 }));
+                    const auto why = Painting::Sit(formId);
+                    Result(id, why.empty(), why.empty() ? "The painter is ready. Hold still." : why);
+                    if (why.empty()) {
+                        Close();
+                    }
+                } else if (kind == "paintShowOn") {
+                    // The latest painting on whatever was under the crosshair
+                    // when the dashboard opened: does a texture written during
+                    // play load?
+                    const auto why = Painting::ShowOn(g_captured);
+                    Result(id, why.empty(), why.empty() ? "Done. Close the dashboard and look." : why);
+                } else if (kind == "paintLatest") {
+                    Send({ { "v", kProtocol }, { "kind", "painting" }, { "payload", Painting::Latest() } });
                     Result(id, true, "");
                 } else if (kind == "thumbnails") {
                     // THE ROSTER'S FACES (wpm45), for the rows in view: the
