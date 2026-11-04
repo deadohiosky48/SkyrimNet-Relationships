@@ -8,12 +8,12 @@ Everyone you get close to forms their own opinion of you — and it changes.
 
 ---
 
-> ### 2.0 stands on its own
+> ### 2.5: marriage, and weddings worth having
 >
-> Relationships no longer needs Romantasy. It keeps its own bonds, shows them on
-> its own dashboard, and works with anyone you enroll, follower or not. Coming
-> from 1.x? Read **Upgrading from 1.x** below before you load your save — your
-> bonds come with you, once.
+> Relationships now runs marriage itself: the proposal, the engagement and its
+> ring, a wedding you plan in conversation, and a ceremony spoken by the people
+> in it. It needs SkyrimNet **Beta 28 or newer**. Using MARAS? Read **Moving
+> from MARAS** below before you play: your marriages come with you.
 
 ---
 
@@ -154,16 +154,54 @@ is. A recorded engagement or marriage counts as having fallen. And being free to
 is not the same as wanting to: whether they want you tonight is its own question
 each time, and yes one evening promises nothing about the next.
 
-**Spouse is the rung that makes marriage possible, and it is enforced.** Until
-someone has earned it, a formal proposal is off the table — MARAS will not
-offer one, and an engagement that slips through some other route is put back. The
-ceremony itself still happens through whatever marriage system you use; this mod
-decides when you have both earned the right to hold it.
+**Beloved is the rung that makes marriage possible, and it is enforced.** Until
+someone has earned it, a proposal is gently turned aside, however the moment
+arises. Reaching Beloved is ordinary progression, and talking about marriage is
+part of it. Two people who are already lovers discussing a future, and meaning
+it, is one of the largest things that can happen between them — so it moves the
+bond like one, and it is often what carries them the last of the way.
 
-Reaching Spouse is ordinary progression, and talking about marriage is part of
-it. Two people who are already lovers discussing a future, and meaning it, is one
-of the largest things that can happen between them — so it moves the bond like
-one, and it is often what carries them the last of the way.
+## Marriage and weddings
+
+From 2.5 Relationships runs marriage itself. No other marriage mod is needed.
+
+**The proposal is a conversation.** Ask in your own words, or be asked. A yes is
+theirs to give, and when it comes you confirm that the two of you are promised.
+Give them a ring if you have one: thirteen jewellers across Skyrim sell
+engagement rings and wedding bands in gold, silver and ebony, and the person
+wearing yours keeps it on.
+
+**Then marry the way you want.** Any priest, priestess or jarl will marry you,
+there and then if you would rather elope, or on a day you choose. For a proper
+wedding, hire one of the five wedding planners, one at the temple in each great
+city, and settle everything with them by talking it through:
+
+- the day and the hour;
+- the place: a temple, an inn, a crag in the Reach, or simply *right here*;
+- who marries you;
+- who comes, and whose guests they are;
+- where everyone stands, marked by standing on each spot as you tell them;
+- the ceremony: an address, a reading or blessing, the rings, the kiss;
+- the wedding rings, and what your betrothed will wear.
+
+Your betrothed has opinions and joins in. The plan is on their dashboard card.
+If something you agreed was not written down, change it there by hand.
+
+**On the day, everyone comes.** The guests make their way to the place, the
+officiant and the couple take their marks, and the ceremony is spoken by the
+people in it, step by step: your vows and theirs, each "do you take", the rings
+exchanged, the pronouncement, the kiss. You are asked on screen when it is your
+turn. Afterwards the guests stay to celebrate. Miss the day and the wedding is
+put off, without blame.
+
+**One spouse, unless you choose otherwise.** In Skyrim one spouse is the rule.
+Turn on **Marry More Than One Spouse** in the settings to marry again while
+married. Turning it off never undoes a marriage you have.
+
+**And the rest of a marriage.** The dashboard's calendar keeps your wedding days,
+anniversaries, the birthdays of your children and Skyrim's festivals. Each card
+shows family: parents, children, and who they had them with. A marriage that
+ended where the game never saw it can be recorded as a divorce from the card.
 
 **Getting the most out of it.** What this mod reads about the people you know,
 and how to make sure your save has something worth reading — especially if you
@@ -221,7 +259,7 @@ fires, modifier or not. Pick keys nothing else in your load order uses.
 
 | | |
 |---|---|
-| [SkyrimNet](https://github.com/MinLL/SkyrimNet-GamePlugin) | required — **Beta 25 (0.25.0) or newer** |
+| [SkyrimNet](https://github.com/MinLL/SkyrimNet-GamePlugin) | required — **Beta 28 (0.28.0) or newer**. Checked through Beta 29.2 |
 | SKSE64 | required |
 | [Address Library for SKSE Plugins](https://www.nexusmods.com/skyrimspecialedition/mods/32444) | required — for the included SkyrimNetRelationships.dll |
 | PapyrusUtil SE | required — StorageUtil, JsonUtil, MiscUtil |
@@ -240,15 +278,12 @@ inert; nothing errors and no prompt breaks.
 
 | | adds |
 |---|---|
-| SeverActions | follower detection, including for companions you already know. From **3.9.11** it detects this mod and steps its own Intimacy & Consent section aside, so nobody is handed two ideas of how receptive they are. From **4.0.1** everyone you enroll gets this mod's Relationships bio blocks, chosen from their character - see *Bio blocks* below |
+| SeverActions | follower detection, including for companions you already know. From **3.9.11** it detects this mod and steps its own Intimacy & Consent section aside, so nobody is handed two ideas of how receptive they are. From **4.0.1** everyone you enroll gets this mod's Relationships bio blocks, chosen from their character - see *Bio blocks* below. At a wedding, your betrothed's chosen clothes are kept as a SeverActions outfit, and guests travel to the place on their own; without it they wear what they wear, and you bring the guests |
 | OStim Community Resource | physical attraction as an input, for characters whose disposition allows it to matter |
 | OStim NG or SexLab | tier notices wait until a scene is over |
-| MARAS | marriage and engagement are read as facts rather than judged |
-| [SkyrimNet-Kinship](https://github.com/deadohiosky48/SkyrimNet-Kinship) | your own children are barred from the romantic and sexual ladders |
+| [SkyrimNet-Kinship](https://github.com/deadohiosky48/SkyrimNet-Kinship) | your own children are barred from the romantic and sexual ladders, and appear in the family and the calendar |
+| MARAS | only to bring its marriages over — see *Moving from MARAS* |
 | Romantasy | only to bring 1.x bonds over — see *Upgrading from 1.x* |
-
-What this mod reads from MARAS, and why it never gates on it, is written up in
-[Working with M.A.R.A.S](docs/MARAS_INTEGRATION.md).
 
 ## Installation
 
@@ -277,6 +312,50 @@ Installing by hand: copy `00 Core` and one of `10 Plugin as ESL` or
 `11 Plugin as ESP` over your `Data` folder.
 
 Settings appear in SkyrimNet's plugin panel under **SkyrimNet Relationships**.
+
+## Upgrading from 2.4
+
+Install over 2.4 with Replace and load your save: bonds, histories and
+characters carry over. 2.5 needs SkyrimNet Beta 28 or newer, and one of Meridian
+UI, Magelight UI or Prisma UI, which used to be optional: every question the
+mod asks you is asked there now.
+
+Two settings are new. SkyrimNet does not add new settings to a `settings.yaml`
+that already exists, so they work at their defaults (**Marry More Than One
+Spouse** off, **Guests Applaud the Newlyweds** on) but will not remember being
+changed. To be able to change them, add these lines to
+`SKSE\Plugins\SkyrimNet\config\plugins\SkyrimNet Relationships\settings.yaml`
+while the game is closed:
+
+```yaml
+marriagePolygamy: false
+weddingApplause: true
+```
+
+## Moving from MARAS
+
+Relationships runs marriage from 2.5, and brings MARAS's marriages over once:
+
+1. **Keep MARAS installed and load your save.** Until its marriages are brought
+   over, MARAS keeps running marriage and nothing changes.
+2. **Bring them over.** Open the dashboard and use **Bring marriages over from
+   MARAS** under *Playthrough repairs*. Your spouses, your betrothed, and anyone
+   divorced or jilted are copied into Relationships' own record. MARAS itself is
+   not changed.
+3. **Restart the game.** From then on Relationships runs marriage, and MARAS is
+   set aside even while it stays installed.
+4. **Then remove MARAS**, the clean finish. Saves made while it was installed
+   still list its plugins and may refuse to load without them: install the
+   optional **MARAS Stub** download, two empty plugins with MARAS's names and
+   nothing from MARAS in them. **Never enable the stub alongside the real
+   MARAS**, and keep it enabled for as long as you play saves that needed it.
+
+Every marriage you bring over stands, however many there are. To marry again
+while married, turn on **Marry More Than One Spouse**. If MARAS is removed
+before its marriages are brought over, Relationships says so: reinstall MARAS
+to bring them across.
+
+What happens underneath is in [MARAS and Relationships](docs/MARAS_INTEGRATION.md).
 
 ## Upgrading from 2.0
 
@@ -446,7 +525,7 @@ folder; the libraries live in `library/`.)
 ## Configuration
 
 Everything is tunable from SkyrimNet's settings page. A tier is 500 points and
-Spouse is 2,500, and the defaults are calibrated so that nothing moves quickly.
+Beloved is 2,500, and the defaults are calibrated so that nothing moves quickly.
 
 **Bond Pace** is the setting most people will want. Very Slow, Slow, Normal,
 Fast or Very Fast, under *Pacing* — roughly four times as long, twice, as-is,
@@ -498,9 +577,21 @@ entries work, since this mod leans on them harder than on anything else.
 
 **Released.** Enrollment, authoring, conversational scoring, the romantic gate,
 disposition drift, the consent prompt and the dashboard are all built and
-confirmed in live play across more than a hundred characters.
+confirmed in live play across more than a hundred characters. Marriage and
+weddings are new in 2.5, and confirmed in play from the proposal to the
+reception.
 
 Known limitations, honestly:
+
+- **Marrying more than once is a setting, for now.** A quest to earn Mara's
+  exception may come in a later release; until then, **Marry More Than One
+  Spouse** stands in for it.
+- **A wedding plan is written by a model.** What you agree with the planner is
+  recorded by the model choosing actions, with a second reading of the
+  conversation behind it, and once in a while something is still missed.
+  Change it by hand on your betrothed's card.
+- **The seventeen languages besides English are machine-drafted.** Corrections from native
+  speakers are welcome.
 
 - **No likes or dislikes, for now.** 2.0 removed Romantasy's, which were built on
   game statistics. They return in a later update, written in the mod's own terms
@@ -548,8 +639,16 @@ means and which pace would match it.
 Library are installed for your game version, and that the DLL is in
 `Data\SKSE\Plugins\`.
 
-**"SkyrimNet is not loading Relationships' content."** 2.0 needs SkyrimNet Beta
-25 or newer. On Beta 25, reinstalling this mod is the usual fix.
+**"SkyrimNet is not loading Relationships' content."** 2.5 needs SkyrimNet Beta
+28 or newer. On a supported beta, reinstalling this mod is the usual fix.
+
+**My save will not load after removing MARAS.** Install the MARAS Stub — see
+*Moving from MARAS*.
+
+**Something we agreed for the wedding was not written into the plan.** The
+model deciding what was agreed occasionally misses one. Open your betrothed's
+card and change that part of the plan by hand; it is made exactly as if it had
+been agreed.
 
 **My save will not load after removing Romantasy.** Install the Romantasy Stub —
 see *Upgrading from 1.x*.
@@ -652,6 +751,11 @@ by MinLL. The dashboard is hosted in Meridian UI by ColdSun, whose Romantasy
 carried 1.x, in Magelight UI by Severause, or in Prisma UI. Their public API
 headers are in this repository, unmodified, to build the DLL; none of their
 programs ships with this mod.
+
+The engagement ring and the braided wedding band are built from "Women's wedding
+ring and engagement ring combo modder's resource" by ModdersResources (Nexus
+Mods, Skyrim Special Edition, mod 60450), with vanilla's ring textures; the wide
+band is our own. How they were made is in [tools/rings](tools/rings/README.md).
 
 ## For other mod authors
 

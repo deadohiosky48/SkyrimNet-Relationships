@@ -1,98 +1,48 @@
-# Working with M.A.R.A.S
+# MARAS and Relationships
 
-[MARAS](https://github.com/tetherball88/maras) is an optional dependency. Absent,
-everything here is inert and nothing errors. Present, this mod reads it and
-defers to it — it never writes to it.
+From 2.5 Relationships runs marriage itself: proposals, engagements, rings,
+weddings and divorce. [MARAS](https://github.com/tetherball88/maras) is no longer
+needed, and nothing in Relationships is taken from it. What remains is the way
+out: MARAS's marriages are brought over once, and then MARAS is set aside.
 
-## The rule: cooperate, never gate
+How to do it is in the README, under *Moving from MARAS*. This page says what
+happens underneath.
 
-**Spouse tier is depth, not marriage.** A shield-sister who will never be a lover
-has to be able to reach the top of the ladder, because that is the whole two-track
-design. So nothing in this mod is gated on MARAS. Reaching Spouse means the bond
-is deep enough that marriage would make sense; whether it can actually happen is
-MARAS's question, and MARAS answers it.
+## Who runs marriage
 
-What we do instead is **state the facts and let the character judge them** — the
-same principle everything else here follows.
+**MARAS, only while it is installed and its marriages have not been brought
+over.** In that window Relationships' own marriage features stand aside: its
+proposal, marriage and wedding actions are not offered, and the dashboard
+invites you to bring the marriages over. Nothing is ever written to MARAS.
 
-## What we read
+**Relationships, from the first load after the import, whether or not MARAS is
+still installed.** From then on only Relationships' own record speaks: who is
+married, engaged or divorced, and how many spouses you have, are read from it,
+never from MARAS. If MARAS is still installed:
 
-Papyrus, through `MARAS.psc`, guarded by `Game.IsPluginInstalled("TT_MARAS.esp")`:
+- its SkyrimNet actions (proposals, engagements, divorces) are taken out of the
+  action library for the session, so they are never offered;
+- its proposals are closed on everyone Relationships knows;
+- an engagement it makes anyway is reversed.
 
-| call | used for |
-|---|---|
-| `IsNPCStatus(npc, "married")` | part of `IsMarriedToPlayer`, alongside vanilla `PlayerMarriedFaction` |
-| `IsNPCStatus(npc, "engaged")` | seeding evidence, and asserted to the assessors |
-| `IsNPCStatus(npc, "candidate")` | whether a wedding is possible at all |
-| `GetStatusCount("married")` | how many spouses the player already has |
-| `GetPermanentAffection(npc)` | logged for calibration only; nothing reads it |
+Removing MARAS afterwards is still the clean finish.
 
-Inja, inside a block already guarded by `maras_present`:
+## What the import reads
 
-- `get_global_value("TTM_EnablePolygamyToggle")` — 1.0 once the polygamy quest is
-  complete or the MCM override is set. There is no Papyrus route to this without
-  the global's FormID, which is why it is read in the template instead.
+Through `MARAS.psc`, once per person, guarded by
+`Game.IsPluginInstalled("TT_MARAS.esp")`: who MARAS records as **married**,
+**engaged**, **divorced** and **jilted**. Each becomes the same state in
+Relationships' record, marked as brought over from MARAS. Anyone Relationships
+already records is left as they are, so running the import again brings over
+only what MARAS has recorded since. Nothing else of MARAS's is read.
 
-## What we pass to the assessors
+Every marriage brought over stands, however many there are. Marrying again while
+married is Relationships' own setting, **Marry More Than One Spouse**.
 
-`MarasContext()` appends these to the JSON context of the talk, spark and drift
-prompts. They are **Ints, not strings** — a context boolean fed by a String is the
-case-fold trap wearing a different coat, and `check.ps1` fails the build over it.
+## The MARAS Stub
 
-    maras_present  npc_married  npc_engaged  npc_candidate  player_spouse_count
-
-`npc_married` is computed outside the MARAS guard, because `IsMarriedToPlayer`
-reads vanilla `PlayerMarriedFaction` first and a vanilla marriage is still a fact
-when MARAS is absent.
-
-## Why this exists
-
-A companion reached Spouse tier while the player was already married to someone
-else and the polygamy quest was incomplete. The talk assessor had no marriage
-vocabulary at all, so when the conversation reached an agreed wedding it matched
-*THE ONE THING THAT IS ALWAYS LARGE* — an explicit mutual decision to become
-something new — and paid a LANDMARK award for a marriage that had not happened
-and, at that moment, could not happen. Those points then carried her toward
-Spouse, which is the tier that is supposed to mean marriage is *possible*.
-
-The prompt was working exactly as designed. It simply did not know that marriage
-has an external gate. So the facts now travel with the question, and a
-conversation about marrying reads as a hope or a plan unless the world records
-otherwise.
-
-This is the `npc_married` lesson generalised. Jarl Elisif, married to the player
-through MARAS, was authored `ORIENTATION: WOMEN / BASIS: STATED` — the one
-confidence level allowed to refuse — because her static bio says nothing about who
-she married, so the model was asked to infer with no evidence and obliged. Papyrus
-knew all along. **Anything Papyrus can assert should be asserted rather than
-inferred.**
-
-## MARAS behaviour worth knowing
-
-Findings from reading MARAS 1.x, correct at the time of writing:
-
-- **Candidacy comes from a vanilla dialogue topic**, not from conversation.
-  `MARAS.RegisterCandidate()` is called from the `maras_enable_candidate`
-  TopicInfo. None of MARAS's four SkyrimNet actions registers candidacy, so a
-  player who interacts mostly through AI conversation can discuss marriage at
-  length without the NPC ever becoming a candidate.
-- **The polygamy gate is advisory.** `0501_marriage_chances.prompt` tells an NPC
-  she "might respond with confusion" when the player is already committed and
-  polygamy is off. It is prompt guidance, not a hard block.
-- **That guidance only renders for tracked NPCs.** The whole block is wrapped in
-  `is_in_faction(npc.UUID, "TTM_TrackedNpcs")`, so an NPC who is not yet a
-  candidate receives no marriage context at all.
-- **Completing the polygamy quest removes the PLAYER from `PlayerMarriedFaction`**
-  so they can marry again. It does not remove the spouse, so `IsMarriedToPlayer`
-  is unaffected — it tests the NPC's membership, not the player's.
-
-## What we deliberately do not do
-
-- **We do not call `RegisterCandidate()`.** It is a public native and it would
-  make a Spouse-tier companion marriageable in one line. It also writes into
-  another mod's data and takes a decision away from both the player and MARAS. If
-  this is ever added it belongs behind an explicit, default-off setting.
-- **We do not try to enforce MARAS's proposal gate.** Not ours to enforce, and
-  MARAS may add a hard check of its own.
-- **We do not gate any tier, award or assessment on marital state.** Only describe
-  it.
+Saves made while MARAS was installed list its plugins, `TT_MARAS.esp` and
+`TT_Maras_OStim.esp`, and may refuse to load without them. The **MARAS Stub**
+download holds two plugins with those names: a file header each, no records, no
+scripts. Enable them in place of MARAS and its OStim patch, never beside them,
+for as long as you play saves that needed them.
