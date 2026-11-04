@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>To Have and to Hold</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground:        #E6E8EC;
+    --panel:         #F3F4F7;
+    --panel-edge:    #CFD3DA;
+    --ink:           #191C23;
+    --ink-soft:      #4A515F;
+    --ink-faint:     #767E8D;
+    --romantic:      #A32F4A;
+    --platonic:      #2F6673;
+    --brass:         #8A6620;
+    --romantic-wash: #A32F4A14;
+    --platonic-wash: #2F667314;
+    --brass-wash:    #8A662014;
+    --f-display: "Newsreader", Georgia, "Times New Roman", serif;
+    --f-body:    "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    --f-data:    "IBM Plex Mono", ui-monospace, Consolas, monospace;
+    --rule: 1px solid var(--panel-edge);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101319; --panel: #191D26; --panel-edge: #2C323E;
+      --ink: #E4E7ED; --ink-soft: #A2AAB9; --ink-faint: #757E8E;
+      --romantic: #D2596F; --platonic: #4E93A4; --brass: #C39843;
+      --romantic-wash: #D2596F22; --platonic-wash: #4E93A422; --brass-wash: #C3984322;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #101319; --panel: #191D26; --panel-edge: #2C323E;
+    --ink: #E4E7ED; --ink-soft: #A2AAB9; --ink-faint: #757E8E;
+    --romantic: #D2596F; --platonic: #4E93A4; --brass: #C39843;
+    --romantic-wash: #D2596F22; --platonic-wash: #4E93A422; --brass-wash: #C3984322;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--f-body); font-size: 15px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1180px; margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 3.25rem) clamp(1rem, 3vw, 2rem) 3.5rem;
+    display: flex; flex-direction: column; gap: clamp(1.75rem, 4vw, 2.75rem);
+  }
+  .masthead { display: flex; flex-direction: column; gap: .6rem; }
+  .kicker {
+    font-family: var(--f-data); font-size: .69rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  h1 {
+    font-family: var(--f-display); font-weight: 600;
+    font-size: clamp(2.1rem, 5.5vw, 3.4rem); line-height: 1.04;
+    letter-spacing: -.02em; margin: 0; text-wrap: balance;
+  }
+  .thesis {
+    font-family: var(--f-display); font-size: clamp(1.02rem, 2.2vw, 1.24rem);
+    font-style: italic; color: var(--ink-soft); max-width: 60ch;
+    margin: 0; text-wrap: balance;
+  }
+  section { display: flex; flex-direction: column; gap: 1rem; }
+  h2.sec {
+    font-family: var(--f-display); font-weight: 600;
+    font-size: clamp(1.45rem, 3vw, 1.95rem); line-height: 1.12;
+    margin: 0; letter-spacing: -.01em; text-wrap: balance;
+  }
+  .lede { margin: 0; color: var(--ink-soft); max-width: 70ch; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+  .rule { border: 0; border-top: var(--rule); margin: 0; }
+
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); gap: 1rem; }
+  .step {
+    background: var(--panel); border: var(--rule); border-top: 2px solid var(--ink-faint);
+    padding: 1.1rem 1.15rem 1.25rem; display: flex; flex-direction: column; gap: .55rem;
+  }
+  .step.best { border-top-color: var(--platonic); }
+  .step.good { border-top-color: var(--brass); }
+  .step.weak { border-top-color: var(--romantic); }
+  .step-n {
+    font-family: var(--f-data); font-size: .69rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .step h3 {
+    font-family: var(--f-display); font-size: 1.2rem; font-weight: 600;
+    margin: 0; line-height: 1.15;
+  }
+  .step p { margin: 0; color: var(--ink-soft); font-size: .91rem; }
+
+  table.src { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  table.src th, table.src td {
+    text-align: left; padding: .55rem .7rem; border-bottom: var(--rule); vertical-align: top;
+  }
+  table.src th {
+    font-family: var(--f-data); font-size: .68rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 500;
+  }
+  table.src td:first-child { font-weight: 600; white-space: nowrap; }
+  table.src td.w { color: var(--ink-soft); }
+  .tag {
+    font-family: var(--f-data); font-size: .66rem; letter-spacing: .1em;
+    text-transform: uppercase; padding: .16rem .42rem; border-radius: 2px; white-space: nowrap;
+  }
+  .tag.a { color: var(--platonic); background: var(--platonic-wash); }
+  .tag.b { color: var(--brass);    background: var(--brass-wash); }
+  .tag.c { color: var(--romantic); background: var(--romantic-wash); }
+  .scroll { overflow-x: auto; }
+
+  .quote {
+    background: var(--panel); border: var(--rule); border-left: 2px solid var(--brass);
+    padding: .85rem 1rem; margin: 0; font-family: var(--f-display);
+    font-style: italic; color: var(--ink-soft); max-width: 74ch;
+  }
+  .quote b { font-style: normal; color: var(--ink); }
+
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+  .card {
+    background: var(--panel); border: var(--rule); padding: 1rem 1.1rem;
+    display: flex; flex-direction: column; gap: .5rem;
+  }
+  .card h4 {
+    margin: 0; font-family: var(--f-data); font-size: .7rem; letter-spacing: .13em;
+    text-transform: uppercase;
+  }
+  .card.do h4  { color: var(--platonic); }
+  .card.dont h4 { color: var(--romantic); }
+  .card ul { margin: 0; padding-left: 1.1rem; color: var(--ink-soft); font-size: .9rem; }
+  .card li { margin-bottom: .35rem; }
+  .card li:last-child { margin-bottom: 0; }
+  .card li b { color: var(--ink); font-weight: 600; }
+
+  ol.seq { margin: 0; padding-left: 1.3rem; max-width: 74ch; }
+  ol.seq li { margin-bottom: .6rem; color: var(--ink-soft); }
+  ol.seq li b { color: var(--ink); font-weight: 600; }
+  code {
+    font-family: var(--f-data); font-size: .86em;
+    background: var(--brass-wash); padding: .08rem .3rem; border-radius: 2px;
+  }
+  footer {
+    font-size: .84rem; color: var(--ink-faint); border-top: var(--rule); padding-top: 1rem;
+  }
+  a { color: var(--brass); }
+  footer a { color: var(--brass); }
+  .plate {
+    background: #ECEEF2; border: var(--rule); padding: 1rem 1.25rem; margin: 0;
+    display: flex; flex-direction: column; gap: .6rem;
+  }
+  .plate img { width: 100%; height: auto; display: block; }
+  .plate.narrow { max-width: 760px; }
+  .plate figcaption { font-size: .82rem; color: #4A515F; }
+  .plate .labels {
+    display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: .5rem;
+    font-family: var(--f-data); font-size: .7rem; letter-spacing: .08em;
+    text-transform: uppercase; color: #4A515F; text-align: center;
+  }
+  .who {
+    display: grid; grid-template-columns: 120px 1fr; gap: 1rem; align-items: start;
+    background: var(--panel); border: var(--rule); padding: 1rem 1.1rem;
+  }
+  .who img {
+    width: 120px; height: 150px; object-fit: cover; object-position: top;
+    background: #ECEEF2; border: var(--rule);
+  }
+  .who h3 { margin: 0 0 .3rem; font-family: var(--f-display); font-size: 1.15rem; font-weight: 600; }
+  .who p { margin: 0 0 .45rem; color: var(--ink-soft); font-size: .92rem; }
+  .who p:last-child { margin-bottom: 0; }
+  @media (max-width: 520px) {
+    .who { grid-template-columns: 1fr; }
+    .who img { width: 110px; height: 138px; }
+  }
+  .say {
+    font-family: var(--f-display); font-style: italic; color: var(--ink);
+  }
+  table.src td.say { font-size: .95rem; }
+  ol.day { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: .5rem; max-width: 80ch; }
+  ol.day li {
+    display: grid; grid-template-columns: 7.5rem 1fr; gap: .9rem;
+    background: var(--panel); border: var(--rule); padding: .65rem .9rem;
+  }
+  ol.day li .when {
+    font-family: var(--f-data); font-size: .68rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-faint); padding-top: .2rem;
+  }
+  ol.day li p { margin: 0; color: var(--ink-soft); font-size: .92rem; }
+  ol.day li p b { color: var(--ink); font-weight: 600; }
+  ol.day li.you { border-left: 3px solid var(--romantic); }
+  @media (max-width: 520px) { ol.day li { grid-template-columns: 1fr; gap: .2rem; } }
+  .note { font-size: .84rem; color: var(--ink-faint); margin: 0; max-width: 74ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="kicker">SkyrimNet Relationships &middot; marriage and weddings</div>
+    <h1>To Have and to Hold</h1>
+    <p class="thesis">From the first ring to the last guest leaving: how a marriage is asked for,
+      planned in conversation, and spoken by the people in it &mdash; and the few things you
+      need to know that nothing in the game will tell you.</p>
+  </header>
+
+  <section class="steps">
+    <div class="step good">
+      <div class="step-n">01 &nbsp;/&nbsp; BELOVED</div>
+      <h3>Reach the top of the ladder</h3>
+      <p>A proposal can only be answered yes by someone who is your Beloved.</p>
+    </div>
+    <div class="step good">
+      <div class="step-n">02 &nbsp;/&nbsp; A RING</div>
+      <h3>Buy one, if you want</h3>
+      <p>Engagement rings and bands in gold, silver and ebony, from traders who deal in jewellery.</p>
+    </div>
+    <div class="step good">
+      <div class="step-n">03 &nbsp;/&nbsp; ASK</div>
+      <h3>Propose in your own words</h3>
+      <p>Or wait to be asked. Then confirm you are promised, and give the ring.</p>
+    </div>
+    <div class="step best">
+      <div class="step-n">04 &nbsp;/&nbsp; A PLANNER</div>
+      <h3>Hire one of five</h3>
+      <p>One at the temple of each great city, for fifty gold. Or skip it and elope.</p>
+    </div>
+    <div class="step best">
+      <div class="step-n">05 &nbsp;/&nbsp; THE PLAN</div>
+      <h3>Settle it by talking</h3>
+      <p>The day, the place, who marries you, who comes, and where everyone stands.</p>
+    </div>
+    <div class="step weak">
+      <div class="step-n">06 &nbsp;/&nbsp; THE DAY</div>
+      <h3>Be there, beside them</h3>
+      <p>Stand with your betrothed near the officiant at the hour, and the ceremony begins.</p>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">1. Becoming someone they could marry</h2>
+    <p class="lede">Marriage begins at the top of the ladder. <strong>Only someone whose bond with
+      you has reached Beloved</strong> &mdash; 2,500 points &mdash; can say yes to a proposal, and
+      only if romance between you is possible at all: who they are drawn to, and never your own
+      kin. Below Beloved a proposal is turned aside, in their own words, however the moment
+      comes up.</p>
+    <p class="lede">Talking about a future together, and meaning it, is one of the largest things
+      that can happen between two lovers, so it moves the bond like one. It is often what carries
+      them the last of the way.</p>
+    <p class="lede"><strong>One spouse at a time</strong>, unless you turn on <em>Marry More Than
+      One Spouse</em> in the plugin settings. Turning it off never ends a marriage you already have;
+      it only stops a new one.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">2. The rings</h2>
+    <p class="lede">Relationships adds its own rings, sold by the traders who deal in jewellery
+      &mdash; thirteen of them across Skyrim. Three shapes are for sale, each in
+      gold, silver or ebony; a fourth is made only at a wedding.</p>
+    <figure class="plate">
+      <img src="img/rings_shapes.webp" width="1200" height="266"
+           alt="Four gold rings: an engagement ring with a single stone; the same ring joined to a braided band; the braided band alone; and a wide plain band.">
+      <div class="labels" style="--n: 4"><span>Engagement ring</span><span>The slim set</span><span>Braided band</span><span>Wide band</span></div>
+      <figcaption>The engagement ring and the braided band are built from a modder's resource
+        (credited in the README); the wide band is the mod's own. The slim set &mdash; the
+        engagement ring joined to its band &mdash; is made only at a wedding.</figcaption>
+    </figure>
+    <figure class="plate narrow">
+      <img src="img/rings_metals.webp" width="1018" height="311"
+           alt="The engagement ring three times: in gold, in silver, and in ebony.">
+      <div class="labels" style="--n: 3"><span>Gold</span><span>Silver</span><span>Ebony</span></div>
+    </figure>
+    <ul class="lede">
+      <li><b>You do not need a ring to propose.</b> But a ring given is a ring worn: whoever has
+        yours keeps it on.</li>
+      <li><b>SeverActions outfits will not take it off.</b> The first time one of the mod's rings
+        meets an outfit SeverActions enforces, all of them go on SeverActions' equipment
+        blacklist, so no outfit, lock or undress removes them. Take them off that list yourself
+        and you are told, instead, why a ring is not being worn.</li>
+      <li><b>The wedding rings are chosen in the plan</b>: for each of you, the slim set or the
+        wide band, in any of the three metals. By custom a man wears the wide band and a woman
+        the slim set; either may have either.</li>
+    </ul>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">3. Asking</h2>
+    <div class="who">
+      <img src="img/daighre.webp" width="240" height="300" alt="Daighre, a Reachwoman with long auburn hair, in a dark lace jacket.">
+      <div>
+        <h3>Ask in your own words</h3>
+        <p>There is no special line to say. Ask them to marry you the way you would ask anyone
+          &mdash; on a clifftop, over supper, in the middle of an argument &mdash; and they answer
+          as themselves. Someone at Beloved may also ask you first.</p>
+        <p>When the answer is yes, a card asks you to confirm: <em>Are the two of you promised to
+          each other?</em> Choose <b>Yes, we are engaged</b>, <b>No, I spoke too soon</b>, or
+          <b>Not yet</b>. Nothing is recorded until you do.</p>
+        <p>Then give the ring, in conversation: say you have one for them. A card lists the rings
+          you carry, and asks before it is handed over.</p>
+      </div>
+    </div>
+    <p class="lede"><strong>A no is an answer for now.</strong> Give it a few days before you ask
+      again &mdash; though they may change their mind sooner, and their yes is theirs to give.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">4. The planner, or none</h2>
+    <p class="lede"><strong>For a planned wedding, hire a planner.</strong> Five priestesses plan
+      weddings, one at the temple of each great city. Ask one to plan yours; her fee is
+      <strong>50 gold</strong>, paid when she agrees. She gives you <em>A Wedding Planner's
+      Book</em>, which sets out every choice a wedding can hold. Read it.</p>
+    <div class="scroll">
+      <table class="src">
+        <thead><tr><th>Planner</th><th>Temple</th><th>City</th></tr></thead>
+        <tbody>
+          <tr><td>Dinya Balu</td><td>the Temple of Mara</td><td class="w">Riften</td></tr>
+          <tr><td>Silana Petreia</td><td>the Temple of the Divines</td><td class="w">Solitude</td></tr>
+          <tr><td>Danica Pure-Spring</td><td>the Temple of Kynareth</td><td class="w">Whiterun</td></tr>
+          <tr><td>Senna</td><td>the Temple of Dibella</td><td class="w">Markarth</td></tr>
+          <tr><td>Jora</td><td>the Temple of Talos</td><td class="w">Windhelm</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lede"><strong>Or elope.</strong> Any priest or priestess of Skyrim, or the jarl of
+      any hold, will marry the two of you without a planner &mdash; there and then, with your
+      betrothed beside you, or on a day you choose.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">5. Planning the wedding</h2>
+    <p class="lede">Everything is settled by talking to your planner. Your betrothed can settle
+      things too, and will have opinions. <strong>The planner leads</strong>: settle what you
+      bring her, and she asks for what is still missing, one question at a time. A plain answer
+      is an answer &mdash; &ldquo;no guests&rdquo;, &ldquo;the usual ceremony&rdquo;.</p>
+    <div class="scroll">
+      <table class="src">
+        <thead><tr><th>Part</th><th>What to know</th><th>Said, for instance</th></tr></thead>
+        <tbody>
+          <tr><td>The day</td><td>A day and an hour: morning, noon, afternoon, evening or night.</td>
+            <td class="say">&ldquo;In two days, at noon.&rdquo;</td></tr>
+          <tr><td>The place</td><td>A place by name &mdash; a temple, a hall, an inn &mdash; or the
+            spot you are standing on. A name nobody can find their way to needs what it is by:
+            the nearest temple, hall, inn or town.</td>
+            <td class="say">&ldquo;The Temple of Dibella.&rdquo; &ldquo;Right here, this spot.&rdquo;</td></tr>
+          <tr><td>Who marries you</td><td>Any priest or priestess &mdash; the planner herself
+            included &mdash; or a hold's jarl, by hold. Whoever holds the hall on the day comes.</td>
+            <td class="say">&ldquo;Hamal will marry us.&rdquo; &ldquo;The Jarl of Whiterun.&rdquo;</td></tr>
+          <tr><td>Guests</td><td>Anyone you know, by name, and whose guests they are: yours, your
+            betrothed's, or both.</td>
+            <td class="say">&ldquo;My guests will be Orla and you, Senna.&rdquo;</td></tr>
+          <tr><td>Where everyone stands</td><td>Marked by standing on each spot. See below.</td>
+            <td class="say">&ldquo;Hamal will stand here.&rdquo;</td></tr>
+          <tr><td>The ceremony</td><td>Vows, each &ldquo;do you take&rdquo; and the pronouncement
+            always. Then four parts, each in or out: an address to everyone gathered, a reading or
+            blessing, the rings exchanged, the kiss.</td>
+            <td class="say">&ldquo;A blessing, but no speech. Rings, and a kiss.&rdquo;</td></tr>
+          <tr><td>The rings</td><td>Each of yours: the slim set or the wide band, in gold, silver or
+            ebony.</td>
+            <td class="say">&ldquo;Gold for me, silver for her.&rdquo;</td></tr>
+          <tr><td>What they wear</td><td>Your betrothed chooses, and with SeverActions keeps what
+            they are wearing when they do, and changes into it on the day. Give them something new
+            first, if you like. What you wear is up to you.</td>
+            <td class="say">&ldquo;I'll wear this.&rdquo;</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="who">
+      <img src="img/hamal.webp" width="240" height="300" alt="Hamal, a priestess of Dibella in a green gown worked with leaves.">
+      <div>
+        <h3>Where everyone stands: go and stand there</h3>
+        <p>This is the part nobody would guess. <strong>A spot is marked exactly where you are
+          standing when you say it</strong> &mdash; there is no pointing, and no &ldquo;over
+          there&rdquo;. So go to the place before the day, with your planner (ask her to come
+          with you) or your betrothed, and for each spot, walk onto it and say who stands there:</p>
+        <ol class="seq">
+          <li><b>Where the officiant stands.</b> <span class="say">&ldquo;Hamal will stand here.&rdquo;</span></li>
+          <li><b>Where you stand.</b> <span class="say">&ldquo;I will stand here.&rdquo;</span></li>
+          <li><b>Where your betrothed stands.</b> <span class="say">&ldquo;Daighre will stand here.&rdquo;</span>
+            Unmarked, they stand beside you.</li>
+          <li><b>Where each side's guests gather</b>, if you have guests on that side.
+            <span class="say">&ldquo;Daighre's guests will gather here.&rdquo; &ldquo;My guests here.&rdquo;</span></li>
+        </ol>
+        <p>One spot each time you say it; say it again from somewhere else to move it. Or leave it
+          to the planner: <span class="say">&ldquo;Wherever you think best.&rdquo;</span></p>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="card do">
+        <h4>Worth knowing</h4>
+        <ul>
+          <li><b>&ldquo;Right here&rdquo; means where you stand.</b> Choosing the place by standing
+            on it works anywhere, even a crag in the middle of nowhere; everyone is walked to it on
+            the day.</li>
+          <li><b>The plan is on your betrothed's card</b> in the dashboard: what is settled, what
+            is still needed before the day, and what is still to talk through.</li>
+          <li><b>Change anything, any time before the day</b>, the same way: say so. Guests added
+            or taken off, the day moved, the rings chosen again. There is no shame in moving a
+            wedding &mdash; tell the planner before the day comes.</li>
+        </ul>
+      </div>
+      <div class="card dont">
+        <h4>If something was not written down</h4>
+        <ul>
+          <li><b>A model decides what was agreed</b>, and once in a while it misses one. Check the
+            plan on your betrothed's card after a planning talk.</li>
+          <li><b>Fix it by hand.</b> <em>Change the plan by hand</em> on that card sets any part
+            &mdash; the day, the place or <em>right here</em>, who marries you, guests and their
+            sides, where someone stands, the ceremony, the rings, the clothes &mdash; exactly as if
+            it had been agreed.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">6. The day</h2>
+    <p class="lede">A few hours before, you are told: <em>Your wedding to them is today</em>. Your
+      betrothed changes into the clothes they chose, and everyone coming sets out, each in their own
+      time, for the place and their mark. <strong>Be at the place at the hour, standing with your
+      betrothed, near the one marrying you</strong>, and the ceremony begins. Anyone not there by then
+      is brought in to join the others.</p>
+    <p class="lede">You are waited for, but not forever. <strong>Six hours after the hour, a wedding
+      you never came to is missed</strong>, and your betrothed feels it: it costs the bond, and
+      whether the engagement survives is theirs to say. The rest of the plan is kept for another
+      day. If the day comes with the plan unfinished, it is simply put off, with no blame.</p>
+
+    <ol class="day">
+      <li><span class="when">If chosen</span><p><b>The address.</b> The officiant speaks to everyone gathered.</p></li>
+      <li><span class="when">If chosen</span><p><b>A reading or blessing.</b></p></li>
+      <li class="you"><span class="when">Your turn</span><p><b>Your vows.</b> A notice tells you:
+        look at your betrothed, and speak your vows &mdash; in your own words, typed or spoken.</p></li>
+      <li><span class="when">Theirs</span><p><b>Their vows</b>, in theirs.</p></li>
+      <li class="you"><span class="when">Your turn</span><p><b>&ldquo;Do you take&hellip;?&rdquo;</b>
+        Look at the officiant, and answer plainly: <span class="say">&ldquo;I do.&rdquo;</span></p></li>
+      <li><span class="when">Theirs</span><p><b>They are asked the same</b>, and answer.</p></li>
+      <li><span class="when">If chosen</span><p><b>The rings.</b> Exchanged at their step; nothing to
+        do but be there. Each of you comes away wearing one.</p></li>
+      <li><span class="when">Always</span><p><b>The pronouncement.</b> You are married.</p></li>
+      <li><span class="when">If chosen</span><p><b>The kiss.</b> With a mod that plays kisses for
+        SkyrimNet, it can be a scene of its own; the ceremony waits for it to end.</p></li>
+      <li><span class="when">After</span><p><b>You are presented</b>, the guests applaud, and they
+        stay about <b>two hours</b> to celebrate and wish you well.</p></li>
+    </ol>
+
+    <p class="quote"><b>Look at whoever you are answering.</b> SkyrimNet gives your words to the
+      person under your crosshair. Facing your betrothed, what you say is your vows; facing the
+      officiant, it is your answer. The notices on screen tell you whom to look at.</p>
+
+    <p class="lede">The day is kept: your wedding day and every anniversary are on the dashboard's
+      calendar, beside birthdays and Skyrim's festivals, and each person's card shows their family.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2 class="sec">Coming from MARAS</h2>
+    <p class="lede">Relationships runs marriage on its own now. If you married through MARAS, bring
+      those marriages over once &mdash; <em>Bring marriages over from MARAS</em> under
+      <em>Playthrough repairs</em> on the dashboard &mdash; and restart the game. Then MARAS can go;
+      the optional <em>MARAS Stub</em> download keeps old saves loading. The steps are in the README,
+      under <a href="https://github.com/deadohiosky48/SkyrimNet-Relationships#moving-from-maras">Moving
+      from MARAS</a>.</p>
+  </section>
+
+  <footer>
+    <p>Part of <b>SkyrimNet Relationships</b>. For how bonds themselves work, see
+      <a href="./">Two Ladders, Not One</a>; for getting your save ready,
+      <a href="preparing.html">Give It Something To Read</a>. Portraits are cut from the game by
+      SeverActions; the rings are rendered from the mod's own models.</p>
+  </footer>
+
+</div>
+</body>
+</html>

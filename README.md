@@ -164,6 +164,8 @@ bond like one, and it is often what carries them the last of the way.
 ## Marriage and weddings
 
 From 2.5 Relationships runs marriage itself. No other marriage mod is needed.
+Walked through step by step, with pictures:
+[To Have and to Hold](https://deadohiosky48.github.io/SkyrimNet-Relationships/weddings.html).
 
 **The proposal is a conversation.** Ask in your own words, or be asked. A yes is
 theirs to give, and when it comes you confirm that the two of you are promised.
@@ -191,8 +193,9 @@ If something you agreed was not written down, change it there by hand.
 officiant and the couple take their marks, and the ceremony is spoken by the
 people in it, step by step: your vows and theirs, each "do you take", the rings
 exchanged, the pronouncement, the kiss. You are asked on screen when it is your
-turn. Afterwards the guests stay to celebrate. Miss the day and the wedding is
-put off, without blame.
+turn. Afterwards the guests stay to celebrate. If the day comes with the plan
+unfinished, the wedding is simply put off; if you never come, your betrothed
+will feel it.
 
 **One spouse, unless you choose otherwise.** In Skyrim one spouse is the rule.
 Turn on **Marry More Than One Spouse** in the settings to marry again while
