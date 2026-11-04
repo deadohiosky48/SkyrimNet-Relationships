@@ -65,4 +65,26 @@ namespace SNRom::Family {
 
     // "female", "male", or "" when a_formId is no actor. Main thread.
     std::string SexOf(std::int32_t a_formId);
+
+    // THE FAMILY TREE (2.6; the author, 2026-11-04), for the dashboard's tree
+    // view, asked for when it opens and never polled. Branches by whom the
+    // player had children with, every spouse included whether or not there
+    // are any:
+    //   { "you": { "formId", "name", "sex" },
+    //     "partners": [{ "formId" (0: known by name only), "name", "sex",
+    //                    "status": "married"|"separated"|"engaged"|"divorced"|
+    //                              "late"|"coparent"|"alone",
+    //                    "day" (wedding, or first child born; 0 unknown),
+    //                    "dead", "children": [person], "theirs": [person] }] }
+    //   person: { "formId" (0: a record with no body), "name", "sex", "stage",
+    //             "kind": "born"|"adopted"|"theirs"|"descendant", "inWorld",
+    //             "dead", "with" (their other parent's name, or ""),
+    //             "children": [person] }
+    // "children" are the player's with that partner (Kinship); "theirs" the
+    // partner's by someone else (the game's records); every person's own
+    // children follow from the game's records, as deep as they go. Current
+    // spouses first, then former, then other co-parents, then the player
+    // alone; each group in the order they married or had children. Main
+    // thread.
+    nlohmann::json Tree();
 }

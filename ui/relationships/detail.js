@@ -118,6 +118,7 @@
     this.root = root;
     this.onAction = opts.onAction;
     this.onClose = opts.onClose;
+    this.onTree = opts.onTree;
     this.bond = null;
   }
 
@@ -352,8 +353,11 @@
     // FAMILY (2.5, M8b): parents, and children born or adopted, each with
     // the other parent. A child with no body in the world is still listed.
     var fam = b.family;
-    if (fam && (fam.parents.length || fam.children.length)) {
+    // 2.6: anyone on the family tree has a way to it from here.
+    var onTree = !!(UI.tree && this.onTree && UI.tree.onTree(b));
+    if ((fam && (fam.parents.length || fam.children.length)) || onTree) {
       var fs = section(t("detail.family", "Family"));
+      fam = fam || { parents: [], children: [] };
       if (fam.parents.length) {
         var pdl = el("dl");
         kv(pdl, t("detail.parents", "Parents"), names(fam.parents.map(function (p) { return p.name; })));
@@ -377,6 +381,13 @@
           cl.appendChild(li);
         });
         fs.appendChild(cl);
+      }
+      if (onTree) {
+        var self = this;
+        var tb = el("button", "btn btn-quiet family-tree-btn", t("detail.showInTree", "Show in family tree"));
+        tb.type = "button";
+        tb.addEventListener("click", function () { self.onTree(b); });
+        fs.appendChild(tb);
       }
       scroll.appendChild(fs);
     }

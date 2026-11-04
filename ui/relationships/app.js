@@ -23,7 +23,7 @@
   var sort = "depth-desc";
 
   var roster = new UI.Roster($("roster"), { onOpen: openBond });
-  var detail = new UI.Detail($("detail"), { onAction: runAction, onClose: closeDetail });
+  var detail = new UI.Detail($("detail"), { onAction: runAction, onClose: closeDetail, onTree: function (b) { openTree(b.subject.formId, null); } });
 
   // ---------------------------------------------------------------- layout
   // SIDE BY SIDE when the panel holds the roster at its natural width (its
@@ -560,6 +560,27 @@
       [{ label: t("dialog.close", "Close"), id: "dialog-cancel", run: closeDialog }], $("calendar-btn"));
     $("dialog").setAttribute("data-kind", "calendar");
   });
+
+  // THE FAMILY TREE (2.6; tree.js): the overview of every partner, then a
+  // branch at a time. Opened on someone from their card's "Show in family
+  // tree"; clicking anyone enrolled in it opens their card.
+  function openTree(focus, opener) {
+    if (!snap) return;
+    var view = UI.tree.build({
+      snap: snap,
+      focus: focus,
+      openBond: function (formId) {
+        var b = (snap.bonds || []).filter(function (x) { return x.subject.formId === formId; })[0];
+        if (!b) return;
+        closeDialog();
+        openBond(b);
+      }
+    });
+    openDialog(t("tree.title", "Family tree"), [view],
+      [{ label: t("dialog.close", "Close"), id: "dialog-cancel", run: closeDialog }], opener || document.activeElement);
+    $("dialog").setAttribute("data-kind", "tree");
+  }
+  $("tree-btn").addEventListener("click", function () { openTree(null, $("tree-btn")); });
 
   $("repairs-btn").addEventListener("click", function () {
     if (!snap) return;

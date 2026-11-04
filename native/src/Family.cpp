@@ -465,6 +465,264 @@ namespace SNRom::Family {
         return out;
     }
 
+    namespace {
+
+        std::string SexWord(const RE::TESNPC* a_npc) {
+            return !a_npc ? "" : a_npc->GetSex() == RE::SEX::kFemale ? "female" : "male";
+        }
+
+        // A person's children by the game's records, and theirs, as deep as
+        // the records go. a_seen keeps anyone from being drawn twice, and a
+        // record that loops from looping the tree.
+        nlohmann::json Descendants(RE::FormID a_base, std::set<RE::FormID>& a_seen, int a_depth) {
+            auto       out = nlohmann::json::array();
+            const auto it = g_childrenOf.find(a_base);
+            if (it == g_childrenOf.end() || a_depth > 12) {
+                return out;
+            }
+            for (const auto child : it->second) {
+                auto* npc = RE::TESForm::LookupByID<RE::TESNPC>(child);
+                auto  name = NameOf(child);
+                if (!npc || name.empty() || !a_seen.insert(child).second) {
+                    continue;
+                }
+                auto* body = npc->GetUniqueActor();
+                std::string with;
+                if (const auto p = g_parentsOf.find(child); p != g_parentsOf.end()) {
+                    for (const auto parent : p->second) {
+                        if (parent != a_base) {
+                            with = NameOf(parent);
+                            break;
+                        }
+                    }
+                }
+                out.push_back({ { "formId", body ? body->GetFormID() : 0 },
+                                { "name", std::move(name) },
+                                { "sex", SexWord(npc) },
+                                { "stage", Grown(child) ? 5 : 3 },
+                                { "kind", "descendant" },
+                                { "inWorld", body != nullptr },
+                                { "dead", body && body->IsDead() },
+                                { "with", std::move(with) },
+                                { "children", Descendants(child, a_seen, a_depth + 1) } });
+            }
+            return out;
+        }
+
+        struct Partner {
+            std::uint32_t  formId = 0;
+            std::string    name;
+            std::string    sex;
+            std::string    status;
+            float          day = 0.0f;
+            bool           dead = false;
+            nlohmann::json children = nlohmann::json::array();
+            nlohmann::json theirs = nlohmann::json::array();
+        };
+
+        int GroupOf(const std::string& a_status) {
+            return a_status == "married" || a_status == "separated" || a_status == "engaged" ? 0 :
+                   a_status == "divorced" || a_status == "late"                               ? 1 :
+                   a_status == "coparent"                                                     ? 2 :
+                                                                                                3;
+        }
+    }
+
+    nlohmann::json Tree() {
+        auto*       player = RE::PlayerCharacter::GetSingleton();
+        auto*       playerBase = player ? player->GetActorBase() : nullptr;
+        const char* you = player ? player->GetName() : nullptr;
+        const std::string me = you ? you : "";
+
+        std::vector<Partner>                partners;
+        std::map<std::uint32_t, std::size_t> byId;
+        std::map<std::string, std::size_t>   byName;   // lowercased, known by name only
+        const auto add = [&](Partner a_p) -> std::size_t {
+            partners.push_back(std::move(a_p));
+            const auto at = partners.size() - 1;
+            if (partners[at].formId) {
+                byId[partners[at].formId] = at;
+            } else if (!partners[at].name.empty()) {
+                byName[Lower(partners[at].name)] = at;
+            }
+            return at;
+        };
+
+        // Every spouse, former ones and the late included, from the record.
+        using S = Marriage::State;
+        for (const auto [state, word] : { std::pair{ S::kMarried, "married" }, std::pair{ S::kSeparated, "separated" },
+                                          std::pair{ S::kEngaged, "engaged" }, std::pair{ S::kDivorced, "divorced" },
+                                          std::pair{ S::kWidowed, "late" } }) {
+            for (const auto id : Marriage::WithState(state)) {
+                auto* actor = RE::TESForm::LookupByID<RE::Actor>(static_cast<RE::FormID>(id));
+                auto* base = actor ? actor->GetActorBase() : nullptr;
+                const char* name = actor ? actor->GetName() : nullptr;
+                if (!base || !name || !*name) {
+                    continue;
+                }
+                const auto record = Marriage::Of(id);
+                float      day = record.is_object() ? record.value("weddingDay", 0.0f) : 0.0f;
+                if (day <= 0.0f && record.is_object()) {
+                    day = record.value("since", 0.0f);
+                }
+                Partner p;
+                p.formId = static_cast<std::uint32_t>(id);
+                p.name = name;
+                p.sex = SexWord(base);
+                p.dead = actor->IsDead();
+                p.status = p.dead && (state == S::kMarried || state == S::kSeparated) ? "late" : word;
+                p.day = day;
+                add(std::move(p));
+            }
+        }
+
+        // The player's children (Kinship), each under the parent they had
+        // them with: a spouse's branch, a co-parent's, or the player's alone.
+        std::set<RE::FormID>  seen;       // bases already drawn
+        std::set<std::string> kinNames;   // record-only children, lowercased
+        if (playerBase) {
+            seen.insert(playerBase->GetFormID());
+        }
+        const auto kids = AllKinshipChildren();
+        // Bases first, so a spouse's "theirs" never repeats one of them.
+        for (const auto& k : kids) {
+            const auto ref = static_cast<RE::FormID>(k.is_object() ? k.value("refId", std::uint64_t{ 0 }) : 0);
+            auto*      body = ref ? RE::TESForm::LookupByID<RE::Actor>(ref) : nullptr;
+            if (auto* npc = body ? body->GetActorBase() : nullptr) {
+                seen.insert(npc->GetFormID());
+            } else if (k.is_object()) {
+                kinNames.insert(Lower(k.value("name", "")));
+            }
+        }
+        for (const auto& k : kids) {
+            if (!k.is_object()) {
+                continue;
+            }
+            const auto motherId = static_cast<std::uint32_t>(k.value("motherId", std::uint64_t{ 0 }));
+            const auto fatherId = static_cast<std::uint32_t>(k.value("fatherId", std::uint64_t{ 0 }));
+            const auto mother = k.value("mother", std::string{});
+            const auto father = k.value("father", std::string{});
+            // The other parent: whichever is not the player, by id or by name.
+            const bool playerIsMother = motherId == 0x14 || (motherId == 0 && !me.empty() && _stricmp(mother.c_str(), me.c_str()) == 0);
+            const auto otherId = playerIsMother ? fatherId : motherId;
+            const auto otherName = playerIsMother ? father : mother;
+            std::size_t at = 0;
+            if (otherId && otherId != 0x14 && byId.contains(otherId)) {
+                at = byId[otherId];
+            } else if (otherId && otherId != 0x14) {
+                auto*       actor = RE::TESForm::LookupByID<RE::Actor>(static_cast<RE::FormID>(otherId));
+                const char* name = actor ? actor->GetName() : nullptr;
+                Partner     p;
+                p.formId = otherId;
+                p.name = name && *name ? name : otherName;
+                p.sex = actor ? SexWord(actor->GetActorBase()) : "";
+                p.dead = actor && actor->IsDead();
+                p.status = "coparent";
+                at = add(std::move(p));
+            } else if (!otherName.empty() && byName.contains(Lower(otherName))) {
+                at = byName[Lower(otherName)];
+            } else if (!otherName.empty()) {
+                Partner p;
+                p.name = otherName;
+                p.status = "coparent";
+                at = add(std::move(p));
+            } else if (byName.contains("")) {
+                at = byName[""];
+            } else {
+                Partner p;
+                p.status = "alone";
+                at = add(std::move(p));
+                byName[""] = at;
+            }
+            const auto ref = static_cast<RE::FormID>(k.value("refId", std::uint64_t{ 0 }));
+            auto*      body = ref ? RE::TESForm::LookupByID<RE::Actor>(ref) : nullptr;
+            auto*      npc = body ? body->GetActorBase() : nullptr;
+            const auto gender = k.value("child", std::string{});
+            const auto born = k.value("born", 0.0f);
+            auto&      partner = partners[at];
+            if (partner.status != "married" && partner.status != "separated" && partner.status != "engaged" &&
+                partner.status != "divorced" && partner.status != "late" && born > 0.0f &&
+                (partner.day <= 0.0f || born < partner.day)) {
+                partner.day = born;
+            }
+            partner.children.push_back(
+                { { "formId", body ? body->GetFormID() : 0 },
+                  { "name", k.value("name", "") },
+                  { "sex", npc ? SexWord(npc) : gender == "daughter" ? "female" : gender == "son" ? "male" : "" },
+                  { "stage", k.value("stage", -1) },
+                  { "kind", k.value("adopted", false) ? "adopted" : "born" },
+                  { "inWorld", body != nullptr },
+                  { "dead", body && body->IsDead() },
+                  { "with", "" },
+                  { "children", npc ? Descendants(npc->GetFormID(), seen, 1) : nlohmann::json::array() } });
+        }
+
+        // Each partner's children by someone else, as the plugins record them.
+        for (auto& p : partners) {
+            auto* actor = p.formId ? RE::TESForm::LookupByID<RE::Actor>(static_cast<RE::FormID>(p.formId)) : nullptr;
+            auto* base = actor ? actor->GetActorBase() : nullptr;
+            const auto it = base ? g_childrenOf.find(base->GetFormID()) : g_childrenOf.end();
+            if (it == g_childrenOf.end()) {
+                continue;
+            }
+            for (const auto child : it->second) {
+                auto* npc = RE::TESForm::LookupByID<RE::TESNPC>(child);
+                auto  name = NameOf(child);
+                if (!npc || name.empty() || kinNames.contains(Lower(name)) || !seen.insert(child).second) {
+                    continue;
+                }
+                auto*       body = npc->GetUniqueActor();
+                std::string with;
+                if (const auto pa = g_parentsOf.find(child); pa != g_parentsOf.end()) {
+                    for (const auto parent : pa->second) {
+                        if (parent != base->GetFormID()) {
+                            with = NameOf(parent);
+                            break;
+                        }
+                    }
+                }
+                p.theirs.push_back({ { "formId", body ? body->GetFormID() : 0 },
+                                     { "name", std::move(name) },
+                                     { "sex", SexWord(npc) },
+                                     { "stage", Grown(child) ? 5 : 3 },
+                                     { "kind", "theirs" },
+                                     { "inWorld", body != nullptr },
+                                     { "dead", body && body->IsDead() },
+                                     { "with", std::move(with) },
+                                     { "children", Descendants(child, seen, 1) } });
+            }
+        }
+
+        std::stable_sort(partners.begin(), partners.end(), [](const Partner& a, const Partner& b) {
+            const auto ga = GroupOf(a.status);
+            const auto gb = GroupOf(b.status);
+            if (ga != gb) {
+                return ga < gb;
+            }
+            // Unknown days last within a group.
+            const auto da = a.day > 0.0f ? a.day : 1e9f;
+            const auto db = b.day > 0.0f ? b.day : 1e9f;
+            return da < db;
+        });
+        auto out = nlohmann::json::array();
+        std::size_t children = 0;
+        for (auto& p : partners) {
+            children += p.children.size();
+            out.push_back({ { "formId", p.formId },
+                            { "name", p.name },
+                            { "sex", p.sex },
+                            { "status", p.status },
+                            { "day", p.day },
+                            { "dead", p.dead },
+                            { "children", std::move(p.children) },
+                            { "theirs", std::move(p.theirs) } });
+        }
+        SKSE::log::info("Family tree: {} branches, {} of the player's children, {} people in all", out.size(),
+                        children, seen.size() - (playerBase ? 1 : 0) + kinNames.size());
+        return { { "you", { { "formId", 0x14 }, { "name", me }, { "sex", SexWord(playerBase) } } },
+                 { "partners", std::move(out) } };
+    }
+
     std::string SexOf(std::int32_t a_formId) {
         auto* base = BaseOf(a_formId);
         if (!base) {

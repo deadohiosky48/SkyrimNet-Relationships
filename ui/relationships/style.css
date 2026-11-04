@@ -464,6 +464,129 @@ button, input, select { font: inherit; color: inherit; }
 /* THE CALENDAR (calendar.js). */
 .head-btn { margin-left: auto; margin-right: 0.6rem; }
 .dialog[data-kind="calendar"] { width: calc(46rem * var(--t)); max-height: 92vh; overflow-y: auto; }
+
+/* ---------------------------------------------------------------- family tree (2.6, tree.js)
+
+   The dialog made nearly the whole screen: the overview's cards wrap in a
+   grid, and a branch is a tree drawn with nested lists, its lines the lists'
+   borders. Frames: a partner's colour says what they are to you, a child's
+   whether born to you, adopted, a partner's by someone else, or a later
+   generation. */
+.dialog[data-kind="tree"] { width: 94vw; max-width: 94vw; height: 90vh; display: flex; flex-direction: column; }
+.dialog[data-kind="tree"] #dialog-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ft-root { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.ft-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
+.ft-find { position: relative; width: calc(18rem * var(--t)); max-width: 100%; }
+.ft-find-input { width: 100%; box-sizing: border-box; }
+.ft-results { position: absolute; top: 100%; left: 0; right: 0; z-index: 3; margin-top: 0.25rem; padding: 0.25rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+.ft-result { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 0.35rem 0.5rem; border: 0; border-radius: 4px; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.ft-result:hover, .ft-result:focus { background: var(--surface-hi); outline: none; }
+.ft-result-name { font-size: calc(0.9rem * var(--t)); }
+.ft-result-what, .ft-result-none { font-size: calc(0.75rem * var(--t)); color: var(--muted); margin: 0.2rem 0.4rem; }
+.ft-nav { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.ft-title { margin: 0 0.4rem; font-family: var(--serif); font-weight: normal; font-size: calc(1.1rem * var(--t)); }
+.ft-zoom { margin-left: auto; display: flex; gap: 0.3rem; }
+.ft-zoom[hidden] { display: none; }
+.ft-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ft-stage.is-overview { overflow-y: auto; padding-right: 0.4rem; }
+.ft-none { color: var(--muted); text-align: center; margin: 2rem 0; }
+.ft-none-small { margin: 1rem 0 0; font-size: calc(0.8rem * var(--t)); }
+.ft-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; font-size: calc(0.75rem * var(--t)); color: var(--muted); }
+.ft-key { display: inline-flex; align-items: center; gap: 0.35rem; }
+.ft-key-hint { margin-left: auto; color: var(--faint); }
+.ft-swatch { width: 0.85rem; height: 0.85rem; border-radius: 50%; border: 2px solid var(--line); box-sizing: border-box; }
+
+/* Faces: SeverActions' portrait, initials without one, a baby for a child
+   who is a record only. The frame's colour is what they are to you. */
+.ft-face { position: relative; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: calc(3.4rem * var(--t)); height: calc(3.4rem * var(--t)); border-radius: 50%; overflow: hidden;
+  border: 3px solid var(--line); box-sizing: border-box; background: var(--surface-hi); color: var(--muted); }
+.ft-face img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; }
+.ft-initials { font-family: var(--serif); font-size: calc(1.1rem * var(--t)); letter-spacing: 0.04em; }
+.ft-face.is-record svg { width: 70%; height: 70%; }
+.ft-face.is-record { border-style: dashed; }
+.ft-mini { width: calc(1.7rem * var(--t)); height: calc(1.7rem * var(--t)); border-width: 2px; margin-left: -0.35rem; }
+.ft-mini:first-child { margin-left: 0; }
+.ft-mini .ft-initials { font-size: calc(0.6rem * var(--t)); }
+.ft-more { margin-left: 0.3rem; font-size: calc(0.75rem * var(--t)); color: var(--muted); }
+
+.ft-face.s-you, .ft-swatch.s-you { border-color: var(--text); }
+.ft-face.s-alone, .ft-swatch.s-alone { border-color: var(--line); }
+.ft-face.s-married, .ft-swatch.s-married { border-color: var(--accent); }
+.ft-face.s-separated, .ft-swatch.s-separated { border-color: var(--accent); border-style: dashed; }
+.ft-face.s-engaged, .ft-swatch.s-engaged { border-color: var(--romantic); }
+.ft-face.s-divorced, .ft-swatch.s-divorced { border-color: var(--s-ended); }
+.ft-face.s-late, .ft-swatch.s-late { border-color: var(--s-foreclosed); border-style: dashed; }
+.ft-face.s-coparent, .ft-swatch.s-coparent { border-color: var(--platonic); }
+.ft-face.k-born, .ft-swatch.k-born { border-color: var(--s-platonic); }
+.ft-face.k-adopted, .ft-swatch.k-adopted { border-color: var(--platonic); border-style: double; border-width: 4px; }
+.ft-swatch.k-adopted { border-width: 3px; }
+.ft-face.ft-mini { border-width: 2px; }
+.ft-face.ft-mini.k-adopted { border-width: 3px; }
+.ft-face.k-theirs, .ft-swatch.k-theirs { border-color: var(--s-declined); border-style: dashed; }
+.ft-face.k-descendant, .ft-swatch.k-descendant { border-color: var(--s-interested); }
+.is-dead .ft-face { filter: grayscale(1); opacity: 0.65; }
+
+.ft-you { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.4rem; }
+.ft-you-text, .ft-card-text { display: flex; flex-direction: column; min-width: 0; }
+.ft-name { color: var(--text); font-size: calc(0.95rem * var(--t)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.ft-what, .ft-count, .ft-stage-word { color: var(--muted); font-size: calc(0.75rem * var(--t)); }
+.ft-count { color: var(--faint); }
+.ft-group { margin: 0.9rem 0 0.4rem; }
+.ft-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(15rem * var(--t)), 1fr)); gap: 0.6rem; }
+.ft-card { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 0.7rem; row-gap: 0.35rem; align-items: center;
+  padding: 0.6rem 0.7rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.ft-card:hover, .ft-card:focus { border-color: rgba(214, 173, 87, 0.6); background: var(--surface-hi); outline: none; }
+.ft-card .ft-face { grid-row: 1 / span 2; }
+.ft-card.s-married .ft-face, .ft-card.s-separated .ft-face { border-color: var(--accent); }
+.ft-card.s-engaged .ft-face { border-color: var(--romantic); }
+.ft-card.s-divorced .ft-face { border-color: var(--s-ended); }
+.ft-card.s-late .ft-face { border-color: var(--s-foreclosed); }
+.ft-card.s-coparent .ft-face { border-color: var(--platonic); }
+.ft-card.s-alone .ft-face { border-color: var(--line); }
+.ft-card { border-color: var(--line); }
+.ft-strip { display: flex; align-items: center; }
+
+/* A branch: pans when it overflows, the tree scaled inside a box sized to
+   it, so the scrollbars measure the scaled tree. */
+.ft-canvas { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--line-soft); border-radius: 8px; background: rgba(0, 0, 0, 0.18); }
+.ft-canvas.can-pan { cursor: grab; }
+.ft-canvas.is-panning { cursor: grabbing; }
+.ft-sizer { position: relative; min-width: 100%; }
+.ft-tree { position: absolute; top: 0; left: 0; transform-origin: 0 0; display: flex; align-items: flex-start; gap: 3rem; padding: 1.25rem 1.5rem 1.5rem; min-width: 100%; box-sizing: border-box; justify-content: center; }
+.ft-family { display: flex; flex-direction: column; align-items: center; }
+.ft-theirs { padding-left: 2rem; border-left: 1px dashed var(--line); }
+.ft-theirs .sub-head { margin: 0 0 0.6rem; }
+.ft-couple { display: flex; align-items: center; }
+.ft-bond { width: 2.2rem; height: 0; border-top: 3px double var(--accent); }
+.ft-bond.s-engaged { border-top-color: var(--romantic); }
+.ft-bond.s-divorced, .ft-bond.s-late { border-top: 2px dashed var(--s-ended); }
+.ft-bond.s-coparent { border-top: 2px solid var(--platonic); }
+
+.ft-node { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; width: calc(8.5rem * var(--t)); padding: 0.4rem 0.3rem; box-sizing: border-box;
+  border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--text); font: inherit; text-align: center; }
+.ft-node.is-open { cursor: pointer; }
+.ft-node.is-open:hover, .ft-node.is-open:focus { border-color: rgba(214, 173, 87, 0.55); background: var(--surface-hi); outline: none; }
+.ft-node.is-found { border-color: var(--focus); background: rgba(241, 207, 126, 0.12); }
+.ft-node .ft-name { white-space: normal; overflow-wrap: anywhere; }
+.ft-node.k-born .ft-face { border-color: var(--s-platonic); }
+.ft-node.k-adopted .ft-face { border-color: var(--platonic); border-style: double; border-width: 4px; }
+.ft-node.k-theirs .ft-face { border-color: var(--s-declined); border-style: dashed; }
+.ft-node.k-descendant .ft-face { border-color: var(--s-interested); }
+
+/* The lines: each level hangs from the one above by a stem, and each child
+   from the level's bar. */
+.ft-level { position: relative; display: flex; justify-content: center; margin: 0; padding: 1.2rem 0 0; list-style: none; }
+.ft-level::before { content: ""; position: absolute; top: 0; left: 50%; height: 1.2rem; border-left: 1px solid var(--faint); }
+.ft-level > li { position: relative; display: flex; flex-direction: column; align-items: center; padding: 1.2rem 0.25rem 0; }
+.ft-level > li::before, .ft-level > li::after { content: ""; position: absolute; top: 0; right: 50%; width: 50%; height: 1.2rem; border-top: 1px solid var(--faint); }
+.ft-level > li::after { right: auto; left: 50%; border-left: 1px solid var(--faint); }
+.ft-level > li:only-child { padding-top: 0; }
+.ft-level > li:only-child::before, .ft-level > li:only-child::after { display: none; }
+.ft-level > li:first-child::before, .ft-level > li:last-child::after { border: 0 none; }
+.ft-level > li:last-child::before { border-right: 1px solid var(--faint); border-radius: 0 6px 0 0; }
+.ft-level > li:first-child::after { border-radius: 6px 0 0 0; }
+.family-tree-btn { margin-top: 0.6rem; }
 .cal-nav { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
 .cal-title { flex: 1; margin: 0; text-align: center; font-family: var(--serif); font-weight: normal; font-size: calc(1.15rem * var(--t)); }
 .cal-today { margin-left: 0.4rem; }

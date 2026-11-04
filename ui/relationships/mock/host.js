@@ -343,6 +343,60 @@
       return ops[op](b, p.args || [], p.text || "");
     }
 
+    // THE FAMILY TREE (2.6; Family::Tree), in the author's shape: 18
+    // spouses and 77 children, with former spouses, co-parents, children of
+    // the player's alone, a spouse's children by someone else, and a few
+    // grandchildren. Partners are roster bonds, so they open their cards.
+    // ?tree=small for a family of three; ?tree=none for nobody.
+    function mockTree() {
+      var bonds = (state && state.bonds || []).filter(function (b) { return !b.foreclosure; });
+      var you = { formId: 20, name: "Prisoner", sex: "female" };
+      if (params.tree === "none") return { you: you, partners: [] };
+      var first = ["Erith", "Lucia", "Sofie", "Alesan", "Mila", "Runa", "Hroki", "Dagny", "Frodnar", "Svari", "Lars", "Nilsine",
+        "Braith", "Minette", "Samuel", "Joric", "Sissel", "Knud", "Ingrid", "Torsten", "Helga", "Aslfur", "Eirid", "Geirmund",
+        "Ilse", "Jofrid", "Kaie", "Leifur", "Mirri", "Oda", "Rigmor", "Sigrun", "Tova", "Ulf", "Vigdis", "Yngve"];
+      var n = 0, extra = 0;
+      function kid(kind, depth) {
+        var i = n++;
+        var c = { formId: 0, name: first[i % first.length] + (i >= first.length ? " " + ["the Younger", "Ironbrook", "Duskmere"][Math.floor(i / first.length) % 3] : ""),
+          sex: i % 3 === 1 ? "male" : "female", stage: [5, 4, 3, 3, 2, 1, 0, 5, 3][i % 9], kind: kind,
+          inWorld: i % 11 !== 6, dead: i === 17, with: "", children: [] };
+        // Some are on the roster, so they open their cards.
+        if (c.inWorld) c.formId = bonds[(30 + i) % bonds.length] ? bonds[(30 + i) % bonds.length].subject.formId : 900000 + i;
+        if (c.inWorld && bonds[(30 + i) % bonds.length] && i % 4 === 0) c.name = bonds[(30 + i) % bonds.length].subject.name;
+        if (!c.inWorld) c.stage = 0;
+        if (depth === 1 && c.stage === 5 && i % 5 === 0) {
+          c.children.push({ formId: 980000 + (extra++), name: "Little " + first[(i + 7) % first.length], sex: "male", stage: 2, kind: "descendant", inWorld: true, dead: false, with: "Benor", children: [] });
+          c.children.push({ formId: 980000 + (extra++), name: first[(i + 9) % first.length] + " Benorsdottir", sex: "female", stage: 5, kind: "descendant", inWorld: true, dead: false, with: "Benor",
+            children: i === 0 ? [{ formId: 0, name: "Wee Asta", sex: "female", stage: 0, kind: "descendant", inWorld: false, dead: false, with: "Hadring", children: [] }] : [] });
+        }
+        return c;
+      }
+      var statuses = ["married", "married", "married", "married", "married", "married", "married", "married", "married", "married",
+        "married", "married", "married", "married", "married", "married", "separated", "married", "engaged", "divorced", "divorced", "late", "coparent", "coparent"];
+      var counts = params.tree === "small" ? [2] : [12, 9, 7, 6, 5, 5, 4, 4, 3, 3, 2, 2, 2, 1, 1, 0, 2, 0, 0, 2, 1, 1, 2, 1];
+      var partners = [];
+      counts.forEach(function (k, i) {
+        var b = bonds[i];
+        if (!b) return;
+        var p = { formId: b.subject.formId, name: b.subject.name, sex: i % 4 === 3 ? "male" : "female", status: statuses[i], day: 10 + i * 3,
+          dead: statuses[i] === "late", children: [], theirs: [] };
+        for (var j = 0; j < k; j++) p.children.push(kid(j % 6 === 5 ? "adopted" : "born", 1));
+        if (i === 1) p.theirs.push({ formId: 970001, name: "Erith Daighre's-Daughter", sex: "female", stage: 3, kind: "theirs", inWorld: true, dead: false, with: "Ruki", children: [] });
+        if (i === 4) {
+          p.theirs.push({ formId: 970002, name: "Hadvar the Elder", sex: "male", stage: 5, kind: "theirs", inWorld: true, dead: false, with: "Ralof",
+            children: [{ formId: 970003, name: "Frida", sex: "female", stage: 1, kind: "descendant", inWorld: true, dead: false, with: "Gerdur", children: [] }] });
+        }
+        partners.push(p);
+      });
+      if (params.tree !== "small") {
+        var alone = { formId: 0, name: "", sex: "", status: "alone", day: 0, dead: false, children: [], theirs: [] };
+        for (var a = 0, rest = 77 - n; a < rest; a++) alone.children.push(kid("adopted", 1));
+        partners.push(alone);
+      }
+      return { you: you, partners: partners };
+    }
+
     function send(envelope) {
       log.push(JSON.parse(JSON.stringify(envelope)));
       later(60, function () {
@@ -362,6 +416,9 @@
             });
             var src = index >= 0 && index % 2 === 0 ? MOCK_PORTRAIT : "";
             push("portrait", { formId: envelope.payload.formId, src: src });
+            answer(envelope.id, true, "");
+          } else if (envelope.kind === "familyTree") {
+            push("familyTree", mockTree());
             answer(envelope.id, true, "");
           } else if (envelope.kind === "thumbnails") {
             // The roster's faces: the same stand-in, for the same bonds.

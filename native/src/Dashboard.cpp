@@ -24,6 +24,7 @@
 #include "L10n.h"
 #include "MagelightHost.h"
 #include "MeridianHost.h"
+#include "Family.h"
 #include "Marriage.h"
 #include "Model.h"
 #include "Portraits.h"
@@ -772,6 +773,11 @@ namespace SNRom::Dashboard {
                     Send({ { "v", kProtocol },
                            { "kind", "portrait" },
                            { "payload", { { "formId", formId }, { "src", src } } } });
+                    Result(id, true, "");
+                } else if (kind == "familyTree") {
+                    // THE FAMILY TREE (2.6; Family::Tree), built when the
+                    // view opens, as its own message.
+                    Send({ { "v", kProtocol }, { "kind", "familyTree" }, { "payload", Family::Tree() } });
                     Result(id, true, "");
                 } else if (kind == "thumbnails") {
                     // THE ROSTER'S FACES (wpm45), for the rows in view: the
