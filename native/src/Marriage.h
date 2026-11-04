@@ -118,6 +118,32 @@ namespace SNRom::Marriage {
     // Everyone engaged to the player, ascending form id.
     std::vector<std::int32_t> AllEngaged();
 
+    // MARRIAGE LEFT TO THEIR OWN MOD (2.6; the author, 2026-11-04). For a
+    // follower whose own mod has a marriage of its own (Morgaine, and the like),
+    // set from their card. Relationships offers them none of its marriage:
+    // no proposal answered, no engagement, no ring, no wedding or elopement.
+    // Everything else about the bond goes on. Kept in the save.
+    //
+    // As a faction rank, SNRom_Marriage kElsewhereRank while they are not
+    // married, engaged or separated, which every marriage action's
+    // eligibility refuses; married, they rank as married.
+    inline constexpr std::int8_t kElsewhereRank = 9;
+    bool Elsewhere(std::int32_t a_formId);
+    // False, with a_why, when it cannot be changed: engaged to the player in
+    // Relationships, or married by a Relationships wedding.
+    bool SetElsewhere(std::int32_t a_formId, bool a_on, std::string& a_why);
+
+    // MARRIED OUTSIDE RELATIONSHIPS (2.6). Anyone enrolled whom the game
+    // records as married to the player (vanilla's PlayerMarriedFaction, the
+    // convention every marriage mod is expected to keep) and our record does
+    // not is recorded married, "married outside Relationships", that day. For
+    // someone left to their own mod, leaving the faction again is a divorce
+    // in our record too; our own marriages are ours, whatever the faction
+    // says. Not while MARAS runs marriage: its import brings those over.
+    // Main thread; on a load, the player's every change of location, and
+    // each roster refresh. Never polled.
+    void NoteOutsideMarriages();
+
     // THE STATE AS A FACTION RANK, for SkyrimNet's eligibility rules, which
     // evaluate get_faction_rank but not our own decorators (measured
     // 2026-10-17): FACT SNRom_Marriage, rank the State number, -1 for none.

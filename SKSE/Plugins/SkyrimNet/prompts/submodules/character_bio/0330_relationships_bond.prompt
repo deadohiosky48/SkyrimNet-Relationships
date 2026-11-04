@@ -795,7 +795,11 @@ You were engaged to {{ player.name }} once, and it was broken off.
 {% elif mar_state == "divorced" %}
 
 You were married to {{ player.name }}, and you are divorced.
-{% elif default(rom.married, 0) != 1 and romance_na == 0 %}
+{# LEFT TO THEIR OWN MOD (2.6; the author, 2026-11-04): a follower whose own
+   mod has a marriage of its own. Nothing here about proposals, either way:
+   their mod's story decides, and a marriage it makes is recorded once the
+   game says so (Marriage::NoteOutsideMarriages). #}
+{% elif default(rom.married, 0) != 1 and romance_na == 0 and default(rom.marriage.elsewhere, 0) != 1 %}
 {# A YES IS NOT THE WEDDING (2026-10-23): Aia Arria said "not yet" three
    times at Beloved, every time for the wedding - her hymn, the Jarl's court,
    the ceremony. THE WAIT AFTER A NO STATES THE NO, it does not forbid a yes

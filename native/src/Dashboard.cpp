@@ -24,6 +24,7 @@
 #include "L10n.h"
 #include "MagelightHost.h"
 #include "MeridianHost.h"
+#include "Marriage.h"
 #include "Model.h"
 #include "Portraits.h"
 
@@ -134,6 +135,9 @@ namespace SNRom::Dashboard {
             // 2.5, Build A: marriage. A divorce by hand, for a marriage that
             // ended where nothing saw it (M6 makes it a conversation).
             Op{ "Divorce", "SNRom_Bridge.DivorceByHand(Actor)", OpScope::kBond },
+            // 2.6: their marriage left to their own mod, or ours again.
+            Op{ "SetMarriageElsewhere", "SNRom_Bridge.SetMarriageElsewhereByHand(Actor, Int)", OpScope::kBond, false,
+                {}, 1, 1 },
             // Moving from MARAS (M9): its engagements, marriages, divorces and
             // broken engagements into our record, once.
             Op{ "ImportMaras", "SNRom_Bridge.ImportMarasMarriages()", OpScope::kPlaythrough },
@@ -307,6 +311,9 @@ namespace SNRom::Dashboard {
         }
 
         json SnapshotNow() {
+            // Outside the model's lock, which Snapshot holds: marriages made
+            // elsewhere, recorded before the page is drawn (2.6).
+            Marriage::NoteOutsideMarriages();
             return Model::Get().Snapshot(OverlayNow());
         }
 

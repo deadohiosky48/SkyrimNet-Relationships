@@ -6,11 +6,13 @@
 
 #include <atomic>
 
+#include "Model.h"
 #include "Rings.h"
 
 #include <algorithm>
 #include <map>
 #include <mutex>
+#include <set>
 
 namespace SNRom::Marriage {
 
@@ -19,7 +21,8 @@ namespace SNRom::Marriage {
         // Bump when the layout below changes, and keep reading the old one.
         // 2: the rings, and the declines after the records (Build A).
         // 3 (2.5, wpm27): each no keeps the tier it was given at.
-        constexpr std::uint32_t kRecordVersion = 3;
+        // 4 (2.6): who is left to their own mod's marriage, after the declines.
+        constexpr std::uint32_t kRecordVersion = 4;
         constexpr std::size_t   kMaxWhy = 400;
         constexpr std::uint32_t kMaxRecords = 100000;
 
@@ -49,6 +52,10 @@ namespace SNRom::Marriage {
         bool                               g_exception = false;
         std::int32_t                       g_spouses = 0;
         float                              g_cooldownDays = 3.0f;
+        // Left to their own mod's marriage (Elsewhere): form ids.
+        std::set<std::uint32_t>            g_elsewhere;
+        // What NoteOutsideMarriages writes, and reads back.
+        constexpr std::string_view         kOutside = "married outside Relationships";
 
         float GameDay() {
             const auto* calendar = RE::Calendar::GetSingleton();
@@ -107,7 +114,18 @@ namespace SNRom::Marriage {
             auto* faction = StateFaction();
             auto* actor = RE::TESForm::LookupByID<RE::Actor>(static_cast<RE::FormID>(a_formId));
             if (faction && actor) {
-                const auto rank = a_state == State::kNone ? -1 : static_cast<std::int32_t>(a_state);
+                bool elsewhere = false;
+                {
+                    const std::scoped_lock lock{ g_lock };
+                    elsewhere = g_elsewhere.contains(static_cast<std::uint32_t>(a_formId));
+                }
+                // Left to their own mod: a rank no marriage action allows,
+                // unless they are engaged, married or separated.
+                const bool bound = a_state == State::kEngaged || a_state == State::kMarried ||
+                                   a_state == State::kSeparated;
+                const auto rank = elsewhere && !bound    ? kElsewhereRank :
+                                  a_state == State::kNone ? -1 :
+                                                            static_cast<std::int32_t>(a_state);
                 actor->AddToFaction(faction, static_cast<std::int8_t>(rank));
             }
         }
@@ -211,7 +229,9 @@ namespace SNRom::Marriage {
                 // record (the MARAS import, a developer repair) is not one:
                 // all fourteen of the author's imported marriages showed the
                 // day of the import as their wedding, and as an anniversary.
-                record.weddingDay = a_force ? 0.0f : record.since;
+                // A marriage made outside Relationships is dated the day it
+                // was first seen, its nearest known day (2.6).
+                record.weddingDay = a_force && a_why != kOutside ? 0.0f : record.since;
                 record.eloped = a_eloped;
                 record.officiant = a_officiant;
             }
@@ -419,6 +439,84 @@ namespace SNRom::Marriage {
         return WithState(State::kEngaged);
     }
 
+    bool Elsewhere(std::int32_t a_formId) {
+        const std::scoped_lock lock{ g_lock };
+        return g_elsewhere.contains(static_cast<std::uint32_t>(a_formId));
+    }
+
+    bool SetElsewhere(std::int32_t a_formId, bool a_on, std::string& a_why) {
+        if (a_formId == 0) {
+            return false;
+        }
+        const auto id = static_cast<std::uint32_t>(a_formId);
+        State      state = State::kNone;
+        {
+            const std::scoped_lock lock{ g_lock };
+            if (g_elsewhere.contains(id) == a_on) {
+                return true;
+            }
+            const auto it = g_records.find(id);
+            state = it == g_records.end() ? State::kNone : it->second.state;
+            // Ours already: a Relationships engagement, or a wedding of ours.
+            const bool ours = it != g_records.end() &&
+                              (state == State::kEngaged ||
+                               ((state == State::kMarried || state == State::kSeparated) && it->second.why != kOutside));
+            if (a_on && ours) {
+                a_why = state == State::kEngaged ? "engaged" : "married";
+                return false;
+            }
+            if (a_on) {
+                g_elsewhere.insert(id);
+            } else {
+                g_elsewhere.erase(id);
+            }
+        }
+        SKSE::log::info("Marriage: {:08X}'s marriage {}", id,
+                        a_on ? "is left to their own mod" : "is Relationships' again");
+        SKSE::GetTaskInterface()->AddTask([a_formId, state]() { SyncFaction(a_formId, state); });
+        return true;
+    }
+
+    void NoteOutsideMarriages() {
+        if (MarasOwns()) {
+            return;   // MARAS's marriages come over by its import
+        }
+        auto* married = RE::TESForm::LookupByID<RE::TESFaction>(0x000C6472);   // PlayerMarriedFaction
+        if (!married) {
+            return;
+        }
+        std::size_t noted = 0;
+        std::size_t ended = 0;
+        for (const auto id : Model::Get().FormIds()) {
+            auto* actor = RE::TESForm::LookupByID<RE::Actor>(static_cast<RE::FormID>(id));
+            if (!actor || actor->IsDead()) {
+                continue;
+            }
+            const auto formId = static_cast<std::int32_t>(id);
+            const auto state = StateOf(formId);
+            const bool inFaction = actor->IsInFaction(married);
+            // Engaged to the player here: our own wedding is under way or
+            // to come, and its record is written when it is over.
+            if (inFaction && state != State::kEngaged && !Married(formId)) {
+                noted += Set(formId, State::kMarried, std::string(kOutside), true, 0, false) ? 1 : 0;
+            } else if (!inFaction && state == State::kMarried && Elsewhere(formId)) {
+                bool outside = false;
+                {
+                    const std::scoped_lock lock{ g_lock };
+                    const auto it = g_records.find(static_cast<std::uint32_t>(id));
+                    outside = it != g_records.end() && it->second.why == kOutside;
+                }
+                if (outside) {
+                    ended += Set(formId, State::kDivorced, "their own mod ended the marriage", true, 0, false) ? 1 : 0;
+                }
+            }
+        }
+        if (noted + ended > 0) {
+            SKSE::log::info("Marriage: {} married outside Relationships recorded, {} ended by their own mod", noted,
+                            ended);
+        }
+    }
+
     void SyncFactionsSoon() {
         std::vector<std::pair<std::int32_t, State>> all;
         {
@@ -426,12 +524,19 @@ namespace SNRom::Marriage {
             for (const auto& [formId, r] : g_records) {
                 all.emplace_back(static_cast<std::int32_t>(formId), r.state);
             }
+            // Left to their own mod with no record: their rank all the same.
+            for (const auto formId : g_elsewhere) {
+                if (!g_records.contains(formId)) {
+                    all.emplace_back(static_cast<std::int32_t>(formId), State::kNone);
+                }
+            }
         }
         SKSE::GetTaskInterface()->AddTask([all = std::move(all)]() {
             for (const auto& [formId, state] : all) {
                 SyncFaction(formId, state);
             }
             SKSE::log::info("Marriage: {} states set as SNRom_Marriage ranks", all.size());
+            NoteOutsideMarriages();
         });
     }
 
@@ -462,6 +567,10 @@ namespace SNRom::Marriage {
             a_intfc->WriteRecordData(formId);
             a_intfc->WriteRecordData(no.day);
             a_intfc->WriteRecordData(no.tier);
+        }
+        a_intfc->WriteRecordData(static_cast<std::uint32_t>(g_elsewhere.size()));
+        for (const auto formId : g_elsewhere) {
+            a_intfc->WriteRecordData(formId);
         }
     }
 
@@ -563,6 +672,21 @@ namespace SNRom::Marriage {
                 }
             }
         }
+        if (a_version >= 4) {
+            std::uint32_t elsewhere = 0;
+            if (a_intfc->ReadRecordData(elsewhere) != sizeof(elsewhere) || elsewhere > kMaxRecords) {
+                return damaged();
+            }
+            for (std::uint32_t i = 0; i < elsewhere; ++i) {
+                std::uint32_t savedId = 0;
+                if (a_intfc->ReadRecordData(savedId) != sizeof(savedId)) {
+                    return damaged();
+                }
+                if (const auto now = resolve(savedId)) {
+                    g_elsewhere.insert(static_cast<std::uint32_t>(now));
+                }
+            }
+        }
         SKSE::log::info("Marriage: {} records loaded from the save ({} dropped, their plugin gone); more than one "
                         "spouse {} (the setting)",
                         g_records.size(), dropped, g_exception ? "allowed" : "not allowed");
@@ -576,6 +700,7 @@ namespace SNRom::Marriage {
         const std::scoped_lock lock{ g_lock };
         g_records.clear();
         g_declined.clear();
+        g_elsewhere.clear();
         g_spouses = 0;
     }
 }

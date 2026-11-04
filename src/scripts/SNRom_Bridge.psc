@@ -5213,6 +5213,12 @@ Function AgreeToMarry(Actor akActor, String asWords)
         Return
     EndIf
     String who = akActor.GetDisplayName()
+    ; LEFT TO THEIR OWN MOD (2.6): their yes is that mod's to keep, so it is
+    ; not ours to record, and nothing is said on screen about it.
+    If _dashNatives >= 39 && SNRom_Native.MarriageElsewhere(akActor)
+        Diag(LOG_INFO(), "Proposal: " + who + "'s marriage is left to their own mod; nothing recorded here.")
+        Return
+    EndIf
     If !SNRom_Native.CanAcceptProposal(akActor)
         String why = ProposalRefusal(akActor)
         Diag(LOG_WARN(), "Proposal: " + who + " agreed to marry, but the rules do not allow it now (" + \
@@ -7283,8 +7289,41 @@ String Function DivorceByHand(Actor akActor)
     If current != MARRIAGE_MARRIED() && current != MARRIAGE_SEPARATED()
         Return Tr("act.divorce.notMarried", "{0} is not married to you in Relationships' record. A MARAS marriage must be imported first.", akActor.GetDisplayName())
     EndIf
+    ; A marriage their own mod made is theirs to end (2.6).
+    If _dashNatives >= 39 && SNRom_Native.MarriageElsewhere(akActor)
+        Return Tr("act.divorce.elsewhere", "Their marriage is their own mod's. End it there.")
+    EndIf
     ChangeMarriage(akActor, MARRIAGE_DIVORCED(), "divorced, by hand from the dashboard")
     Return Tr("act.divorce.done", "You and {0} are divorced.", akActor.GetDisplayName())
+EndFunction
+
+String Function SetMarriageElsewhereByHand(Actor akActor, Int aiOn)
+    { The card's "Leave marriage to their own mod" (2.6; the author,
+      2026-11-04): for a follower whose own mod has a marriage of its own.
+      None of ours is offered them - no proposal answered, no engagement, no
+      ring, wedding or elopement - and the rest of the bond goes on. A
+      marriage their mod makes is recorded once the game's
+      PlayerMarriedFaction says so (Marriage::NoteOutsideMarriages). Refused
+      for someone engaged or married in Relationships already. }
+    If akActor == None || _dashNatives < 39
+        Return Tr("act.needsDll", "That needs the Relationships DLL from the same release.")
+    EndIf
+    String who = akActor.GetDisplayName()
+    String why = SNRom_Native.SetMarriageElsewhere(akActor, aiOn != 0)
+    If why == "engaged"
+        Return Tr("act.elsewhere.engaged", "{0} is engaged to you in Relationships. Call that off first, and their own mod can take it from there.", who)
+    ElseIf why == "married"
+        Return Tr("act.elsewhere.married", "You and {0} were married by Relationships, so their marriage stays here.", who)
+    ElseIf why != ""
+        Return Tr("act.elsewhere.failed", "That could not be changed for {0}.", who)
+    EndIf
+    ApiTouch(akActor)
+    If aiOn != 0
+        Diag(LOG_INFO(), "Marriage: " + who + "'s marriage is left to their own mod.")
+        Return Tr("act.elsewhere.on", "{0}'s marriage is left to their own mod. Relationships will recognise it once it happens.", who)
+    EndIf
+    Diag(LOG_INFO(), "Marriage: " + who + "'s marriage is Relationships' again.")
+    Return Tr("act.elsewhere.off", "Relationships handles {0}'s marriage again.", who)
 EndFunction
 
 String Function SetMarriageStateByHand(Actor akActor, Int aiState)
@@ -9642,6 +9681,13 @@ Event OnDashboardAction(String asEventName, String asOp, Float afRequestId, Form
         answer = CheckDashboardDisplay()
     ElseIf asOp == "Divorce"
         answer = DivorceByHand(who)
+    ElseIf asOp == "SetMarriageElsewhere"
+        Int[] elsewhereArgs = SNRom_Native.ActionArgs(requestId)
+        Int elsewhereOn = 0
+        If elsewhereArgs.Length > 0
+            elsewhereOn = elsewhereArgs[0]
+        EndIf
+        answer = SetMarriageElsewhereByHand(who, elsewhereOn)
     ElseIf asOp == "ImportMaras"
         answer = ImportMarasMarriages()
     ElseIf asOp == "SetMarriageState"

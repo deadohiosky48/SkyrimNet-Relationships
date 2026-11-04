@@ -174,6 +174,10 @@ namespace SNRom::Decorators {
         // conversation, and the wait refused the yes she gave. Their own yes
         // is theirs to give.
         bool CanAccept(std::int32_t a_formId, const Row& a_row) {
+            // Their marriage is their own mod's (2.6): never ours to answer.
+            if (Marriage::Elsewhere(a_formId)) {
+                return false;
+            }
             if (a_row.n[Model::kTier] < 5 || Applicability(a_formId, a_row) != 0) {
                 return false;
             }
@@ -203,6 +207,9 @@ namespace SNRom::Decorators {
                 out["ringToPlayer"] = FormName(record.value("ringToPlayer", 0));
             }
             out["canAccept"] = CanAccept(a_formId, a_row) ? 1 : 0;
+            // 2.6: their marriage left to their own mod; 0330 then says
+            // nothing of proposals, and none of our marriage is offered.
+            out["elsewhere"] = Marriage::Elsewhere(a_formId) ? 1 : 0;
             out["cooldown"] = Marriage::InCooldown(a_formId, a_row.n[Model::kTier]) ? 1 : 0;
             // A no given before, no longer holding: its wait over, or lifted
             // because the bond has deepened since. 0330 tells them it does not
@@ -386,7 +393,9 @@ namespace SNRom::Decorators {
             return "false";
         }
         const auto state = Marriage::StateOf(a_formId);
-        return state == Marriage::State::kEngaged || Marriage::Married(a_formId) ? "false" : "true";
+        return state == Marriage::State::kEngaged || Marriage::Married(a_formId) || Marriage::Elsewhere(a_formId) ?
+                   "false" :
+                   "true";
     }
 
     std::string EngagedToPlayer(std::int32_t a_formId) {

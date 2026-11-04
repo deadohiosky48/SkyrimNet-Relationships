@@ -125,7 +125,22 @@
       needs: t("action.divorce.needs", "Nothing: works wherever they are."),
       needsNearby: false,
       needsMarried: true,
+      needsOurMarriage: true,
       confirm: t("action.divorce.confirm", "You and they are recorded as divorced. There is no undo.")
+    },
+    {
+      // 2.6: a follower whose own mod has a marriage of its own.
+      op: "SetMarriageElsewhere",
+      scope: "bond",
+      form: "elsewhere",
+      calls: "SNRom_Bridge.SetMarriageElsewhereByHand(Actor, Int)",
+      label: t("action.elsewhere.label", "Leave marriage to their own mod"),
+      labelOff: t("action.elsewhere.labelOff", "Let Relationships handle their marriage"),
+      help: t("action.elsewhere.help", "For a follower whose own mod has a marriage of its own. Relationships offers them no proposal, engagement, ring or wedding, so it never gets in that mod's way; everything else about your bond goes on. When their mod marries you, and the game records it, it shows here."),
+      helpOff: t("action.elsewhere.helpOff", "Their marriage is left to their own mod. Undo that, and Relationships can propose, plan and marry as with anyone."),
+      needs: t("action.elsewhere.needs", "Nothing: works wherever they are."),
+      needsNearby: false,
+      confirm: null
     },
     {
       op: "UnenrollActor",

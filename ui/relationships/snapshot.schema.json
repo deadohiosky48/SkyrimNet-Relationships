@@ -381,6 +381,7 @@
             }
           }
         },
+        "marriageElsewhere": { "type": "boolean", "description": "Their marriage is left to their own mod (2.6, Marriage::Elsewhere): none of Relationships' marriage is offered them. Optional: absent before 2.6." },
         "marriage": {
           "description": "Relationships' own marriage record (2.5; native/src/Marriage.h, in the SKSE co-save), or null for none. Optional and additive: a snapshot from a DLL before natives v16 has none.",
           "anyOf": [
@@ -396,7 +397,7 @@
                 "weddingDay": { "type": ["number", "null"], "description": "Game day they married; null if never." },
                 "eloped": { "type": "boolean" },
                 "officiant": { "type": "string", "description": "Who married them, by name; empty if unknown." },
-                "why": { "type": "string", "description": "Why the state last changed, at most 400 bytes." }, "imported": { "type": "boolean", "description": "Brought over from MARAS (wpm41): since is the import's day, and weddingDay unknown." },
+                "why": { "type": "string", "description": "Why the state last changed, at most 400 bytes." }, "imported": { "type": "boolean", "description": "Brought over from MARAS (wpm41): since is the import's day, and weddingDay unknown." }, "outside": { "type": "boolean", "description": "Married outside Relationships (2.6): seen in the game's PlayerMarriedFaction; since and weddingDay are the day it was seen." },
                 "ringFromPlayer": { "type": "string", "description": "The engagement ring the player gave them, by name; empty for none." },
                 "ringToPlayer": { "type": "string", "description": "The engagement ring they gave the player, by name; empty for none." },
                 "plan": {

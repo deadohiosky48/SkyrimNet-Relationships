@@ -202,6 +202,8 @@ namespace SNRom::Model {
                          // Brought over from MARAS: since is the import's day,
                          // not when it happened, and is not shown as such.
                          { "imported", record.value("why", std::string{}).starts_with("imported from MARAS") },
+                         // 2.6: married by their own mod, or in vanilla, and seen.
+                         { "outside", record.value("why", std::string{}) == "married outside Relationships" },
                          { "ringFromPlayer", FormName(record.value("ringFromPlayer", 0)) },
                          { "ringToPlayer", FormName(record.value("ringToPlayer", 0)) },
                          // Build B (M4p): the wedding plan, while engaged.
@@ -262,6 +264,8 @@ namespace SNRom::Model {
         // (History.h), so every snapshot has it as of now.
         bond["history"] = History::Recent(a_formId);
         bond["marriage"] = MarriageCard(a_formId);
+        // 2.6: their marriage left to their own mod (Marriage::Elsewhere).
+        bond["marriageElsewhere"] = Marriage::Elsewhere(a_formId);
         // 2.5, M8b: parents and children, from the plugins and Kinship.
         bond["family"] = Family::Of(a_formId);
         // wpm47: the player's descendant (Family::RefreshKin), or null.

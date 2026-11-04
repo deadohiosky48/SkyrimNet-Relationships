@@ -320,8 +320,12 @@
 
     // MARRIAGE (2.5, M8b): Relationships' own record, a section of its own.
     var m = b.marriage;
-    if (m && m.state !== "none" && b.state !== "foreclosed" && !marasRuns) {
+    var elsewhere = !!b.marriageElsewhere;
+    if (((m && m.state !== "none") || elsewhere) && b.state !== "foreclosed" && !marasRuns) {
       var ms = section(t("detail.marriageSection", "Marriage"));
+      // 2.6: their marriage left to their own mod (the card's repair).
+      if (elsewhere) ms.appendChild(el("p", "blurb", t("detail.marriageElsewhere", "Left to their own mod: Relationships offers no proposal, engagement or wedding, and records their marriage once the game does.")));
+      m = m || { state: "none" };
       var mdl = el("dl");
       var MARRIAGE = { none: t("marriage.none", "None"), engaged: t("marriage.engaged", "Engaged"),
         married: t("marriage.married", "Married"), broken_off: t("marriage.broken_off", "Broken off"),
@@ -334,8 +338,9 @@
       if (m.imported && m.weddingDay !== null) mState += " (" + t("marriage.importedOn",
         "{0}, brought over from MARAS", L.daysAgo(m.weddingDay, snap.generatedAt)) + ")";
       else if (m.imported) mState += " (" + t("marriage.imported", "brought over from MARAS") + ")";
+      else if (m.outside && m.since !== null) mState += " (" + t("marriage.outsideOn", "{0}, married outside Relationships", L.daysAgo(m.since, snap.generatedAt)) + ")";
       else if (m.since !== null) mState += " (" + L.daysAgo(m.since, snap.generatedAt) + ")";
-      kv(mdl, t("detail.marriageState", "Now"), mState);
+      if (m.state !== "none") kv(mdl, t("detail.marriageState", "Now"), mState);
       if (m.officiant) kv(mdl, m.eloped ? t("detail.elopedBy", "Eloped, married by") : t("detail.marriedBy", "Married by"), m.officiant);
       if (m.ringFromPlayer) kv(mdl, t("detail.ringFromYou", "Your ring to them"), m.ringFromPlayer);
       if (m.ringToPlayer) kv(mdl, t("detail.ringToYou", "Their ring to you"), m.ringToPlayer);
@@ -730,7 +735,9 @@
       a.needsNearby && !b.nearby ? t("act.notNear", "{0} is not near you.", b.subject.name) + " " + a.needs :
       a.needsAddress && !b.prose.address ? t("act.noAddress", "{0} has no saved name for you.", b.subject.name) :
       a.needsMarried && !(b.marriage && (b.marriage.state === "married" || b.marriage.state === "separated")) ?
-        t("act.notMarried", "{0} is not married to you in Relationships' record.", b.subject.name) : null;
+        t("act.notMarried", "{0} is not married to you in Relationships' record.", b.subject.name) :
+      a.needsOurMarriage && b.marriageElsewhere && b.marriage && b.marriage.outside ?
+        t("act.divorce.elsewhere", "Their marriage is their own mod's. End it there.") : null;
     var btn = el("button", "btn" + (a.confirm ? " btn-danger" : ""), a.label);
     btn.type = "button";
     btn.setAttribute("data-op", a.op);
@@ -813,6 +820,20 @@
       cform.appendChild(btn);
       wrap.appendChild(cform);
       wrap.appendChild(el("p", "act-help", a.help));
+    } else if (a.form === "elsewhere") {
+      // 2.6: one repair, both ways, said as what pressing it will do.
+      var on = !!b.marriageElsewhere;
+      btn.textContent = on ? a.labelOff : a.label;
+      var act2 = a;
+      if (on) {
+        act2 = {};
+        for (var k2 in a) if (Object.prototype.hasOwnProperty.call(a, k2)) act2[k2] = a[k2];
+        act2.label = a.labelOff;
+      }
+      btn.addEventListener("click", function () { self.onAction(act2, b, [on ? 0 : 1], btn); });
+      row.appendChild(el("span", "act-help", on ? a.helpOff : a.help));
+      row.appendChild(btn);
+      wrap.appendChild(row);
     } else if (a.form === "reauthorBlocks") {
       // THE OVERRIDE (2.4): checked, the player's own blocks in the tabs we
       // pick from come off too, and the confirmation says so.

@@ -246,6 +246,17 @@
         later(80, pushSnapshot);
         return [true, "You and " + b.subject.name + " are divorced."];
       },
+      SetMarriageElsewhere: function (b, args) {
+        var m = b.marriage;
+        if (args[0] && m && (m.state === "engaged" || ((m.state === "married" || m.state === "separated") && !m.outside))) {
+          return [true, m.state === "engaged" ? b.subject.name + " is engaged to you in Relationships. Call that off first, and their own mod can take it from there."
+                                              : "You and " + b.subject.name + " were married by Relationships, so their marriage stays here."];
+        }
+        b.marriageElsewhere = !!args[0];
+        later(80, pushSnapshot);
+        return [true, args[0] ? b.subject.name + "'s marriage is left to their own mod. Relationships will recognise it once it happens."
+                              : "Relationships handles " + b.subject.name + "'s marriage again."];
+      },
       SetMarriageState: function (b, args) {
         var names = ["none", "engaged", "married", "broken_off", "divorced", "widowed", "separated"];
         var s = names[args[0]];

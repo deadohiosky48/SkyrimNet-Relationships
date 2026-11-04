@@ -432,6 +432,15 @@ Bool Function PlanHeardSpot(Int aiToken) Global Native
  the player stood when they said it, until PlanHeardDone. False when the
  player did not speak in it.}
 
+Bool Function MarriageElsewhere(Actor akActor) Global Native
+{VERSION 39 (2.6). Their marriage is left to their own mod: none of ours is
+ offered them, and a marriage their mod makes is recorded once the game's
+ PlayerMarriedFaction says so.}
+
+String Function SetMarriageElsewhere(Actor akActor, Bool abOn) Global Native
+{VERSION 39 (2.6). "" when done; else why not: "engaged" or "married" (in
+ Relationships already, by an engagement or a wedding of ours).}
+
 Bool Function CeremonyPlanned() Global Native
 {The wedding under way is a planned one, not an elopement.}
 

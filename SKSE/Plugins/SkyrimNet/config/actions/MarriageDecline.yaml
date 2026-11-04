@@ -55,6 +55,11 @@ eligibilityRules:
         arguments: ["currentActor", "SNRom_Marriage"]
         comparisonOperator: "!="
         expectedValue: 6
+      # 9: their marriage is left to their own mod (2.6, Marriage::kElsewhereRank).
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "SNRom_Marriage"]
+        comparisonOperator: "!="
+        expectedValue: 9
     logicalOperator: "AND"
     required: true
   # NOT DURING A WEDDING (wpm77): the ceremony is the script's alone, and

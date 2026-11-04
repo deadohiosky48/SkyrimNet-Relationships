@@ -101,7 +101,11 @@ namespace SNRom::Rings {
                 if (a_event && a_event->actor && a_event->actor->IsPlayerRef()) {
                     UpdateSpouseHere();
                     // Followers arrive a moment after the player does.
-                    After(std::chrono::seconds{ 3 }, []() { UpdateSpouseHere(); });
+                    After(std::chrono::seconds{ 3 }, []() {
+                        UpdateSpouseHere();
+                        // And a marriage made elsewhere is seen (2.6).
+                        Marriage::NoteOutsideMarriages();
+                    });
                 }
                 return RE::BSEventNotifyControl::kContinue;
             }
