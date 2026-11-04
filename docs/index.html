@@ -1,3 +1,7 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Two Ladders, Not One</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 
@@ -240,7 +244,7 @@
   }
   .pace-copy p { margin: 0; color: var(--ink-soft); font-size: .93rem; max-width: 54ch; }
 
-  .dial { display: flex; gap: .5rem; }
+  .dial { display: flex; flex-wrap: wrap; gap: .5rem; }
   .notch {
     border: var(--rule);
     background: var(--ground);
@@ -404,7 +408,7 @@
     </div>
     <div class="scroll">
       <svg viewBox="0 0 940 268" role="img"
-           aria-label="A grid. Across the top, depth in six stages five hundred points apart: Stranger at zero, Acquaintance at five hundred, Friend at one thousand, Confidant at fifteen hundred, Lover at two thousand, Spouse at two thousand five hundred. Down the side, kind: a platonic row open to everyone, and a romantic row reached only by a spark that requires both people.">
+           aria-label="A grid. Across the top, depth in six stages five hundred points apart: Stranger at zero, Acquaintance at five hundred, Friend at one thousand, Confidant at fifteen hundred, Lover at two thousand, Beloved at two thousand five hundred. Down the side, kind: a platonic row open to everyone, and a romantic row reached only by a spark that requires both people.">
         <text class="eyebrow" x="8" y="18">DEPTH &mdash; EARNED BY WHAT YOU SHARE</text>
 
         <text class="hdr" x="176" y="46" text-anchor="middle">Stranger</text>
@@ -412,7 +416,7 @@
         <text class="hdr" x="420" y="46" text-anchor="middle">Friend</text>
         <text class="hdr" x="542" y="46" text-anchor="middle">Confidant</text>
         <text class="hdr" x="664" y="46" text-anchor="middle">Lover</text>
-        <text class="hdr" x="786" y="46" text-anchor="middle">Spouse</text>
+        <text class="hdr" x="786" y="46" text-anchor="middle">Beloved</text>
 
         <text class="tick" x="176" y="62" text-anchor="middle">0</text>
         <text class="tick" x="298" y="62" text-anchor="middle">500</text>
@@ -453,6 +457,47 @@
       hard as the romance.</figcaption>
   </figure>
 
+  <section class="steps">
+    <div class="step">
+      <div class="step-n">04 &nbsp;/&nbsp; PROPOSE</div>
+      <h2>Beloved is where a yes becomes possible</h2>
+      <p>Only someone who has reached the top of the ladder can agree to marry you, and the yes
+        is theirs to give. Ask in your own words, or be asked. Give them a ring and they keep
+        wearing it.</p>
+      <dl class="facts">
+        <dt>At</dt><dd>Beloved, <span class="num">2500</span> points</dd>
+        <dt>Rings</dt><dd>engagement rings and bands in gold, silver and ebony, at thirteen jewellers</dd>
+        <dt>Another</dt><dd>while married: your choice, a setting, off by default</dd>
+      </dl>
+    </div>
+
+    <div class="step">
+      <div class="step-n">05 &nbsp;/&nbsp; PLAN</div>
+      <h2>A wedding planned by talking it through</h2>
+      <p>Hire one of the five temple planners and settle it in conversation: the day, the place
+        &mdash; or simply right here &mdash; who marries you, who comes, and where everyone stands,
+        marked by standing on each spot. Your betrothed has opinions too.</p>
+      <dl class="facts">
+        <dt>Planners</dt><dd>one at the temple of each great city, for a fee</dd>
+        <dt>Ceremony</dt><dd>address, reading, rings, kiss &mdash; each in or out</dd>
+        <dt>Missed</dt><dd>anything left out, set by hand on their card</dd>
+      </dl>
+    </div>
+
+    <div class="step">
+      <div class="step-n">06 &nbsp;/&nbsp; MARRY</div>
+      <h2>Spoken by the people in it</h2>
+      <p>On the day the guests make their way there and everyone takes their mark. The vows, each
+        &ldquo;do you take&rdquo;, the rings and the kiss are spoken by the people in the ceremony,
+        and you answer when it is your turn. Then they stay to celebrate.</p>
+      <dl class="facts">
+        <dt>Or elope</dt><dd>any priest, priestess or jarl, there and then</dd>
+        <dt>After</dt><dd>the guests stay <span class="num">2</span> hours</dd>
+        <dt>Kept</dt><dd>wedding days and anniversaries, on the calendar</dd>
+      </dl>
+    </div>
+  </section>
+
   <section class="pace">
     <div class="pace-copy">
       <h2>One dial over all of it</h2>
@@ -461,9 +506,11 @@
         road is, never where it ends.</p>
     </div>
     <div class="dial">
+      <div class="notch"><b>Very Slow</b><em>&times;0.25</em></div>
       <div class="notch"><b>Slow</b><em>&times;0.5</em></div>
       <div class="notch on"><b>Normal</b><em>&times;1</em></div>
       <div class="notch"><b>Fast</b><em>&times;2</em></div>
+      <div class="notch"><b>Very Fast</b><em>&times;4</em></div>
     </div>
   </section>
 
