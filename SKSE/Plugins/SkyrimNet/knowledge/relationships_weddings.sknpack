@@ -1,6 +1,6 @@
 {
   "skyrimnet_knowledge_pack": {
-    "format_version": 2,
+    "format_version": 3,
     "name": "Relationships: Wedding Planners",
     "description": "Who plans weddings in Skyrim. Always known to everyone who can marry a couple and to the player's betrothed; anyone else recalls it when weddings come up.",
     "version": "1.0.0",
@@ -12,6 +12,7 @@
         "always_inject": true,
         "importance": 0.8,
         "display_name": "Relationships: wedding planners (officiants, the betrothed)",
+        "key": "wedding-planners-known",
         "knowledge_key": "relationships_wedding_planners_known",
         "tags": [
           "relationships",
@@ -27,6 +28,7 @@
         "always_inject": false,
         "importance": 0.7,
         "display_name": "Relationships: wedding planners (everyone else)",
+        "key": "wedding-planners-heard",
         "knowledge_key": "relationships_wedding_planners_heard",
         "tags": [
           "relationships",
