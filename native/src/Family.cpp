@@ -280,8 +280,7 @@ namespace SNRom::Family {
             }
             frontier = std::move(next);
         }
-        // TEST LOG (wpm47): what the family is made of, when it changes;
-        // remove once validated.
+        // What the family is made of, when it changes (wpm47).
         if (g_kin.size() != g_kinLogged) {
             g_kinLogged = g_kin.size();
             SKSE::log::info("Family: {} of the player's children by reference from Kinship ({} records only, "

@@ -196,7 +196,7 @@ namespace SNRom::PlanJudge {
                     }
                 }
             }
-            // TEST LOG (wpm85): what the judge said, and why nothing was sent.
+            // What the judge said, and why nothing was sent (wpm85).
             std::string said;
             for (const auto& [key, value] : heard) {
                 said += (said.empty() ? "" : "; ") + key + " " + value;

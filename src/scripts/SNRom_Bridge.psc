@@ -5529,7 +5529,7 @@ Function WeddingRingFor(Actor akWearer, Actor akSpouse, Bool abSpouseWears, Int 
     ElseIf source != None
         brought = "already " + akWearer.GetDisplayName() + "'s"
     EndIf
-    ; TEST LOG (wpm70): whose band it was.
+    ; Whose band it was (wpm70).
     Diag(LOG_INFO(), "Ring: " + ring.GetName() + " for " + akWearer.GetDisplayName() + ", its band " + brought + ".")
     ; Her outfits keep the wedding ring on, not the engagement ring (wpm70).
     If engaged && akWearer != player && SeverActionsPresent()
@@ -6062,7 +6062,7 @@ Event OnWeddingGo(String asEventName, String asPackage, Float afLeadHours, Form 
     _weddingGoers[i] = who
     _weddingGoerPackages[i] = asPackage
     Int rc = SkyrimNetApi.RegisterPackageEx(who, asPackage, -1, True, WeddingHolder(), "Going to the wedding", False)
-    ; TEST LOG (wpm61): rc 1 applied, 2 stored while held, 0 failed.
+    ; rc 1 applied, 2 stored while held, 0 failed (wpm61).
     If afLeadHours > 0.0
         Diag(LOG_INFO(), "Wedding: " + who.GetDisplayName() + " is on their way (" + asPackage + ", " + afLeadHours + \
             " h before the hour, rc " + rc + ").")
@@ -7127,7 +7127,7 @@ Event OnCeremonyMarried(String asEventName, String asUnused, Float afUnused, For
     If asUnused == "planned" && betrothed != None && _dashNatives >= 28 && \
             SkyrimNetApi.GetConfigBool(CFG(), "weddingApplause", True)
         clapping = Applaud(SNRom_Native.PlanGuests(betrothed))
-        Diag(LOG_INFO(), "Wedding: " + clapping + " guests applaud. (TEST LOG)")
+        Diag(LOG_INFO(), "Wedding: " + clapping + " guests applaud.")
         If clapping > 0
             Utility.Wait(12.0)   ; long enough to be heard (the author, wpm75)
         EndIf
@@ -7228,7 +7228,7 @@ Event OnCeremonyRings(String asEventName, String asPlanned, Float afUnused, Form
     _planBandMetal = -1
     _planBandWide = -1
     _planTheirStyle = -1
-    Diag(LOG_INFO(), "Wedding: the rings exchanged at their step. (TEST LOG)")
+    Diag(LOG_INFO(), "Wedding: the rings exchanged at their step.")
 EndEvent
 
 Function CeremonyColdFeet(Actor akActor, String asWhy)

@@ -153,7 +153,7 @@
       scope: "playthrough",
       calls: "SNRom_Bridge.ImportMarasMarriages()",
       label: t("action.importMaras.label", "Bring marriages over from MARAS"),
-      help: t("action.importMaras.help", "Copies who MARAS records as your spouses, betrothed, divorced and jilted into Relationships' own record, so they stay married if MARAS is removed. Anyone Relationships already records is left as it is. A household with more than one spouse is granted Mara's exception."),
+      help: t("action.importMaras.help", "Copies who MARAS records as your spouses, betrothed, divorced and jilted into Relationships' own record, so they stay married if MARAS is removed. Anyone Relationships already records is left as it is. Marrying again while married is the Marry More Than One Spouse setting."),
       needs: t("action.importMaras.needs", "MARAS must be installed."),
       needsNearby: false,
       confirm: t("action.importMaras.confirm", "MARAS's marriages and engagements are copied into Relationships. MARAS itself is not changed.")

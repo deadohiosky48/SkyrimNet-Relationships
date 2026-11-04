@@ -505,7 +505,7 @@ namespace SNRom::Ceremony {
                 return;
             }
             const auto id = g_registerEvent("persistent_generic", a_fact.c_str(), 0x14, 0, nullptr, 0);
-            SKSE::log::info("Ceremony: step {}: said at once: {} (event {}) (TEST LOG)", g_step + 1, a_fact, id);
+            SKSE::log::info("Ceremony: step {}: said at once: {} (event {})", g_step + 1, a_fact, id);
         }
 
         void StartStep(bool a_unclear = false) {
@@ -542,7 +542,7 @@ namespace SNRom::Ceremony {
             }
             if (g_holdCue) {
                 Tell(CueText(step.cue, g_unclear));
-                SKSE::log::info("Ceremony: step {}: {}'s cue waits for the player's answer (TEST LOG)", g_step + 1,
+                SKSE::log::info("Ceremony: step {}: {}'s cue waits for the player's answer", g_step + 1,
                                 NameOf(IdOf(step.speaker)));
                 return;
             }
@@ -872,7 +872,6 @@ namespace SNRom::Ceremony {
                     g_pronounced = true;
                     SKSE::log::info("Ceremony: step {}: {} pronounced them married", g_step + 1, NameOf(a_speaker));
                 } else {
-                    // TEST LOG (wpm75)
                     SKSE::log::info("Ceremony: step {}: {} pronounced them married too soon; not counted",
                                     g_step + 1, NameOf(a_speaker));
                 }
@@ -887,7 +886,7 @@ namespace SNRom::Ceremony {
             }
             // Someone else answered the player: this step's cue goes now.
             if (g_holdCue && a_speaker != 0x14 && a_speaker != IdOf(step.speaker)) {
-                SKSE::log::info("Ceremony: step {}: {} answered the player; cueing (TEST LOG)", g_step + 1,
+                SKSE::log::info("Ceremony: step {}: {} answered the player; cueing", g_step + 1,
                                 NameOf(a_speaker));
                 CueNow();
             }
@@ -1099,7 +1098,7 @@ namespace SNRom::Ceremony {
             if (g_holdCue) {
                 g_held += step;
                 if (g_held >= kReplyWait) {
-                    SKSE::log::info("Ceremony: step {}: nobody else answered the player; cueing (TEST LOG)",
+                    SKSE::log::info("Ceremony: step {}: nobody else answered the player; cueing",
                                     g_step + 1);
                     CueNow();
                 }
@@ -1127,7 +1126,7 @@ namespace SNRom::Ceremony {
                 // Sent, and nothing from its speaker since: it expired, or was
                 // answered unheard. Never sent (it was not wanted when Papyrus
                 // looked): send it now.
-                SKSE::log::info("Ceremony: step {}: no line {} s after the cue (TEST LOG)", g_step + 1,
+                SKSE::log::info("Ceremony: step {}: no line {} s after the cue", g_step + 1,
                                 static_cast<int>(g_sent ? g_sinceSent : g_still));
                 CueNow(true);
             } else if (!npc && g_still >= kPlayerGiveUp) {

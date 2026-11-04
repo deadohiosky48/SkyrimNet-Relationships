@@ -378,7 +378,6 @@ namespace SNRom::WeddingPlan {
                 // As Papyrus's SetPosition: within the world it is in.
                 placed->SetAngle(RE::NiPoint3{ 0.0f, 0.0f, spot->angle });
                 placed->SetPosition(spot->at);
-                // TEST LOG (wpm86).
                 SKSE::log::info("Venue: marked where the player said it, {:.0f} from where they stand now",
                                 spot->at.GetDistance(player->GetPosition()));
             }
@@ -920,7 +919,7 @@ namespace SNRom::WeddingPlan {
                     SKSE::log::info("Wedding: {} is linked again to {}", who->GetDisplayFullName(), g.goal.where);
                     continue;
                 }
-                // TEST LOG (wpm61): who set out, from how far, how early.
+                // Who set out, from how far, how early (wpm61).
                 SKSE::log::info("Wedding: {} sets out for {} ({}), {}, {:.1f} h before the hour",
                                 who->GetDisplayFullName(), g.goal.where, g.goal.package,
                                 g.distance >= 0.0f ? std::format("{:.0f} away", g.distance) : std::string("distance unknown"),
@@ -955,7 +954,7 @@ namespace SNRom::WeddingPlan {
                     const std::scoped_lock lock{ g_lock };
                     g_summoned.push_back(l.goal.who);
                 }
-                // TEST LOG (wpm65): who was summoned, from how far, and how.
+                // Who was summoned, from how far, and how (wpm65).
                 SKSE::log::info("Wedding: {} summoned {} to {}, from {}", who->GetDisplayFullName(), how, l.goal.where,
                                 from >= 0.0f ? std::format("{:.0f} away", from) : std::string("elsewhere"));
                 if (l.found) {
@@ -988,7 +987,7 @@ namespace SNRom::WeddingPlan {
                 }
                 p.settled = true;
                 who->SetHeading(HeadingTo(who->GetPosition(), p.faceTo));
-                // TEST LOG (wpm65): who settled where.
+                // Who settled where (wpm65).
                 SKSE::log::info("Wedding: {} in their place ({}), {:.0f} from it{}", who->GetDisplayFullName(), p.role,
                                 off, seated ? ", still seated" : "");
                 Send("SNRom_WeddingInPlace", p.role, 0.0f, p.who);
@@ -1158,7 +1157,7 @@ namespace SNRom::WeddingPlan {
             SKSE::log::info("Wedding plan: {:08X}: no day or hour to set", static_cast<std::uint32_t>(a_betrothed));
             return false;
         }
-        // TEST LOG (wpm51): how a day as said was read; remove once validated.
+        // How a day as said was read (wpm51).
         SKSE::log::info("Wedding plan: {:08X}: '{}' at '{}' read as {}, hour {}",
                         static_cast<std::uint32_t>(a_betrothed), a_day, a_time,
                         days ? std::format("{} days from today ({})", *days, DateWords(*days)) : "the day as it was",
@@ -1284,7 +1283,6 @@ namespace SNRom::WeddingPlan {
             gone->SetDelete(true);
         }
         const auto at = placed->GetPosition();
-        // TEST LOG (wpm86).
         SKSE::log::info("Wedding plan: {:08X}: the place is the spot chosen, '{}' (by '{}'), marked at ({:.0f}, "
                         "{:.0f}, {:.0f}); everyone gathers there",
                         static_cast<std::uint32_t>(a_betrothed), name, by, at.x, at.y, at.z);
@@ -1510,7 +1508,6 @@ namespace SNRom::WeddingPlan {
         const auto  at = placed->GetPosition();
         auto*       cell = placed->GetParentCell();
         const char* cellName = cell ? cell->GetFormEditorID() : "";
-        // TEST LOG (wpm61).
         SKSE::log::info("Venue '{}': {} marked at ({:.0f}, {:.0f}, {:.0f}) in {}{}", key.empty() ? "(no place yet)" : key,
                         kRoleWords[a_role], at.x, at.y, at.z,
                         cellName && *cellName ? cellName : std::format("{:08X}", cell ? cell->GetFormID() : 0),
@@ -1664,7 +1661,7 @@ namespace SNRom::WeddingPlan {
                 if (!placed || !who) {
                     continue;
                 }
-                // TEST LOG (wpm66): how far each one has to walk.
+                // How far each one has to walk (wpm66).
                 SKSE::log::info("Wedding: {}'s place is {:.0f} from them", who->GetDisplayFullName(),
                                 Across(who->GetPosition(), at));
                 placed->SetPosition(at);
@@ -1676,7 +1673,6 @@ namespace SNRom::WeddingPlan {
                 out.push_back(who);
             }
         }
-        // TEST LOG (wpm65).
         SKSE::log::info("Wedding: {} take their places, the guests at {} marks", out.size(), gathering.size());
         return out;
     }
@@ -2091,8 +2087,7 @@ namespace SNRom::WeddingPlan {
         // Without a leading title (wpm89): "Mother Hamal" is Hamal.
         const auto bare = Officiant::TitleOff(a_name);
         auto*      actor = bare.empty() ? nullptr : PersonAsSaid(bare);
-        // TEST LOG (wpm89): a name found only without its title; remove once
-        // validated.
+        // A name found only without its title (wpm89).
         if (!bare.empty()) {
             SKSE::log::info("Names: '{}' without its title is '{}': {}", a_name, bare,
                             actor ? actor->GetDisplayFullName() : "still no one");
@@ -2672,7 +2667,6 @@ namespace SNRom::WeddingPlan {
             Link(RE::TESForm::LookupByID<RE::Actor>(who[i]), now.AtOf(i));
             Send("SNRom_WeddingGo", kGatherLarge, 0.0f, who[i]);
         }
-        // TEST LOG (wpm68).
         SKSE::log::info("Wedding: the reception begins; {} stay {:.0f} hours", who.size(), kReceptionHours);
         return static_cast<std::int32_t>(who.size());
     }

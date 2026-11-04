@@ -229,9 +229,8 @@ namespace SNRom::Dashboard {
             }
             SKSE::log::warn("A question could not be asked: no Meridian UI, Magelight UI or Prisma UI view");
             SKSE::GetTaskInterface()->AddTask([]() {
-                const auto text = L10n::Text("ask.noView",
-                                             "Relationships wanted to ask you something, but it needs Meridian UI, "
-                                             "Magelight UI or Prisma UI to ask in.");
+                // One literal: gen-l10n reads only the first of adjacent ones.
+                const auto text = L10n::Text("ask.noView", "Relationships wanted to ask you something, but it needs Meridian UI, Magelight UI or Prisma UI to ask in.");
                 Notify(text.c_str());
             });
         }
@@ -795,8 +794,6 @@ namespace SNRom::Dashboard {
                         if (SUCCEEDED(com)) {
                             CoUninitialize();
                         }
-                        // TEST LOG (wpm45): how many faces each ask found; remove once validated.
-                        SKSE::log::info("Portraits: {} of {} roster faces at {} px", found, wanted.size(), px);
                         SKSE::GetTaskInterface()->AddTask([items = std::move(items), px]() {
                             Send({ { "v", kProtocol },
                                    { "kind", "thumbnails" },

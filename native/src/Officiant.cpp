@@ -321,8 +321,7 @@ namespace SNRom::Officiant {
         if (const auto hold = HoldIn(said); hold >= 0) {
             const char* how = "";
             auto*       ruler = Ruler(static_cast<std::size_t>(hold), how);
-            // TEST LOG (wpm48): who a hold's jarl turned out to be, and why;
-            // remove once validated.
+            // Who a hold's jarl turned out to be, and why (wpm48).
             SKSE::log::info("Officiants: '{}' is the Jarl of {}: {} ({})", a_name, kHolds[hold].name,
                             ruler ? ruler->GetDisplayFullName() : "nobody living", how);
             if (ruler) {
@@ -390,8 +389,7 @@ namespace SNRom::Officiant {
         }
         const auto bare = TitleOff(a_name);
         auto*      actor = bare.empty() ? nullptr : AsSaid(bare);
-        // TEST LOG (wpm89): a name found only without its title; remove once
-        // validated.
+        // A name found only without its title (wpm89).
         if (!bare.empty()) {
             SKSE::log::info("Officiants: '{}' without its title is '{}': {}", a_name, bare,
                             actor ? actor->GetDisplayFullName() : "still no one");

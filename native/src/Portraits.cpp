@@ -247,21 +247,11 @@ namespace SNRom::Portraits {
             std::ifstream             in(file, std::ios::binary);
             std::vector<std::uint8_t> bytes(static_cast<std::size_t>(size));
             if (in.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()))) {
-                // TEST LOG (wpm45): which naming rule matched; remove once validated.
-                SKSE::log::info("Portraits: {:08X} is {}", a_formId, file.filename().string());
                 const char* type = file.extension() == ".jpg" ? "image/jpeg" : "image/png";
                 return std::format("data:{};base64,", type) + Base64(bytes.data(), bytes.size());
             }
             SKSE::log::warn("Portraits: {} exists but could not be read", file.filename().string());
         }
-        // TEST LOG (wpm45): every name tried, to fix a naming rule from one
-        // install; remove once validated.
-        std::string tried;
-        for (const auto& c : candidates) {
-            tried += (tried.empty() ? "" : ", ") + c.filename().string();
-        }
-        SKSE::log::info("Portraits: none for {:08X}; tried {}", a_formId,
-                        tried.empty() ? "nothing (no plugin file or save id)" : tried);
         return {};
     }
 
