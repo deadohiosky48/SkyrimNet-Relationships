@@ -35,6 +35,10 @@ namespace SNRom::Settings {
         std::optional<float>        attractionBypassRatio;
         // outputLanguage (2.3, WP-L): "Game", or a language named in English.
         std::optional<std::string>  language;
+        // marriagePolygamy (2.5): whether the player may marry while married
+        // (Marriage::SetException). Until a quest earns it, the setting is
+        // Mara's exception.
+        std::optional<bool>         polygamy;
 
         // The crosshair keys (Hotkey.h), re-read, re-author and enroll in that
         // order: rereadKey, reauthorKey, enrollKey, each a virtual key, and
@@ -53,7 +57,7 @@ namespace SNRom::Settings {
             for (std::size_t i = 0; i < 3; ++i) {
                 keys = keys || crosshairKey[i] || crosshairModifier[i];
             }
-            return keys || hotkey || modifier || developer || scale || textSize || attractionBypassRatio;
+            return keys || hotkey || modifier || developer || scale || textSize || attractionBypassRatio || polygamy;
         }
     };
 

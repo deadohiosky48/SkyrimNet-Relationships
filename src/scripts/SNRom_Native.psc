@@ -140,10 +140,12 @@ Actor[] Function MarriageWithState(Int aiState) Global Native
 
 Bool Function MaraException() Global Native
 {VERSION 15 (2.5). Whether Mara has granted the player her exception: another
- marriage while already married.}
+ marriage while already married. The plugin setting marriagePolygamy, which the
+ DLL reads, until a quest earns it.}
 
 Function SetMaraException(Bool abGranted) Global Native
-{VERSION 15 (2.5). Grants or withdraws it. Kept in the save.}
+{VERSION 15 (2.5). Grants or withdraws it until the settings are next read;
+ nothing calls it since the setting decides.}
 
 Bool Function CanAcceptProposal(Actor akActor) Global Native
 {VERSION 16 (2.5). Whether akActor could say yes to a proposal now: Spouse and

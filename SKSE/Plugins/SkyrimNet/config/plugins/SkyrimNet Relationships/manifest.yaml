@@ -119,6 +119,15 @@ schema:
       category: "Kinship"
 
     # ── Weddings ─────────────────────────────────────────────────────────────
+    # Mara's exception (2.5; the author, 2026-11-04): a setting until a quest
+    # earns it. The DLL reads it from this file (Settings.cpp).
+    - name: "Marry More Than One Spouse"
+      path: "marriagePolygamy"
+      type: "bool"
+      description: "Lets you marry again while you are already married. In Skyrim one spouse is the rule, and the world treats this as Mara's own exception: priests will marry you to another, and characters know you may. Turned off, everyone you have already married stays married; you simply cannot marry anyone new while you have a spouse. Default: off."
+      defaultValue: false
+      category: "Weddings"
+
     - name: "Guests Applaud the Newlyweds"
       path: "weddingApplause"
       type: "bool"

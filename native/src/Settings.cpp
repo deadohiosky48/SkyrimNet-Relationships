@@ -6,6 +6,7 @@
 
 #include "Dashboard.h"
 #include "Hotkey.h"
+#include "Marriage.h"
 
 #include <atomic>
 #include <charconv>
@@ -50,6 +51,7 @@ namespace SNRom::Settings {
         constexpr std::string_view kTextSize = "dashboardTextSize";
         constexpr std::string_view kAttractionBypassRatio = "attractionBypassRatio";
         constexpr std::string_view kLanguage = "outputLanguage";
+        constexpr std::string_view kPolygamy = "marriagePolygamy";
 
         // Read by the API on the game thread, written by Apply on the game thread.
         std::atomic<float> g_attractionBypassRatio{ 1.5f };
@@ -236,6 +238,9 @@ namespace SNRom::Settings {
             if (a_values.developer) {
                 Dashboard::SetDeveloperView(*a_values.developer);
             }
+            // More than one spouse (2.5). Absent from a file saved before
+            // 2.5, which means the manifest's default: no.
+            Marriage::SetException(a_values.polygamy.value_or(false));
             // The words the player reads (L10n.h). Absent from a file saved
             // before 2.3, which means the game's language.
             L10n::SetLanguage(a_values.language.value_or("Game"));
@@ -399,7 +404,7 @@ namespace SNRom::Settings {
             const auto key = Trim(line.substr(0, colon));
             const auto crosshair = CrosshairSetting(key);
             if (!crosshair && key != kHotkey && key != kModifier && key != kDeveloper && key != kScale &&
-                key != kTextSize && key != kAttractionBypassRatio && key != kLanguage) {
+                key != kTextSize && key != kAttractionBypassRatio && key != kLanguage && key != kPolygamy) {
                 continue;
             }
             const auto value = Scalar(Trim(line.substr(colon + 1)));
@@ -461,6 +466,12 @@ namespace SNRom::Settings {
                 }
             } else if (key == kLanguage) {
                 values.language = std::string(*value);
+            } else if (key == kPolygamy) {
+                values.polygamy = ToBool(*value);
+                if (!values.polygamy) {
+                    values.complaints.push_back(
+                        std::format("{} '{}' is not true or false, so it is taken as false", key, *value));
+                }
             } else if (key == kScale) {
                 values.scale = ScaleFromName(*value);
                 if (!values.scale) {

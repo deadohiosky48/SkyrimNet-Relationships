@@ -5197,7 +5197,7 @@ String Function ProposalRefusal(Actor akActor)
     ElseIf OurMarriage(akActor) == MARRIAGE_ENGAGED()
         Return "already engaged"
     ElseIf SpouseCount() > 0 && !SNRom_Native.MaraException()
-        Return "the player is married, and Mara has not granted an exception"
+        Return "the player is married, and Marry More Than One Spouse is off in the settings"
     EndIf
     ; Not the wait after a no: since wpm29 it does not refuse a yes.
     Return "kin, or orientation"
@@ -7299,21 +7299,13 @@ String Function SetMarriageStateByHand(Actor akActor, Int aiState)
     Return akActor.GetDisplayName() + " set to state " + aiState + "."
 EndFunction
 
-String Function SetMaraExceptionByHand(Int aiGranted)
-    { Developer: Mara's exception, until the quest exists (spec 5.4). }
-    SNRom_Native.SetMaraException(aiGranted != 0)
-    ApiFactsChanged()
-    If aiGranted != 0
-        Return "Mara's exception granted: the player may marry again."
-    EndIf
-    Return "Mara's exception withdrawn."
-EndFunction
-
 String Function ImportMarasMarriages()
     { Moving from MARAS (M9): what MARAS records - engaged, married, divorced,
       jilted - into our record, forced, once per person. A record we already
-      hold is left alone. A household with more than one spouse is granted
-      Mara's exception, since it already has one. Run with MARAS installed. }
+      hold is left alone. Every marriage brought over stands; marrying again
+      while married is the plugin setting's (marriagePolygamy, 2.5), and a
+      household with more than one spouse is told so if it is off. Run with
+      MARAS installed. }
     If !MarasPresent()
         Return Tr("act.import.noMaras", "MARAS is not installed, so there is nothing to bring over.")
     EndIf
@@ -7324,15 +7316,15 @@ String Function ImportMarasMarriages()
     Int engaged = ImportMarasStatus("engaged", MARRIAGE_ENGAGED())
     Int divorced = ImportMarasStatus("divorced", MARRIAGE_DIVORCED())
     Int jilted = ImportMarasStatus("jilted", MARRIAGE_BROKEN_OFF())
-    If SpouseCount() > 1 && !SNRom_Native.MaraException()
-        SNRom_Native.SetMaraException(True)
-        Diag(LOG_INFO(), "Import: more than one spouse, so Mara's exception is granted.")
-    EndIf
     StorageUtil.SetIntValue(None, "SNRom_MarasImported", 1)
     ApiFactsChanged()
     String summary = Tr("act.import.done", "Brought over from MARAS: {0} married, {1} engaged.", married, engaged)
     If divorced + jilted > 0
         summary += " " + Tr("act.import.ended", "Also {0} divorced and {1} broken engagements.", divorced, jilted)
+    EndIf
+    If SpouseCount() > 1 && !SNRom_Native.MaraException()
+        Diag(LOG_INFO(), "Import: more than one spouse, and marrying again while married is off in the settings.")
+        summary += " " + Tr("act.import.polygamyOff", "Every marriage stands. To marry again while married, turn on Marry More Than One Spouse in the plugin settings.")
     EndIf
     If before && married + engaged + divorced + jilted == 0
         summary = Tr("act.import.again", "Already brought over; MARAS has recorded nothing new since.")
@@ -9461,7 +9453,7 @@ Bool Function DashboardDeveloperOp(String asOp) Global
       in the DLL's op table. Each bypasses a gate that is the design, so both
       sides refuse them unless the developer view is on. }
     Return asOp == "RequestSparkNow" || asOp == "UnsparkActor" || asOp == "ForceDriftReview" || \
-        asOp == "CheckDisplay" || asOp == "SetMarriageState" || asOp == "SetMaraException" || \
+        asOp == "CheckDisplay" || asOp == "SetMarriageState" || \
         asOp == "WeddingReport"
 EndFunction
 
@@ -9549,7 +9541,7 @@ Event OnDashboardAction(String asEventName, String asOp, Float afRequestId, Form
         Return
     EndIf
     Bool forPlaythrough = asOp == "StartFreshStore" || asOp == "AdoptLegacyStore" || asOp == "CheckDisplay" || \
-        asOp == "RestoreOurBioBlocks" || asOp == "ImportMaras" || asOp == "SetMaraException" || \
+        asOp == "RestoreOurBioBlocks" || asOp == "ImportMaras" || \
         asOp == "WeddingReport"
     If !forPlaythrough && who == None
         SNRom_Native.ActionDone(requestId, False, "They could not be found in the game right now.")
@@ -9659,13 +9651,6 @@ Event OnDashboardAction(String asEventName, String asOp, Float afRequestId, Form
             Return
         EndIf
         answer = SetMarriageStateByHand(who, stateArgs[0])
-    ElseIf asOp == "SetMaraException"
-        Int[] exArgs = SNRom_Native.ActionArgs(requestId)
-        Int granted = 0
-        If exArgs.Length > 0
-            granted = exArgs[0]
-        EndIf
-        answer = SetMaraExceptionByHand(granted)
     ElseIf asOp == "WeddingReport"
         answer = WeddingPrototypeReport()
     ElseIf asOp == "EditWeddingPlan"

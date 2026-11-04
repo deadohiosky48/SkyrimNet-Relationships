@@ -58,6 +58,8 @@ namespace SNRom::Marriage {
     std::vector<std::int32_t> WithState(State a_state);
 
     // Mara's exception (spec 5.4): may the player marry again while married.
+    // Since 2.5 it is the plugin setting marriagePolygamy (Settings.cpp),
+    // until a quest earns it; a save's own value is not used.
     bool Exception();
     void SetException(bool a_granted);
 

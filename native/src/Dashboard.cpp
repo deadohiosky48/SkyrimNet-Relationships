@@ -151,12 +151,12 @@ namespace SNRom::Dashboard {
             Op{ "RequestSparkNow", "SNRom_Bridge.RequestSparkNow(Actor)", OpScope::kBond, true },
             Op{ "UnsparkActor", "SNRom_Bridge.UnsparkActor(Actor)", OpScope::kBond, true },
             Op{ "ForceDriftReview", "SNRom_Bridge.ForceDriftReview(Actor, Int)", OpScope::kBond, true, {}, 0, 1 },
-            // 2.5, Build A: any marriage state, forced (Marriage::Set), and
-            // Mara's exception; and what the vanilla wedding quests and
-            // Destination Weddings look like now (prototypes P1, P2).
+            // 2.5, Build A: any marriage state, forced (Marriage::Set); and
+            // what the vanilla wedding quests and Destination Weddings look
+            // like now (prototypes P1, P2). Mara's exception is the plugin
+            // setting marriagePolygamy since 2.5, not a tool here.
             Op{ "SetMarriageState", "SNRom_Bridge.SetMarriageStateByHand(Actor, Int)", OpScope::kBond, true, {}, 1,
                 1 },
-            Op{ "SetMaraException", "SNRom_Bridge.SetMaraExceptionByHand(Int)", OpScope::kPlaythrough, true, {}, 1, 1 },
             Op{ "WeddingReport", "SNRom_Bridge.WeddingPrototypeReport()", OpScope::kPlaythrough, true },
             // wpm85: the wedding plan by hand, a last resort when what was
             // agreed in conversation was not recorded. Not a developer tool.

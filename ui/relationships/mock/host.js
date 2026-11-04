@@ -283,9 +283,6 @@
       ImportMaras: function () {
         return [true, "Brought over from MARAS: 13 married, 0 engaged."];
       },
-      SetMaraException: function (args) {
-        return [true, args[0] ? "Mara's exception granted: the player may marry again." : "Mara's exception withdrawn."];
-      },
       WeddingReport: function () {
         return [true, "Wedding report: | RelationshipMarriage running false stage 0 done false | DestinationWeddings.esp true"];
       },

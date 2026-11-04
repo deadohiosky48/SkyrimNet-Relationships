@@ -253,7 +253,7 @@ namespace SNRom::Marriage {
             }
             g_exception = a_granted;
         }
-        SKSE::log::info("Marriage: Mara's exception {}", a_granted ? "granted" : "withdrawn");
+        SKSE::log::info("Marriage: more than one spouse {} (the setting)", a_granted ? "allowed" : "not allowed");
     }
 
     nlohmann::json Of(std::int32_t a_formId) {
@@ -487,7 +487,9 @@ namespace SNRom::Marriage {
             a_intfc->ReadRecordData(count) != sizeof(count) || count > kMaxRecords) {
             return damaged();
         }
-        g_exception = exception == 1;
+        // THE SETTING DECIDES (2.5; the author, 2026-11-04): Mara's exception
+        // is the plugin setting marriagePolygamy until a quest earns it, so
+        // what a save recorded is read past, not used.
         std::size_t dropped = 0;
         std::size_t repaired = 0;
         for (std::uint32_t i = 0; i < count; ++i) {
@@ -561,9 +563,9 @@ namespace SNRom::Marriage {
                 }
             }
         }
-        SKSE::log::info("Marriage: {} records loaded from the save ({} dropped, their plugin gone); Mara's "
-                        "exception {}",
-                        g_records.size(), dropped, g_exception ? "granted" : "not granted");
+        SKSE::log::info("Marriage: {} records loaded from the save ({} dropped, their plugin gone); more than one "
+                        "spouse {} (the setting)",
+                        g_records.size(), dropped, g_exception ? "allowed" : "not allowed");
         if (repaired > 0) {
             SKSE::log::info("Marriage: {} imported marriages lose the import's day as their wedding day (unknown)",
                             repaired);
@@ -574,7 +576,6 @@ namespace SNRom::Marriage {
         const std::scoped_lock lock{ g_lock };
         g_records.clear();
         g_declined.clear();
-        g_exception = false;
         g_spouses = 0;
     }
 }

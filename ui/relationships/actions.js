@@ -243,30 +243,6 @@
       developer: true
     },
     {
-      op: "SetMaraException",
-      scope: "playthrough",
-      calls: "SNRom_Bridge.SetMaraExceptionByHand(1)",
-      label: t("action.grantException.label", "Grant Mara's exception"),
-      help: t("action.grantException.help", "Lets the player marry while already married, until the quest that earns it exists."),
-      needs: null,
-      needsNearby: false,
-      confirm: null,
-      args: [1],
-      developer: true
-    },
-    {
-      op: "SetMaraException",
-      scope: "playthrough",
-      calls: "SNRom_Bridge.SetMaraExceptionByHand(0)",
-      label: t("action.withdrawException.label", "Withdraw Mara's exception"),
-      help: t("action.withdrawException.help", "One spouse again, for anyone new. Existing marriages stand."),
-      needs: null,
-      needsNearby: false,
-      confirm: null,
-      args: [0],
-      developer: true
-    },
-    {
       op: "WeddingReport",
       scope: "playthrough",
       calls: "SNRom_Bridge.WeddingPrototypeReport()",
