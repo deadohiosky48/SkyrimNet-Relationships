@@ -115,6 +115,41 @@ try {
     $shipped = Get-ChildItem $stage -Recurse -Filter 'settings.yaml' -File
     if ($shipped) { throw "settings.yaml is staged - it would overwrite user tuning. Remove it." }
 
+    # PLAYERS' TRANSLATIONS SHIP AS THEY GAVE THEM (2.6; the author, 2026-11-05).
+    # tools\l10n-contributed\<code>.json holds strings a player translated by
+    # hand, better than our drafts. A table that differs from one of them was
+    # regenerated over it, so nothing ships until it is put back. 'en' is the
+    # English each was made from: when that has since changed, it still ships,
+    # with a warning to ask for a new translation rather than draft one.
+    $contribNote = 'none'
+    $contribDir = Join-Path $repo 'tools\l10n-contributed'
+    if (Test-Path $contribDir) {
+        $l10nDir = Join-Path $repo 'SKSE\Plugins\SkyrimNet Relationships\l10n'
+        $enTable = Get-Content (Join-Path $l10nDir 'en.json') -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable
+        $overwritten = @(); $staleEn = @(); $kept = 0
+        foreach ($cf in Get-ChildItem $contribDir -Filter '*.json' -File) {
+            $code = $cf.BaseName
+            $tablePath = Join-Path $l10nDir "$code.json"
+            if (-not (Test-Path $tablePath)) { $overwritten += "${code}: there is no $code.json"; continue }
+            $table = Get-Content $tablePath -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable
+            $contrib = Get-Content $cf.FullName -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable
+            foreach ($k in $contrib.Keys) {
+                if ($k.StartsWith('_')) { continue }
+                if ($table[$k] -cne $contrib[$k].text) { $overwritten += "${code}: $k"; continue }
+                $kept++
+                if ($enTable[$k] -cne $contrib[$k].en) { $staleEn += "${code}: $k" }
+            }
+        }
+        if ($overwritten) {
+            throw ("A contributed translation was overwritten. Put tools\l10n-contributed's text back in the table:`n  " +
+                   ($overwritten -join "`n  "))
+        }
+        foreach ($s in $staleEn) {
+            Write-Host "  The English changed after this was translated; ask for a new translation: $s" -ForegroundColor Yellow
+        }
+        $contribNote = "$kept contributed string(s) intact"
+    }
+
     # --- 3a. models (2.5): the engagement and wedding rings, built by
     # tools\rings\build_rings.py from a modder's resource (tools\rings\README.md).
     $meshes = Join-Path $repo 'meshes'
@@ -611,6 +646,7 @@ One difference: SeverActions recognises Relationships by the .esl name when it s
     Write-Host "  Plugin    SNRom_Integration.esl or .esp, the player's choice in the FOMOD ($eslNote)"
     Write-Host "  Scripts   $($pex.Count) compiled"
     Write-Host "  Dashboard $dashNote"
+    Write-Host "  Contrib.  $contribNote"
     Write-Host "  Size      $size KB"
     Write-Host "  Paths     clean - no absolute paths in any shipped file, the DLL included"
     Write-Host "  Identity  clean - no build machine username or hostname, .pex headers and the DLL included"
