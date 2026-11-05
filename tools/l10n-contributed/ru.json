@@ -59,6 +59,10 @@
     "text": "Влечение к: Мужчинам",
     "en": "Drawn To: Men"
   },
+  "bio.drawn-to.no-one.content": {
+    "text": "Формирует глубокие привязанности, в которых отсутствуют романтическая или физическая составляющие. Это не целибат и не воздержание — интерес просто-напросто отсутствует.\n\n**Характерные особенности**\n\n- Попытки ухаживания воспринимаются как непонимание со стороны другого человека, а не комплимент.\n- Способен на глубокую преданность и любовь, не предполагающие ни романтики, ни физической близости.\n- Не считает это недостатком и не позволит убедить себя в обратном.",
+    "en": "Forms deep bonds with no romantic or physical component. This is not celibacy and not restraint - the interest is simply absent.\n\n**Characteristics**\n\n- Being pursued reads as being misread, not as being flattered\n- Capable of profound loyalty and love without either\n- Does not consider it a lack and will not be talked out of it"
+  },
   "bio.drawn-to.no-one.title": {
     "text": "Влечение к: Никому",
     "en": "Drawn To: No One"
