@@ -637,6 +637,18 @@ namespace SNRom::Family {
             const auto ref = static_cast<RE::FormID>(k.value("refId", std::uint64_t{ 0 }));
             auto*      body = ref ? RE::TESForm::LookupByID<RE::Actor>(ref) : nullptr;
             auto*      npc = body ? body->GetActorBase() : nullptr;
+            // IN THE WORLD IS KINSHIP'S WORD (2.6; seen in play, the author,
+            // 2026-11-05): Linde and Nina, adopted and at home, were drawn
+            // "not yet in the world" because their references did not resolve
+            // from where the player stood. A reference in a cell that is not
+            // loaded need not be in memory; Kinship recording one is what
+            // having a body means, as the card's family list already says.
+            // The reference is kept, so the card still opens.
+            const bool inWorld = body != nullptr || k.value("inWorld", false);
+            if (ref && !body) {
+                SKSE::log::info("Family tree: {} has a body by Kinship ({:08X}) that is not loaded here",
+                                k.value("name", ""), ref);
+            }
             const auto gender = k.value("child", std::string{});
             const auto born = k.value("born", 0.0f);
             auto&      partner = partners[at];
@@ -646,12 +658,12 @@ namespace SNRom::Family {
                 partner.day = born;
             }
             partner.children.push_back(
-                { { "formId", body ? body->GetFormID() : 0 },
+                { { "formId", body ? body->GetFormID() : inWorld ? ref : 0 },
                   { "name", k.value("name", "") },
                   { "sex", npc ? SexWord(npc) : gender == "daughter" ? "female" : gender == "son" ? "male" : "" },
                   { "stage", k.value("stage", -1) },
                   { "kind", k.value("adopted", false) ? "adopted" : "born" },
-                  { "inWorld", body != nullptr },
+                  { "inWorld", inWorld },
                   { "dead", body && body->IsDead() },
                   { "with", "" },
                   { "children", npc ? Descendants(npc->GetFormID(), seen, 1) : nlohmann::json::array() } });
