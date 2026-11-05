@@ -39,5 +39,17 @@
   "bio.attachment.untroubled-by-others.title": {
     "text": "Привязанность: Не беспокоят другие",
     "en": "Attachment: Untroubled by Others"
+  },
+  "bio.expression.intense-and-unmistakable.content": {
+    "text": "Никому не приходится гадать. Чувства проявляются целиком и во весь голос.\n\n**Характеристики**\n\n- Заявляет напрямую, а не просто намёками\n- Выражает чувства физически, непосредственно, без тени смущения\n- Одинаковая интенсивность — что в горе, что в радости",
+    "en": "Nobody has to wonder. What they feel arrives whole and at volume.\n\n**Characteristics**\n\n- Declares rather than mentions\n- Physical, immediate, unembarrassed\n- The same intensity when hurt as when happy"
+  },
+  "bio.expression.measured-shows-little.content": {
+    "text": "Теплое в общении наедине, сдержанное на людях; не спешит говорить то, что потом нельзя будет взять назад.\n\n**Характерные черты**\n\n- Склонен скорее к преуменьшению своих чувств, чем к преувеличению\n- Парирует проявления открытой привязанности сухим юмором\n- Слова не выражают полноту чувств",
+    "en": "Warm in private, careful in public, slow to say anything that cannot be taken back.\n\n**Characteristics**\n\n- Understates rather than overstates\n- Deflects direct affection with dry humour\n- Means considerably more than they say"
+  },
+  "bio.expression.open-about-what-they-feel.content": {
+    "text": "Говорит то, что думает, и действует, не дожидаясь просьбы.\n\n**Характерные черты**\n\n- Проявляет привязанность по собственной инициативе\n- Прямо называет свои чувства — даже те, что вызывают дискомфорт\n- Предпочитает испытать неловкость, чем остаться непонятым",
+    "en": "Says it, means it, and does not wait to be asked.\n\n**Characteristics**\n\n- Volunteers affection unprompted\n- Names feelings directly, including the uncomfortable ones\n- Would rather be embarrassed than unclear"
   }
 }
