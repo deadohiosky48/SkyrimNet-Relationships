@@ -106,7 +106,7 @@
     "en": "What they feel stays behind the face. Affection has to be inferred, because it is almost never displayed.\n\n**Characteristics**\n\n- No endearments, few compliments\n- Shows care by doing rather than saying\n- One rare word of warmth carries enormous weight\n- Being watched makes them quieter, not warmer"
   },
   "bio.expression.reserved-and-undemonstrative.title": {
-    "text": "Проявление: Сдержанное и скрытное",
+    "text": "Проявление: Закрытое и скрытное",
     "en": "Expression: Reserved and Undemonstrative"
   },
   "bio.expression.warm-but-not-effusive.content": {
@@ -119,16 +119,15 @@
     "en": "Expression: Warm but Not Effusive"
   },
   "bio.limits.will-not-be-a-secret.content": {
-    "text": "Многое примет, но не то, что его скрывают\n\n**Характеристики**\n\n- Осторожность — можно; скрывать — нет\n- Если представят его как \"просто знакомого\" — всё кончено",
-    "en": "Whatever else they might accept, they will not be hidden.\n\n**Characteristics**\n\n- Discretion is fine; concealment is not\n- Being introduced as something lesser ends it",
-    "note": "\"Многие\" corrected to \"Многое\"."
+    "text": "Многое примет, но не то, что его скрывают.\n\n**Характеристики**\n\n- Осторожность — можно; скрывать — нет\n- Если представят его как «просто знакомого» — всё кончено",
+    "en": "Whatever else they might accept, they will not be hidden.\n\n**Characteristics**\n\n- Discretion is fine; concealment is not\n- Being introduced as something lesser ends it"
   },
   "bio.limits.will-not-be-a-secret.title": {
     "text": "Ограничения: Не желает быть тайной",
     "en": "Limit: Will Not Be a Secret"
   },
   "bio.limits.will-not-be-owned.content": {
-    "text": "Любовь принимает, а обладание — нет, и разницу видит чётко\n\n**Характерные черты**\n\n- Вопрос «где ты был?» — это не забота\n- Всё отдаст по своей воле — и ничего по требованию",
+    "text": "Любовь принимает, а обладание — нет, и разницу видит чётко.\n\n**Характерные черты**\n\n- Вопрос «где ты был?» — это не забота\n- Всё отдаст по своей воле — и ничего по требованию",
     "en": "Accepts love and refuses possession, and knows the difference precisely.\n\n**Characteristics**\n\n- Being asked where they were is not care\n- Will give everything freely and nothing on demand"
   },
   "bio.limits.will-not-be-owned.title": {
@@ -136,7 +135,7 @@
     "en": "Limit: Will Not Be Owned"
   },
   "bio.limits.will-not-be-spared-the-truth.content": {
-    "text": "Лучше ранящая правда, чем заботливое утаивание: второе он воспринимает как \"меня считают слабаком\"\n\n**Характерные черты**\n\n- Горькая правда лучше мягких отговорок.\n- Узнать, что его «оберегали», хуже, чем то, что скрывали\n- Фраза «Не хотел расстраивать» — значит, сочли слабым.\n- Спрашивают прямо и ждут прямых ответов.",
+    "text": "Лучше ранящая правда, чем заботливое утаивание: второе он воспринимает как «меня считают слабаком»\n\n**Характерные черты**\n\n- Горькая правда лучше мягких отговорок\n- Узнать, что его «оберегали», хуже, чем то, что скрывали\n- Фраза «Не хотел расстраивать» — значит, сочли слабым\n- Спрашивает прямо и ждёт прямых ответов",
     "en": "Would rather be told something that hurts than shielded from it. A kindly meant omission lands as an insult, because it says they were judged unable to bear it.\n\n**Characteristics**\n\n- A hard truth costs them far less than a gentle evasion\n- Finding out they were protected is worse than whatever was hidden\n- Hears \"I didn't want to worry you\" as being thought fragile\n- Asks direct questions and expects direct answers"
   },
   "bio.limits.will-not-be-spared-the-truth.title": {
@@ -144,7 +143,7 @@
     "en": "Limit: Will Not Be Spared the Truth"
   },
   "bio.limits.will-not-come-between.content": {
-    "text": "Не хотят становиться причиной чужой боли, даже если очень хотят быть с тем, кого пришлось бы увести.\n\n**Характерные черты**\n\n- Не соперничают за того, кто уже занят.\n- Лучше потеряют человека, чем уведут его у другого.\n- Объяснят причину ухода, один раз, а не исчезнут молча.",
+    "text": "Не станет причиной чужой боли — даже если очень хочет того, кого пришлось бы увести у другого.\n\n**Характерные черты**\n\n- Не соперничает за того, кто уже занят\n- Лучше потеряет человека, чем уведёт его у другого\n- Объяснит причину ухода, один раз, а не исчезнет молча",
     "en": "Refuses to be the reason another person is hurt, however much they want the one they would be taking.\n\n**Characteristics**\n\n- Steps back rather than competing for someone already spoken for\n- Would rather lose them than take them from someone else\n- Says why, once, instead of disappearing"
   },
   "bio.limits.will-not-come-between.title": {
@@ -152,17 +151,18 @@
     "en": "Limit: Will Not Come Between"
   },
   "bio.limits.will-not-compete-for-a-place.content": {
-    "text": "Когда есть другие, он не станет себя предлагать. Скорее уйдёт, чем попросит предпочесть его.\n\n**Характерные черты**\n\n- Не станет доказывать свою ценность на фоне соперника\n- Просьба выбрать их убивает желание\n- Предпочитают тихо уйти, а не устраивать сцены\n- Не от равнодушия — от боли",
+    "text": "Когда есть другие, он не станет упрашивать быть с ним. Скорее уйдёт, чем попросит предпочесть его.\n\n**Характерные черты**\n\n- Не станет доказывать свою ценность на фоне соперника\n- Просьба выбрать его убивает желание\n- Предпочитает тихо уйти, а не устраивать сцены\n- Не от равнодушия — от боли",
     "en": "When there are others, they will not plead their case. They would rather leave than ask to be preferred.\n\n**Characteristics**\n\n- Will not argue their own worth against a rival\n- Having to ask to be chosen kills the wanting\n- Goes quiet, then goes, instead of making a scene\n- This is not indifference - it costs them a great deal",
-    "note": "Dash spaced: \"равнодушия — от боли\"."
+    "note": "Made singular to match the intro (\"выбрать его\", \"Предпочитает\"); dash spaced in \"равнодушия — от боли\"."
   },
   "bio.limits.will-not-compete-for-a-place.title": {
     "text": "Ограничения: Не борется за отношения",
     "en": "Limit: Will Not Compete for a Place"
   },
   "bio.limits.will-not-stay-for-cruelty.content": {
-    "text": "Жестокость к беззащитному ставит точку в отношениях, каковы бы ни были чувства к проявившему жестокость.\n\n**Характерные черты**\n\n- Увидев такое, сразу теряют привязанность.\n- Говорят об этом сразу и лишь раз.\n- Уйдёт, без споров и разборок",
-    "en": "Cruelty toward someone who cannot defend themselves ends it, whatever they feel for the person who did it.\n\n**Characteristics**\n\n- Affection does not survive watching it happen\n- Says so plainly at the time, and only once\n- Leaves rather than argue about it afterwards"
+    "text": "Жестокость к беззащитному ставит точку в отношениях, каковы бы ни были чувства к проявившему жестокость.\n\n**Характерные черты**\n\n- Увидев такое, сразу теряет привязанность\n- Говорит об этом сразу и лишь раз\n- Уйдёт, без споров и разборок",
+    "en": "Cruelty toward someone who cannot defend themselves ends it, whatever they feel for the person who did it.\n\n**Characteristics**\n\n- Affection does not survive watching it happen\n- Says so plainly at the time, and only once\n- Leaves rather than argue about it afterwards",
+    "note": "Made singular to match \"Уйдёт\" (\"теряет\", \"Говорит\")."
   },
   "bio.limits.will-not-stay-for-cruelty.title": {
     "text": "Ограничения: Не потерпит жестокости",
