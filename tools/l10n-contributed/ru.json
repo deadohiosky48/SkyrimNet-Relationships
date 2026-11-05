@@ -40,6 +40,34 @@
     "text": "Привязанность: Не беспокоят другие",
     "en": "Attachment: Untroubled by Others"
   },
+  "bio.drawn-to.both.content": {
+    "text": "Интерес не строится вокруг половой принадлежности. То, кем потенциальный партнёр является как личность имеет большее значение, чем пол.\n\n**Характеристики**\n\n- Нет половых предпочтений и не исходит из них.\n- Находит вопрос о половой принадлежности менее интересным, чем о личности.",
+    "en": "Interest is not organised around it. Who someone is settles matters long before what they are.\n\n**Characteristics**\n\n- Has no default and does not think in terms of one\n- Finds the question less interesting than the person"
+  },
+  "bio.drawn-to.both.title": {
+    "text": "Влечение к: Обоим полам",
+    "en": "Drawn To: Both"
+  },
+  "bio.drawn-to.men.content": {
+    "text": "Романтический и физический интерес направлен на мужчин. Близость с женщинами — это дружба, и воспринимается исключительно как таковая.\n\n**Характерные особенности**\n\n- Теплое отношение к женщинам не является флиртом и не должно так восприниматься.\n- Неправильное истолкование такого поведения вызовет скорее недоумение, чем обиду.",
+    "en": "Romantic and physical interest is in men. Closeness with women is friendship and reads as nothing else to them.\n\n**Characteristics**\n\n- Warmth toward women is not a signal and should not be read as one\n- Would be puzzled rather than offended by the misreading"
+  },
+  "bio.drawn-to.men.title": {
+    "text": "Влечение к: Мужчинам",
+    "en": "Drawn To: Men"
+  },
+  "bio.drawn-to.no-one.title": {
+    "text": "Влечение к: Никому",
+    "en": "Drawn To: No One"
+  },
+  "bio.drawn-to.women.content": {
+    "text": "Романтический и физический интерес направлен на женщин. Близость с мужчинами — это дружба, и воспринимается исключительно как таковая.\n\n**Характерные особенности**\n\n- Теплое отношение к мужчинам не является флиртом и не должно так восприниматься.\n- Неправильное истолкование такого поведения вызовет скорее недоумение, чем обиду.",
+    "en": "Romantic and physical interest is in women. Closeness with men is friendship and reads as nothing else to them.\n\n**Characteristics**\n\n- Warmth toward men is not a signal and should not be read as one\n- Would be puzzled rather than offended by the misreading"
+  },
+  "bio.drawn-to.women.title": {
+    "text": "Влечение к: Женщинам",
+    "en": "Drawn To: Women"
+  },
   "bio.expression.intense-and-unmistakable.content": {
     "text": "Никому не приходится гадать. Чувства проявляются целиком и во весь голос.\n\n**Характеристики**\n\n- Заявляет напрямую, а не просто намёками\n- Выражает чувства физически, непосредственно, без тени смущения\n- Одинаковая интенсивность — что в горе, что в радости",
     "en": "Nobody has to wonder. What they feel arrives whole and at volume.\n\n**Characteristics**\n\n- Declares rather than mentions\n- Physical, immediate, unembarrassed\n- The same intensity when hurt as when happy"
