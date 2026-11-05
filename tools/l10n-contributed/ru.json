@@ -42,79 +42,130 @@
     "en": "Attachment: Untroubled by Others"
   },
   "bio.drawn-to.both.content": {
-    "text": "Интерес не строится вокруг половой принадлежности. То, кем потенциальный партнёр является как личность, имеет большее значение, чем пол.\n\n**Характеристики**\n\n- Нет половых предпочтений и не исходит из них.\n- Находит вопрос о половой принадлежности менее интересным, чем о личности.",
+    "text": "Интерес не строится вокруг половой принадлежности. То, кем потенциальный партнёр является как личность, имеет большее значение, чем пол.\n\n**Характеристики**\n\n- Нет половых предпочтений и не исходит из них.\n- Вопрос о поле интересует его куда меньше, чем сам человек",
     "en": "Interest is not organised around it. Who someone is settles matters long before what they are.\n\n**Characteristics**\n\n- Has no default and does not think in terms of one\n- Finds the question less interesting than the person",
-    "note": "Spelling and punctuation corrected after contribution (2026-11-05)."
+    "note": "Comma added after \"как личность\"."
   },
   "bio.drawn-to.both.title": {
     "text": "Влечение к: Обоим полам",
-    "en": "Drawn To: Both"
+    "en": "Drawn To: Both",
+    "note": "Capital letter added."
   },
   "bio.drawn-to.men.content": {
-    "text": "Романтический и физический интерес направлен на мужчин. Близость с женщинами — это дружба и воспринимается исключительно как таковая.\n\n**Характерные особенности**\n\n- Тёплое отношение к женщинам не является флиртом и не должно так восприниматься.\n- Неправильное истолкование такого поведения вызовет скорее недоумение, чем обиду.",
-    "en": "Romantic and physical interest is in men. Closeness with women is friendship and reads as nothing else to them.\n\n**Characteristics**\n\n- Warmth toward women is not a signal and should not be read as one\n- Would be puzzled rather than offended by the misreading",
-    "note": "Spelling and punctuation corrected after contribution (2026-11-05)."
+    "text": "Романтический и физический интерес — к мужчинам. Близость с женщинами для него — дружба и ничего больше.\n\n**Характерные особенности**\n\n- Тепло к женщинам — не флирт, и не стоит его так понимать\n- Если его поймут неправильно, скорее удивится, чем обидится",
+    "en": "Romantic and physical interest is in men. Closeness with women is friendship and reads as nothing else to them.\n\n**Characteristics**\n\n- Warmth toward women is not a signal and should not be read as one\n- Would be puzzled rather than offended by the misreading"
   },
   "bio.drawn-to.men.title": {
     "text": "Влечение к: Мужчинам",
     "en": "Drawn To: Men"
   },
   "bio.drawn-to.no-one.content": {
-    "text": "Формирует глубокие привязанности, в которых отсутствуют романтическая или физическая составляющие. Это не целибат и не воздержание — интерес просто-напросто отсутствует.\n\n**Характерные особенности**\n\n- Попытки ухаживания воспринимаются как непонимание со стороны другого человека, а не комплимент.\n- Способен на глубокую преданность и любовь, не предполагающие ни романтики, ни физической близости.\n- Не считает это недостатком и не позволит убедить себя в обратном.",
-    "en": "Forms deep bonds with no romantic or physical component. This is not celibacy and not restraint - the interest is simply absent.\n\n**Characteristics**\n\n- Being pursued reads as being misread, not as being flattered\n- Capable of profound loyalty and love without either\n- Does not consider it a lack and will not be talked out of it"
+    "text": "Формирует глубокие привязанности, в которых нет ни романтики, ни физического влечения. Это не целибат и не воздержание — интереса просто нет.\n\n**Характерные особенности**\n\n- Ухаживания воспринимает как непонимание со стороны другого, а не как комплимент\n- Способен на глубокую преданность и любовь — без романтики и без физической близости\n- Не считает это недостатком и не даст себя переубедить",
+    "en": "Forms deep bonds with no romantic or physical component. This is not celibacy and not restraint - the interest is simply absent.\n\n**Characteristics**\n\n- Being pursued reads as being misread, not as being flattered\n- Capable of profound loyalty and love without either\n- Does not consider it a lack and will not be talked out of it",
+    "note": "\"а не как повод для лести\" changed to \"а не как комплимент\", the meaning agreed in the previous round."
   },
   "bio.drawn-to.no-one.title": {
     "text": "Влечение к: Никому",
     "en": "Drawn To: No One"
   },
   "bio.drawn-to.women.content": {
-    "text": "Романтический и физический интерес направлен на женщин. Близость с мужчинами — это дружба и воспринимается исключительно как таковая.\n\n**Характерные особенности**\n\n- Тёплое отношение к мужчинам не является флиртом и не должно так восприниматься.\n- Неправильное истолкование такого поведения вызовет скорее недоумение, чем обиду.",
+    "text": "Романтический и физический интерес — к женщинам. Близость с мужчинами для него — дружба и ничего больше.\n\n**Характерные особенности**\n\n- Тепло к мужчинам не флирт, и не стоит его так понимать\n- Если его поймут неправильно, скорее удивится, чем обидится",
     "en": "Romantic and physical interest is in women. Closeness with men is friendship and reads as nothing else to them.\n\n**Characteristics**\n\n- Warmth toward men is not a signal and should not be read as one\n- Would be puzzled rather than offended by the misreading",
-    "note": "Spelling and punctuation corrected after contribution (2026-11-05)."
+    "note": "\"для неё\" changed to \"для него\": this block is for anyone drawn to women, and the blocks use the generic masculine."
   },
   "bio.drawn-to.women.title": {
     "text": "Влечение к: Женщинам",
     "en": "Drawn To: Women"
   },
   "bio.expression.intense-and-unmistakable.content": {
-    "text": "Никому не приходится гадать. Чувства проявляются целиком и во весь голос.\n\n**Характеристики**\n\n- Заявляет напрямую, а не просто намёками\n- Выражает чувства физически, непосредственно, без тени смущения\n- Одинаковая интенсивность — что в горе, что в радости",
+    "text": "Никому не приходится гадать. Чувства выходят наружу целиком и во весь голос.\n\n**Характеристики**\n\n- Говорит прямо, а не намёками\n- Выражает чувства телесно, напрямую, без тени смущения\n- Одинаково ярко — что в горе, что в радости",
     "en": "Nobody has to wonder. What they feel arrives whole and at volume.\n\n**Characteristics**\n\n- Declares rather than mentions\n- Physical, immediate, unembarrassed\n- The same intensity when hurt as when happy"
   },
   "bio.expression.intense-and-unmistakable.title": {
-    "text": "Проявление: Насыщенное и выраженное",
+    "text": "Проявление: Ярко и однозначно",
     "en": "Expression: Intense and Unmistakable"
   },
   "bio.expression.measured-shows-little.content": {
-    "text": "Тёплое в общении наедине, сдержанное на людях; не спешит говорить то, что потом нельзя будет взять назад.\n\n**Характерные черты**\n\n- Склонен скорее к преуменьшению своих чувств, чем к преувеличению\n- Парирует проявления открытой привязанности сухим юмором\n- Слова не выражают полноту чувств",
-    "en": "Warm in private, careful in public, slow to say anything that cannot be taken back.\n\n**Characteristics**\n\n- Understates rather than overstates\n- Deflects direct affection with dry humour\n- Means considerably more than they say",
-    "note": "Spelling and punctuation corrected after contribution (2026-11-05)."
+    "text": "Тёплый наедине, сдержанный на людях; не спешит говорить то, что потом не воротишь.\n\n**Характерные черты**\n\n- Скорее преуменьшает свои чувства, чем преувеличивает\n- Отвечает на открытую нежность сухим юмором\n- Не передаёт словами всю полноту чувств",
+    "en": "Warm in private, careful in public, slow to say anything that cannot be taken back.\n\n**Characteristics**\n\n- Understates rather than overstates\n- Deflects direct affection with dry humour\n- Means considerably more than they say"
   },
   "bio.expression.measured-shows-little.title": {
-    "text": "Проявление: Умеренное, скупое внешне",
+    "text": "Проявление: Сдержанное, едва заметное",
     "en": "Expression: Measured, Shows Little"
   },
   "bio.expression.open-about-what-they-feel.content": {
-    "text": "Говорит то, что думает, и действует, не дожидаясь просьбы.\n\n**Характерные черты**\n\n- Проявляет привязанность по собственной инициативе\n- Прямо называет свои чувства — даже те, что вызывают дискомфорт\n- Предпочитает испытать неловкость, чем остаться непонятым",
+    "text": "Говорит то, что думает, и действует, не дожидаясь просьбы.\n\n**Характерные черты**\n\n- Проявляет привязанность по собственной инициативе\n- Прямо называет свои чувства — даже те, что вызывают дискомфорт\n- Лучше испытает неловкость, чем останется непонятым",
     "en": "Says it, means it, and does not wait to be asked.\n\n**Characteristics**\n\n- Volunteers affection unprompted\n- Names feelings directly, including the uncomfortable ones\n- Would rather be embarrassed than unclear"
   },
   "bio.expression.open-about-what-they-feel.title": {
-    "text": "Проявление: Открытость чувств",
+    "text": "Проявление: Открыто говорит о чувствах",
     "en": "Expression: Open About What They Feel"
   },
   "bio.expression.reserved-and-undemonstrative.content": {
-    "text": "Чувства остаются скрытыми за выражением лица. О привязанности можно лишь догадываться, поскольку её почти никогда не демонстрируют открыто.\n\n**Характерные черты**\n\n- Отсутствие ласковых обращений, минимум комплиментов.\n- Проявление заботы через поступки, а не через слова.\n- Одно редкое тёплое слово обретает огромный вес.\n- В присутствии других они становятся более замкнутыми, а не более открытыми.",
+    "text": "Что чувствует — остаётся при нём. Симпатию приходится угадывать, почти никогда её не показывает.\n\n**Характерные черты**\n\n- Никаких нежностей, комплименты — редкость\n- Заботится делом, а не словами\n- Одно редкое тёплое слово весит очень много\n- На людях становится замкнутым",
     "en": "What they feel stays behind the face. Affection has to be inferred, because it is almost never displayed.\n\n**Characteristics**\n\n- No endearments, few compliments\n- Shows care by doing rather than saying\n- One rare word of warmth carries enormous weight\n- Being watched makes them quieter, not warmer"
   },
   "bio.expression.reserved-and-undemonstrative.title": {
-    "text": "Проявление: Сдержанное, неброское",
+    "text": "Проявление: Сдержанное и скрытное",
     "en": "Expression: Reserved and Undemonstrative"
   },
   "bio.expression.warm-but-not-effusive.content": {
-    "text": "Открыто проявляет привязанность, но без показухи. Ведёт себя непринуждённо, а не напоказ.\n\n**Характеристики**\n\n- Легко проявляет привязанность, без театральности\n- Говорит о своих чувствах, когда прямо спрашивают\n- Не скрывает и не афиширует их",
-    "en": "Openly fond without being demonstrative. Comfortable rather than performative.\n\n**Characteristics**\n\n- Easy affection, no theatre\n- Says what they feel when asked directly\n- Neither hides it nor announces it"
+    "text": "Открыто нежное, но без демонстраций. Искренне, без игры на публику.\n\n**Характерные черты**\n\n- Легко проявляет привязанность, без игры на публику\n- Говорит о своих чувствах, если спросить прямо\n- Не скрывает их — но и не выставляет напоказ",
+    "en": "Openly fond without being demonstrative. Comfortable rather than performative.\n\n**Characteristics**\n\n- Easy affection, no theatre\n- Says what they feel when asked directly\n- Neither hides it nor announces it",
+    "note": "Assembled from the revised file, which held an unfinished draft and the old intro beside the new one."
   },
   "bio.expression.warm-but-not-effusive.title": {
-    "text": "Проявление: Тёплое, но не чрезмерное",
+    "text": "Проявление: Тёплое, но не навязчивое",
     "en": "Expression: Warm but Not Effusive"
+  },
+  "bio.limits.will-not-be-a-secret.content": {
+    "text": "Многое примет, но не то, что его скрывают\n\n**Характеристики**\n\n- Осторожность — можно; скрывать — нет\n- Если представят его как \"просто знакомого\" — всё кончено",
+    "en": "Whatever else they might accept, they will not be hidden.\n\n**Characteristics**\n\n- Discretion is fine; concealment is not\n- Being introduced as something lesser ends it",
+    "note": "\"Многие\" corrected to \"Многое\"."
+  },
+  "bio.limits.will-not-be-a-secret.title": {
+    "text": "Ограничения: Не желает быть тайной",
+    "en": "Limit: Will Not Be a Secret"
+  },
+  "bio.limits.will-not-be-owned.content": {
+    "text": "Любовь принимает, а обладание — нет, и разницу видит чётко\n\n**Характерные черты**\n\n- Вопрос «где ты был?» — это не забота\n- Всё отдаст по своей воле — и ничего по требованию",
+    "en": "Accepts love and refuses possession, and knows the difference precisely.\n\n**Characteristics**\n\n- Being asked where they were is not care\n- Will give everything freely and nothing on demand"
+  },
+  "bio.limits.will-not-be-owned.title": {
+    "text": "Ограничения: Не будет собственностью",
+    "en": "Limit: Will Not Be Owned"
+  },
+  "bio.limits.will-not-be-spared-the-truth.content": {
+    "text": "Лучше ранящая правда, чем заботливое утаивание: второе он воспринимает как \"меня считают слабаком\"\n\n**Характерные черты**\n\n- Горькая правда лучше мягких отговорок.\n- Узнать, что его «оберегали», хуже, чем то, что скрывали\n- Фраза «Не хотел расстраивать» — значит, сочли слабым.\n- Спрашивают прямо и ждут прямых ответов.",
+    "en": "Would rather be told something that hurts than shielded from it. A kindly meant omission lands as an insult, because it says they were judged unable to bear it.\n\n**Characteristics**\n\n- A hard truth costs them far less than a gentle evasion\n- Finding out they were protected is worse than whatever was hidden\n- Hears \"I didn't want to worry you\" as being thought fragile\n- Asks direct questions and expects direct answers"
+  },
+  "bio.limits.will-not-be-spared-the-truth.title": {
+    "text": "Ограничения: Требует правды",
+    "en": "Limit: Will Not Be Spared the Truth"
+  },
+  "bio.limits.will-not-come-between.content": {
+    "text": "Не хотят становиться причиной чужой боли, даже если очень хотят быть с тем, кого пришлось бы увести.\n\n**Характерные черты**\n\n- Не соперничают за того, кто уже занят.\n- Лучше потеряют человека, чем уведут его у другого.\n- Объяснят причину ухода, один раз, а не исчезнут молча.",
+    "en": "Refuses to be the reason another person is hurt, however much they want the one they would be taking.\n\n**Characteristics**\n\n- Steps back rather than competing for someone already spoken for\n- Would rather lose them than take them from someone else\n- Says why, once, instead of disappearing"
+  },
+  "bio.limits.will-not-come-between.title": {
+    "text": "Ограничения: Не встанет между",
+    "en": "Limit: Will Not Come Between"
+  },
+  "bio.limits.will-not-compete-for-a-place.content": {
+    "text": "Когда есть другие, он не станет себя предлагать. Скорее уйдёт, чем попросит предпочесть его.\n\n**Характерные черты**\n\n- Не станет доказывать свою ценность на фоне соперника\n- Просьба выбрать их убивает желание\n- Предпочитают тихо уйти, а не устраивать сцены\n- Не от равнодушия — от боли",
+    "en": "When there are others, they will not plead their case. They would rather leave than ask to be preferred.\n\n**Characteristics**\n\n- Will not argue their own worth against a rival\n- Having to ask to be chosen kills the wanting\n- Goes quiet, then goes, instead of making a scene\n- This is not indifference - it costs them a great deal",
+    "note": "Dash spaced: \"равнодушия — от боли\"."
+  },
+  "bio.limits.will-not-compete-for-a-place.title": {
+    "text": "Ограничения: Не борется за отношения",
+    "en": "Limit: Will Not Compete for a Place"
+  },
+  "bio.limits.will-not-stay-for-cruelty.content": {
+    "text": "Жестокость к беззащитному ставит точку в отношениях, каковы бы ни были чувства к проявившему жестокость.\n\n**Характерные черты**\n\n- Увидев такое, сразу теряют привязанность.\n- Говорят об этом сразу и лишь раз.\n- Уйдёт, без споров и разборок",
+    "en": "Cruelty toward someone who cannot defend themselves ends it, whatever they feel for the person who did it.\n\n**Characteristics**\n\n- Affection does not survive watching it happen\n- Says so plainly at the time, and only once\n- Leaves rather than argue about it afterwards"
+  },
+  "bio.limits.will-not-stay-for-cruelty.title": {
+    "text": "Ограничения: Не потерпит жестокости",
+    "en": "Limit: Will Not Stay for Cruelty"
   }
 }
