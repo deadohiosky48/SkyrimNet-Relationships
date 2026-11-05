@@ -44,12 +44,40 @@
     "text": "Никому не приходится гадать. Чувства проявляются целиком и во весь голос.\n\n**Характеристики**\n\n- Заявляет напрямую, а не просто намёками\n- Выражает чувства физически, непосредственно, без тени смущения\n- Одинаковая интенсивность — что в горе, что в радости",
     "en": "Nobody has to wonder. What they feel arrives whole and at volume.\n\n**Characteristics**\n\n- Declares rather than mentions\n- Physical, immediate, unembarrassed\n- The same intensity when hurt as when happy"
   },
+  "bio.expression.intense-and-unmistakable.title": {
+    "text": "Проявление: Насыщенное и выраженное",
+    "en": "Expression: Intense and Unmistakable"
+  },
   "bio.expression.measured-shows-little.content": {
     "text": "Теплое в общении наедине, сдержанное на людях; не спешит говорить то, что потом нельзя будет взять назад.\n\n**Характерные черты**\n\n- Склонен скорее к преуменьшению своих чувств, чем к преувеличению\n- Парирует проявления открытой привязанности сухим юмором\n- Слова не выражают полноту чувств",
     "en": "Warm in private, careful in public, slow to say anything that cannot be taken back.\n\n**Characteristics**\n\n- Understates rather than overstates\n- Deflects direct affection with dry humour\n- Means considerably more than they say"
   },
+  "bio.expression.measured-shows-little.title": {
+    "text": "Проявление: Умеренное, скупое внешне",
+    "en": "Expression: Measured, Shows Little"
+  },
   "bio.expression.open-about-what-they-feel.content": {
     "text": "Говорит то, что думает, и действует, не дожидаясь просьбы.\n\n**Характерные черты**\n\n- Проявляет привязанность по собственной инициативе\n- Прямо называет свои чувства — даже те, что вызывают дискомфорт\n- Предпочитает испытать неловкость, чем остаться непонятым",
     "en": "Says it, means it, and does not wait to be asked.\n\n**Characteristics**\n\n- Volunteers affection unprompted\n- Names feelings directly, including the uncomfortable ones\n- Would rather be embarrassed than unclear"
+  },
+  "bio.expression.open-about-what-they-feel.title": {
+    "text": "Проявление: Открытость чувств",
+    "en": "Expression: Open About What They Feel"
+  },
+  "bio.expression.reserved-and-undemonstrative.content": {
+    "text": "Чувства остаются скрытыми за выражением лица. О привязанности можно лишь догадываться, поскольку её почти никогда не демонстрируют открыто.\n\n**Характерные черты**\n\n- Отсутствие ласковых обращений, минимум комплиментов.\n- Проявление заботы через поступки, а не через слова.\n- Одно редкое тёплое слово обретает огромный вес.\n- В присутствии других они становятся более замкнутыми, а не более открытыми.",
+    "en": "What they feel stays behind the face. Affection has to be inferred, because it is almost never displayed.\n\n**Characteristics**\n\n- No endearments, few compliments\n- Shows care by doing rather than saying\n- One rare word of warmth carries enormous weight\n- Being watched makes them quieter, not warmer"
+  },
+  "bio.expression.reserved-and-undemonstrative.title": {
+    "text": "Проявление: Сдержанное, неброское",
+    "en": "Expression: Reserved and Undemonstrative"
+  },
+  "bio.expression.warm-but-not-effusive.content": {
+    "text": "Открыто проявляет привязанность, но без показухи. Ведёт себя непринуждённо, а не напоказ.\n\n**Характеристики**\n\n- Легко проявляет привязанность, без театральности\n- Говорит о своих чувствах, когда прямо спрашивают\n- Не скрывает и не афиширует их",
+    "en": "Openly fond without being demonstrative. Comfortable rather than performative.\n\n**Characteristics**\n\n- Easy affection, no theatre\n- Says what they feel when asked directly\n- Neither hides it nor announces it"
+  },
+  "bio.expression.warm-but-not-effusive.title": {
+    "text": "Проявление: Тёплое, но не чрезмерное",
+    "en": "Expression: Warm but Not Effusive"
   }
 }
