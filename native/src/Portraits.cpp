@@ -70,13 +70,34 @@ namespace SNRom::Portraits {
             if (!files) {
                 return keys;
             }
+            // THE PLUGIN'S NAME AS SEVERACTIONS WRITES IT (2.6; a player's
+            // report, 2026-11-08): "new follower.esp" found nothing. Its
+            // files hold only A-Z a-z 0-9 . _ - ("CC Farming - Tweaks and
+            // Enhancements.esp" is saved as CC_Farming_-_Tweaks_and_...), so
+            // anything else became "_". Inferred from the files, not
+            // documented: the name as given is still tried after it.
+            const auto asSaved = [](std::string_view a_name) {
+                std::string out{ a_name };
+                for (auto& c : out) {
+                    const auto u = static_cast<unsigned char>(c);
+                    if (!std::isalnum(u) || u >= 0x80) {
+                        if (c != '.' && c != '_' && c != '-') {
+                            c = '_';
+                        }
+                    }
+                }
+                return out;
+            };
+            const auto add = [&](std::string a_key) {
+                if (std::ranges::find(keys, a_key) == keys.end()) {
+                    keys.push_back(std::move(a_key));
+                }
+            };
             for (auto i = files->size(); i-- > 0;) {
                 const auto* file = (*files)[i];
                 if (file && !file->GetFilename().empty()) {
-                    auto key = std::format("{}_{:06X}", file->GetFilename(), local);
-                    if (std::ranges::find(keys, key) == keys.end()) {
-                        keys.push_back(std::move(key));
-                    }
+                    add(std::format("{}_{:06X}", asSaved(file->GetFilename()), local));
+                    add(std::format("{}_{:06X}", file->GetFilename(), local));
                 }
             }
             return keys;
