@@ -947,11 +947,22 @@ namespace SNRom::Natives {
             if (!out) {
                 return false;
             }
+            // THE CLOCK FROM THE C RUNTIME, NEVER std::chrono's time zones
+            // (2.5.2; a player's crash report, 2026-11-08). current_zone()
+            // maps Windows' zone to an IANA name and THROWS when it cannot
+            // ("unable to locate time_zone with given name", Etc/Unknown):
+            // a zone changed by a recent Windows update did, and the throw
+            // out of this native took the game down shortly after loading.
+            // localtime_s asks Windows directly and cannot throw; a failure
+            // leaves the line without a time.
             if (a_file == "snrom.log") {
-                const auto now = std::chrono::zoned_time{ std::chrono::current_zone(),
-                                                          std::chrono::floor<std::chrono::milliseconds>(
-                                                              std::chrono::system_clock::now()) };
-                out << std::format("{:%H:%M:%S} ", now);
+                const auto stamp = std::chrono::system_clock::now();
+                const auto secs = std::chrono::system_clock::to_time_t(stamp);
+                const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(stamp.time_since_epoch()).count() % 1000;
+                std::tm    local{};
+                if (localtime_s(&local, &secs) == 0) {
+                    out << std::format("{:02}:{:02}:{:02}.{:03} ", local.tm_hour, local.tm_min, local.tm_sec, ms);
+                }
             }
             out << a_text;
             return static_cast<bool>(out);
