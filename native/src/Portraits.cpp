@@ -222,6 +222,48 @@ namespace SNRom::Portraits {
             return out;
         }
 
+        // SEVERACTIONS' OWN ANSWER (4.8.0, its native API v2, asked for by
+        // us): SAAPI_GetPortraitPath gives the picture its pages show, picked
+        // or taken, by reference id, so its file naming (which 4.8.0 changed:
+        // a portrait is now named after the plugin that ADDS the character)
+        // is no longer ours to guess. Its header is not published, so the
+        // call is made to hold whatever the documented shape is built from:
+        // the kind is written into eight zeroed bytes, so a byte or an int
+        // reads back the same, and a cap or length of 32 or 64 bits passes
+        // the same in a register. Empty when SeverActions is older or has
+        // no picture of them; the folder search below then still runs.
+        std::filesystem::path FromSeverActions(std::uint32_t a_formId) {
+            using VersionFn = std::uint32_t (*)();
+            using PathFn = std::uint32_t (*)(std::uint32_t, char*, std::uint32_t, std::int32_t*);
+            static const PathFn getPath = [] {
+                const HMODULE sa = GetModuleHandleW(L"SeverActionsNative.dll");
+                const auto    version = sa ? reinterpret_cast<VersionFn>(GetProcAddress(sa, "SAAPI_GetVersion")) : nullptr;
+                const auto    v = version ? version() : 0u;
+                const auto    fn = v >= 2 ? reinterpret_cast<PathFn>(GetProcAddress(sa, "SAAPI_GetPortraitPath")) : nullptr;
+                SKSE::log::info("Portraits: SeverActions native API {} - {}", v,
+                                fn ? "asking it for each picture" : "searching its folder ourselves");
+                return fn;
+            }();
+            if (!getPath || a_formId == 0) {
+                return {};
+            }
+            std::string   text(512, '\0');
+            std::int64_t  kind = 0;
+            auto          length = getPath(a_formId, text.data(), static_cast<std::uint32_t>(text.size()),
+                                           reinterpret_cast<std::int32_t*>(&kind));
+            if (length >= text.size() && length < 32768) {
+                text.assign(static_cast<std::size_t>(length) + 1, '\0');
+                kind = 0;
+                length = getPath(a_formId, text.data(), static_cast<std::uint32_t>(text.size()),
+                                 reinterpret_cast<std::int32_t*>(&kind));
+            }
+            if (length == 0 || length >= text.size()) {
+                return {};
+            }
+            text.resize(length);
+            return std::filesystem::path{ std::u8string{ text.begin(), text.end() } };
+        }
+
         // Thumbnails made this session: by file, size and last write.
         using ThumbKey = std::tuple<std::wstring, std::uint32_t, std::int64_t>;
         std::mutex                          g_thumbLock;
@@ -244,6 +286,9 @@ namespace SNRom::Portraits {
 
     std::vector<std::filesystem::path> Candidates(std::uint32_t a_formId) {
         std::vector<std::filesystem::path> out;
+        if (auto asked = FromSeverActions(a_formId); !asked.empty()) {
+            out.push_back(std::move(asked));
+        }
         const auto folder = Folder();
         if (folder.empty()) {
             return out;
