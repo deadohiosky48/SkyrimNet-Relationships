@@ -890,6 +890,31 @@ async function main() {
     await finish(t, "playthrough");
   });
 
+  await test("factions never enrolled: offered on removal, listed in repairs, allowed again", async () => {
+    const t = await openPage(browser, base, VIEWPORTS[0], mockUrl(base, "states"));
+    await ready(t.page);
+    await t.page.click("#repairs-btn");
+    await t.page.waitForFunction(() => document.querySelector(".faction-list").textContent.indexOf("None.") >= 0);
+    await t.page.click("#dialog-cancel");
+    await t.page.click(".row");
+    await t.page.click('button[data-op="UnenrollActor"]');
+    await t.page.waitForSelector('#dialog input[data-faction="Skyrim.esm|01BCC0"]');
+    assert((await t.page.$$("#dialog .faction-row")).length === 3, "three factions offered");
+    await shot(t.page, `factions-offer-${vpName(VIEWPORTS[0])}.png`);
+    await t.page.check('#dialog input[data-faction="Skyrim.esm|01BCC0"]');
+    await t.page.click("#dialog-confirm");
+    await waitToast(t.page, "Nobody from Bandit is enrolled automatically now.");
+    const sent = await t.page.evaluate(() => window.__snromMock.log.filter((e) => e.kind === "blockFaction").map((e) => e.payload));
+    assert(sent.length === 1 && sent[0].key === "Skyrim.esm|01BCC0" && sent[0].block === true, `blockFaction sent ${JSON.stringify(sent)}`);
+    await t.page.click("#repairs-btn");
+    await t.page.waitForFunction(() => document.querySelector(".faction-list").textContent.indexOf("Bandit") >= 0);
+    assert((await t.page.textContent(".faction-list")).indexOf("Already enrolled") >= 0, "enrolled members of the blocked faction not named");
+    await shot(t.page, `factions-repairs-${vpName(VIEWPORTS[0])}.png`);
+    await t.page.click(".faction-list button");
+    await t.page.waitForFunction(() => document.querySelector(".faction-list").textContent.indexOf("None.") >= 0);
+    await finish(t, "factions");
+  });
+
   await test("check the display: under Developer tools, never the repairs; answered at once, counted later", async () => {
     let t = await openPage(browser, base, VIEWPORTS[0], mockUrl(base, "states"));
     await ready(t.page);

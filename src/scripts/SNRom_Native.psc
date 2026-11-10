@@ -441,6 +441,19 @@ String Function SetMarriageElsewhere(Actor akActor, Bool abOn) Global Native
 {VERSION 39 (2.6). "" when done; else why not: "engaged" or "married" (in
  Relationships already, by an engagement or a wedding of ours).}
 
+String Function BlockedFactionOf(Actor akActor) Global Native
+{VERSION 40 (2.6). The name of a blocked faction akActor belongs to, which
+ keeps them off every automatic route into the roster; "" when none. The list
+ is the player's, kept for every playthrough. Runs on the main thread.}
+
+Bool Function BodyLanguageLoaded() Global Native
+{VERSION 40 (2.6). Body Language (BodyLanguage.dll) is loaded, so the looks
+ judge can name its decorators.}
+
+Int Function PlayerBodySignature() Global Native
+{VERSION 40 (2.6). A number that changes when the player's race, sex, weight
+ or height does; never 0. The looks judge reads them again when it changes.}
+
 Bool Function CeremonyPlanned() Global Native
 {The wedding under way is a planned one, not an elopement.}
 

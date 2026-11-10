@@ -85,6 +85,7 @@ set(SOURCES
     src/Decorators.cpp
     src/Display.cpp
     src/Family.cpp
+    src/FactionBlock.cpp
     src/History.cpp
     src/Hotkey.cpp
     src/MagelightHost.cpp

@@ -279,20 +279,33 @@ schema:
       category: "Seeding"
 
     # ── Attraction ───────────────────────────────────────────────────────────
-    # Reads OStim Community Resource's own attraction calculation. Without OCR
-    # installed these do nothing and physical intimacy is gated on the bond
-    # tier alone, which is how this mod behaved before the feed existed.
-    - name: "Use OStim Attraction"
+    # Reads OStim Community Resource's own attraction calculation, Body
+    # Language's description of the player's body judged against each
+    # person's tastes (2.6), or both. Without either installed these do
+    # nothing and physical intimacy is gated on the bond tier alone, which is
+    # how this mod behaved before the feed existed.
+    - name: "Use Attraction"
       path: "attractionEnabled"
       type: "bool"
-      description: "Let someone who is written as taking sex casually act on plain physical attraction instead of waiting for the bond to deepen. Reads OStim Community Resource's attraction score; does nothing without it. Note that taking a reading makes OCR assign that NPC a social class and a randomly-chosen taste in adventurers if they have neither - OCR does this itself the first time it looks at them, but turning this off avoids causing it early."
+      description: "Let someone who is written as taking sex casually act on plain physical attraction instead of waiting for the bond to deepen. Reads OStim Community Resource's attraction score, Body Language's description of your body, or both (Attraction Source); does nothing without either. Note that taking an OCR reading makes OCR assign that NPC a social class and a randomly-chosen taste in adventurers if they have neither - OCR does this itself the first time it looks at them, but turning this off avoids causing it early."
       defaultValue: true
+      category: "Attraction"
+
+    - name: "Attraction Source"
+      path: "attractionSource"
+      type: "select"
+      description: "Where attraction comes from. OStim Community Resource scores your standing: skills, fame and deeds, rising as the game goes on. Body Language describes your body from its actual shape, and each person judges that description against their own tastes - one LLM call per person, repeated when your race, sex, weight or height changes or after a week. Both multiplies OCR's score by how your looks strike them, from 0.6 to 1.4. Both uses whichever is installed when only one is. Body Language covers the body only, not the face. Default: Both."
+      defaultValue: "Both"
+      options:
+        - Both
+        - OStim Community Resource
+        - Body Language
       category: "Attraction"
 
     - name: "Attraction Needed to Skip the Bond"
       path: "attractionBypassRatio"
       type: "float"
-      description: "How attractive someone must find the player before wanting them physically without the bond having deepened first. 1.0 means exactly as attractive as someone of their standing expects. Only applies to characters written as taking sex casually. Early characters sit near 0.7 and established ones clear 2.0, so raise this as the game goes on. Default: 1.5."
+      description: "How attractive someone must find the player before wanting them physically without the bond having deepened first. 1.0 means exactly as attractive as someone of their standing expects. Only applies to characters written as taking sex casually. With OCR, early characters sit near 0.7 and established ones clear 2.0, so raise this as the game goes on. With Body Language alone, being drawn to your looks reads 1.5 and being captivated 2.0. Default: 1.5."
       defaultValue: 1.5
       category: "Attraction"
 

@@ -23,6 +23,7 @@
     var parseQuery = bridge.parseQuery;
 
     var state = null;
+    var mockBlocked = {};   // factions never enrolled (2.6), by key
     // The mock's stand-in portrait: a drawn head and shoulders, transparent
     // like SeverActions' cutouts, so the panel can be laid out without one.
     var MOCK_PORTRAIT = "data:image/svg+xml," + encodeURIComponent(
@@ -432,6 +433,31 @@
             answer(envelope.id, true, "");
           } else if (envelope.kind === "familyTree") {
             push("familyTree", mockTree());
+            answer(envelope.id, true, "");
+          } else if (envelope.kind === "factions") {
+            // Factions never enrolled (2.6): everyone in the same three, and
+            // the second bond on the roster in each blocked one.
+            var all = [
+              { key: "Skyrim.esm|0367BA", name: "Whiterun Guard Faction" },
+              { key: "Skyrim.esm|01BCC0", name: "Bandit" },
+              { key: "SomeFollowers.esp|000D62", name: "a faction from SomeFollowers.esp (000D62)" }
+            ];
+            var second = state && state.bonds && state.bonds[1] ? [state.bonds[1].subject.formId] : [];
+            push("factions", {
+              formId: envelope.payload.formId,
+              factions: envelope.payload.formId ? all.map(function (f) {
+                return { key: f.key, name: f.name, blocked: !!mockBlocked[f.key] };
+              }) : [],
+              blocked: Object.keys(mockBlocked).map(function (k) {
+                return { key: k, name: mockBlocked[k], found: true, enrolled: second };
+              })
+            });
+            answer(envelope.id, true, "");
+          } else if (envelope.kind === "blockFaction") {
+            var known = { "Skyrim.esm|0367BA": "Whiterun Guard Faction", "Skyrim.esm|01BCC0": "Bandit",
+              "SomeFollowers.esp|000D62": "a faction from SomeFollowers.esp (000D62)" };
+            if (envelope.payload.block) mockBlocked[envelope.payload.key] = known[envelope.payload.key] || envelope.payload.key;
+            else delete mockBlocked[envelope.payload.key];
             answer(envelope.id, true, "");
           } else if (envelope.kind === "thumbnails") {
             // The roster's faces: the same stand-in, for the same bonds.

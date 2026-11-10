@@ -25,6 +25,7 @@
 #include "MagelightHost.h"
 #include "MeridianHost.h"
 #include "Family.h"
+#include "FactionBlock.h"
 #include "Painting.h"
 #include "Marriage.h"
 #include "Model.h"
@@ -780,6 +781,27 @@ namespace SNRom::Dashboard {
                     // view opens, as its own message.
                     Send({ { "v", kProtocol }, { "kind", "familyTree" }, { "payload", Family::Tree() } });
                     Result(id, true, "");
+                } else if (kind == "factions") {
+                    // FACTIONS NEVER ENROLLED (2.6; FactionBlock.h): one
+                    // person's factions, and the whole blocked list.
+                    const auto payload = message.value("payload", json::object());
+                    const auto formId = static_cast<std::int32_t>(payload.value("formId", std::int64_t{ 0 }));
+                    std::vector<std::int32_t> roster;
+                    if (const auto ids = payload.find("roster"); ids != payload.end() && ids->is_array()) {
+                        for (const auto& each : *ids) {
+                            if (each.is_number_integer() && roster.size() < 2000) {
+                                roster.push_back(static_cast<std::int32_t>(each.get<std::int64_t>()));
+                            }
+                        }
+                    }
+                    Send({ { "v", kProtocol },
+                           { "kind", "factions" },
+                           { "payload", FactionBlock::Describe(formId, roster) } });
+                    Result(id, true, "");
+                } else if (kind == "blockFaction") {
+                    const auto payload = message.value("payload", json::object());
+                    const auto why = FactionBlock::Set(payload.value("key", std::string{}), payload.value("block", true));
+                    Result(id, why.empty(), why);
                 } else if (kind == "paintSit") {
                     // THE WEDDING PAINTING (2.6 feasibility test; Painting.h):
                     // a sitting with the card's person, once the dashboard

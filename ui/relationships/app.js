@@ -362,8 +362,126 @@
     if (!a || busy[a.op]) return;
     var who = b ? b.subject.name : crosshair ? crosshair.name : null;
     var go = function () { send(a, b ? b.subject.formId : crosshair ? crosshair.formId : null, args, who); };
-    if (a.confirm) confirmThen(a, who, go, btn);
+    if (a.op === "UnenrollActor" && b) confirmUnenroll(a, b, go, btn);
+    else if (a.confirm) confirmThen(a, who, go, btn);
     else go();
+  }
+
+  // ---------------------------------------------------------------- factions
+  // FACTIONS NEVER ENROLLED (2.6; FactionBlock.h). Removing someone from the
+  // roster offers their factions: whoever else belongs to one ticked is never
+  // enrolled automatically again, in any playthrough. By hand still works,
+  // and nobody already enrolled is touched; Playthrough repairs lists them.
+  var factionsWaiting = null;
+  snrom.on("factions", function (p) {
+    if (factionsWaiting) { var w = factionsWaiting; factionsWaiting = null; w(p); }
+  });
+
+  function askFactions(formId) {
+    return new Promise(function (resolve) {
+      factionsWaiting = resolve;
+      var roster = (snap && snap.bonds || []).map(function (x) { return x.subject.formId; });
+      snrom.request("factions", { formId: formId || 0, roster: roster }).then(function (r) {
+        if (factionsWaiting === resolve && !r.ok) { factionsWaiting = null; resolve(null); }
+      });
+    });
+  }
+
+  function blockFaction(key, name, block) {
+    return snrom.request("blockFaction", { key: key, block: block }).then(function (r) {
+      if (r.ok) {
+        toast(block ? t("factions.blocked", "Nobody from {0} is enrolled automatically now.", name)
+                    : t("factions.allowed", "{0} can be enrolled automatically again.", name), "info");
+      } else {
+        toast(r.message || t("factions.failed", "The list of blocked factions could not be changed."), "error");
+      }
+      return r.ok;
+    });
+  }
+
+  function confirmUnenroll(a, b, go, btn) {
+    var box = document.createElement("div");
+    box.className = "faction-pick";
+    box.appendChild(para(t("factions.reading", "Reading their factions..."), "act-needs"));
+    var picked = {};
+    openDialog(a.label + ": " + b.subject.name + "?", [para(a.confirm), box, para("→ " + a.calls, "act-calls")], [
+      { label: t("dialog.cancel", "Cancel"), id: "dialog-cancel", run: closeDialog },
+      { label: a.label, id: "dialog-confirm", cls: "btn-danger", run: function () {
+        closeDialog();
+        go();
+        Object.keys(picked).forEach(function (key) { blockFaction(key, picked[key], true); });
+      } }
+    ], btn);
+    askFactions(b.subject.formId).then(function (p) {
+      box.innerHTML = "";
+      var list = (p && p.factions || []).filter(function (f) { return !f.blocked; });
+      if (!list.length) {
+        box.appendChild(para(t("factions.none", "They belong to no faction that could be blocked."), "act-needs"));
+        return;
+      }
+      box.appendChild(para(t("factions.offer", "Also never enroll anyone else from these factions automatically, in any playthrough. Enrolling by hand still works, and nobody already enrolled is affected:")));
+      list.forEach(function (f) {
+        var row = document.createElement("label");
+        row.className = "act-check faction-row";
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.setAttribute("data-faction", f.key);
+        cb.addEventListener("change", function () {
+          if (cb.checked) picked[f.key] = f.name; else delete picked[f.key];
+        });
+        row.appendChild(cb);
+        row.appendChild(document.createTextNode(" " + f.name));
+        box.appendChild(row);
+      });
+    });
+  }
+
+  // The blocked list, for Playthrough repairs: each with whoever on the
+  // roster belongs to it, and a way to allow it again.
+  function blockedFactionsSection() {
+    var box = document.createElement("div");
+    box.className = "act faction-list";
+    box.appendChild(para(t("factions.title", "Factions never enrolled"), "act-title"));
+    var body = document.createElement("div");
+    body.appendChild(para(t("factions.reading", "Reading their factions..."), "act-needs"));
+    box.appendChild(body);
+    function fill() {
+      askFactions(0).then(function (p) {
+        body.innerHTML = "";
+        var list = p && p.blocked || [];
+        if (!list.length) {
+          body.appendChild(para(t("factions.noneBlocked", "None. When you remove someone from the roster you can block their factions, so nobody else from them is enrolled automatically."), "act-help"));
+          return;
+        }
+        body.appendChild(para(t("factions.intro", "Nobody from these is enrolled automatically, in any playthrough. Enrolling by hand still works."), "act-help"));
+        list.forEach(function (f) {
+          var row = document.createElement("div");
+          row.className = "act-row";
+          var text = document.createElement("div");
+          text.appendChild(para(f.name + (f.found ? "" : " " + t("factions.notLoaded", "(its plugin is not loaded)"))));
+          var names = (f.enrolled || []).map(function (id) {
+            var bond = (snap && snap.bonds || []).filter(function (x) { return x.subject.formId === id; })[0];
+            return bond ? bond.subject.name : null;
+          }).filter(function (x) { return !!x; });
+          if (names.length) {
+            text.appendChild(para(t("factions.enrolled", "Already enrolled, and staying until you remove them: {0}", names.join(", ")), "act-needs"));
+          }
+          row.appendChild(text);
+          var allow = document.createElement("button");
+          allow.type = "button";
+          allow.className = "btn";
+          allow.textContent = t("factions.allow", "Allow again");
+          allow.addEventListener("click", function () {
+            allow.disabled = true;
+            blockFaction(f.key, f.name, false).then(function (ok) { if (ok) fill(); else allow.disabled = false; });
+          });
+          row.appendChild(allow);
+          body.appendChild(row);
+        });
+      });
+    }
+    fill();
+    return box;
   }
 
   function send(a, subject, args, who) {
@@ -586,7 +704,8 @@
     if (!snap) return;
     openDialog(t("repairs.title", "Playthrough repairs"), [
       para(t("repairs.intro", "For the playthrough as a whole, not one person. The two store repairs are safe to undo: neither deletes anything.")),
-      actionList(A.available("playthrough"), $("repairs-btn"))
+      actionList(A.available("playthrough"), $("repairs-btn")),
+      blockedFactionsSection()
     ], [{ label: t("dialog.close", "Close"), id: "dialog-cancel", run: closeDialog }], $("repairs-btn"));
   });
 

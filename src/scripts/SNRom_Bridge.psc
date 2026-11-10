@@ -602,6 +602,12 @@ Function BeginSpark(Actor akActor, String asReason)
             " - the player unenrolled them, so they are enrolled only by hand.")
         Return
     EndIf
+    String blockedBy = BlockedFaction(akActor)
+    If blockedBy != ""
+        Diag(LOG_INFO(), "BeginSpark declined for " + akActor.GetDisplayName() + \
+            " - they belong to " + blockedBy + ", a faction never enrolled, so they are enrolled only by hand.")
+        Return
+    EndIf
     ; Eligibility YAML can only use NATIVE decorators (see the note in
     ; RomanceBeginSpark.yaml), so the real gate lives here. Belt and braces:
     ; the model cannot route past a Papyrus check.
@@ -1017,6 +1023,12 @@ Function AutoEnroll(Actor akActor)
     EndIf
     If StorageUtil.GetIntValue(akActor, "SNRom_NoAutoEnroll", 0) == 1
         Return                                  ; the player unenrolled them: only by hand from now on
+    EndIf
+    String blockedBy = BlockedFaction(akActor)
+    If blockedBy != ""
+        Diag(LOG_INFO(), "Not enrolling " + akActor.GetDisplayName() + " - they belong to " + blockedBy + \
+            ", a faction never enrolled. Enroll them by hand if they should be.")
+        Return
     EndIf
 
     ; Two enrollment tests, not one. Romantasy cannot see a runtime AddToFaction
@@ -3811,6 +3823,20 @@ Function UnenrollByName(String asName)
         "a log line; the display name is what is matched.")
 EndFunction
 
+String Function BlockedFaction(Actor akActor) Global
+    { FACTIONS NEVER ENROLLED (2.6, a player's request). The name of the
+      blocked faction that keeps akActor off every automatic route into the
+      roster - following, the spark action, talking with the player - or "".
+      The list is the player's, chosen in the dashboard when they remove
+      someone from the roster, and is the same in every playthrough
+      (FactionBlock.h). By hand still enrolls anyone, as it does someone the
+      player unenrolled. Nobody already enrolled is touched. }
+    If akActor == None || StorageUtil.GetIntValue(None, "SNRom_NativesV", 0) < 40
+        Return ""
+    EndIf
+    Return SNRom_Native.BlockedFactionOf(akActor)
+EndFunction
+
 Function UnenrollActor(Actor akActor)
     { Undo an accidental enrollment. Dispatch via the web API:
         functionName UnenrollActor, arguments ["0x0001B136"]
@@ -4624,7 +4650,11 @@ EndFunction
 Function ApplyAttraction(OCR_AttractionUtil akSource, Actor akActor)
     { The reading itself, split out so the scheduled path can resolve the
       source ONCE per tick instead of once per actor. }
-    Float ratio = akSource.CalculateNPCAttraction(akActor)
+    Float ocr = akSource.CalculateNPCAttraction(akActor)
+    ; OCR's own number is kept apart from the ratio the gate reads (2.6): with
+    ; Body Language as well, the ratio is OCR's times a looks factor.
+    StorageUtil.SetFloatValue(akActor, "SNRom_OcrRatio", ocr)
+    Float ratio = CombinedAttraction(akActor)
     StorageUtil.SetFloatValue(akActor, "SNRom_AttractionRatio", ratio)
     ApiTouch(akActor)
     StorageUtil.SetFloatValue(akActor, "SNRom_LastAttrCheck", Utility.GetCurrentGameTime())
@@ -4632,10 +4662,268 @@ Function ApplyAttraction(OCR_AttractionUtil akSource, Actor akActor)
     ; the only question anyone asks of this line is whether it cleared the bar,
     ; and the bar is a config value that may not be 1.5 any more.
     Float bar = SkyrimNetApi.GetConfigFloat(CFG(), "attractionBypassRatio", 1.5)
-    Diag(LOG_INFO(), "Attraction: " + akActor.GetDisplayName() + " ratio=" + ratio + \
+    Diag(LOG_INFO(), "Attraction: " + akActor.GetDisplayName() + " OCR=" + ocr + " looks=" + \
+        LooksWordName(StorageUtil.GetIntValue(akActor, "SNRom_LooksWord", 0)) + " ratio=" + ratio + \
         " bar=" + bar + " (" + AttrVerdict(ratio >= bar) + "). OCR may have assigned them a social class " + \
         "and an enthusiast trait as a side effect of this reading.")
 EndFunction
+
+; ---------------------------------------------------------------------------
+; Attraction source (2.6; the author, 2026-11-10): OStim Community Resource,
+; Body Language, or both.
+;
+; BODY LANGUAGE GIVES WORDS, NOT A NUMBER. It measures a body from its mesh
+; and morphs and describes it (ttlb_get_full_body_description). The looks
+; judge (snrom_looks_assess) reads its description of the PLAYER against one
+; person's own tastes and answers with one of five words, stored as
+; SNRom_LooksWord 1..5 (0 never judged).
+;
+; The two sources measure different things. OCR's number is standing - skills,
+; fame, quests, class - and rises over a playthrough; looks do not. So:
+;   OStim only          the ratio is OCR's, as before 2.6
+;   Body Language only  the ratio is the looks word on the same scale, 0.3 to
+;                       2.0, so the bypass bar means what it says
+;   Both (default)      OCR's ratio times a looks factor, 0.6 to 1.4, so the
+;                       advice on where to set the bar still holds
+; Both falls back to whichever one has a reading.
+; ---------------------------------------------------------------------------
+String Function AttractionSourceSetting() Global
+    Return SkyrimNetApi.GetConfigString(CFG(), "attractionSource", "Both")
+EndFunction
+
+Bool Function AttractionUsesOcr() Global
+    Return AttractionSourceSetting() != "Body Language"
+EndFunction
+
+Bool Function AttractionUsesLooks() Global
+    Return AttractionSourceSetting() != "OStim Community Resource"
+EndFunction
+
+String Function LooksWordName(Int aiWord) Global
+    If aiWord == 1
+        Return "REPELLED"
+    ElseIf aiWord == 2
+        Return "INDIFFERENT"
+    ElseIf aiWord == 3
+        Return "PLEASED"
+    ElseIf aiWord == 4
+        Return "DRAWN"
+    ElseIf aiWord == 5
+        Return "CAPTIVATED"
+    EndIf
+    Return "unjudged"
+EndFunction
+
+Int Function LooksWordOf(String asWord) Global
+    Int i = 1
+    While i <= 5
+        If asWord == LooksWordName(i)
+            Return i
+        EndIf
+        i += 1
+    EndWhile
+    Return 0
+EndFunction
+
+Float Function LooksAlone(Int aiWord) Global
+    { Body Language alone: the looks word on the ratio's own scale. DRAWN
+      clears the default bar of 1.5; PLEASED is exactly what is expected. }
+    If aiWord == 1
+        Return 0.3
+    ElseIf aiWord == 2
+        Return 0.7
+    ElseIf aiWord == 3
+        Return 1.0
+    ElseIf aiWord == 4
+        Return 1.5
+    ElseIf aiWord == 5
+        Return 2.0
+    EndIf
+    Return 0.0
+EndFunction
+
+Float Function LooksFactor(Int aiWord) Global
+    { Both: what looks do to OCR's ratio. }
+    If aiWord == 1
+        Return 0.6
+    ElseIf aiWord == 2
+        Return 0.85
+    ElseIf aiWord == 4
+        Return 1.2
+    ElseIf aiWord == 5
+        Return 1.4
+    EndIf
+    Return 1.0
+EndFunction
+
+Float Function CombinedAttraction(Actor akActor) Global
+    { The ratio the intimacy gate reads, from what is stored and the setting.
+      0.0 means no reading, which the gate treats as no bypass.
+
+      BEFORE 2.6 ONLY THE RATIO WAS STORED, and it was OCR's. Someone read
+      then and never since has no SNRom_OcrRatio; their old ratio stands until
+      either source reads them again. }
+    Int word = StorageUtil.GetIntValue(akActor, "SNRom_LooksWord", 0)
+    If !StorageUtil.HasFloatValue(akActor, "SNRom_OcrRatio")
+        If word == 0
+            Return StorageUtil.GetFloatValue(akActor, "SNRom_AttractionRatio", 0.0)
+        EndIf
+    EndIf
+    Float ocr = StorageUtil.GetFloatValue(akActor, "SNRom_OcrRatio", 0.0)
+    Bool useOcr = AttractionUsesOcr() && ocr > 0.0
+    Bool useLooks = AttractionUsesLooks() && word > 0
+    If useOcr && useLooks
+        Return ocr * LooksFactor(word)
+    ElseIf useOcr
+        Return ocr
+    ElseIf useLooks
+        Return LooksAlone(word)
+    EndIf
+    Return 0.0
+EndFunction
+
+Function RecombineAttraction()
+    { The setting changed: every reading on the roster again, from what is
+      stored. StorageUtil reads and one push each, no reading taken. }
+    String src = AttractionSourceSetting()
+    If StorageUtil.GetStringValue(None, "SNRom_AttrSourceLast", "") == src
+        Return
+    EndIf
+    StorageUtil.SetStringValue(None, "SNRom_AttrSourceLast", src)
+    Int n = StorageUtil.FormListCount(None, "SNRom_Roster")
+    Int i = 0
+    Int changed = 0
+    While i < n
+        Actor a = StorageUtil.FormListGet(None, "SNRom_Roster", i) as Actor
+        If a != None && (StorageUtil.HasFloatValue(a, "SNRom_OcrRatio") || StorageUtil.GetIntValue(a, "SNRom_LooksWord", 0) > 0)
+            Float was = StorageUtil.GetFloatValue(a, "SNRom_AttractionRatio", 0.0)
+            Float now = CombinedAttraction(a)
+            If now != was
+                StorageUtil.SetFloatValue(a, "SNRom_AttractionRatio", now)
+                ApiTouch(a)
+                changed += 1
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    Diag(LOG_INFO(), "Attraction: source is " + src + "; " + changed + " reading(s) recombined.")
+EndFunction
+
+; The looks judge's own pending slot, as the spark judge has one.
+Actor  _looksActor
+String _looksName
+Float  _looksPendingAt
+Int    _looksSig
+Bool   _looksQuiet
+
+Function RefreshNextLooks()
+    { ONE person per tick asked how they see the player's body, most overdue
+      first: anyone never judged, then anyone judged while the player looked
+      different (PlayerBodySignature: race, sex, weight, height), then anyone
+      judged more than a week of game time ago. A failed or garbled answer is
+      tried again after six game hours, never every tick. }
+    If StorageUtil.GetIntValue(None, "SNRom_NativesV", 0) < 40 || !SNRom_Native.BodyLanguageLoaded()
+        If !_looksQuiet
+            Diag(LOG_DEBUG(), "Attraction: Body Language is not loaded, so looks are not judged" + \
+                " and the attraction source falls back to OStim Community Resource.")
+            _looksQuiet = True
+        EndIf
+        Return
+    EndIf
+    _looksQuiet = False
+    If _looksActor != None
+        If SlotStale(_looksPendingAt)
+            Diag(LOG_WARN(), "Looks slot held by " + _looksName + " with no callback for " + \
+                PendingTimeoutSeconds() + "s - releasing. SkyrimNet.log says whether the prompt failed to " + \
+                "render (it names snrom_looks_assess) or the call timed out.")
+            _looksActor = None
+        Else
+            Return
+        EndIf
+    EndIf
+    Int sig = SNRom_Native.PlayerBodySignature()
+    Float now = Utility.GetCurrentGameTime()
+    Int n = 0
+    If _observers
+        n = _observers.Length
+    EndIf
+    Int i = 0
+    Actor pick = None
+    Float best = -1.0
+    While i < n
+        Actor a = _observers[i]
+        If a != None && (now - StorageUtil.GetFloatValue(a, "SNRom_LastLooksTry", 0.0)) >= 0.25
+            Float score = -1.0
+            Float age = now - StorageUtil.GetFloatValue(a, "SNRom_LastLooksCheck", 0.0)
+            If StorageUtil.GetIntValue(a, "SNRom_LooksWord", 0) == 0
+                score = 1000.0 + age
+            ElseIf StorageUtil.GetIntValue(a, "SNRom_LooksSig", 0) != sig
+                score = 500.0 + age
+            ElseIf age >= 7.0
+                score = age
+            EndIf
+            If score > best
+                best = score
+                pick = a
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    If pick == None || best < 0.0
+        Return
+    EndIf
+    _looksActor = pick
+    _looksName = pick.GetDisplayName()
+    _looksPendingAt = Utility.GetCurrentRealTime()
+    _looksSig = sig
+    StorageUtil.SetFloatValue(pick, "SNRom_LastLooksTry", now)
+    String ctx = "{\"npc_name\":\"" + _looksName + "\",\"npc_formid\":" + pick.GetFormID() + "}"
+    Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_looks_assess", VariantName(), ctx, \
+        Self, "SNRom_Bridge", "OnLooksAssessed")
+    Diag(LOG_INFO(), "Attraction: looks judgment sent for " + _looksName + " (rc=" + rc + ")")
+    If rc != 1
+        _looksActor = None
+    EndIf
+EndFunction
+
+Event OnLooksAssessed(String asResponse, Int aiSuccess)
+    Actor who = _looksActor
+    String asked = _looksName
+    _looksActor = None
+    If who == None || aiSuccess != 1
+        Return                                  ; asked again after six game hours
+    EndIf
+    String echoed = SNRom_Decorators.NameCore(SNRom_Decorators.FieldValue(asResponse, "NAME:"))
+    If echoed != "" && echoed != SNRom_Decorators.NameCore(asked)
+        Diag(LOG_ERROR(), "Looks echo mismatch: asked about '" + asked + "', answered as '" + echoed + "'. Discarded.")
+        Return
+    EndIf
+    String said = SNRom_Decorators.Upper(SNRom_Decorators.FieldValue(asResponse, "LOOKS:"))
+    Int word = LooksWordOf(said)
+    If word == 0
+        Diag(LOG_WARN(), "Looks judgment for " + asked + " gave no answer the game reads ('" + said + "'). Discarded.")
+        Return
+    EndIf
+    ; Someone read before 2.6 has only the ratio, and it was OCR's: keep it as
+    ; OCR's before a looks word joins it.
+    If !StorageUtil.HasFloatValue(who, "SNRom_OcrRatio") && StorageUtil.GetIntValue(who, "SNRom_LooksWord", 0) == 0
+        Float old = StorageUtil.GetFloatValue(who, "SNRom_AttractionRatio", 0.0)
+        If old > 0.0
+            StorageUtil.SetFloatValue(who, "SNRom_OcrRatio", old)
+        EndIf
+    EndIf
+    StorageUtil.SetIntValue(who, "SNRom_LooksWord", word)
+    StorageUtil.SetIntValue(who, "SNRom_LooksSig", _looksSig)
+    StorageUtil.SetFloatValue(who, "SNRom_LastLooksCheck", Utility.GetCurrentGameTime())
+    Float ratio = CombinedAttraction(who)
+    StorageUtil.SetFloatValue(who, "SNRom_AttractionRatio", ratio)
+    ApiTouch(who)
+    Float bar = SkyrimNetApi.GetConfigFloat(CFG(), "attractionBypassRatio", 1.5)
+    Diag(LOG_INFO(), "Attraction: " + asked + " looks=" + LooksWordName(word) + " (" + \
+        SNRom_Decorators.FieldValue(asResponse, "WHY:") + ") OCR=" + \
+        StorageUtil.GetFloatValue(who, "SNRom_OcrRatio", 0.0) + " source=" + AttractionSourceSetting() + \
+        " ratio=" + ratio + " bar=" + bar + " (" + AttrVerdict(ratio >= bar) + ").")
+EndEvent
 
 String Function AttrVerdict(Bool abClears) Global
     { Exists only so the log line above reads as a sentence. Inline string
@@ -4655,11 +4943,22 @@ Function RefreshNextAttraction()
       round trip returns, so at most one is ever in flight. This has no round
       trip and would happily run the whole roster inside a single frame, which
       on a ten-follower party is roughly four hundred GetActorValue calls and a
-      hundred faction lookups in one Papyrus slice. That is a visible hitch. }
+      hundred faction lookups in one Papyrus slice. That is a visible hitch.
+
+      2.6: the source is a setting (attractionSource). Body Language's looks
+      judge runs beside OCR's reading, one person each per tick, and its LLM
+      round trip holds a slot of its own. }
     If !_ready
         Return
     EndIf
     If SkyrimNetApi.GetConfigBool(CFG(), "attractionEnabled", True) == False
+        Return
+    EndIf
+    RecombineAttraction()
+    If AttractionUsesLooks()
+        RefreshNextLooks()
+    EndIf
+    If !AttractionUsesOcr()
         Return
     EndIf
     Float now = Utility.GetCurrentGameTime()
@@ -13426,6 +13725,8 @@ String Function TalkEnrollRefusal(Actor akActor)
         Return "already enrolled"
     ElseIf StorageUtil.GetIntValue(akActor, "SNRom_NoAutoEnroll", 0) == 1
         Return "you unenrolled them; only by hand now"
+    ElseIf BlockedFaction(akActor) != ""
+        Return "in " + BlockedFaction(akActor) + ", a faction never enrolled; only by hand"
     ElseIf akActor.IsDead()
         Return "dead"
     ElseIf akActor.IsCommandedActor()

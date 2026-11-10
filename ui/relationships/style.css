@@ -693,6 +693,9 @@ button, input, select { font: inherit; color: inherit; }
 .act-needs.is-blocking { color: var(--danger); }
 .act-check { display: flex; align-items: center; gap: 0.4em; margin: 0; font-size: calc(0.85rem * var(--t)); color: var(--muted); cursor: pointer; }
 .act-check input { margin: 0; accent-color: var(--danger); }
+/* Factions never enrolled (2.6): the picker in "Remove from roster", and the list in Playthrough repairs. */
+.faction-pick { display: flex; flex-direction: column; gap: 0.3rem; margin: 0.5rem 0; max-height: calc(16rem * var(--t)); overflow-y: auto; }
+.act-title { margin: 0 0 0.2rem; font-size: calc(0.72rem * var(--t)); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
 .act-form { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
 .act-form select, .act-form input {
   height: calc(2rem * var(--t)); padding: 0 0.45rem; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-2);

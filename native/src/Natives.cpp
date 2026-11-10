@@ -11,6 +11,7 @@
 #include "Ceremony.h"
 #include "Decorators.h"
 #include "Marriage.h"
+#include "FactionBlock.h"
 #include "History.h"
 #include "Hotkey.h"
 #include "Notices.h"
@@ -507,6 +508,35 @@ namespace SNRom::Natives {
                 why = "unchanged";
             }
             return why;
+        }
+        // v40 (2.6): the blocked faction that keeps them off the roster, by
+        // name, or "" (FactionBlock.h).
+        std::string BlockedFactionOf(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+            return FactionBlock::BlockedFactionOf(a_actor);
+        }
+        // v40: Body Language (tetherball88) is loaded, so its decorators can
+        // be named in a prompt.
+        bool BodyLanguageLoaded(RE::StaticFunctionTag*) {
+            return GetModuleHandleW(L"BodyLanguage.dll") != nullptr;
+        }
+        // v40: what the looks judge saw of the player, as a number that
+        // changes when their body might have: race, sex, weight and height.
+        // A BodySlide preset's sliders are not in it.
+        std::int32_t PlayerBodySignature(RE::StaticFunctionTag*) {
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            auto* base = player ? player->GetActorBase() : nullptr;
+            if (!base) {
+                return 0;
+            }
+            const auto* race = player->GetRace();
+            const auto  text = std::format("{:08X}|{}|{:.0f}|{:.2f}", race ? race->GetFormID() : 0,
+                                           static_cast<int>(base->GetSex()), base->weight,
+                                           base->GetHeight() * player->GetScale());
+            std::uint32_t hash = 2166136261u;
+            for (const auto c : text) {
+                hash = (hash ^ static_cast<std::uint8_t>(c)) * 16777619u;
+            }
+            return static_cast<std::int32_t>(hash & 0x7FFFFFFF) | 1;
         }
         bool CeremonyPlanned(RE::StaticFunctionTag*) {
             return Ceremony::Planned();
@@ -1134,6 +1164,9 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("PlanHeardSpot", kScript, PlanHeardSpot, true);
             a_vm->RegisterFunction("MarriageElsewhere", kScript, MarriageElsewhere, true);
             a_vm->RegisterFunction("SetMarriageElsewhere", kScript, SetMarriageElsewhere);
+            a_vm->RegisterFunction("BlockedFactionOf", kScript, BlockedFactionOf);  // main thread: the actor's factions
+            a_vm->RegisterFunction("BodyLanguageLoaded", kScript, BodyLanguageLoaded, true);
+            a_vm->RegisterFunction("PlayerBodySignature", kScript, PlayerBodySignature);
             a_vm->RegisterFunction("IsWeddingPlanner", kScript, IsWeddingPlanner, true);
             a_vm->RegisterFunction("PersonNamed", kScript, PersonNamed);
             a_vm->RegisterFunction("GuestsNamed", kScript, GuestsNamed);
@@ -1216,7 +1249,7 @@ namespace SNRom::Natives {
                             "PlanSetFindable, PlanNear, PlanFindable, PlanTravelTo, BringToWedding, PlanMark, PlanSettleLayout, "
                             "PlanMarked, PlanGuestSide, PlanSideOf, PlanSideNamed, GuestSideOf, PlanSetAnchor, WeddingLetGo, "
                             "WeddingPlaces, WeddingPlacesClear, PlanToday, WeddingReception, MarasInstalled, PlanJudgeStart, PlanHeardField, PlanHeardDone, PlanSetDayAt, PlanPlaceHere, "
-                            "PlanHeardSpot, MarriageElsewhere, SetMarriageElsewhere",
+                            "PlanHeardSpot, MarriageElsewhere, SetMarriageElsewhere, BlockedFactionOf, BodyLanguageLoaded, PlayerBodySignature",
                             kScript, kVersion);
             return true;
         });
