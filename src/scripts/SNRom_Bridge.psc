@@ -573,10 +573,25 @@ Function RegisterDecorators()
     ; section went with it - in up to a third of conversations with enrolled
     ; people (2026-10-16). The DLL registers both at kDataLoaded and answers
     ; from the read model (native/src/Decorators.h). These are registered only
-    ; if it could not; the functions stay for the display check.
-    If DashboardDllPresent() && SNRom_Native.Version() >= 14 && SNRom_Native.DecoratorsNative()
-        Diag(LOG_INFO(), "Decorators: get_romance and romance_physical_ok are answered natively, so they " + \
-            "work while the game is paused.")
+    ; without a DLL that can; the functions stay for the display check.
+    ;
+    ; NOT ON DecoratorsNative (2.6). A player's log showed SkyrimNet refusing
+    ; both Papyrus registrations because "a native decorator with this name
+    ; already exists": the DLL's were in place, yet this fallback ran. Asking
+    ; whether the DLL's registration reported success is the wrong question -
+    ; SkyrimNet keeps a native decorator whatever it answered, and a Papyrus
+    ; one can never replace it. Every SkyrimNet this release supports takes
+    ; native decorators, so a DLL of natives 14 or later registers them, and
+    ; Papyrus never does. A refusal is logged, not papered over.
+    If DashboardDllPresent() && SNRom_Native.Version() >= 14
+        If SNRom_Native.DecoratorsNative()
+            Diag(LOG_INFO(), "Decorators: get_romance and romance_physical_ok are answered natively, so they " + \
+                "work while the game is paused.")
+        Else
+            Diag(LOG_WARN(), "Decorators: the DLL did not report get_romance and romance_physical_ok as " + \
+                "registered. SkyrimNetRelationships.log says why ('Decorators: native get_romance ...'). " + \
+                "They are not registered from Papyrus as well: SkyrimNet refuses a second registration of a native name.")
+        EndIf
         Return
     EndIf
     Int c = SkyrimNetApi.RegisterDecorator("romance_physical_ok", "SNRom_Decorators", "PhysicalOk")
