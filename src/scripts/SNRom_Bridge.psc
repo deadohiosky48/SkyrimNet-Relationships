@@ -260,6 +260,9 @@ Function Bootstrap(Bool abForce = False)
     Float now = Utility.GetCurrentRealTime()
     If abForce
         _lastBootstrap = 0.0
+        ; A save made while a yes was being asked about must not hold that
+        ; person's next yes back (AgreeToMarry's one-question guard).
+        _agreeAsking = None
     EndIf
     ; The `now >= _lastBootstrap` term is load-bearing, not defensive noise.
     ; GetCurrentRealTime counts from GAME LAUNCH and resets every restart, but
@@ -5154,8 +5157,10 @@ EndFunction
 Int Function SpouseCount() Global
     { Everyone married to the player, each counted once whichever record holds
       them: ours (married or separated), then MARAS's that ours does not have,
-      until the import. Vanilla's faction keeps no list and is not counted; a
-      vanilla spouse with neither record is the M9 import's to bring in. }
+      until the import. Vanilla's faction keeps no list and is not counted
+      here: from 2.6 an enrolled vanilla spouse is written into ours by
+      Marriage::NoteOutsideMarriages (on load, on a location change, on opening
+      the dashboard), and counted from then on. One never enrolled is not. }
     Int n = 0
     If StorageUtil.GetIntValue(None, "SNRom_NativesV", 0) >= 15
         n = SNRom_Native.MarriageWithState(MARRIAGE_MARRIED()).Length + \
@@ -5517,6 +5522,8 @@ String Function ProposalRefusal(Actor akActor)
     Return "kin, or orientation"
 EndFunction
 
+Actor _agreeAsking = None    ; whose yes the player is being asked about now
+
 Function AgreeToMarry(Actor akActor, String asWords)
     { Action AgreeToMarry: they said yes to marrying the player, or proposed and
       heard yes. The player confirms; then ENGAGED. }
@@ -5527,6 +5534,14 @@ Function AgreeToMarry(Actor akActor, String asWords)
         Return
     EndIf
     String who = akActor.GetDisplayName()
+    ; ONE QUESTION PER YES (wpm97). Two replies in a row can each choose
+    ; MarriageAgree (Ysolda, 2026-11-15: "it sounds like a dream", then "I'll
+    ; marry you", 25 s apart). The second arrived while the first question was
+    ; still open, so both passed the rules and the player was asked twice.
+    If _agreeAsking == akActor
+        Diag(LOG_INFO(), "Proposal: " + who + " said yes again while the player is still being asked; one question is enough.")
+        Return
+    EndIf
     ; LEFT TO THEIR OWN MOD (2.6): their yes is that mod's to keep, so it is
     ; not ours to record, and nothing is said on screen about it.
     If _dashNatives >= 39 && SNRom_Native.MarriageElsewhere(akActor)
@@ -5542,10 +5557,12 @@ Function AgreeToMarry(Actor akActor, String asWords)
         Debug.Notification(Tr("marry.refused", "{0} said yes, but it was not recorded: {1}.", who, why))
         Return
     EndIf
+    _agreeAsking = akActor
     Int answer = SNRom_Choice.AskNow(Tr("marry.ask.body", "{0} has said yes. Are the two of you promised to each other?", who), \
         Tr("marry.ask.accept", "Yes, we are engaged"), \
         Tr("marry.ask.decline", "No, I spoke too soon"), \
         Tr("marry.ask.defer", "Not yet"), 60.0, SNRom_Choice.ANSWER_ACCEPT(), 30.0)
+    _agreeAsking = None
     Actor player = Game.GetPlayer()
     If answer == SNRom_Choice.ANSWER_ACCEPT()
         If ChangeMarriage(akActor, MARRIAGE_ENGAGED(), "agreed to marry: " + asWords)
