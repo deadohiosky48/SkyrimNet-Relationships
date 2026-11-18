@@ -14,6 +14,7 @@
 #include <fstream>
 #include <functional>
 #include <mutex>
+#include <random>
 #include <thread>
 #include <vector>
 
@@ -515,17 +516,33 @@ namespace SNRom::Painting {
                 float ax = s.x - p.x, ay = s.y - p.y;
                 const float apart = std::sqrt(ax * ax + ay * ay);
                 const float heading = player->GetAngleZ();
-                if (apart < 20.0f) {
-                    ax = std::cos(heading);  // the player's right
-                    ay = -std::sin(heading);
+                // IN EACH OTHER'S ARMS (seen in play, wpm97: a Baka kiss): a
+                // paired animation stands both at one spot, facing each
+                // other, and square-to-the-line-on-the-player's-facing-side
+                // put the camera in front of the player, with the partner's
+                // back to it. Facing each other, the picture is the side
+                // view: the camera off the player's right, both in profile.
+                const float pfx = std::sin(heading), pfy = std::cos(heading);
+                const float sh = partner->GetAngleZ();
+                const bool  facing = pfx * std::sin(sh) + pfy * std::cos(sh) < -0.7f &&
+                                    (apart < 20.0f || (ax * pfx + ay * pfy) / apart > 0.7f);
+                if (facing) {
+                    g_sit.side = { pfy, -pfx, 0.0f };   // the player's right
                 } else {
-                    ax /= apart;
-                    ay /= apart;
+                    if (apart < 20.0f) {
+                        ax = std::cos(heading);  // the player's right
+                        ay = -std::sin(heading);
+                    } else {
+                        ax /= apart;
+                        ay /= apart;
+                    }
+                    g_sit.side = { -ay, ax, 0.0f };
+                    if (g_sit.side.x * pfx + g_sit.side.y * pfy < 0.0f) {
+                        g_sit.side = { ay, -ax, 0.0f };
+                    }
                 }
-                g_sit.side = { -ay, ax, 0.0f };
-                if (g_sit.side.x * std::sin(heading) + g_sit.side.y * std::cos(heading) < 0.0f) {
-                    g_sit.side = { ay, -ax, 0.0f };
-                }
+                SKSE::log::info("Painting: posed {} ({:.0f} apart)", facing ? "from the side, facing each other" :
+                                                                              "from the front, side by side", apart);
                 g_sit.distance = 190.0f + apart * 0.6f;
                 g_sit.candidate = 0;
                 g_sit.widened = 0;
@@ -691,118 +708,319 @@ namespace SNRom::Painting {
             return out;
         }
 
-        // Kuwahara: each pixel takes the mean of whichever of the four
-        // squares at its corners is most even. Edges stay; texture within a
-        // region flattens into a stroke of paint. Summed tables make each
-        // square's mean and spread a few look-ups.
-        Image Kuwahara(const Image& a_in, int a_r) {
-            const int  w = a_in.w, h = a_in.h, sw = w + 1;
-            const auto idx = [sw](int a_x, int a_y) { return static_cast<std::size_t>(a_y) * sw + a_x; };
-            std::vector<std::uint32_t> sum[3];
-            for (auto& s : sum) {
-                s.assign(static_cast<std::size_t>(sw) * (h + 1), 0);
-            }
-            std::vector<std::uint64_t> sq(static_cast<std::size_t>(sw) * (h + 1), 0);
+        // ------------------------------------------------------------------
+        // OIL ON CANVAS (the author, 2026-11-18: the Kuwahara filter "makes
+        // it look like a watercolor painting. I was hoping for something more
+        // like an oil painting"). Painted as a painter would, after Hertzmann
+        // (1998): a brown ground, then curved strokes in passes from a broad
+        // brush to a fine one, each laid where the canvas is still furthest
+        // from the sitting and drawn along the forms (the smoothed structure
+        // tensor), each carrying one load of paint. The strokes leave relief -
+        // a ridge with bristle marks - lit from the upper left, so they catch
+        // the light like thick paint; then the weave and a varnished edge.
+        // ------------------------------------------------------------------
+
+        // One channel of floats.
+        struct Plane {
+            int                w = 0;
+            int                h = 0;
+            std::vector<float> v;
+            Plane() = default;
+            Plane(int a_w, int a_h, float a_fill = 0.0f) : w(a_w), h(a_h), v(static_cast<std::size_t>(a_w) * a_h, a_fill) {}
+            float& at(int a_x, int a_y) { return v[static_cast<std::size_t>(a_y) * w + a_x]; }
+            float  at(int a_x, int a_y) const { return v[static_cast<std::size_t>(a_y) * w + a_x]; }
+            float  clamped(int a_x, int a_y) const { return at(std::clamp(a_x, 0, w - 1), std::clamp(a_y, 0, h - 1)); }
+        };
+
+        // A box of radius a_r, edges repeated, along each axis in turn.
+        Plane Box(const Plane& a_in, int a_r) {
+            const int   w = a_in.w, h = a_in.h;
+            const float k = 1.0f / (2 * a_r + 1);
+            Plane       mid(w, h), out(w, h);
             for (int y = 0; y < h; ++y) {
-                std::uint32_t row[3]{};
-                std::uint64_t rowSq = 0;
+                float sum = 0.0f;
+                for (int i = -a_r; i <= a_r; ++i) {
+                    sum += a_in.clamped(i, y);
+                }
                 for (int x = 0; x < w; ++x) {
-                    const auto* p = a_in.at(x, y);
-                    const std::uint32_t lum = (p[2] * 77u + p[1] * 150u + p[0] * 29u) >> 8;
-                    for (int c = 0; c < 3; ++c) {
-                        row[c] += p[c];
-                        sum[c][idx(x + 1, y + 1)] = sum[c][idx(x + 1, y)] + row[c];
-                    }
-                    rowSq += static_cast<std::uint64_t>(lum) * lum;
-                    sq[idx(x + 1, y + 1)] = sq[idx(x + 1, y)] + rowSq;
+                    mid.at(x, y) = sum * k;
+                    sum += a_in.clamped(x + a_r + 1, y) - a_in.clamped(x - a_r, y);
                 }
             }
-            // The luminance sum, from the colour sums' weights.
-            const auto box = [&](const auto& a_t, int a_x0, int a_y0, int a_x1, int a_y1) {
-                return static_cast<double>(a_t[idx(a_x1, a_y1)]) - static_cast<double>(a_t[idx(a_x0, a_y1)]) -
-                       static_cast<double>(a_t[idx(a_x1, a_y0)]) + static_cast<double>(a_t[idx(a_x0, a_y0)]);
-            };
-            Image out{ w, h, std::vector<std::uint8_t>(a_in.bgra.size(), 255) };
-            for (int y = 0; y < h; ++y) {
-                for (int x = 0; x < w; ++x) {
-                    double best = 1e30;
-                    double mean[3]{};
-                    for (int q = 0; q < 4; ++q) {
-                        const int x0 = std::clamp(q & 1 ? x : x - a_r, 0, w - 1);
-                        const int x1 = std::clamp(q & 1 ? x + a_r : x, 0, w - 1) + 1;
-                        const int y0 = std::clamp(q & 2 ? y : y - a_r, 0, h - 1);
-                        const int y1 = std::clamp(q & 2 ? y + a_r : y, 0, h - 1) + 1;
-                        const double n = static_cast<double>(x1 - x0) * (y1 - y0);
-                        const double b = box(sum[0], x0, y0, x1, y1), g = box(sum[1], x0, y0, x1, y1),
-                                     r = box(sum[2], x0, y0, x1, y1);
-                        const double lum = (r * 77.0 + g * 150.0 + b * 29.0) / 256.0 / n;
-                        const double var = box(sq, x0, y0, x1, y1) / n - lum * lum;
-                        if (var < best) {
-                            best = var;
-                            mean[0] = b / n;
-                            mean[1] = g / n;
-                            mean[2] = r / n;
-                        }
-                    }
-                    auto* o = out.at(x, y);
-                    for (int c = 0; c < 3; ++c) {
-                        o[c] = static_cast<std::uint8_t>(std::clamp(mean[c] + 0.5, 0.0, 255.0));
-                    }
+            for (int x = 0; x < w; ++x) {
+                float sum = 0.0f;
+                for (int i = -a_r; i <= a_r; ++i) {
+                    sum += mid.clamped(x, i);
+                }
+                for (int y = 0; y < h; ++y) {
+                    out.at(x, y) = sum * k;
+                    sum += mid.clamped(x, y + a_r + 1) - mid.clamped(x, y - a_r);
                 }
             }
             return out;
         }
 
-        float Smooth(float a_e0, float a_e1, float a_x) {
-            const float t = std::clamp((a_x - a_e0) / (a_e1 - a_e0), 0.0f, 1.0f);
-            return t * t * (3.0f - 2.0f * t);
+        // Three boxes, near enough a Gaussian.
+        Plane Blur(const Plane& a_in, int a_r) {
+            const int r = (std::max)(1, a_r / 2);
+            return Box(Box(Box(a_in, r), r), r);
         }
 
-        // Oil on canvas: a little richer and warmer, never true black, a
-        // darker line where the paint changes, the weave showing through,
-        // and the edges falling into shadow.
-        void Finish(Image& a_img) {
-            const int w = a_img.w, h = a_img.h;
-            std::vector<float> lum(static_cast<std::size_t>(w) * h);
+        struct Rgb {
+            Plane c[3];  // r g b, 0..1
+        };
+
+        Rgb Blur(const Rgb& a_in, int a_r) {
+            return { { Blur(a_in.c[0], a_r), Blur(a_in.c[1], a_r), Blur(a_in.c[2], a_r) } };
+        }
+
+        Plane Luma(const Rgb& a_in) {
+            Plane out(a_in.c[0].w, a_in.c[0].h);
+            for (std::size_t i = 0; i < out.v.size(); ++i) {
+                out.v[i] = 0.299f * a_in.c[0].v[i] + 0.587f * a_in.c[1].v[i] + 0.114f * a_in.c[2].v[i];
+            }
+            return out;
+        }
+
+        Image Oil(const Image& a_in) {
+            const int  w = a_in.w, h = a_in.h;
+            const auto n = static_cast<std::size_t>(w) * h;
+            std::mt19937                          rng{ 7u };
+            std::normal_distribution<float>       jitter(0.0f, 0.012f);
+            std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+
+            // 1. Graded like an oil: highlights held back so white cloth
+            //    keeps its folds, more contrast and colour, a warm varnish,
+            //    and the small detail lifted so it survives the brush.
+            Rgb x{ { Plane(w, h), Plane(w, h), Plane(w, h) } };
             for (int y = 0; y < h; ++y) {
-                for (int x = 0; x < w; ++x) {
-                    const auto* p = a_img.at(x, y);
-                    lum[static_cast<std::size_t>(y) * w + x] = 0.299f * p[2] + 0.587f * p[1] + 0.114f * p[0];
+                for (int i = 0; i < w; ++i) {
+                    const auto* p = a_in.at(i, y);
+                    float       c[3] = { p[2] / 255.0f, p[1] / 255.0f, p[0] / 255.0f };
+                    for (auto& v : c) {
+                        v = v > 0.6f ? 0.6f + (v - 0.6f) * 0.55f : v;
+                        v = 0.5f + (v - 0.5f) * 1.12f;
+                    }
+                    const float     l = 0.299f * c[0] + 0.587f * c[1] + 0.114f * c[2];
+                    constexpr float kWarm[3] = { 1.04f, 0.99f, 0.88f };
+                    for (int k = 0; k < 3; ++k) {
+                        x.c[k].at(i, y) = std::clamp((l + (c[k] - l) * 1.25f) * kWarm[k], 0.0f, 1.0f);
+                    }
                 }
             }
-            const auto L = [&](int a_x, int a_y) {
-                return lum[static_cast<std::size_t>(std::clamp(a_y, 0, h - 1)) * w + std::clamp(a_x, 0, w - 1)];
-            };
+            {
+                const Plane l = Luma(x), soft = Luma(Blur(x, 4));
+                for (std::size_t i = 0; i < n; ++i) {
+                    const float d = (l.v[i] - soft.v[i]) * 0.9f;
+                    for (auto& c : x.c) {
+                        c.v[i] = std::clamp(c.v[i] + d, 0.0f, 1.0f);
+                    }
+                }
+            }
+
+            // 2. Which way the forms run at each point: across the gradient,
+            //    from the smoothed structure tensor.
+            Plane tdx(w, h), tdy(w, h);
+            {
+                const Plane ly = Blur(Luma(x), 3);
+                Plane       jxx(w, h), jxy(w, h), jyy(w, h);
+                for (int y = 0; y < h; ++y) {
+                    for (int i = 0; i < w; ++i) {
+                        const float gx = (ly.clamped(i + 1, y) - ly.clamped(i - 1, y)) * 0.5f;
+                        const float gy = (ly.clamped(i, y + 1) - ly.clamped(i, y - 1)) * 0.5f;
+                        jxx.at(i, y) = gx * gx;
+                        jxy.at(i, y) = gx * gy;
+                        jyy.at(i, y) = gy * gy;
+                    }
+                }
+                jxx = Blur(jxx, 8);
+                jxy = Blur(jxy, 8);
+                jyy = Blur(jyy, 8);
+                for (std::size_t i = 0; i < n; ++i) {
+                    const float theta = 0.5f * std::atan2(2.0f * jxy.v[i], jxx.v[i] - jyy.v[i]);
+                    tdx.v[i] = -std::sin(theta);
+                    tdy.v[i] = std::cos(theta);
+                }
+            }
+
+            // 3. Painted, broad brush to fine.
+            Rgb               canvas{ { Plane(w, h, 0.36f), Plane(w, h, 0.28f), Plane(w, h, 0.20f) } };
+            Plane             height(w, h);
+            std::vector<char> painted(n, 0);
+            std::size_t       strokes = 0;
+            for (const int r : { 14, 8, 4, 2 }) {
+                const Rgb ref = Blur(x, r);
+                const int d = 2 * r + 1;
+                // The brush: a soft-edged disc of paint, domed.
+                std::vector<float> alpha(static_cast<std::size_t>(d) * d), dome(alpha.size());
+                for (int j = -r; j <= r; ++j) {
+                    for (int i = -r; i <= r; ++i) {
+                        const float q = std::sqrt(static_cast<float>(i * i + j * j)) / (r + 0.5f);
+                        alpha[static_cast<std::size_t>(j + r) * d + (i + r)] = std::clamp((1.0f - q) * 3.0f, 0.0f, 1.0f);
+                        dome[static_cast<std::size_t>(j + r) * d + (i + r)] = std::sqrt(std::clamp(1.0f - q * q, 0.0f, 1.0f));
+                    }
+                }
+                const auto far = [&](int a_x, int a_y) {
+                    const auto i = static_cast<std::size_t>(a_y) * w + a_x;
+                    if (!painted[i]) {
+                        return 9.0f;
+                    }
+                    float s = 0.0f;
+                    for (int k = 0; k < 3; ++k) {
+                        const float e = canvas.c[k].v[i] - ref.c[k].v[i];
+                        s += e * e;
+                    }
+                    return std::sqrt(s);
+                };
+                // Where to begin a stroke: in each cell of the grid that is
+                // still too far from the sitting, its furthest point.
+                const float                      threshold = r > 4 ? 0.10f : 0.07f;
+                std::vector<std::pair<int, int>> starts;
+                for (int gy = 0; gy < h; gy += r) {
+                    for (int gx = 0; gx < w; gx += r) {
+                        float sum = 0.0f, worst = -1.0f;
+                        int   wx = gx, wy = gy, cells = 0;
+                        for (int y = gy; y < (std::min)(h, gy + r); ++y) {
+                            for (int i = gx; i < (std::min)(w, gx + r); ++i) {
+                                const float e = far(i, y);
+                                sum += e;
+                                ++cells;
+                                if (e > worst) {
+                                    worst = e;
+                                    wx = i;
+                                    wy = y;
+                                }
+                            }
+                        }
+                        if (cells && sum / cells > threshold) {
+                            starts.emplace_back(wx, wy);
+                        }
+                    }
+                }
+                std::shuffle(starts.begin(), starts.end(), rng);
+                const int                            maxLength = r > 4 ? 16 : 8;
+                std::vector<float>                   streak(static_cast<std::size_t>(2 * d + 4));
+                std::vector<float>                   bristle(alpha.size());
+                std::vector<std::pair<float, float>> points, dense;
+                for (const auto& [sx, sy] : starts) {
+                    const float load = 1.0f + jitter(rng);
+                    float       col[3];
+                    for (int k = 0; k < 3; ++k) {
+                        col[k] = ref.c[k].at(sx, sy) * load;
+                    }
+                    points.assign(1, { sx + 0.5f, sy + 0.5f });
+                    float px = static_cast<float>(sx), py = static_cast<float>(sy), lx = 0.0f, ly = 0.0f;
+                    for (int s = 0; s < maxLength; ++s) {
+                        const int ix = static_cast<int>(px), iy = static_cast<int>(py);
+                        if (ix < 0 || iy < 0 || ix >= w || iy >= h) {
+                            break;
+                        }
+                        if (s > 1) {
+                            // Ended where the paint already there is nearer
+                            // the sitting than this stroke's colour.
+                            float own = 0.0f, there = 0.0f;
+                            for (int k = 0; k < 3; ++k) {
+                                own += std::abs(ref.c[k].at(ix, iy) - col[k]);
+                                there += std::abs(ref.c[k].at(ix, iy) - canvas.c[k].at(ix, iy));
+                            }
+                            if (own > there) {
+                                break;
+                            }
+                        }
+                        float dx = tdx.at(ix, iy), dy = tdy.at(ix, iy);
+                        if (dx * lx + dy * ly < 0.0f) {
+                            dx = -dx;
+                            dy = -dy;
+                        }
+                        dx = 0.6f * dx + 0.4f * lx;  // the hand's own curve
+                        dy = 0.6f * dy + 0.4f * ly;
+                        const float len = std::hypot(dx, dy);
+                        if (len > 0.0f) {
+                            dx /= len;
+                            dy /= len;
+                        }
+                        lx = dx;
+                        ly = dy;
+                        px += dx * r;
+                        py += dy * r;
+                        points.emplace_back(px, py);
+                    }
+                    dense.clear();
+                    for (std::size_t p = 0; p < points.size(); ++p) {
+                        const auto [ax, ay] = points[p];
+                        const auto [bx, by] = points[(std::min)(p + 1, points.size() - 1)];
+                        const int steps = (std::max)(1, static_cast<int>(std::hypot(bx - ax, by - ay) / (std::max)(1.0f, r * 0.35f)));
+                        for (int t = 0; t < steps; ++t) {
+                            dense.emplace_back(ax + (bx - ax) * t / steps, ay + (by - ay) * t / steps);
+                        }
+                    }
+                    // Bristles: streaks across the brush, along its travel.
+                    const float angle = std::atan2(ly != 0.0f ? ly : 1e-3f, lx != 0.0f ? lx : 1e-3f);
+                    const float sa = std::sin(angle), ca = std::cos(angle);
+                    for (auto& v : streak) {
+                        v = unit(rng);
+                    }
+                    for (int j = -r; j <= r; ++j) {
+                        for (int i = -r; i <= r; ++i) {
+                            const int at = std::clamp(static_cast<int>(-i * sa + j * ca + r + 2), 0, static_cast<int>(streak.size()) - 1);
+                            bristle[static_cast<std::size_t>(j + r) * d + (i + r)] = 0.55f + 0.45f * streak[at];
+                        }
+                    }
+                    const float relief = (std::min)(r, 8) * 0.22f;
+                    for (const auto& [fx, fy] : dense) {
+                        const int x0 = static_cast<int>(fx) - r, y0 = static_cast<int>(fy) - r;
+                        for (int j = (std::max)(0, -y0); j < d && y0 + j < h; ++j) {
+                            for (int i = (std::max)(0, -x0); i < d && x0 + i < w; ++i) {
+                                const auto  m = static_cast<std::size_t>(j) * d + i;
+                                const float a = alpha[m];
+                                if (a <= 0.0f) {
+                                    continue;
+                                }
+                                const auto at = static_cast<std::size_t>(y0 + j) * w + (x0 + i);
+                                for (int k = 0; k < 3; ++k) {
+                                    canvas.c[k].v[at] = canvas.c[k].v[at] * (1.0f - a) + col[k] * a;
+                                }
+                                const float hm = (0.35f * dome[m] + 0.65f) * bristle[m] * relief;
+                                height.v[at] = (std::max)(height.v[at] * (1.0f - a * 0.85f), hm);
+                                if (a > 0.5f) {
+                                    painted[at] = 1;
+                                }
+                            }
+                        }
+                    }
+                    ++strokes;
+                }
+            }
+
+            // 4. The relief lit from the upper left; the weave; a varnished
+            //    edge.
+            const Plane hb = Box(Box(Box(height, 1), 1), 1);
+            float       lightDir[3] = { -0.5f, -0.6f, 0.62f };
+            {
+                const float len = std::sqrt(lightDir[0] * lightDir[0] + lightDir[1] * lightDir[1] + lightDir[2] * lightDir[2]);
+                for (auto& v : lightDir) {
+                    v /= len;
+                }
+            }
+            Image out{ w, h, std::vector<std::uint8_t>(n * 4, 255) };
             for (int y = 0; y < h; ++y) {
-                for (int x = 0; x < w; ++x) {
-                    auto*       p = a_img.at(x, y);
-                    float       c[3] = { p[2] / 255.0f, p[1] / 255.0f, p[0] / 255.0f };  // r g b
-                    const float l = 0.299f * c[0] + 0.587f * c[1] + 0.114f * c[2];
-                    for (auto& v : c) {
-                        v = l + (v - l) * 1.12f;
+                for (int i = 0; i < w; ++i) {
+                    const float nx = -(hb.clamped(i + 1, y) - hb.clamped(i - 1, y)) * 0.5f * 0.9f;
+                    const float ny = -(hb.clamped(i, y + 1) - hb.clamped(i, y - 1)) * 0.5f * 0.9f;
+                    const float shade = (nx * lightDir[0] + ny * lightDir[1] + lightDir[2]) / std::sqrt(nx * nx + ny * ny + 1.0f);
+                    const float spec = std::pow(std::clamp(shade, 0.0f, 1.0f), 24.0f) * 0.18f * 0.6f;
+                    const float weave = std::sin(i * 1.7f) * std::sin(y * 1.7f) * 0.018f;
+                    const float cx = (i - w / 2.0f) / (w / 2.0f), cy = (y - h / 2.0f) / (h / 2.0f);
+                    const float vignette = std::clamp(1.0f - 0.22f * std::pow(cx * cx + cy * cy, 1.2f), 0.0f, 1.0f);
+                    auto*       p = out.at(i, y);
+                    for (int k = 0; k < 3; ++k) {
+                        p[2 - k] = ToByte((canvas.c[k].at(i, y) * (0.72f + 0.32f * shade) + spec + weave) * vignette);
                     }
-                    c[0] *= 1.03f;
-                    c[2] *= 0.92f;
-                    const float gx = L(x + 1, y) - L(x - 1, y), gy = L(x, y + 1) - L(x, y - 1);
-                    const float edge = 1.0f - 0.18f * Smooth(10.0f, 60.0f, std::sqrt(gx * gx + gy * gy));
-                    const float weave = std::sin(x * kPi / 2.0f) * std::sin(y * kPi / 2.0f);
-                    const std::uint32_t hash = (static_cast<std::uint32_t>(x) * 73856093u) ^ (static_cast<std::uint32_t>(y) * 19349663u);
-                    const float grain = ((hash >> 8) & 0xFF) / 255.0f - 0.5f;
-                    const float dx = x / static_cast<float>(w) - 0.5f, dy = y / static_cast<float>(h) - 0.5f;
-                    const float vignette = 1.0f - 0.30f * Smooth(0.45f, 0.75f, std::sqrt(dx * dx + dy * dy));
-                    const float shade = edge * (1.0f + 0.035f * weave + 0.03f * grain) * vignette;
-                    const float tint[3] = { 1.0f, 0.97f, 0.90f };  // the shadows go umber, not grey
-                    for (int i = 0; i < 3; ++i) {
-                        float v = 0.05f + c[i] * 0.93f;
-                        v *= shade + (1.0f - shade) * (1.0f - tint[i]) * 0.5f;
-                        c[i] = v;
-                    }
-                    p[2] = ToByte(c[0]);
-                    p[1] = ToByte(c[1]);
-                    p[0] = ToByte(c[2]);
                     p[3] = 255;
                 }
             }
+            SKSE::log::info("Painting: {} strokes laid", strokes);
+            return out;
         }
 
         std::string Base64(const std::vector<std::uint8_t>& a_bytes) {
@@ -1030,8 +1248,7 @@ namespace SNRom::Painting {
 
             constexpr int kW = 1024, kH = 1280;
             const auto    shot = Resample(a_shot, r, kW, kH);
-            auto          painted = Kuwahara(Kuwahara(shot, 5), 3);
-            Finish(painted);
+            const auto    painted = Oil(shot);
 
             const auto previews = PreviewFolder();
             const auto shotPng = Png(shot);
