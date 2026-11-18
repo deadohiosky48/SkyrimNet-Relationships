@@ -860,7 +860,7 @@ namespace SNRom::Painting {
                         dome[static_cast<std::size_t>(j + r) * d + (i + r)] = std::sqrt(std::clamp(1.0f - q * q, 0.0f, 1.0f));
                     }
                 }
-                const auto far = [&](int a_x, int a_y) {
+                const auto offBy = [&](int a_x, int a_y) {
                     const auto i = static_cast<std::size_t>(a_y) * w + a_x;
                     if (!painted[i]) {
                         return 9.0f;
@@ -882,7 +882,7 @@ namespace SNRom::Painting {
                         int   wx = gx, wy = gy, cells = 0;
                         for (int y = gy; y < (std::min)(h, gy + r); ++y) {
                             for (int i = gx; i < (std::min)(w, gx + r); ++i) {
-                                const float e = far(i, y);
+                                const float e = offBy(i, y);
                                 sum += e;
                                 ++cells;
                                 if (e > worst) {
