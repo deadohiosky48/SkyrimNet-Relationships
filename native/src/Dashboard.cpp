@@ -51,6 +51,11 @@ namespace SNRom::Dashboard {
         // bridge.js's PROTOCOL. Every message both ways carries it.
         constexpr int kProtocol = 1;
 
+        // The wedding painting is shelved for a later release (the author,
+        // 2026-11-19). Its two requests are refused, and nothing else starts a
+        // sitting, so the painter's camera and Present hook never run.
+        constexpr bool kPaintingShelved = true;
+
         std::unique_ptr<ViewHost> g_host;  // null: no UI framework installed
         bool                      g_created = false;
         std::atomic<int>          g_developer{ -1 };  // -1 until the setting first arrives
@@ -802,6 +807,8 @@ namespace SNRom::Dashboard {
                     const auto payload = message.value("payload", json::object());
                     const auto why = FactionBlock::Set(payload.value("key", std::string{}), payload.value("block", true));
                     Result(id, why.empty(), why);
+                } else if (kPaintingShelved && (kind == "paintSit" || kind == "paintShowOn")) {
+                    Result(id, false, "The painting is not part of this version.");
                 } else if (kind == "paintSit") {
                     // THE WEDDING PAINTING (2.6 feasibility test; Painting.h):
                     // a sitting with the card's person, once the dashboard

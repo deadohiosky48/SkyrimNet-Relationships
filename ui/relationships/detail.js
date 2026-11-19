@@ -402,8 +402,9 @@
       if (m.ringToPlayer) kv(mdl, t("detail.ringToYou", "Their ring to you"), m.ringToPlayer);
       ms.appendChild(mdl);
       if (m.plan) ms.appendChild(this.planBlock(m.plan, b, snap));
-      // 2.6 TEST BUILD: the wedding painting's feasibility test.
-      if (m.state === "married" || m.state === "engaged" || m.state === "separated") ms.appendChild(paintingTest(b));
+      // The wedding painting's feasibility test is shelved (the author,
+      // 2026-11-19: a later release). paintingTest stays, unshown, and the DLL
+      // refuses its requests (Dashboard.cpp, kPaintingShelved).
       scroll.appendChild(ms);
     }
 
