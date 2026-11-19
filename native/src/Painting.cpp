@@ -282,6 +282,7 @@ namespace SNRom::Painting {
             bool         firstPerson = false;
             bool         freeCamera = false;
             bool         menusHidden = false;
+            bool         facing = false;  // facing each other: left as they stand
             RE::NiPoint3 mid;
             RE::NiPoint3 side;  // from the couple toward the camera, level
             float        distance = 0.0f;
@@ -365,7 +366,77 @@ namespace SNRom::Painting {
             }
         }
 
+        // NOTHING IN THE WAY (seen in play, wpm98: in the Tundra Homestead the
+        // camera stepped back through the wall and painted the planks). A
+        // ray from a_from to a_to through the camera's own collision, which
+        // walls, floors and furniture stop and people do not. True when
+        // there is no world to ask.
+        bool Clear(const RE::NiPoint3& a_from, const RE::NiPoint3& a_to) {
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            auto* cell = player ? player->GetParentCell() : nullptr;
+            auto* world = cell ? cell->GetbhkWorld() : nullptr;
+            if (!world) {
+                return true;
+            }
+            const float     s = RE::bhkWorld::GetWorldScale();
+            RE::bhkPickData pick{};
+            pick.rayInput.from = RE::hkVector4(a_from.x * s, a_from.y * s, a_from.z * s, 0.0f);
+            pick.rayInput.to = RE::hkVector4(a_to.x * s, a_to.y * s, a_to.z * s, 0.0f);
+            pick.rayInput.filterInfo.SetCollisionLayer(RE::COL_LAYER::kCameraSphere);
+            {
+                RE::BSReadLockGuard lock(world->worldLock);
+                world->PickObject(pick);
+            }
+            return !pick.rayOutput.HasHit();
+        }
+
+        // a_at short of a_to by a_short, along the line from a_from.
+        RE::NiPoint3 Short(const RE::NiPoint3& a_from, const RE::NiPoint3& a_to, float a_short) {
+            const auto  d = a_to - a_from;
+            const float len = d.Length();
+            return len <= a_short ? a_from : a_from + d * ((len - a_short) / len);
+        }
+
+        // The camera at a_distance on a_side, as Aim places it.
+        RE::NiPoint3 EyeAt(const RE::NiPoint3& a_side, float a_distance) {
+            return { g_sit.mid.x + a_side.x * a_distance, g_sit.mid.y + a_side.y * a_distance, g_sit.mid.z + 108.0f };
+        }
+
+        // From a_eye the couple's middle and both heads can be seen.
+        bool Sees(const RE::NiPoint3& a_eye) {
+            auto*              player = RE::PlayerCharacter::GetSingleton();
+            auto*              partner = Partner();
+            const RE::NiPoint3 look{ g_sit.mid.x, g_sit.mid.y, g_sit.mid.z + 92.0f };
+            if (!Clear(a_eye, Short(a_eye, look, 40.0f))) {
+                return false;
+            }
+            for (auto* who : { static_cast<RE::Actor*>(player), partner }) {
+                if (who && !Clear(a_eye, Short(a_eye, HeadOf(who), 25.0f))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // The furthest of a few distances up to a_want on a_side with the
+        // couple in sight; -1 when none is.
+        float SeenFrom(const RE::NiPoint3& a_side, float a_want) {
+            for (const float f : { 1.0f, 0.85f, 0.7f, 0.58f, 0.48f }) {
+                const float d = a_want * f;
+                if (d < 110.0f) {
+                    break;
+                }
+                if (Sees(EyeAt(a_side, d))) {
+                    return d;
+                }
+            }
+            return -1.0f;
+        }
+
         void Face() {
+            if (g_sit.facing) {
+                return;   // in each other's arms: turned, they would let go
+            }
             auto* player = RE::PlayerCharacter::GetSingleton();
             auto* partner = Partner();
             for (auto* who : { static_cast<RE::Actor*>(player), partner }) {
@@ -555,7 +626,28 @@ namespace SNRom::Painting {
                 }
                 SKSE::log::info("Painting: posed {} ({:.0f} apart, heads {:.0f} apart)",
                                 facing ? "from the side, facing each other" : "from the front, side by side", apart, heads);
+                g_sit.facing = facing;
                 g_sit.distance = 190.0f + apart * 0.6f;
+                // A side the camera can see them from: this one, nearer if a
+                // wall is in the way, else the other.
+                {
+                    const RE::NiPoint3 other{ -g_sit.side.x, -g_sit.side.y, 0.0f };
+                    const float        here = SeenFrom(g_sit.side, g_sit.distance);
+                    if (here < g_sit.distance) {
+                        const float there = SeenFrom(other, g_sit.distance);
+                        if (there > here) {
+                            g_sit.side = other;
+                        }
+                        const float best = (std::max)(here, there);
+                        if (best > 0.0f) {
+                            g_sit.distance = best;
+                        }
+                        SKSE::log::info("Painting: in the way at {:.0f}: seen from {:.0f} on this side, {:.0f} on the other; "
+                                        "the camera stands at {:.0f}{}",
+                                        190.0f + apart * 0.6f, here, there, g_sit.distance,
+                                        best > 0.0f ? "" : " (nowhere clear; it may not see them)");
+                    }
+                }
                 g_sit.candidate = 0;
                 g_sit.widened = 0;
                 if (!camera->IsInFreeCameraMode()) {
@@ -625,6 +717,13 @@ namespace SNRom::Painting {
                 const float h = window ? static_cast<float>(window->windowHeight) : 1080.0f;
                 const auto  r = CropFor(g_sit.points, w, h);
                 const bool  fits = r.x0 >= 0.0f && r.y0 >= 0.0f && r.x1 <= w && r.y1 <= h;
+                if (!fits && g_sit.widened < 4 && !Sees(EyeAt(g_sit.side, g_sit.distance * 1.25f))) {
+                    // A step back would put a wall between: as they are,
+                    // the frame slid and cut to fit.
+                    SKSE::log::info("Painting: they do not fit, and a step back to {:.0f} is through a wall; painted as they are",
+                                    g_sit.distance * 1.25f);
+                    g_sit.widened = 4;
+                }
                 if (!fits && g_sit.widened < 4) {
                     ++g_sit.widened;
                     g_sit.distance *= 1.25f;

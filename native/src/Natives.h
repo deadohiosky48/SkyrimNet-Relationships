@@ -58,7 +58,7 @@ namespace SNRom::Natives {
     //      character's own mod (2.6)
     //  40  BlockedFactionOf: factions never enrolled; BodyLanguageLoaded,
     //      PlayerBodySignature: Body Language as an attraction source (2.6)
-    inline constexpr std::int32_t kVersion = 40;
+    inline constexpr std::int32_t kVersion = 41;
 
     // Registers the natives declared in src/scripts/SNRom_Native.psc.
     void Register(const SKSE::PapyrusInterface* a_papyrus);

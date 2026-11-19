@@ -481,6 +481,7 @@ Function RegisterEvents()
     RegisterForModEvent("SNRom_MarriageChanged", "OnMarriageChanged")
     RegisterForModEvent("SNRom_CeremonyEnded", "OnCeremonyEnded")
     RegisterForModEvent("SNRom_CeremonyCue", "OnCeremonyCue")
+    RegisterForModEvent("SNRom_CeremonyKiss", "OnCeremonyKiss")
     RegisterForModEvent("SNRom_CeremonyMarried", "OnCeremonyMarried")
     RegisterForModEvent("SNRom_CeremonyRings", "OnCeremonyRings")
     RegisterForModEvent("SNRom_CeremonyYourTurn", "OnCeremonyYourTurn")
@@ -6398,6 +6399,22 @@ Event OnWeddingGo(String asEventName, String asPackage, Float afLeadHours, Form 
     EndIf
     _weddingGoers[i] = who
     _weddingGoerPackages[i] = asPackage
+    ; A COMPANION LEFT WAITING (seen in play, wpm97): SeverActions' wait
+    ; outranks ours, so Ysolda, set to wait, sandboxed in the market through
+    ; her own wedding until the player removed it. Ended here as the Package
+    ; Manager's Remove ends it; SeverActions hears that and lets her go.
+    Int waits = 0
+    If SkyrimNetApi.HasPackage(who, "SeverActions_LeisureSandbox") == 1
+        SkyrimNetApi.UnregisterPackage(who, "SeverActions_LeisureSandbox")
+        waits += 1
+    EndIf
+    If SkyrimNetApi.HasPackage(who, "SeverActions_WaitPackage") == 1
+        SkyrimNetApi.UnregisterPackage(who, "SeverActions_WaitPackage")
+        waits += 1
+    EndIf
+    If waits > 0
+        Diag(LOG_INFO(), "Wedding: " + who.GetDisplayName() + " was waiting for you; the wait is over, so they can go.")
+    EndIf
     Int rc = SkyrimNetApi.RegisterPackageEx(who, asPackage, -1, True, WeddingHolder(), "Going to the wedding", False)
     ; rc 1 applied, 2 stored while held, 0 failed (wpm61).
     If afLeadHours > 0.0
@@ -7349,6 +7366,52 @@ Function ReleaseWeddingHold()
     _weddingHeldA = None
     _weddingHeldB = None
 EndFunction
+
+Event OnCeremonyKiss(String asEventName, String asUnused, Float afToken, Form akSender)
+    { SNRom_CeremonyKiss: the kiss was said and nothing plays it (Ceremony.cpp,
+      wpm100). Each kind the player lists (weddingKissActions) is tried in
+      turn - "OStim" is OStimNet's own kiss, anything else a SkyrimNet action
+      by name, with the player as its akTarget - until a scene begins. }
+    Actor betrothed = akSender as Actor
+    Actor player = Game.GetPlayer()
+    If betrothed == None || _dashNatives < 41
+        Return
+    EndIf
+    String list = SkyrimNetApi.GetConfigString(CFG(), "weddingKissActions", "OStim, KissLove")
+    String[] kinds = StringUtil.Split(list, ", ")
+    Int i = 0
+    While i < kinds.Length
+        String kind = kinds[i]
+        If kind != ""
+            Bool tried = False
+            Int rc = 0
+            If kind == "OStim"
+                tried = SNRom_Native.KissOStim(betrothed, player)
+            ElseIf SkyrimNetApi.IsActionRegistered(kind)
+                rc = SkyrimNetApi.ExecuteAction(kind, betrothed, "{\"akTarget\":\"" + player.GetDisplayName() + "\"}")
+                tried = True
+            EndIf
+            If tried
+                Int w = 0
+                While w < 10 && !SNRom_Native.CeremonyKissPlaying()
+                    Utility.Wait(0.5)
+                    w += 1
+                EndWhile
+            EndIf
+            If tried && SNRom_Native.CeremonyKissPlaying()
+                Diag(LOG_INFO(), "Ceremony: the kiss plays (" + kind + ").")
+                Return
+            EndIf
+            If tried
+                Diag(LOG_INFO(), "Ceremony: the kiss by " + kind + " never began (rc " + rc + "); trying the next.")
+            Else
+                Diag(LOG_INFO(), "Ceremony: no kiss by " + kind + " here (not installed); trying the next.")
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+    Diag(LOG_INFO(), "Ceremony: no kiss could be played (tried: " + list + ").")
+EndEvent
 
 Event OnCeremonyCue(String asEventName, String asText, Float afToken, Form akSender)
     { SNRom_CeremonyCue: the DLL's script says whose turn it is (Ceremony.cpp).

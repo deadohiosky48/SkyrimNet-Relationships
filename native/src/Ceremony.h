@@ -75,6 +75,10 @@ namespace SNRom::Ceremony {
     // patience.
     RE::Actor* CueTarget(std::int32_t a_token);
     bool       CueWanted(std::int32_t a_token);
+    // The kiss played (wpm100): a scene is on (KissScene), and OStimNet's
+    // own kiss asked for. Main thread / a VM thread.
+    bool       KissPlaying();
+    bool       KissOStim(RE::Actor* a_from, RE::Actor* a_to);
     // Seconds to hold a cue back: the line before is still being said, for
     // longer than SkyrimNet's directed turn waits for the floor.
     float      CueDelay(std::int32_t a_token);

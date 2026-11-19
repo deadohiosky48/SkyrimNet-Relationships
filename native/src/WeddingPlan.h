@@ -186,6 +186,15 @@ namespace SNRom::WeddingPlan {
     // out had they walked from elsewhere. False when no door is near; then
     // they are not moved. Main thread or a VM thread; the move is queued.
     bool BringBeside(RE::Actor* a_who, RE::TESObjectREFR* a_near);
+    // a_who into the room behind the nearest door that leads out to a_mark
+    // (out of doors, its cell not loaded), to walk out to it. False when no
+    // such door is near. Main thread.
+    bool BringThrough(RE::Actor* a_who, RE::TESObjectREFR* a_mark);
+    // The places taken when the wedding began: how many, and how many are
+    // settled. Main thread.
+    std::pair<int, int> PlacesSettled();
+    // Those not yet in their place, each with how far from it, for the log.
+    std::string PlacesWaiting();
     bool SetOfficiant(std::int32_t a_betrothed, std::uint32_t a_officiant);
     bool AddGuest(std::int32_t a_betrothed, std::uint32_t a_guest);
     bool RemoveGuest(std::int32_t a_betrothed, std::uint32_t a_guest);

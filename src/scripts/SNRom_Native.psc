@@ -454,6 +454,16 @@ Int Function PlayerBodySignature() Global Native
 {VERSION 40 (2.6). A number that changes when the player's race, sex, weight
  or height does; never 0. The looks judge reads them again when it changes.}
 
+Bool Function KissOStim(Actor akFrom, Actor akTo) Global Native
+{VERSION 41 (2.6). OStimNet's own kiss, akFrom kissing akTo, without its
+ confirmation or its judge (TTON_OStimIntegration.StartOStimCaring). True when
+ OStimNet is installed and was asked; whether it began, CeremonyKissPlaying
+ says.}
+
+Bool Function CeremonyKissPlaying() Global Native
+{VERSION 41 (2.6). A wedding is under way and the player is in a scene, or
+ lost their controls to one since the kiss was invited.}
+
 Bool Function CeremonyPlanned() Global Native
 {The wedding under way is a planned one, not an elopement.}
 

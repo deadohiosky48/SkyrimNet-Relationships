@@ -540,6 +540,7 @@ namespace SNRom::WeddingPlan {
         constexpr float kOnTheirWay = 2000.0f;
         constexpr float kSeenFrom = 8000.0f;
         std::vector<std::uint32_t> g_summoned;  // who was, this session; under g_lock
+        std::vector<std::uint32_t> g_fellOnTheWay;  // sent, and died since; this session
 
         // STOPPED SHORT (wpm67; the author, 2026-10-31: "have Danica offer to
         // begin again instead"). A planned wedding that stalled, or met a no,
@@ -752,6 +753,7 @@ namespace SNRom::WeddingPlan {
                 float distance = -1.0f;
                 float lead = 0.0f;
                 bool  again = false;  // already on their way: linked again only
+                bool  raised = false; // their package lost to death: sent again
             };
             std::vector<Going>        going;
             std::vector<std::uint32_t> letGo;
@@ -848,7 +850,20 @@ namespace SNRom::WeddingPlan {
                         const float when = When(plan);
                         for (const auto& goal : GoalsOf(id, plan, bonds)) {
                             if (std::ranges::find(plan.sent, goal.who) != plan.sent.end()) {
-                                if (relink) {
+                                // DEAD ON THE WAY, AND BACK (seen in play,
+                                // wpm97: Hulda died outside the Drunken
+                                // Huntsman and was raised): death took her
+                                // package, and nothing sent her again.
+                                auto*      on = RE::TESForm::LookupByID<RE::Actor>(goal.who);
+                                const bool dead = !on || on->IsDead();
+                                const bool fell = std::ranges::find(g_fellOnTheWay, goal.who) != g_fellOnTheWay.end();
+                                if (dead && !fell && on) {
+                                    g_fellOnTheWay.push_back(goal.who);
+                                    SKSE::log::info("Wedding: {} died on the way to it", on->GetDisplayFullName());
+                                } else if (!dead && fell) {
+                                    std::erase(g_fellOnTheWay, goal.who);
+                                    going.push_back({ goal, -1.0f, 0.0f, false, true });
+                                } else if (relink) {
                                     going.push_back({ goal, -1.0f, 0.0f, true });
                                 }
                                 continue;
@@ -919,6 +934,12 @@ namespace SNRom::WeddingPlan {
                     SKSE::log::info("Wedding: {} is linked again to {}", who->GetDisplayFullName(), g.goal.where);
                     continue;
                 }
+                if (g.raised) {
+                    SKSE::log::info("Wedding: {} is alive again and sent to {} once more", who->GetDisplayFullName(),
+                                    g.goal.where);
+                    Send("SNRom_WeddingGo", g.goal.package, 1.0f, g.goal.who);
+                    continue;
+                }
                 // Who set out, from how far, how early (wpm61).
                 SKSE::log::info("Wedding: {} sets out for {} ({}), {}, {:.1f} h before the hour",
                                 who->GetDisplayFullName(), g.goal.where, g.goal.package,
@@ -957,7 +978,19 @@ namespace SNRom::WeddingPlan {
                 // Who was summoned, from how far, and how (wpm65).
                 SKSE::log::info("Wedding: {} summoned {} to {}, from {}", who->GetDisplayFullName(), how, l.goal.where,
                                 from >= 0.0f ? std::format("{:.0f} away", from) : std::string("elsewhere"));
-                if (l.found) {
+                // NEVER INTO OPEN AIR UNLOADED (seen in play, wpm97): five
+                // guests sent to marks on Dragonsreach's Great Porch while
+                // the player was in Breezehome landed in Whiterun's market,
+                // and Hulda fell to her death. Out of doors, a place that is
+                // not loaded is reached through the nearest door that leads
+                // out to it, from the room behind it; they walk the rest.
+                auto* markCell = to->GetParentCell();
+                if (!l.found && markCell && !markCell->IsInteriorCell() && !markCell->IsAttached()) {
+                    if (!BringThrough(who, to)) {
+                        SKSE::log::info("Wedding: no door into {} from a room; {} is left to walk", l.goal.where,
+                                        who->GetDisplayFullName());
+                    }
+                } else if (l.found) {
                     BringBeside(who, to);
                 } else {
                     PutAt(who, to, to->GetPosition(), to->data.angle);
@@ -1360,6 +1393,74 @@ namespace SNRom::WeddingPlan {
             }
         });
         return true;
+    }
+
+    bool BringThrough(RE::Actor* a_who, RE::TESObjectREFR* a_mark) {
+        auto* world = a_mark ? a_mark->GetWorldspace() : nullptr;
+        auto* persistent = world ? world->persistentCell : nullptr;
+        if (!a_who || a_who->IsDead() || !persistent) {
+            return false;
+        }
+        // Load doors are persistent, so the worldspace's persistent cell
+        // holds them even where nothing is loaded. Through each one near the
+        // mark: where one comes out, and in which room.
+        const auto          origin = a_mark->GetPosition();
+        float               best = kBringFrom;
+        RE::ObjectRefHandle inside;
+        RE::NiPoint3        spot, facing;
+        persistent->ForEachReference([&](RE::TESObjectREFR* a_ref) {
+            auto* base = a_ref ? a_ref->GetBaseObject() : nullptr;
+            auto* through = base && base->Is(RE::FormType::Door) ? a_ref->extraList.GetByType<RE::ExtraTeleport>() : nullptr;
+            auto  room = through && through->teleportData ? through->teleportData->linkedDoor.get() : nullptr;
+            auto* cell = room ? room->GetParentCell() : nullptr;
+            if (cell && cell->IsInteriorCell()) {
+                const float distance = a_ref->GetPosition().GetDistance(origin);
+                if (distance < best) {
+                    best = distance;
+                    inside = room->CreateRefHandle();
+                    spot = through->teleportData->position;
+                    facing = through->teleportData->rotation;
+                }
+            }
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        if (!inside) {
+            return false;
+        }
+        auto room = inside.get();
+        SKSE::log::info("Wedding: {} brought into {}, behind the door {:.0f} from their mark", a_who->GetDisplayFullName(),
+                        room && room->GetParentCell() ? room->GetParentCell()->GetName() : "a room", best);
+        SKSE::GetTaskInterface()->AddTask([who = a_who->CreateRefHandle(), inside, spot, facing]() {
+            auto actor = who.get();
+            auto at = inside.get();
+            if (actor && at) {
+                PutAt(actor.get(), at.get(), spot, facing);
+                actor->EvaluatePackage();
+            }
+        });
+        return true;
+    }
+
+    std::pair<int, int> PlacesSettled() {
+        int settled = 0;
+        for (const auto& p : g_places) {
+            settled += p.settled ? 1 : 0;
+        }
+        return { static_cast<int>(g_places.size()), settled };
+    }
+
+    std::string PlacesWaiting() {
+        std::string out;
+        for (const auto& p : g_places) {
+            auto* who = p.settled ? nullptr : RE::TESForm::LookupByID<RE::Actor>(p.who);
+            auto* at = who ? RefOf(p.at) : nullptr;
+            if (who) {
+                out += std::format("{}{} ({})", out.empty() ? "" : ", ", who->GetDisplayFullName(),
+                                   at ? std::format("{:.0f} from it", Across(who->GetPosition(), at->GetPosition())) :
+                                        std::string("no mark"));
+            }
+        }
+        return out;
     }
 
     bool SetOfficiant(std::int32_t a_betrothed, std::uint32_t a_officiant) {

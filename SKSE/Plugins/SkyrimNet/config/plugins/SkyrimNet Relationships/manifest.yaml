@@ -134,6 +134,16 @@ schema:
       description: "At a planned wedding, the guests applaud once the ceremony is over, before the celebration begins. Turn off for a quieter ending. Default: on."
       defaultValue: true
       category: "Weddings"
+
+    # The wedding kiss played (2.6 wpm100; the author, 2026-11-18: OStim's
+    # kiss first, Baka's as a backup, and room for others). Read by
+    # SNRom_Bridge.OnCeremonyKiss.
+    - name: "Wedding Kiss Animations"
+      path: "weddingKissActions"
+      type: "string"
+      description: "When the officiant invites the kiss and your betrothed kisses you in words but no kiss plays, these are tried in order until one does, separated by commas. OStim means OStimNet's own kiss. Anything else is the name of a SkyrimNet action that plays a kiss, such as KissLove from Baka's integration, with you as the one kissed. Ones that are not installed are passed over. Leave it empty to have no kiss played. Default: OStim, KissLove."
+      defaultValue: "OStim, KissLove"
+      category: "Weddings"
     - name: "Let Personalities Change Over Time"
       path: "driftEnabled"
       type: "bool"

@@ -802,6 +802,13 @@ namespace SNRom::Natives {
         void CeremonyCueSent(RE::StaticFunctionTag*, std::int32_t a_token) {
             Ceremony::CueSent(a_token);
         }
+        // v41: the wedding kiss played (Ceremony.h).
+        bool KissOStim(RE::StaticFunctionTag*, RE::Actor* a_from, RE::Actor* a_to) {
+            return Ceremony::KissOStim(a_from, a_to);
+        }
+        bool CeremonyKissPlaying(RE::StaticFunctionTag*) {
+            return Ceremony::KissPlaying();
+        }
         // VERSION 27: one change taken out of a bond's history (History.h).
         bool RemoveChange(RE::StaticFunctionTag*, RE::Actor* a_actor, std::int32_t a_index, std::int32_t a_delta,
                           std::int32_t a_total) {
@@ -1167,6 +1174,8 @@ namespace SNRom::Natives {
             a_vm->RegisterFunction("BlockedFactionOf", kScript, BlockedFactionOf);  // main thread: the actor's factions
             a_vm->RegisterFunction("BodyLanguageLoaded", kScript, BodyLanguageLoaded, true);
             a_vm->RegisterFunction("PlayerBodySignature", kScript, PlayerBodySignature);
+            a_vm->RegisterFunction("KissOStim", kScript, KissOStim);
+            a_vm->RegisterFunction("CeremonyKissPlaying", kScript, CeremonyKissPlaying);
             a_vm->RegisterFunction("IsWeddingPlanner", kScript, IsWeddingPlanner, true);
             a_vm->RegisterFunction("PersonNamed", kScript, PersonNamed);
             a_vm->RegisterFunction("GuestsNamed", kScript, GuestsNamed);
@@ -1249,7 +1258,7 @@ namespace SNRom::Natives {
                             "PlanSetFindable, PlanNear, PlanFindable, PlanTravelTo, BringToWedding, PlanMark, PlanSettleLayout, "
                             "PlanMarked, PlanGuestSide, PlanSideOf, PlanSideNamed, GuestSideOf, PlanSetAnchor, WeddingLetGo, "
                             "WeddingPlaces, WeddingPlacesClear, PlanToday, WeddingReception, MarasInstalled, PlanJudgeStart, PlanHeardField, PlanHeardDone, PlanSetDayAt, PlanPlaceHere, "
-                            "PlanHeardSpot, MarriageElsewhere, SetMarriageElsewhere, BlockedFactionOf, BodyLanguageLoaded, PlayerBodySignature",
+                            "PlanHeardSpot, MarriageElsewhere, SetMarriageElsewhere, BlockedFactionOf, BodyLanguageLoaded, PlayerBodySignature, KissOStim, CeremonyKissPlaying",
                             kScript, kVersion);
             return true;
         });

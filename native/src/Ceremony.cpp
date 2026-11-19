@@ -280,6 +280,24 @@ namespace SNRom::Ceremony {
         bool             g_inScene = false;
         // The player could move when the kiss step began (KissScene).
         bool             g_controlsFree = false;
+        // THE KISS PLAYED (the author, 2026-11-18). A kiss that is only words
+        // ("kisses him soundly", wpm97) never moved anyone: the model named
+        // the kiss and picked no action. Once the kiss is heard and no scene
+        // has begun, Papyrus is asked to play one (SNRom_CeremonyKiss): OStim
+        // first, then Baka, then whatever the player has listed.
+        bool             g_kissAsked = false;
+        constexpr float  kKissAskAfter = 2.0f;
+        // EVERYONE IN PLACE FIRST (the author, 2026-11-18: "have the officiant
+        // not start the ceremony until all wedding attendees are in place, or
+        // have been idle for a certain period"). Seen in play, wpm97: Balgruuf
+        // began as everyone set off for their places, and Ysolda, answering
+        // him on the way, stopped 386 short of hers. A planned wedding's
+        // opening cue waits until every place is settled (WeddingPlan, which
+        // gives up on anyone who stops getting nearer), or kGatherMax.
+        bool             g_gathering = false;
+        float            g_gathered = 0.0f;
+        constexpr float  kGatherMin = 4.0f;    // for the places to be set and walked
+        constexpr float  kGatherMax = 45.0f;
         int              g_retries = 0;
         float            g_still = 0.0f;    // seconds at this step, the game running
         float            g_away = 0.0f;
@@ -523,6 +541,7 @@ namespace SNRom::Ceremony {
             g_held = 0.0f;
             g_kissed = 0.0f;
             g_inScene = false;
+            g_kissAsked = false;
             g_controlsFree = step.kind == kKindKiss && !ControlsTaken();
             // Begun by the player's line (the step before was theirs): whoever
             // answers them may be this step's speaker, saying it.
@@ -543,6 +562,11 @@ namespace SNRom::Ceremony {
             if (g_holdCue) {
                 Tell(CueText(step.cue, g_unclear));
                 SKSE::log::info("Ceremony: step {}: {}'s cue waits for the player's answer", g_step + 1,
+                                NameOf(IdOf(step.speaker)));
+                return;
+            }
+            if (g_gathering) {
+                SKSE::log::info("Ceremony: step {}: {} waits for everyone to take their places", g_step + 1,
                                 NameOf(IdOf(step.speaker)));
                 return;
             }
@@ -1076,10 +1100,38 @@ namespace SNRom::Ceremony {
             if (g_judging) {
                 return;
             }
+            if (g_gathering) {
+                g_gathered += step;
+                const auto [places, settled] = WeddingPlan::PlacesSettled();
+                const bool all = places > 0 ? settled >= places : g_gathered >= kGatherMin + 2.0f;
+                if (g_heard || (all && g_gathered >= kGatherMin) || g_gathered >= kGatherMax) {
+                    g_gathering = false;
+                    if (g_heard || all) {
+                        SKSE::log::info("Ceremony: {} of {} in their places after {:.0f} s; it begins", settled, places,
+                                        g_gathered);
+                    } else {
+                        SKSE::log::info("Ceremony: {} of {} in their places after {:.0f} s; it begins without "
+                                        "waiting longer for {}",
+                                        settled, places, g_gathered, WeddingPlan::PlacesWaiting());
+                    }
+                    if (!g_heard) {
+                        CueNow();
+                    }
+                }
+                return;
+            }
             // THE KISS, AND ANY SCENE IT BECAME (the author, 2026-10-31): the
             // officiant presents them once it is over, not during it.
             if (kissing && (g_heard || scene)) {
                 g_kissed += step;
+                if (g_heard && !scene && !g_kissAsked && g_kissed >= kKissAskAfter) {
+                    g_kissAsked = true;
+                    g_kissed = 0.0f;   // the beat counts again, from the asking
+                    SKSE::log::info("Ceremony: step {}: the kiss was said and nothing plays it; asking for one",
+                                    g_step + 1);
+                    SendEvent("SNRom_CeremonyKiss", "", static_cast<float>(g_token), g_betrothed);
+                    return;
+                }
                 if (scene && !g_inScene) {
                     g_inScene = true;
                     SKSE::log::info("Ceremony: step {}: the kiss is a scene; waiting it out", g_step + 1);
@@ -1087,7 +1139,8 @@ namespace SNRom::Ceremony {
                 if (scene && g_kissed < kSceneCap) {
                     return;
                 }
-                if (!scene && g_kissed >= (g_inScene ? step : kKissBeat)) {
+                // Asked for, each kind is given a few seconds to begin.
+                if (!scene && g_kissed >= (g_inScene ? step : g_kissAsked ? 2.0f * kKissBeat : kKissBeat)) {
                     Next();
                 } else if (scene) {
                     Finish("the scene went on too long");
@@ -1164,6 +1217,7 @@ namespace SNRom::Ceremony {
             g_ahead.clear();
             g_carry.clear();
             g_pronounced = false;
+            g_gathering = false;
             SKSE::log::info("Ceremony: over ({})", a_married ? "married" : a_why);
             if (!a_married) {
                 // A planned day that stalled or met a no waits for the
@@ -1243,6 +1297,8 @@ namespace SNRom::Ceremony {
         g_carry.clear();
         g_pronounced = false;
         g_away = 0.0f;
+        g_gathering = a_planned;
+        g_gathered = 0.0f;
         SetBusy(true);
         SKSE::log::info("Ceremony: {:08X} begins marrying the player to {:08X}", g_officiant, g_betrothed);
         Watch(++g_generation);
@@ -1314,6 +1370,29 @@ namespace SNRom::Ceremony {
         const float length = 2.0f + static_cast<float>(g_lastLength) / 11.0f;
         const float since = std::chrono::duration<float>(std::chrono::steady_clock::now() - g_lastHeardAt).count();
         return std::max(0.0f, length - since - (kFloorWait - kFloorMargin));
+    }
+
+    bool KissPlaying() {
+        return g_active && KissScene();
+    }
+
+    bool KissOStim(RE::Actor* a_from, RE::Actor* a_to) {
+        auto* vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+        if (!vm || !a_from || !a_to || !vm->TypeIsValid("TTON_OStimIntegration")) {
+            SKSE::log::info("Ceremony: OStimNet is not installed; no OStim kiss");
+            return false;
+        }
+        // StartOStimCaring(initiator, participant, actions, intent, main, secondary):
+        // the scene itself, as its StartCareScene action plays it once the
+        // player has confirmed and its judge has agreed.
+        auto* args = RE::MakeFunctionArguments(std::move(a_from), std::move(a_to), RE::BSFixedString("kissing"),
+                                               RE::BSFixedString("romantic"), static_cast<RE::Actor*>(nullptr),
+                                               static_cast<RE::Actor*>(nullptr));
+        RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> callback;
+        const bool sent = vm->DispatchStaticCall("TTON_OStimIntegration", "StartOStimCaring", args, callback);
+        delete args;
+        SKSE::log::info("Ceremony: OStimNet asked for a kiss{}", sent ? "" : " (the call failed)");
+        return sent;
     }
 
     bool CueWanted(std::int32_t a_token) {
