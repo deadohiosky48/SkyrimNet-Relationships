@@ -650,12 +650,21 @@ namespace SNRom::Painting {
                 }
                 g_sit.candidate = 0;
                 g_sit.widened = 0;
-                if (!camera->IsInFreeCameraMode()) {
+                // ONLY OURS TURNED OFF (suspected in play, wpm99: after an
+                // OStim scene the player could not move). Free already - a
+                // scene's own camera - it was turned off at the end all the
+                // same, and the scene's own ending then turned it back on.
+                // Now it is left as it was found.
+                const bool alreadyFree = camera->IsInFreeCameraMode();
+                if (!alreadyFree) {
                     camera->ToggleFreeCameraMode(false);
                 }
-                g_sit.freeCamera = camera->IsInFreeCameraMode();
-                if (!g_sit.freeCamera) {
+                if (!camera->IsInFreeCameraMode()) {
                     return Abort("the camera could not be moved");
+                }
+                g_sit.freeCamera = !alreadyFree;
+                if (alreadyFree) {
+                    SKSE::log::info("Painting: the camera was free already (a scene's own); it is left free after");
                 }
                 ui->ShowMenus(false);
                 g_sit.menusHidden = true;
