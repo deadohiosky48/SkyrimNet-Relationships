@@ -522,11 +522,23 @@ namespace SNRom::Painting {
                 // put the camera in front of the player, with the partner's
                 // back to it. Facing each other, the picture is the side
                 // view: the camera off the player's right, both in profile.
+                // AT ONE SPOT (seen in play, wpm98: an OStim kiss, 0 apart):
+                // the scene sets both headings alike and the animation turns
+                // them, so their headings say nothing. Their heads do: the
+                // camera stands square to the line between the two heads.
                 const float pfx = std::sin(heading), pfy = std::cos(heading);
                 const float sh = partner->GetAngleZ();
-                const bool  facing = pfx * std::sin(sh) + pfy * std::cos(sh) < -0.7f &&
-                                    (apart < 20.0f || (ax * pfx + ay * pfy) / apart > 0.7f);
-                if (facing) {
+                const auto  ph = HeadOf(player), sp = HeadOf(partner);
+                const float hx = sp.x - ph.x, hy = sp.y - ph.y, heads = std::hypot(hx, hy);
+                const bool  oneSpot = apart < 20.0f;
+                const bool  facing = oneSpot || (pfx * std::sin(sh) + pfy * std::cos(sh) < -0.7f &&
+                                                 (ax * pfx + ay * pfy) / apart > 0.7f);
+                if (oneSpot && heads > 4.0f) {
+                    g_sit.side = { -hy / heads, hx / heads, 0.0f };
+                    if (g_sit.side.x * pfy - g_sit.side.y * pfx < 0.0f) {   // the player's right of the two
+                        g_sit.side = { hy / heads, -hx / heads, 0.0f };
+                    }
+                } else if (facing) {
                     g_sit.side = { pfy, -pfx, 0.0f };   // the player's right
                 } else {
                     if (apart < 20.0f) {
@@ -541,8 +553,8 @@ namespace SNRom::Painting {
                         g_sit.side = { ay, -ax, 0.0f };
                     }
                 }
-                SKSE::log::info("Painting: posed {} ({:.0f} apart)", facing ? "from the side, facing each other" :
-                                                                              "from the front, side by side", apart);
+                SKSE::log::info("Painting: posed {} ({:.0f} apart, heads {:.0f} apart)",
+                                facing ? "from the side, facing each other" : "from the front, side by side", apart, heads);
                 g_sit.distance = 190.0f + apart * 0.6f;
                 g_sit.candidate = 0;
                 g_sit.widened = 0;
