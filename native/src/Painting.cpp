@@ -282,6 +282,7 @@ namespace SNRom::Painting {
             bool         firstPerson = false;
             bool         freeCamera = false;
             bool         menusHidden = false;
+            bool         heldStill = false;  // we stopped the world (Main::freezeTime)
             bool         facing = false;  // facing each other: left as they stand
             RE::NiPoint3 mid;
             RE::NiPoint3 side;  // from the couple toward the camera, level
@@ -460,6 +461,12 @@ namespace SNRom::Painting {
                     ui->ShowMenus(true);
                 }
             }
+            if (g_sit.heldStill) {
+                if (auto* main = RE::Main::GetSingleton()) {
+                    main->GetRuntimeData().freezeTime = false;
+                }
+                g_sit.heldStill = false;
+            }
             const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - g_sit.began).count();
             SKSE::log::info("Painting: the sitting ends ({}), {} frames, {} ms", a_why, g_sit.total, ms);
             g_sit.phase = Phase::kIdle;
@@ -551,6 +558,23 @@ namespace SNRom::Painting {
                 if (ui->GameIsPaused()) {
                     g_sit.frames = 0;
                     return;
+                }
+                // HELD STILL (seen in play, wpm101: an OStim kiss had let go
+                // by the time the frame was caught, 2.6 s after the dashboard
+                // closed). In a scene - the camera free already, or the two
+                // at one spot - the world stops the moment the game runs
+                // again, as a photo mode stops it: the camera still moves and
+                // the frame is still drawn, and the kiss waits for the
+                // picture. Restore lets it go on every way out.
+                if (g_sit.frames == 0 && !g_sit.heldStill && partner) {
+                    auto*       main = RE::Main::GetSingleton();
+                    const float apart = player->GetPosition().GetDistance(partner->GetPosition());
+                    if (main && !main->GetRuntimeData().freezeTime && (camera->IsInFreeCameraMode() || apart < 20.0f)) {
+                        main->GetRuntimeData().freezeTime = true;
+                        g_sit.heldStill = true;
+                        SKSE::log::info("Painting: in a scene ({:.0f} apart{}); the world is held still for the sitting",
+                                        apart, camera->IsInFreeCameraMode() ? ", the camera free" : "");
+                    }
                 }
                 if (++g_sit.frames < 20) {
                     return;
