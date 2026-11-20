@@ -4567,8 +4567,13 @@ EndFunction
 ; message wants.
 Bool _attrQuiet
 
-OCR_AttractionUtil Function AttractionSource()
+OCR_AttractionUtil Function OcrUtil()
     { Resolve OCR's attraction calculator, or None with the reason logged once.
+
+      NEVER NAME THIS AttractionSource (wpm96-102 did): the compiler interns
+      strings case-insensitively, identifiers first, so the setting key
+      "attractionSource" was asked for as "AttractionSource", SkyrimNet's
+      case-sensitive lookup missed, and the setting always read its default.
 
       Order matters. The plugin check comes first because "OCR is not installed"
       is the overwhelmingly common answer and must stay cheap and quiet; the
@@ -4659,7 +4664,7 @@ Function RefreshAttraction(Actor akActor)
         Return
     EndIf
     _attrQuiet = False                          ; a probe always states its reason
-    OCR_AttractionUtil util = AttractionSource()
+    OCR_AttractionUtil util = OcrUtil()
     If util == None
         Return
     EndIf
@@ -4871,7 +4876,10 @@ Function RefreshNextLooks()
     Float best = -1.0
     While i < n
         Actor a = _observers[i]
-        If a != None && (now - StorageUtil.GetFloatValue(a, "SNRom_LastLooksTry", 0.0)) >= 0.25
+        ; Never a child (wpm102 in play: the judge was asked how the player's
+        ; young daughter and son see their father's body). Children reach the
+        ; roster through family and Kinship, so the observers include them.
+        If a != None && !a.IsChild() && (now - StorageUtil.GetFloatValue(a, "SNRom_LastLooksTry", 0.0)) >= 0.25
             Float score = -1.0
             Float age = now - StorageUtil.GetFloatValue(a, "SNRom_LastLooksCheck", 0.0)
             If StorageUtil.GetIntValue(a, "SNRom_LooksWord", 0) == 0
@@ -4995,7 +5003,9 @@ Function RefreshNextAttraction()
         ; ratio only matters while they are with the player, and refreshing it
         ; for someone dismissed to Whiterun spends the budget on a number
         ; nothing will read.
-        If a != None
+        ; Never a child: attraction means nothing there, and OCR's reading
+        ; would give them a social class and an "enthusiast" trait besides.
+        If a != None && !a.IsChild()
             Float last = StorageUtil.GetFloatValue(a, "SNRom_LastAttrCheck", 0.0)
             If (now - last) >= interval && (now - last) > bestWait
                 bestWait = now - last
@@ -5010,7 +5020,7 @@ Function RefreshNextAttraction()
     ; Resolve AFTER choosing, not before. With everyone up to date this function
     ; is then just StorageUtil reads, and the two GetFormFromFile calls are only
     ; paid on a tick that is actually going to do something.
-    OCR_AttractionUtil util = AttractionSource()
+    OCR_AttractionUtil util = OcrUtil()
     If util == None
         Return                                  ; reason already logged, once
     EndIf
