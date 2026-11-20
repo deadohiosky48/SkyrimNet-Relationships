@@ -54,7 +54,7 @@ namespace SNRom::Dashboard {
         // The wedding painting is shelved for a later release (the author,
         // 2026-11-19). Its two requests are refused, and nothing else starts a
         // sitting, so the painter's camera and Present hook never run.
-        constexpr bool kPaintingShelved = true;
+        constexpr bool kPaintingShelved = false;
 
         std::unique_ptr<ViewHost> g_host;  // null: no UI framework installed
         bool                      g_created = false;

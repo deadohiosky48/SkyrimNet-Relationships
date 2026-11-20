@@ -402,9 +402,10 @@
       if (m.ringToPlayer) kv(mdl, t("detail.ringToYou", "Their ring to you"), m.ringToPlayer);
       ms.appendChild(mdl);
       if (m.plan) ms.appendChild(this.planBlock(m.plan, b, snap));
-      // The wedding painting's feasibility test is shelved (the author,
-      // 2026-11-19: a later release). paintingTest stays, unshown, and the DLL
-      // refuses its requests (Dashboard.cpp, kPaintingShelved).
+      // The wedding painting, by hand (2.6). Shelved 2026-11-19 over a control
+      // loss that was OStimNet's and Magelight's, fixed by them; back the next
+      // day. Dashboard.cpp's kPaintingShelved switches both sides off together.
+      if (m.state === "married" || m.state === "engaged" || m.state === "separated") ms.appendChild(paintingTest(b));
       scroll.appendChild(ms);
     }
 
