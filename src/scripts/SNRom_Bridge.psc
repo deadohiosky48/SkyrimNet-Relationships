@@ -3143,13 +3143,43 @@ Function LedgerRow(Actor akActor, String asChannel, String asActivity, Int aiDel
     EndIf
 EndFunction
 
+Int Function SAVE_STRING_MAX() Global
+    { THE LONGEST PAPYRUS STRING A SAVE CAN BE LOADED WITH (2.6, a player's
+      report, 2026-11-21). The game writes any string live in the VM when the
+      save is made - a script variable, an array element, or a local on a
+      suspended stack - and reads each one back into a 4,096-byte buffer. A
+      longer one overruns the buffer and its pointer, and the save crashes the
+      game on every load (SkyrimSE.exe+143E7DD, under SaveFileHandleReaderWriter,
+      with no plugin frame). Writing it is fine; only loading fails, so nothing
+      warns anyone in time.
+
+      The report's save held snrom_met_scan's whole render, 5,288 characters,
+      in ScanConversations' `out` while its loop ran. So: a render is never
+      kept after it is split, a string that grows in a loop is capped at
+      SAVE_STRING_SAFE, and nothing over the limit is held across a call that
+      waits (the authoring catalogue's keys are an array, not a "|" list). }
+    Return 4096
+EndFunction
+
+Int Function SAVE_STRING_SAFE() Global
+    { Where a growing string stops growing: under SAVE_STRING_MAX with room
+      for whatever one more step adds. }
+    Return 3000
+EndFunction
+
 Function FlushLedger()
     If _ledgerCount <= 0
         Return
     EndIf
+    ; In pieces under SAVE_STRING_SAFE: 32 rows with a talk award's reason
+    ; each run well past SAVE_STRING_MAX as one blob.
     Int i = 0
     String blob = ""
     While i < _ledgerCount
+        If blob != "" && StringUtil.GetLength(blob) + StringUtil.GetLength(_ledgerBuf[i]) > SAVE_STRING_SAFE()
+            WriteLog("ledger.jsonl", LedgerPath(), blob)
+            blob = ""
+        EndIf
         blob += _ledgerBuf[i] + "\n"
         i += 1
     EndWhile
@@ -4221,20 +4251,28 @@ Function AuthorDisposition(Actor akActor)
     ; npc_candidate the prompt cannot contradict that, so it was believing a
     ; peer system about a fact that system does not own. One extra call on a
     ; path that runs once per character, not per tick.
-    String ctx = "{\"npc_name\":\"" + _pendingName + "\"" + \
+    ; THE CATALOGUE GOES IN LAST (2.6, SAVE_STRING_MAX). With the default
+    ; library the context runs past 4,096 characters, so it must exist for as
+    ; short a time as possible: every other part, each a call that can yield,
+    ; is built first, and the context is cleared as soon as it is sent. The
+    ; fields keep their order.
+    String head = "{\"npc_name\":\"" + _pendingName + "\"" + \
         ",\"npc_formid\":" + akActor.GetFormID() + \
 \
         ",\"npc_married\":" + marriedFlag + MarasContext(akActor) + \
-        ",\"circle\":\"" + circleText + "\"" + \
-        ",\"other_blocks\":\"" + OtherBlocksCatalogue(akActor) + "\"" + \
-        ",\"npc_bio\":\"" + b.GetRace().GetName() + ", " + \
+        ",\"circle\":\"" + circleText + "\""
+    String tail = ",\"npc_bio\":\"" + b.GetRace().GetName() + ", " + \
         SNRom_Decorators.SexWord(b.GetSex()) + ", level " + akActor.GetLevel() + \
         ". Known to the Dragonborn.\"" + LanguageContext() + "}"
+    String ctx = head + ",\"other_blocks\":\"" + OtherBlocksCatalogue(akActor) + "\"" + tail
 
     Int rc = SkyrimNetApi.SendCustomPromptToLLM("snrom_author_disposition", VariantName(), ctx, \
         Self, "SNRom_Bridge", "OnDispositionAuthored")   ; this script IS the quest
+    ctx = ""
     Diag(LOG_INFO(), "Disposition authoring requested for " + _pendingName + " variant='" + VariantName() + "' (rc=" + rc + ")")
     If rc != 1
+        _otherKeyArr = None                     ; no answer is coming to read them against
+        _otherRankArr = None
         Diag(LOG_ERROR(), "SendCustomPromptToLLM failed (rc=" + rc + ") - falling back to archetype")
         ApplyArchetype(_pendingActor)
         _pendingActor = None
@@ -9094,6 +9132,7 @@ String Function AddressRefusal(Actor akActor, String asValue, Float afSinceSec)
             StringUtil.Substring(out, 0, 80) + ")"
     EndIf
     String[] lines = StringUtil.Split(out, "\n")
+    out = ""                                    ; never live past here: see SAVE_STRING_MAX
     Int seen = 0
     i = 0
     While i < lines.Length
@@ -12781,7 +12820,8 @@ Event OnDispositionAuthored(String asResponse, Int aiSuccess)
     ; the response, a failure left it "?" (lifted limits go back on).
     SyncAfterAuthoring(who, _limitPicks)
     ApplyOtherBlocks(who, _otherPicks)
-    _otherKeys = ""
+    _otherKeyArr = None
+    _otherRankArr = None
     If _dashText || _dashNatives >= 14
         PushBond(who, 0)
     EndIf
@@ -13479,6 +13519,7 @@ Function ScanSignificantEvents()
     Int newMark = mark
     Int windowOldest = 0
     String[] lines = StringUtil.Split(out, "\n")
+    out = ""                                    ; never live past here: see SAVE_STRING_MAX
     Int i = 0
     While i < lines.Length
         String[] f = StringUtil.Split(SNRom_Decorators.Trim(lines[i]), " ")
@@ -13571,7 +13612,9 @@ Function ScanConversations()
     Int considered = 0
     Int enrolled = 0
     String report = ""
+    Int unreported = 0
     String[] lines = StringUtil.Split(out, "\n")
+    out = ""                                    ; never live past here: see SAVE_STRING_MAX
     Int i = 0
     While i < lines.Length
         String line = SNRom_Decorators.Trim(lines[i])
@@ -13620,6 +13663,13 @@ Function ScanConversations()
                 If !enrollOn
                     ; stamping only
                 ElseIf !fresh && id > mark && StringUtil.Find(seen, "," + f[1] + ",") < 0
+                    ; Bounded (SAVE_STRING_MAX): a UUID is about 20 digits, so
+                    ; 300 different people would pass the limit. Starting over
+                    ; can only consider someone twice, and a second look at
+                    ; someone just enrolled refuses them as already enrolled.
+                    If StringUtil.GetLength(seen) > SAVE_STRING_SAFE()
+                        seen = ","
+                    EndIf
                     seen += f[1] + ","
                     considered += 1
                     ; The record prints UUIDs in decimal; GetActorByUUID wants
@@ -13637,10 +13687,14 @@ Function ScanConversations()
                         enrolled += 1
                         why = "enrolled"
                     EndIf
-                    If report != ""
-                        report += "; "
+                    If StringUtil.GetLength(report) > SAVE_STRING_SAFE()
+                        unreported += 1                 ; counted, not listed (SAVE_STRING_MAX)
+                    Else
+                        If report != ""
+                            report += "; "
+                        EndIf
+                        report += name + " - " + why
                     EndIf
-                    report += name + " - " + why
                 EndIf
             EndIf
         EndIf
@@ -13670,6 +13724,9 @@ Function ScanConversations()
     If considered > 0
         ; Every person, with the outcome or the reason: a conversation that
         ; enrolled nobody must say why, or it reads as the feature not working.
+        If unreported > 0
+            report += "; and " + unreported + " more"
+        EndIf
         Diag(LOG_INFO(), "Conversation scan, " + considered + " talked with you since the last scan, " + enrolled + \
             " enrolled: " + report + ".")
     EndIf
@@ -14144,9 +14201,15 @@ EndFunction
 ; that does not answer OTHER_BLOCKS puts them back.
 ; ===========================================================================
 
-String _otherKeys = ""   ; the catalogue sent with the authoring in flight, "|k1|k2|...", in number order
+; The catalogue sent with the authoring in flight, entry N at index N-1, and
+; each entry's OtherTabRank. None when nothing is in flight. ARRAYS, NOT "|"
+; LISTS (2.6): they live for the whole model call, so a save made then holds
+; them, and the default library's keys joined came to about 7,900 characters -
+; past SAVE_STRING_MAX, a save that crashes on load. One short key per element
+; is safe at any count.
+String[] _otherKeyArr
+Int[] _otherRankArr
 String _otherPicks = "?" ; its OTHER_BLOCKS answer, as "|"-joined keys; "?" = none given
-String _otherRanks = ""  ; each catalogue entry's OtherTabRank, "|r1|r2|...", in number order
 
 Bool Function OtherBlocksOn()
     Return _bioApiVer >= 4 && BioAssignOn() && SkyrimNetApi.GetConfigBool(CFG(), "bioBlocksOthers", True)
@@ -14211,11 +14274,12 @@ EndFunction
 
 String Function OtherBlocksCatalogue(Actor akActor)
     { The numbered catalogue for authoring, already JSON-safe (lines joined by
-      a literal backslash-n), and _otherKeys to read the answer back. "" when
+      a literal backslash-n), and _otherKeyArr to read the answer back. "" when
       the feature is off, nothing can be offered, or every tab is the
       player's. Tabs the player holds a block in, or emptied of ours, are left
       out. }
-    _otherKeys = ""
+    _otherKeyArr = None
+    _otherRankArr = None
     If akActor == None || !OtherBlocksOn()
         Return ""
     EndIf
@@ -14277,9 +14341,15 @@ String Function OtherBlocksCatalogue(Actor akActor)
         i += 1
     EndWhile
 
-    String out = ""
-    String keyList = "|"
-    String rankList = "|"
+    ; THE TEXT IS BUILT IN PIECES AND JOINED ONCE, natively (2.6). Grown with
+    ; += it passed SAVE_STRING_MAX partway through this loop, which calls
+    ; JsonEscape per title and so runs long enough for a save to land in it.
+    ; Now the whole text exists only from the join to the send.
+    ; One slot per entry, its tab heading in front of the first: the same
+    ; size as the arrays above, which play has already proven at this count.
+    String[] parts = Utility.CreateStringArray(n + 1)
+    String[] keyArr = Utility.CreateStringArray(n + 1)
+    Int[] rankArr = Utility.CreateIntArray(n + 1)
     Int num = 0
     Int rank = 1
     While rank <= 12
@@ -14287,14 +14357,15 @@ String Function OtherBlocksCatalogue(Actor akActor)
         i = 0
         While i < n
             If ranks[i] == rank
+                String heading = ""
                 If tabs[i] != lastTab
-                    out += "\\n" + SNRom_Decorators.JsonEscape(tabs[i]) + ":\\n"
+                    heading = "\\n" + SNRom_Decorators.JsonEscape(tabs[i]) + ":\\n"
                     lastTab = tabs[i]
                 EndIf
+                parts[num] = heading + (num + 1) + ". " + SNRom_Decorators.JsonEscape(titles[i]) + "\\n"
+                keyArr[num] = keys[i]
+                rankArr[num] = ranks[i]
                 num += 1
-                out += "" + num + ". " + SNRom_Decorators.JsonEscape(titles[i]) + "\\n"
-                keyList += keys[i] + "|"
-                rankList += ranks[i] + "|"
             EndIf
             i += 1
         EndWhile
@@ -14303,10 +14374,11 @@ String Function OtherBlocksCatalogue(Actor akActor)
     If num == 0
         Return ""
     EndIf
-    _otherKeys = keyList
-    _otherRanks = rankList
+    _otherKeyArr = keyArr
+    _otherRankArr = rankArr
     Diag(LOG_DEBUG(), "Other blocks: offered " + num + " to the authoring of " + akActor.GetDisplayName())
-    Return out
+    ; Unused slots are "" and join to nothing.
+    Return PapyrusUtil.StringJoin(parts, "")
 EndFunction
 
 String Function ParseOtherPicks(String asResponse)
@@ -14316,15 +14388,15 @@ String Function ParseOtherPicks(String asResponse)
       unknown numbers dropped. A run of four or more consecutive
       numbers is refused whole: that is the list copied down, not a choice
       (snrom-prompt-lessons). }
-    If _otherKeys == ""
+    If !_otherKeyArr || !_otherRankArr
         Return "?"
     EndIf
     String line = SNRom_Decorators.FieldValue(asResponse, "OTHER_BLOCKS:")
     If line == ""
         Return "?"
     EndIf
-    String[] keys = StringUtil.Split(_otherKeys, "|")
-    String[] rk = StringUtil.Split(_otherRanks, "|")
+    String[] keys = _otherKeyArr
+    Int[] rk = _otherRankArr
     String[] words = StringUtil.Split(line, ",")
     String picks = "|"
     Int got = 0
