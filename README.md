@@ -197,14 +197,43 @@ turn. Afterwards the guests stay to celebrate. If the day comes with the plan
 unfinished, the wedding is simply put off; if you never come, your betrothed
 will feel it.
 
+**The kiss, played and painted.** When the officiant invites the kiss and your
+betrothed kisses you only in words, a kiss is played for you: OStimNet's, then
+Baka's KissLove, or whatever you list under **Wedding Kiss Animations**. As it
+plays, a painter catches the moment your lips meet: the world holds still for a
+breath, the camera finds the two of you, and the painting hangs on your
+spouse's card with a description of what it shows, written by SkyrimNet's
+vision model. Sit for another whenever you like from a spouse's or betrothed's
+card, standing together or in the middle of a kiss. The full-size paintings are
+kept in your SKSE folder under `Relationships\Paintings`. Turn **Paint the
+Wedding Kiss** off to keep the camera where it is at the altar.
+
 **One spouse, unless you choose otherwise.** In Skyrim one spouse is the rule.
 Turn on **Marry More Than One Spouse** in the settings to marry again while
 married. Turning it off never undoes a marriage you have.
 
+**Already married the old way? It counts.** Someone you married at the Temple
+of Mara before installing, or through another mod that marries the way Skyrim
+does, is recorded as your spouse on their own: enroll them if they are not on
+the roster yet, and the marriage is on their card the next time you open the
+dashboard. The game never kept the date, so that wedding has no anniversary on
+the calendar.
+
+**Or by their own mod's.** Some followers come with a marriage of their own. On
+such a follower's card, **Leave marriage to their own mod**: Relationships then
+offers them no proposal, engagement, ring or wedding, so it never gets in that
+mod's way, and everything else about your bond goes on. When their mod marries
+you and the game records it, the marriage is on their card.
+
 **And the rest of a marriage.** The dashboard's calendar keeps your wedding days,
 anniversaries, the birthdays of your children and Skyrim's festivals. Each card
-shows family: parents, children, and who they had them with. A marriage that
-ended where the game never saw it can be recorded as a divorce from the card.
+shows family: parents, children, adopted or born, and who they had them with.
+The **family tree**, from the top of the dashboard, draws your spouses, former
+and late, the other parents of your children, and the children of all of them,
+a branch at a time; with SkyrimNet Kinship installed, its children are there
+too. Sleep near any of your spouses, not only the first, and you wake with
+Lover's Comfort. A marriage that ended where the game never saw it can be
+recorded as a divorce from the card.
 
 **Getting the most out of it.** What this mod reads about the people you know,
 and how to make sure your save has something worth reading — especially if you
@@ -224,6 +253,12 @@ If someone not yet enrolled was under your crosshair when you opened it, the
 dashboard offers to **enroll** them. Each card also carries the repairs —
 re-read their standing, re-author their character, correct one trait, remove
 them from the roster — so none of them needs a key or the console.
+
+Removing someone also offers to block their **factions**, so nobody else from
+them is enrolled automatically: a guard post, a bandit camp, a follower mod's
+whole household. The block holds in every playthrough, enrolling by hand still
+works, and the dashboard lists each one under *Factions never enrolled*, where
+it can be allowed again.
 
 **Developer view** (a setting, off by default) shows what characters have not
 said aloud — feelings they have not spoken, a question they are waiting to ask,
@@ -283,6 +318,8 @@ inert; nothing errors and no prompt breaks.
 |---|---|
 | SeverActions | follower detection, including for companions you already know. From **3.9.11** it detects this mod and steps its own Intimacy & Consent section aside, so nobody is handed two ideas of how receptive they are. From **4.0.1** everyone you enroll gets this mod's Relationships bio blocks, chosen from their character - see *Bio blocks* below. At a wedding, your betrothed's chosen clothes are kept as a SeverActions outfit, and guests travel to the place on their own; without it they wear what they wear, and you bring the guests |
 | OStim Community Resource | physical attraction as an input, for characters whose disposition allows it to matter |
+| Body Language | your looks as an input to attraction: each person judges your body's description against their own tastes. See **Attraction Source** in the settings |
+| OStimNet, or Baka's kiss animations through SkyrimNet | the wedding kiss played, and painted |
 | OStim NG or SexLab | tier notices wait until a scene is over |
 | [SkyrimNet-Kinship](https://github.com/deadohiosky48/SkyrimNet-Kinship) | your own children are barred from the romantic and sexual ladders, and appear in the family and the calendar |
 | MARAS | only to bring its marriages over — see *Moving from MARAS* |
@@ -315,6 +352,25 @@ Installing by hand: copy `00 Core` and one of `10 Plugin as ESL` or
 `11 Plugin as ESP` over your `Data` folder.
 
 Settings appear in SkyrimNet's plugin panel under **SkyrimNet Relationships**.
+
+## Upgrading from 2.5
+
+Install over 2.5 with Replace and load your save: bonds, histories, marriages
+and characters carry over.
+
+Three settings are new. SkyrimNet does not add new settings to a
+`settings.yaml` that already exists, so they work at their defaults
+(**Attraction Source** Both, **Wedding Kiss Animations** OStim, KissLove,
+**Paint the Wedding Kiss** on) but will not remember being changed. To be able
+to change them, add these lines to
+`SKSE\Plugins\SkyrimNet\config\plugins\SkyrimNet Relationships\settings.yaml`
+while the game is closed:
+
+```yaml
+attractionSource: Both
+weddingKissActions: "OStim, KissLove"
+weddingPainting: true
+```
 
 ## Upgrading from 2.4
 
@@ -589,6 +645,9 @@ Known limitations, honestly:
 - **Marrying more than once is a setting, for now.** A quest to earn Mara's
   exception may come in a later release; until then, **Marry More Than One
   Spouse** stands in for it.
+- **The painter frames what it can.** A wall or foliage close by can stand
+  between the camera and the two of you, and in a kiss one face can be turned
+  from it. Sit again for another; the card keeps the newest.
 - **A wedding plan is written by a model.** What you agree with the planner is
   recorded by the model choosing actions, with a second reading of the
   conversation behind it, and once in a while something is still missed.
