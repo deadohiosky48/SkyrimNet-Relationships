@@ -236,6 +236,9 @@ namespace SNRom::Model {
         Push PutNumbers(std::int32_t a_generation, std::int32_t a_formId, const std::vector<std::int32_t>& a_values);
         Push PutText(std::int32_t a_generation, std::int32_t a_formId, const std::vector<std::string>& a_values);
         Push PutPlaythrough(std::int32_t a_generation, std::string a_id, std::string a_store, std::int32_t a_decision);
+        // The playthrough's id as Papyrus last pushed it, "" before the first
+        // refresh (the paintings are kept per playthrough, Painting.cpp).
+        std::string PlaythroughId() const;
         // Once per refresh: what Papyrus fetched with the batch APIs.
         Push PutFacts(std::int32_t a_generation, Display::BatchFacts a_facts);
         Display::BatchFacts Facts() const;

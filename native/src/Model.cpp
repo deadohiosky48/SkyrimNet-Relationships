@@ -394,6 +394,11 @@ namespace SNRom::Model {
         return Push::kAccepted;
     }
 
+    std::string ReadModel::PlaythroughId() const {
+        const std::scoped_lock lock{ m_lock };
+        return m_playthrough ? m_playthrough->id : std::string{};
+    }
+
     Push ReadModel::PutFacts(std::int32_t a_generation, Display::BatchFacts a_facts) {
         const std::scoped_lock lock{ m_lock };
         if (StaleLocked(a_generation)) {

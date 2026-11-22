@@ -39,6 +39,9 @@ namespace SNRom::Settings {
         // (Marriage::SetException). Until a quest earns it, the setting is
         // Mara's exception.
         std::optional<bool>         polygamy;
+        // weddingPainting (2.6): whether the wedding kiss is painted
+        // (Ceremony.cpp, Painting.h).
+        std::optional<bool>         weddingPainting;
 
         // The crosshair keys (Hotkey.h), re-read, re-author and enroll in that
         // order: rereadKey, reauthorKey, enrollKey, each a virtual key, and
@@ -57,12 +60,16 @@ namespace SNRom::Settings {
             for (std::size_t i = 0; i < 3; ++i) {
                 keys = keys || crosshairKey[i] || crosshairModifier[i];
             }
-            return keys || hotkey || modifier || developer || scale || textSize || attractionBypassRatio || polygamy;
+            return keys || hotkey || modifier || developer || scale || textSize || attractionBypassRatio || polygamy ||
+                   weddingPainting;
         }
     };
 
     // attractionBypassRatio as the file last said, or its manifest default (1.5).
     float AttractionBypassRatio();
+
+    // weddingPainting as the file last said, or its manifest default (on).
+    bool WeddingPainting();
 
     // The parser on its own: flat `key: value` lines, as SkyrimNet writes them.
     Values Parse(std::string_view a_text);

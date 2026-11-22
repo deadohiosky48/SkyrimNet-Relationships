@@ -1,27 +1,29 @@
 [ system ]
 {# ══════════════════════════════════════════════════════════════════════════
-   THE WEDDING PAINTING (2.6 test build; native/src/Painting.cpp). A portrait
-   the painter made of the player and their partner, described by the vision
-   model so the people of Skyrim can know what it shows and talk about it.
-   Sent with the "vision" variant. Rendered with painting_image (a JPEG data
-   URL of the painting), painting_player, painting_partner, painting_left and
-   painting_right (who stands on each side, as a viewer sees the canvas) and
-   painting_place (where it was painted; may be empty). [ system ] and
+   THE PAINTING (2.6; native/src/Painting.cpp). A portrait the painter made
+   of the player and their partner, described by the vision model for the
+   card. Sent with the "vision" variant. Rendered with painting_image (a JPEG
+   data URL of the painting), painting_player, painting_partner, painting_left
+   and painting_right (who stands on each side, as a viewer sees the canvas),
+   painting_place (where it was painted; may be empty), and painting_kiss and
+   painting_wedding (true when it was painted as they kissed, and at their
+   wedding; the model hedged a kiss as "turned toward each other" without
+   them, seen in play, wpm106). [ system ] and
    [ user ] markers are required: without them the messages array is empty.
    ══════════════════════════════════════════════════════════════════════════ #}
 You look at an oil portrait painted in Skyrim and say what it shows, as someone of that world would describe the canvas to a friend who has not seen it. You answer with JSON only.
 [ user ]
-This is an oil portrait of {{ painting_player }} and {{ painting_partner }}, painted from life{% if painting_place %} at {{ painting_place }}{% endif %}. Looking at the canvas, {{ painting_left }} stands on the left and {{ painting_right }} on the right.
+This is an oil portrait of {{ painting_player }} and {{ painting_partner }}, painted from life{% if painting_place %} at {{ painting_place }}{% endif %}. Looking at the canvas, {{ painting_left }} stands on the left and {{ painting_right }} on the right.{% if painting_wedding and painting_kiss %} It was painted at their wedding, as they shared their first kiss as a married couple.{% elif painting_wedding %} It was painted at their wedding.{% elif painting_kiss %} It was painted as they kissed.{% endif %}
 
 Answer with this JSON and nothing else, without code fences:
 {# A line opening with a bare brace is parsed as a statement and the whole
    template fails (seen in play, wpm97): the braces are written as text. #}
 {{ "{" }}"title": "...", "description": "..."{{ "}" }}
 
-title: what a person in Skyrim would call this painting, three to seven words, naming them both. For example: "Lydia and Erandur at Riverwood".
+title: what a person in Skyrim would call this painting, three to seven words, naming them both. For example: "Lydia and Erandur at Riverwood"{% if painting_wedding %}, or "The Wedding of Lydia and Erandur"{% endif %}.
 
 description: three or four sentences.
-- Who is shown, by name, and how they stand together: side by side, close, touching, turned toward each other or toward the viewer.
+- Who is shown, by name, and how they stand together: side by side, close, touching, turned toward each other or toward the viewer.{% if painting_kiss %} They are kissing: say so plainly, as part of how they stand together.{% endif %}
 - What each wears, with particular colours and materials: "a green wool gown with a gold-stitched hem", not "fine clothes".
 - Their faces and bearing as the paint shows them: hair, expression, how they hold themselves.
 - What is behind them, and the light.

@@ -6,7 +6,9 @@
 
 #include "Marriage.h"
 #include "Notices.h"
+#include "Painting.h"
 #include "PlanJudge.h"
+#include "Settings.h"
 #include "WeddingPlan.h"
 
 #include <algorithm>
@@ -1135,6 +1137,15 @@ namespace SNRom::Ceremony {
                 if (scene && !g_inScene) {
                     g_inScene = true;
                     SKSE::log::info("Ceremony: step {}: the kiss is a scene; waiting it out", g_step + 1);
+                    // THE WEDDING PAINTING (the author, 2026-11-21): the kiss
+                    // painted as it plays. The painter waits for their heads
+                    // to meet and holds the world still for the picture.
+                    if (Settings::WeddingPainting()) {
+                        const auto why = Painting::Sit(g_betrothed, true);
+                        if (!why.empty()) {
+                            SKSE::log::info("Ceremony: step {}: no painting of the kiss: {}", g_step + 1, why);
+                        }
+                    }
                 }
                 if (scene && g_kissed < kSceneCap) {
                     return;

@@ -4726,8 +4726,7 @@ Function ApplyAttraction(OCR_AttractionUtil akSource, Actor akActor)
     Float bar = SkyrimNetApi.GetConfigFloat(CFG(), "attractionBypassRatio", 1.5)
     Diag(LOG_INFO(), "Attraction: " + akActor.GetDisplayName() + " OCR=" + ocr + " looks=" + \
         LooksWordName(StorageUtil.GetIntValue(akActor, "SNRom_LooksWord", 0)) + " ratio=" + ratio + \
-        " bar=" + bar + " (" + AttrVerdict(ratio >= bar) + "). OCR may have assigned them a social class " + \
-        "and an enthusiast trait as a side effect of this reading.")
+        " bar=" + bar + " (" + AttrVerdict(ratio >= bar) + ").")
 EndFunction
 
 ; ---------------------------------------------------------------------------

@@ -52,9 +52,11 @@ namespace SNRom::Settings {
         constexpr std::string_view kAttractionBypassRatio = "attractionBypassRatio";
         constexpr std::string_view kLanguage = "outputLanguage";
         constexpr std::string_view kPolygamy = "marriagePolygamy";
+        constexpr std::string_view kWeddingPainting = "weddingPainting";
 
         // Read by the API on the game thread, written by Apply on the game thread.
         std::atomic<float> g_attractionBypassRatio{ 1.5f };
+        std::atomic<bool>  g_weddingPainting{ true };
         // The crosshair keys, in Values' order: re-read, re-author, enroll.
         constexpr std::array<std::string_view, 3> kCrosshairKey{ "rereadKey", "reauthorKey", "enrollKey" };
         constexpr std::array<std::string_view, 3> kCrosshairModifier{ "rereadKeyModifier", "reauthorKeyModifier",
@@ -241,6 +243,9 @@ namespace SNRom::Settings {
             // More than one spouse (2.5). Absent from a file saved before
             // 2.5, which means the manifest's default: no.
             Marriage::SetException(a_values.polygamy.value_or(false));
+            // The wedding kiss painted (2.6). Absent from a file saved before
+            // 2.6, which means the manifest's default: yes.
+            g_weddingPainting = a_values.weddingPainting.value_or(true);
             // The words the player reads (L10n.h). Absent from a file saved
             // before 2.3, which means the game's language.
             L10n::SetLanguage(a_values.language.value_or("Game"));
@@ -404,7 +409,8 @@ namespace SNRom::Settings {
             const auto key = Trim(line.substr(0, colon));
             const auto crosshair = CrosshairSetting(key);
             if (!crosshair && key != kHotkey && key != kModifier && key != kDeveloper && key != kScale &&
-                key != kTextSize && key != kAttractionBypassRatio && key != kLanguage && key != kPolygamy) {
+                key != kTextSize && key != kAttractionBypassRatio && key != kLanguage && key != kPolygamy &&
+                key != kWeddingPainting) {
                 continue;
             }
             const auto value = Scalar(Trim(line.substr(colon + 1)));
@@ -472,6 +478,12 @@ namespace SNRom::Settings {
                     values.complaints.push_back(
                         std::format("{} '{}' is not true or false, so it is taken as false", key, *value));
                 }
+            } else if (key == kWeddingPainting) {
+                values.weddingPainting = ToBool(*value);
+                if (!values.weddingPainting) {
+                    values.complaints.push_back(
+                        std::format("{} '{}' is not true or false, so the wedding kiss is painted", key, *value));
+                }
             } else if (key == kScale) {
                 values.scale = ScaleFromName(*value);
                 if (!values.scale) {
@@ -487,6 +499,10 @@ namespace SNRom::Settings {
             }
         }
         return values;
+    }
+
+    bool WeddingPainting() {
+        return g_weddingPainting;
     }
 
     float AttractionBypassRatio() {

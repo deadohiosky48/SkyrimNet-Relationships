@@ -3,6 +3,8 @@
 #include "PCH.h"
 
 #include "Dashboard.h"
+#include "L10n.h"
+#include "Model.h"
 
 #include <algorithm>
 #include <chrono>
@@ -54,16 +56,17 @@ namespace SNRom::Painting {
         };
         Shot g_shot;  // written in Present while g_wantCopy, read after g_copied
 
-        // The latest painting, for the card and ShowOn.
-        std::mutex  g_latestLock;
-        std::string g_latestName;     // file stem
-        std::string g_latestTexture;  // as a texture set names it
-        std::string g_latestSrc;      // PNG data URL, small
-        std::string g_latestPainted;  // full paths, for the card
-        std::string g_latestShot;
-        std::string g_latestTitle;  // the vision model's, "" until it answers
-        std::string g_latestDescription;
-        std::string g_latestDescribing;  // "asked", "failed: why", or ""
+        // The latest painting, while it is described: the card shows it from
+        // here, and from its kept record (Keep) once a later session reads it.
+        std::mutex   g_latestLock;
+        std::string  g_latestName;     // file stem
+        RE::FormID   g_latestPartner = 0;
+        std::string  g_latestPlaythrough;
+        bool         g_latestWedding = false;
+        std::string  g_latestSrc;    // PNG data URL, small
+        std::string  g_latestTitle;  // the vision model's, "" until it answers
+        std::string  g_latestDescription;
+        std::string  g_latestDescribing;  // "asked", "failed: why", or ""
 
         // SkyrimNet's custom prompt (CppAPI/PublicAPI.h, v8+), resolved at the
         // first description.
@@ -262,8 +265,7 @@ namespace SNRom::Painting {
             table[8] = reinterpret_cast<void*>(&OnPresent);
             VirtualProtect(&table[8], sizeof(void*), old, &old);
             g_hooked = true;
-            SKSE::log::info("Painting: watching the frame (Present was at {:X})",
-                            reinterpret_cast<std::uintptr_t>(g_present));
+            SKSE::log::info("Painting: watching the frame");
             return true;
         }
 
@@ -283,6 +285,11 @@ namespace SNRom::Painting {
             bool         freeCamera = false;
             bool         menusHidden = false;
             bool         heldStill = false;  // we stopped the world (Main::freezeTime)
+            bool         wedding = false;    // the ceremony's kiss (Ceremony.cpp), not the card
+            bool         kissSeen = false;   // a wedding's: their heads met before the world stopped
+            int          waited = 0;         // frames a wedding's sitting has waited for the kiss
+            bool         kiss = false;       // painted as they kissed, for the description
+            std::string  playthrough;        // whose paintings it joins (Model's id at the asking)
             bool         facing = false;  // facing each other: left as they stand
             RE::NiPoint3 mid;
             RE::NiPoint3 side;  // from the couple toward the camera, level
@@ -302,6 +309,12 @@ namespace SNRom::Painting {
         constexpr float kPi = 3.14159265f;
         constexpr int   kConventions = 4;
         constexpr int   kMaxFrames = 900;  // ~15 s at 60
+        // Heads closer than this are a kiss (seen in play, wpm106: an OStim
+        // kiss, 17 apart, head bone to head bone).
+        constexpr float kKissHeads = 24.0f;
+        // A wedding's sitting waits this long for the kiss to reach them,
+        // then paints the two of them as they are.
+        constexpr int   kKissWaitFrames = 600;  // ~10 s at 60
 
         RE::Actor* Partner() {
             return RE::TESForm::LookupByID<RE::Actor>(g_sit.partner);
@@ -477,7 +490,8 @@ namespace SNRom::Painting {
             SKSE::log::warn("Painting: the sitting is given up: {}", a_why);
             Restore("given up");
             g_busy = false;
-            RE::SendHUDMessage::ShowHUDMessage(std::format("[Relationships] The sitting could not be done: {}", a_why).c_str());
+            RE::SendHUDMessage::ShowHUDMessage(
+                L10n::Text("paint.hud.givenUp", "[Relationships] The painting could not be made: {0}", a_why).c_str());
         }
 
         // Each one's head and feet on the screen, y down, into g_sit.points.
@@ -559,6 +573,23 @@ namespace SNRom::Painting {
                     g_sit.frames = 0;
                     return;
                 }
+                if (!partner || partner->IsDead() || !partner->Is3DLoaded()) {
+                    return Abort("they are not here");
+                }
+                // THE WEDDING KISS (the author, 2026-11-21: "make the painting
+                // happen during the wedding ceremony kiss"). Asked for as the
+                // kiss becomes a scene, which may open with them apart: the
+                // world is stopped once their heads meet, or after a while
+                // without, as they are.
+                if (g_sit.wedding && !g_sit.heldStill && g_sit.frames == 0) {
+                    const float heads = HeadOf(player).GetDistance(HeadOf(partner));
+                    if (heads > kKissHeads && ++g_sit.waited < kKissWaitFrames) {
+                        return;
+                    }
+                    g_sit.kissSeen = heads <= kKissHeads;
+                    SKSE::log::info("Painting: the wedding kiss {} after {} frames (heads {:.0f} apart)",
+                                    g_sit.kissSeen ? "reached" : "never reached", g_sit.waited, heads);
+                }
                 // HELD STILL (seen in play, wpm101: an OStim kiss had let go
                 // by the time the frame was caught, 2.6 s after the dashboard
                 // closed). In a scene - the camera free already, or the two
@@ -566,21 +597,20 @@ namespace SNRom::Painting {
                 // again, as a photo mode stops it: the camera still moves and
                 // the frame is still drawn, and the kiss waits for the
                 // picture. Restore lets it go on every way out.
-                if (g_sit.frames == 0 && !g_sit.heldStill && partner) {
+                if (g_sit.frames == 0 && !g_sit.heldStill) {
                     auto*       main = RE::Main::GetSingleton();
                     const float apart = player->GetPosition().GetDistance(partner->GetPosition());
-                    if (main && !main->GetRuntimeData().freezeTime && (camera->IsInFreeCameraMode() || apart < 20.0f)) {
+                    if (main && !main->GetRuntimeData().freezeTime &&
+                        (g_sit.kissSeen || camera->IsInFreeCameraMode() || apart < 20.0f)) {
                         main->GetRuntimeData().freezeTime = true;
                         g_sit.heldStill = true;
                         SKSE::log::info("Painting: in a scene ({:.0f} apart{}); the world is held still for the sitting",
                                         apart, camera->IsInFreeCameraMode() ? ", the camera free" : "");
                     }
                 }
-                if (++g_sit.frames < 20) {
+                // Until the dashboard has gone; a wedding has none.
+                if (++g_sit.frames < (g_sit.wedding ? 2 : 20)) {
                     return;
-                }
-                if (!partner || partner->IsDead() || !partner->Is3DLoaded()) {
-                    return Abort("they are not here");
                 }
                 const auto p = player->GetPosition();
                 const auto s = partner->GetPosition();
@@ -648,8 +678,10 @@ namespace SNRom::Painting {
                         g_sit.side = { ay, -ax, 0.0f };
                     }
                 }
-                SKSE::log::info("Painting: posed {} ({:.0f} apart, heads {:.0f} apart)",
-                                facing ? "from the side, facing each other" : "from the front, side by side", apart, heads);
+                g_sit.kiss = g_sit.kissSeen || (g_sit.heldStill && heads <= kKissHeads);
+                SKSE::log::info("Painting: posed {} ({:.0f} apart, heads {:.0f} apart{})",
+                                facing ? "from the side, facing each other" : "from the front, side by side", apart, heads,
+                                g_sit.kiss ? ", a kiss" : "");
                 g_sit.facing = facing;
                 g_sit.distance = 190.0f + apart * 0.6f;
                 // A side the camera can see them from: this one, nearer if a
@@ -706,17 +738,6 @@ namespace SNRom::Painting {
                 }
                 float x = -1.0f, y = -1.0f;
                 const bool seen = Project(g_sit.look, x, y);
-                const int  tried = g_convention >= 0 ? g_convention : g_sit.candidate;
-                // The camera's own axes, for working the convention out from
-                // the log if none of the four is right.
-                const auto* cam = RE::Main::WorldRootCamera();
-                const auto& m = cam ? cam->world.rotate : RE::NiMatrix3{};
-                const float wx = g_sit.look.x - g_sit.eye.x, wy = g_sit.look.y - g_sit.eye.y, wz = g_sit.look.z - g_sit.eye.z;
-                const float wl = std::sqrt(wx * wx + wy * wy + wz * wz);
-                SKSE::log::info("Painting: rotation convention {}: the couple's middle at {:.2f}, {:.2f}{}; wanted "
-                                "{:.2f} {:.2f} {:.2f}; camera column0 {:.2f} {:.2f} {:.2f}, row0 {:.2f} {:.2f} {:.2f}",
-                                tried, x, y, seen ? "" : " (behind)", wx / wl, wy / wl, wz / wl, m.entry[0][0],
-                                m.entry[1][0], m.entry[2][0], m.entry[0][0], m.entry[0][1], m.entry[0][2]);
                 if (seen && std::abs(x - 0.5f) < 0.06f && std::abs(y - 0.5f) < 0.06f) {
                     if (g_convention < 0) {
                         g_convention = g_sit.candidate;
@@ -725,6 +746,20 @@ namespace SNRom::Painting {
                     g_sit.phase = Phase::kSettling;
                     g_sit.frames = 0;
                     return;
+                }
+                {
+                    // Missed: the camera's own axes, for working the
+                    // convention out from the log if none of the four is right.
+                    const int   tried = g_convention >= 0 ? g_convention : g_sit.candidate;
+                    const auto* cam = RE::Main::WorldRootCamera();
+                    const auto& m = cam ? cam->world.rotate : RE::NiMatrix3{};
+                    const float wx = g_sit.look.x - g_sit.eye.x, wy = g_sit.look.y - g_sit.eye.y,
+                                wz = g_sit.look.z - g_sit.eye.z;
+                    const float wl = std::sqrt(wx * wx + wy * wy + wz * wz);
+                    SKSE::log::info("Painting: rotation convention {} missed: the couple's middle at {:.2f}, {:.2f}{}; "
+                                    "wanted {:.2f} {:.2f} {:.2f}; camera column0 {:.2f} {:.2f} {:.2f}, row0 {:.2f} {:.2f} {:.2f}",
+                                    tried, x, y, seen ? "" : " (behind)", wx / wl, wy / wl, wz / wl, m.entry[0][0],
+                                    m.entry[1][0], m.entry[2][0], m.entry[0][0], m.entry[0][1], m.entry[0][2]);
                 }
                 if (g_convention >= 0) {
                     g_convention = -1;  // it was wrong this time; look again
@@ -1163,7 +1198,6 @@ namespace SNRom::Painting {
                     p[3] = 255;
                 }
             }
-            SKSE::log::info("Painting: {} strokes laid", strokes);
             return out;
         }
 
@@ -1306,63 +1340,31 @@ namespace SNRom::Painting {
             return file.good();
         }
 
-        // An uncompressed DDS (B8G8R8A8, as a legacy A8R8G8B8 header every
-        // loader reads) with its mip chain, each level the box average of the
-        // one before.
-        bool WriteDds(const std::filesystem::path& a_path, const Image& a_img) {
-            struct PixelFormat {
-                std::uint32_t size, flags, fourCC, bits, r, g, b, a;
-            };
-            struct Header {
-                std::uint32_t size, flags, height, width, pitch, depth, mips, reserved1[11];
-                PixelFormat   pf;
-                std::uint32_t caps, caps2, caps3, caps4, reserved2;
-            };
-            static_assert(sizeof(Header) == 124);
-            std::vector<Image> levels{ a_img };
-            while (levels.back().w > 1 || levels.back().h > 1) {
-                const auto& up = levels.back();
-                Image       down{ (std::max)(1, up.w / 2), (std::max)(1, up.h / 2), {} };
-                down.bgra.assign(static_cast<std::size_t>(down.w) * down.h * 4, 255);
-                for (int y = 0; y < down.h; ++y) {
-                    for (int x = 0; x < down.w; ++x) {
-                        for (int c = 0; c < 3; ++c) {
-                            const int x0 = (std::min)(x * 2, up.w - 1), x1 = (std::min)(x * 2 + 1, up.w - 1);
-                            const int y0 = (std::min)(y * 2, up.h - 1), y1 = (std::min)(y * 2 + 1, up.h - 1);
-                            down.at(x, y)[c] = static_cast<std::uint8_t>(
-                                (up.at(x0, y0)[c] + up.at(x1, y0)[c] + up.at(x0, y1)[c] + up.at(x1, y1)[c] + 2) / 4);
-                        }
-                    }
-                }
-                levels.push_back(std::move(down));
-            }
-            Header head{};
-            head.size = 124;
-            head.flags = 0x1 | 0x2 | 0x4 | 0x8 | 0x1000 | 0x20000;  // caps height width pitch pixelformat mipmapcount
-            head.height = static_cast<std::uint32_t>(a_img.h);
-            head.width = static_cast<std::uint32_t>(a_img.w);
-            head.pitch = static_cast<std::uint32_t>(a_img.w) * 4;
-            head.mips = static_cast<std::uint32_t>(levels.size());
-            head.pf = { 32, 0x40 | 0x1, 0, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000 };
-            head.caps = 0x1000 | 0x400000 | 0x8;  // texture mipmap complex
-            std::vector<std::uint8_t> bytes(4 + sizeof(head));
-            std::memcpy(bytes.data(), "DDS ", 4);
-            std::memcpy(bytes.data() + 4, &head, sizeof(head));
-            for (const auto& level : levels) {
-                bytes.insert(bytes.end(), level.bgra.begin(), level.bgra.end());
-            }
-            return WriteFile(a_path, bytes.data(), bytes.size());
-        }
-
-        std::filesystem::path DataFolder() {
-            wchar_t exe[MAX_PATH]{};
-            GetModuleFileNameW(nullptr, exe, MAX_PATH);
-            return std::filesystem::path(exe).parent_path() / "Data";
-        }
-
         std::filesystem::path PreviewFolder() {
             const auto logs = SKSE::log::log_directory();
             return logs ? *logs / "Relationships" / "Paintings" : std::filesystem::path{};
+        }
+
+        // THE KEPT RECORD (2.6): beside each painting's PNGs, <name>.json says
+        // whose it is - the partner, the playthrough, a wedding's or not - and
+        // what the vision model made of it, so the card finds the couple's
+        // painting in any later session. <name>_card.png is the card's copy.
+        void Keep(const std::string& a_name, const json& a_record) {
+            const auto folder = PreviewFolder();
+            if (folder.empty()) {
+                return;
+            }
+            const auto text = a_record.dump(2, ' ', false, json::error_handler_t::replace);
+            if (!WriteFile(folder / (a_name + ".json"), text.data(), text.size())) {
+                SKSE::log::warn("Painting: {}'s record could not be kept", a_name);
+            }
+        }
+
+        json KeptRecord(const std::string& a_name) {
+            const auto    folder = PreviewFolder();
+            std::ifstream file(folder / (a_name + ".json"), std::ios::binary);
+            auto          record = file ? json::parse(file, nullptr, false) : json(nullptr);
+            return record.is_object() ? record : json::object();
         }
 
         void Paint(Shot a_shot, Sitting a_sit) {
@@ -1386,9 +1388,6 @@ namespace SNRom::Painting {
             if (r.y0 < 0) { r.y1 -= r.y0; r.y0 = 0; }
             if (r.x1 > W) { r.x0 -= r.x1 - W; r.x1 = W; }
             if (r.y1 > H) { r.y0 -= r.y1 - H; r.y1 = H; }
-            SKSE::log::info("Painting: {} cut from {:.0f},{:.0f} to {:.0f},{:.0f}; heads at {:.2f},{:.2f} and {:.2f},{:.2f}",
-                            name, r.x0, r.y0, r.x1, r.y1, a_sit.points[0][0], a_sit.points[0][1], a_sit.points[1][0],
-                            a_sit.points[1][1]);
 
             constexpr int kW = 1024, kH = 1280;
             const auto    shot = Resample(a_shot, r, kW, kH);
@@ -1402,35 +1401,40 @@ namespace SNRom::Painting {
             bool       ok = !previews.empty() && !shotPng.empty() && !paintedPng.empty();
             ok = ok && WriteFile(previews / (name + "_shot.png"), shotPng.data(), shotPng.size());
             ok = ok && WriteFile(previews / (name + "_painted.png"), paintedPng.data(), paintedPng.size());
-            const auto texture = DataFolder() / "Textures" / "Relationships" / "Paintings" / (name + ".dds");
-            const bool dds = WriteDds(texture, painted);
+            ok = ok && !cardPng.empty() && WriteFile(previews / (name + "_card.png"), cardPng.data(), cardPng.size());
             if (SUCCEEDED(com)) {
                 CoUninitialize();
             }
             const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
-            SKSE::log::info("Painting: {} painted in {} ms; previews {}, texture {} ({})", name, ms, ok ? "written" : "FAILED",
-                            dds ? "written" : "FAILED", texture.string());
-            {
+            SKSE::log::info("Painting: {} painted in {} ms{}", name, ms, ok ? "" : "; it could NOT be saved");
+            if (ok) {
+                Keep(name, { { "partner", a_sit.partner },
+                             { "playthrough", a_sit.playthrough },
+                             { "wedding", a_sit.wedding },
+                             { "kiss", a_sit.kiss },
+                             { "title", "" },
+                             { "description", "" } });
                 std::scoped_lock lock(g_latestLock);
-                if (dds) {
-                    g_latestName = name;
-                    g_latestTexture = std::format("textures\\relationships\\paintings\\{}.dds", name);
-                    g_latestSrc = cardPng.empty() ? "" : "data:image/png;base64," + Base64(cardPng);
-                    g_latestPainted = (previews / (name + "_painted.png")).string();
-                    g_latestShot = (previews / (name + "_shot.png")).string();
-                    g_latestTitle.clear();
-                    g_latestDescription.clear();
-                    g_latestDescribing.clear();
-                }
+                g_latestName = name;
+                g_latestPartner = a_sit.partner;
+                g_latestPlaythrough = a_sit.playthrough;
+                g_latestWedding = a_sit.wedding;
+                g_latestSrc = "data:image/png;base64," + Base64(cardPng);
+                g_latestTitle.clear();
+                g_latestDescription.clear();
+                g_latestDescribing.clear();
             }
             g_busy = false;
-            if (dds && !visionJpeg.empty()) {
+            if (ok && !visionJpeg.empty()) {
                 SKSE::GetTaskInterface()->AddTask(
                     [name, jpeg = "data:image/jpeg;base64," + Base64(visionJpeg), a_sit]() { Describe(name, jpeg, a_sit); });
             }
-            SKSE::GetTaskInterface()->AddTask([dds]() {
-                RE::SendHUDMessage::ShowHUDMessage(dds ? "[Relationships] The painter has finished. See the card."
-                                          : "[Relationships] The painting could not be saved. See the log.");
+            SKSE::GetTaskInterface()->AddTask([ok, partner = a_sit.partner]() {
+                auto*       who = RE::TESForm::LookupByID<RE::Actor>(partner);
+                const char* them = who ? who->GetDisplayFullName() : "";
+                RE::SendHUDMessage::ShowHUDMessage(
+                    ok ? L10n::Text("paint.hud.done", "[Relationships] The painting is finished. It hangs on {0}'s card.", them).c_str()
+                       : L10n::Text("paint.hud.unsaved", "[Relationships] The painting could not be saved. See the log.").c_str());
             });
         }
 
@@ -1478,7 +1482,9 @@ namespace SNRom::Painting {
                                { "painting_partner", them },
                                { "painting_left", youLeft ? you : them },
                                { "painting_right", youLeft ? them : you },
-                               { "painting_place", "" } };
+                               { "painting_place", "" },
+                               { "painting_kiss", a_sit.kiss },
+                               { "painting_wedding", a_sit.wedding } };
             if (auto* where = player ? player->GetCurrentLocation() : nullptr) {
                 ctx["painting_place"] = where->GetFullName() ? where->GetFullName() : "";
             }
@@ -1515,6 +1521,12 @@ namespace SNRom::Painting {
                                         g_latestTitle = answer.value("title", std::string{});
                                         g_latestDescription = answer.value("description", std::string{});
                                         g_latestDescribing.clear();
+                                        auto record = KeptRecord(a_name);
+                                        if (!record.empty()) {
+                                            record["title"] = g_latestTitle;
+                                            record["description"] = g_latestDescription;
+                                            Keep(a_name, record);
+                                        }
                                     } else {
                                         g_latestDescription = text;  // shown as it came, to judge
                                         g_latestDescribing = "failed: the answer was not the JSON asked for";
@@ -1534,106 +1546,97 @@ namespace SNRom::Painting {
 
     }  // namespace
 
-    std::string Sit(RE::FormID a_partner) {
+    std::string Sit(RE::FormID a_partner, bool a_wedding) {
         if (g_busy) {
-            return "A sitting is already under way.";
+            return L10n::Text("paint.busy", "The painter is still at work on the last one.");
         }
         auto* partner = RE::TESForm::LookupByID<RE::Actor>(a_partner);
         auto* player = RE::PlayerCharacter::GetSingleton();
         if (!partner || !player) {
-            return "There is nobody to paint.";
+            return L10n::Text("paint.nobody", "There is nobody to paint.");
         }
         if (!partner->Is3DLoaded() || partner->GetParentCell() != player->GetParentCell() ||
             partner->GetPosition().GetDistance(player->GetPosition()) > 600.0f) {
-            return std::format("Stand beside {} first.", partner->GetDisplayFullName());
+            return L10n::Text("paint.standBeside", "Stand beside {0} first.", partner->GetDisplayFullName());
         }
         if (!Hook()) {
-            return "The frame could not be watched. See the log.";
+            return L10n::Text("paint.noFrame", "The painter cannot see the game. See the log.");
         }
         g_busy = true;
         g_sit = {};
         g_sit.partner = a_partner;
+        g_sit.wedding = a_wedding;
+        g_sit.playthrough = Model::Get().PlaythroughId();
         g_sit.phase = Phase::kWaiting;
         g_sit.began = std::chrono::steady_clock::now();
         g_active = true;
-        SKSE::log::info("Painting: a sitting with {} ({:08X}) is asked for", partner->GetDisplayFullName(), a_partner);
+        SKSE::log::info("Painting: a sitting with {} ({:08X}) is asked for{}", partner->GetDisplayFullName(), a_partner,
+                        a_wedding ? ", at their wedding" : "");
         return "";
     }
 
-    std::string ShowOn(RE::FormID a_ref) {
-        std::string texture, name;
+    json Latest(RE::FormID a_partner) {
+        // As the card knows them: Papyrus pushes form ids signed.
+        json out = { { "formId", static_cast<std::int32_t>(a_partner) }, { "name", "" },        { "src", "" },        { "title", "" },
+                     { "description", "" },   { "describing", "" }, { "wedding", false } };
+        const auto playthrough = Model::Get().PlaythroughId();
         {
             std::scoped_lock lock(g_latestLock);
-            texture = g_latestTexture;
-            name = g_latestName;
-        }
-        if (texture.empty()) {
-            return "There is no painting yet this session.";
-        }
-        auto* ref = a_ref ? RE::TESForm::LookupByID<RE::TESObjectREFR>(a_ref) : nullptr;
-        if (!ref) {
-            return "Nothing was under your crosshair when the dashboard opened.";
-        }
-        auto* root = ref->Get3D();
-        if (!root) {
-            return "What was under your crosshair has nothing drawn.";
-        }
-        int swapped = 0, other = 0;
-        RE::BSVisit::TraverseScenegraphGeometries(root, [&](RE::BSGeometry* a_geometry) {
-            auto* shader = a_geometry->lightingShaderProp_cast();
-            auto* material = shader ? static_cast<RE::BSLightingShaderMaterialBase*>(shader->material) : nullptr;
-            if (!material) {
-                ++other;
-                return RE::BSVisit::BSVisitControl::kContinue;
+            if (!g_latestName.empty() && g_latestPartner == a_partner && g_latestPlaythrough == playthrough) {
+                out["name"] = g_latestName;
+                out["src"] = g_latestSrc;
+                out["title"] = g_latestTitle;
+                out["description"] = g_latestDescription;
+                out["describing"] = g_latestDescribing;
+                out["wedding"] = g_latestWedding;
+                return out;
             }
-            auto* set = RE::BSShaderTextureSet::Create();
-            if (auto* old = material->textureSet.get()) {
-                for (std::uint32_t i = 0; i < RE::BSTextureSet::Texture::kTotal; ++i) {
-                    const auto t = static_cast<RE::BSTextureSet::Texture>(i);
-                    if (const char* path = old->GetTexturePath(t)) {
-                        set->SetTexturePath(t, path);
-                    }
+        }
+        // The newest kept for this couple in this playthrough: the names are
+        // the time they were painted, so the greatest is the newest.
+        const auto      folder = PreviewFolder();
+        std::error_code ec;
+        std::string     newest;
+        json            found;
+        if (!folder.empty() && std::filesystem::is_directory(folder, ec)) {
+            for (const auto& entry : std::filesystem::directory_iterator(folder, ec)) {
+                const auto path = entry.path();
+                const auto stem = path.stem().string();
+                if (path.extension() != ".json" || !stem.starts_with("Painting_") || stem <= newest) {
+                    continue;
+                }
+                auto record = KeptRecord(stem);
+                if (record.value("partner", RE::FormID{ 0 }) == a_partner &&
+                    record.value("playthrough", std::string{}) == playthrough) {
+                    newest = stem;
+                    found = std::move(record);
                 }
             }
-            set->SetTexturePath(RE::BSTextureSet::Texture::kDiffuse, texture.c_str());
-            auto* fresh = static_cast<RE::BSLightingShaderMaterialBase*>(material->Create());
-            if (!fresh) {
-                ++other;
-                return RE::BSVisit::BSVisitControl::kContinue;
-            }
-            fresh->CopyMembers(material);
-            fresh->ClearTextures();
-            fresh->OnLoadTextureSet(0, set);
-            shader->SetMaterial(fresh, true);
-            shader->SetupGeometry(a_geometry);
-            shader->FinishSetupGeometry(a_geometry);
-            fresh->~BSLightingShaderMaterialBase();
-            RE::free(fresh);
-            const auto* now = static_cast<RE::BSLightingShaderMaterialBase*>(shader->material);
-            const auto* diffuse = now ? now->diffuseTexture.get() : nullptr;
-            SKSE::log::info("Painting: {} on '{}': its picture is now {}", name, a_geometry->name.c_str(),
-                            diffuse ? std::format("'{}'", diffuse->name.c_str()) : "missing");
-            ++swapped;
-            return RE::BSVisit::BSVisitControl::kContinue;
-        });
-        SKSE::log::info("Painting: {} put on {:08X} ({} parts repainted, {} left as they were)", name, a_ref, swapped, other);
-        if (swapped == 0) {
-            return "That has no surface the painting can go on. Try a book, a note or a sign.";
         }
-        return "";
-    }
-
-    json Latest() {
-        std::scoped_lock lock(g_latestLock);
-        return { { "name", g_latestName },       { "src", g_latestSrc },
-                 { "painted", g_latestPainted }, { "shot", g_latestShot },
-                 { "title", g_latestTitle },     { "description", g_latestDescription },
-                 { "describing", g_latestDescribing } };
+        if (newest.empty()) {
+            return out;
+        }
+        std::ifstream             png(folder / (newest + "_card.png"), std::ios::binary);
+        std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(png)), std::istreambuf_iterator<char>());
+        if (bytes.empty()) {
+            return out;
+        }
+        out["name"] = newest;
+        out["src"] = "data:image/png;base64," + Base64(bytes);
+        out["title"] = found.value("title", std::string{});
+        out["description"] = found.value("description", std::string{});
+        out["wedding"] = found.value("wedding", false);
+        return out;
     }
 
     namespace {
         std::string LatestText() {
-            return Latest().dump(-1, ' ', false, json::error_handler_t::replace);
+            RE::FormID partner = 0;
+            {
+                std::scoped_lock lock(g_latestLock);
+                partner = g_latestPartner;
+            }
+            return Latest(partner).dump(-1, ' ', false, json::error_handler_t::replace);
         }
     }
 

@@ -94,58 +94,55 @@
     slot.appendChild(img);
     slot.hidden = false;
   }
-  // THE WEDDING PAINTING, feasibility test (2.6 test build; Painting.h in
-  // the DLL): a sitting with this person now, and the latest painting put on
-  // whatever was under the crosshair when the dashboard opened. Test-only,
-  // so in English; it goes once the painting is built for real.
-  var latestPainting = null;
+  // THE PAINTING (2.6; Painting.h in the DLL): the newest painting of the
+  // player and this person in this playthrough - a wedding kiss's, or one
+  // they sat for from here - and a sitting now. The DLL answers paintLatest
+  // and pushes "painting" as a new one is painted and described; each box
+  // shows only its own person's.
+  var paintings = {};
   snrom.on("painting", function (p) {
-    latestPainting = p || null;
-    Array.prototype.forEach.call(document.querySelectorAll(".painting-test-preview"), fillPaintingPreview);
+    if (!p || !p.formId) return;
+    paintings[p.formId] = p;
+    Array.prototype.forEach.call(document.querySelectorAll(".painting-preview[data-form=\"" + p.formId + "\"]"), fillPaintingPreview);
   });
   function fillPaintingPreview(slot) {
     slot.innerHTML = "";
-    var p = latestPainting;
-    if (!p || !p.src) { slot.appendChild(el("p", "blurb", "No painting yet this session.")); return; }
+    var p = paintings[slot.getAttribute("data-form")];
+    if (!p) return;
+    if (!p.src) { slot.appendChild(el("p", "blurb", t("paint.none", "No painting of the two of you yet."))); return; }
     var img = document.createElement("img");
     img.src = p.src;
-    img.alt = "";
+    img.alt = p.title || "";
     slot.appendChild(img);
-    // What the vision model made of it, as the people of Skyrim will know it.
-    if (p.title) slot.appendChild(el("p", "painting-test-title", p.title));
-    if (p.description) slot.appendChild(el("p", "painting-test-description", p.description));
-    if (p.describing === "asked") slot.appendChild(el("p", "blurb", "The vision model is looking at it…"));
-    else if (p.describing) slot.appendChild(el("p", "blurb", "Not described: " + p.describing.replace(/^failed: /, "")));
-    slot.appendChild(el("p", "blurb", "Full size: " + p.painted + ". The camera's own shot is beside it, ending _shot.png."));
+    if (p.title) slot.appendChild(el("p", "painting-title", p.title));
+    if (p.description) slot.appendChild(el("p", "painting-description", p.description));
+    if (p.describing === "asked") slot.appendChild(el("p", "blurb", t("paint.describing", "The painting is being described…")));
+    else if (p.describing) slot.appendChild(el("p", "blurb", t("paint.notDescribed", "The painting could not be described. See the log.")));
   }
-  function paintingTest(b) {
-    var box = el("div", "painting-test");
-    box.appendChild(el("h4", "sub-head", "Wedding painting (test build)"));
-    box.appendChild(el("p", "blurb", "Stand beside them, then paint. The dashboard closes, the camera poses on the two of you for a few seconds, and the painting appears here."));
-    var status = el("p", "blurb painting-test-status");
-    function ask(kind, payload, button) {
-      button.disabled = true;
+  function paintingBox(b) {
+    var box = el("div", "painting");
+    box.appendChild(el("h4", "sub-head", t("paint.heading", "A painting of the two of you")));
+    box.appendChild(el("p", "blurb", t("paint.help", "Stand beside them, or kiss, and sit for a painting. The dashboard closes and the painter takes a moment to see you both. A wedding kiss is painted on its own.")));
+    var status = el("p", "blurb");
+    var row = el("div", "painting-buttons");
+    var sit = el("button", "btn btn-quiet", t("paint.sit", "Sit for a painting"));
+    sit.type = "button";
+    sit.addEventListener("click", function () {
+      sit.disabled = true;
       status.textContent = "…";
-      snrom.request(kind, payload).then(function (r) {
-        button.disabled = false;
+      snrom.request("paintSit", { formId: b.subject.formId }).then(function (r) {
+        sit.disabled = false;
         status.textContent = r.message || "";
       });
-    }
-    var row = el("div", "painting-test-buttons");
-    var sit = el("button", "btn btn-quiet", "Paint the two of you now");
-    sit.type = "button";
-    sit.addEventListener("click", function () { ask("paintSit", { formId: b.subject.formId }, sit); });
-    var on = el("button", "btn btn-quiet", "Put the last painting on what was under your crosshair");
-    on.type = "button";
-    on.addEventListener("click", function () { ask("paintShowOn", {}, on); });
+    });
     row.appendChild(sit);
-    row.appendChild(on);
     box.appendChild(row);
     box.appendChild(status);
-    var preview = el("div", "painting-test-preview");
+    var preview = el("div", "painting-preview");
+    preview.setAttribute("data-form", String(b.subject.formId));
     fillPaintingPreview(preview);
     box.appendChild(preview);
-    snrom.request("paintLatest", {});
+    snrom.request("paintLatest", { formId: b.subject.formId });
     return box;
   }
 
@@ -402,10 +399,8 @@
       if (m.ringToPlayer) kv(mdl, t("detail.ringToYou", "Their ring to you"), m.ringToPlayer);
       ms.appendChild(mdl);
       if (m.plan) ms.appendChild(this.planBlock(m.plan, b, snap));
-      // The wedding painting, by hand (2.6). Shelved 2026-11-19 over a control
-      // loss that was OStimNet's and Magelight's, fixed by them; back the next
-      // day. Dashboard.cpp's kPaintingShelved switches both sides off together.
-      if (m.state === "married" || m.state === "engaged" || m.state === "separated") ms.appendChild(paintingTest(b));
+      // The painting of the two of you (2.6).
+      if (m.state === "married" || m.state === "engaged" || m.state === "separated") ms.appendChild(paintingBox(b));
       scroll.appendChild(ms);
     }
 

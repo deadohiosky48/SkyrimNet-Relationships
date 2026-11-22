@@ -144,6 +144,16 @@ schema:
       description: "When the officiant invites the kiss and your betrothed kisses you in words but no kiss plays, these are tried in order until one does, separated by commas. OStim means OStimNet's own kiss. Anything else is the name of a SkyrimNet action that plays a kiss, such as KissLove from Baka's integration, with you as the one kissed. Ones that are not installed are passed over. Leave it empty to have no kiss played. Default: OStim, KissLove."
       defaultValue: "OStim, KissLove"
       category: "Weddings"
+
+    # The wedding painting (2.6; the author, 2026-11-21). Read by the DLL
+    # from this file (Settings.cpp); Ceremony.cpp asks Painting.cpp for it.
+    - name: "Paint the Wedding Kiss"
+      path: "weddingPainting"
+      type: "bool"
+      description: "When the wedding kiss plays as a scene, a painter catches it: the moment your lips meet, the world holds still for a breath while the camera finds the two of you, and the painting appears on your spouse's card with a description of what it shows. You can also sit for a painting any time from a spouse's card. Turn off to keep the camera where it is at the altar. Default: on."
+      defaultValue: true
+      category: "Weddings"
+
     - name: "Let Personalities Change Over Time"
       path: "driftEnabled"
       type: "bool"
